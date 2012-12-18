@@ -27,6 +27,7 @@
  */
 
 #include <debug.h>
+#include <platform/gpio.h>
 #include <platform/iomap.h>
 #include <reg.h>
 #include <target.h>
@@ -39,8 +40,10 @@
 #include <baseband.h>
 #include <dev/keys.h>
 #include <pm8x41.h>
+#include <target/board.h>
 
 static unsigned int target_id;
+static unsigned int board_revision;
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
@@ -57,18 +60,21 @@ void target_early_init(void)
 #endif
 }
 
-/* Return 1 if vol_up pressed */
-static int target_volume_up()
+extern int gpio_get(uint32_t gpio);
+
+#define HW_ID_0_GPIO  4
+#define HW_ID_1_GPIO  5
+#define HW_ID_2_GPIO 53
+#define HW_ID_3_GPIO 89
+
+#define VOL_UP_PMIC_GPIO 1
+#define VOL_DN_PMIC_GPIO 4
+
+/* Return 1 if the specified GPIO is pressed (low) */
+static int target_pmic_gpio_button_pressed(int gpio_number)
 {
 	uint8_t status = 0;
 	struct pm8x41_gpio gpio;
-
-	/* CDP vol_up seems to be always grounded. So gpio status is read as 0,
-	 * whether key is pressed or not.
-	 * Ignore volume_up key on CDP for now.
-	 */
-	if (board_hardware_id() == HW_PLATFORM_SURF)
-		return 0;
 
 	/* Configure the GPIO */
 	gpio.direction = PM_GPIO_DIR_IN;
@@ -76,36 +82,41 @@ static int target_volume_up()
 	gpio.pull      = PM_GPIO_PULL_UP_30;
 	gpio.vin_sel   = 0;
 
-	pm8x41_gpio_config(5, &gpio);
+	pm8x41_gpio_config(gpio_number, &gpio);
 
-	/* Get status of P_GPIO_5 */
-	pm8x41_gpio_get(5, &status);
+	/* Get status of the GPIO */
+	pm8x41_gpio_get(gpio_number, &status);
 
 	return !status; /* active low */
+}
+
+/* Return 1 if vol_up pressed */
+int target_volume_up()
+{
+	return target_pmic_gpio_button_pressed(VOL_UP_PMIC_GPIO);
 }
 
 /* Return 1 if vol_down pressed */
 int target_volume_down()
 {
-	return pm8x41_vol_down_key_status();
+	return target_pmic_gpio_button_pressed(VOL_DN_PMIC_GPIO);
 }
 
 static void target_keystatus()
 {
 	keys_init();
 
-	if(target_volume_down())
-		keys_post_event(KEY_VOLUMEDOWN, 1);
-
 	if(target_volume_up())
 		keys_post_event(KEY_VOLUMEUP, 1);
+
+	if(target_volume_down())
+		keys_post_event(KEY_VOLUMEDOWN, 1);
 }
 
 void target_init(void)
 {
 	uint32_t base_addr;
 	uint8_t slot;
-
 
 	dprintf(INFO, "target_init()\n");
 
@@ -137,14 +148,47 @@ unsigned board_machtype(void)
 /* Do any target specific intialization needed before entering fastboot mode */
 void target_fastboot_init(void)
 {
-	/* Set the BOOT_DONE flag in PM8921 */
+	static char board_revision_string[9];
+
+	snprintf(board_revision_string, 9, "%08x", board_revision);
+	fastboot_publish("revision", board_revision_string);
+
+	/* Set the BOOT_DONE flag in PM8941 */
 	pm8x41_set_boot_done();
+}
+
+/* Config HW ID GPIO */
+static void gpio_config_hwid(int pull)
+{
+	gpio_tlmm_config(HW_ID_0_GPIO, 0, GPIO_INPUT, pull, GPIO_2MA, GPIO_DISABLE);
+	gpio_tlmm_config(HW_ID_1_GPIO, 0, GPIO_INPUT, pull, GPIO_2MA, GPIO_DISABLE);
+	gpio_tlmm_config(HW_ID_2_GPIO, 0, GPIO_INPUT, pull, GPIO_2MA, GPIO_DISABLE);
+	gpio_tlmm_config(HW_ID_3_GPIO, 0, GPIO_INPUT, pull, GPIO_2MA, GPIO_DISABLE);
+
+	/* If these are being brought up, delay long enough for a stable signal */
+	/* TODO: is this delay correct? */
+	if (pull == GPIO_PULL_UP)
+		mdelay(1);
 }
 
 /* Detect the target type */
 void target_detect(struct board_data *board)
 {
-	board->target = LINUX_MACHTYPE_UNKNOWN;
+	/* TODO: is this already set in EEPROM? */
+	board->platform = MSM8974;
+	board->platform_hw = HW_PLATFORM_URSA;
+	board->target = LINUX_MACHTYPE_URSA;
+
+	gpio_config_hwid(GPIO_PULL_UP);
+
+	/* TODO: move to board implementation if necessary */
+	board_revision =
+		(gpio_get(HW_ID_3_GPIO)       ) |
+		(gpio_get(HW_ID_2_GPIO) << 0x1) |
+		(gpio_get(HW_ID_1_GPIO) << 0x2) |
+		(gpio_get(HW_ID_0_GPIO) << 0x3);
+
+	gpio_config_hwid(GPIO_PULL_DOWN);
 }
 
 /* Detect the modem type */
