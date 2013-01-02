@@ -84,6 +84,9 @@ static int target_pmic_gpio_button_pressed(int gpio_number)
 
 	pm8x41_gpio_config(gpio_number, &gpio);
 
+	/* delay to work around slow rise on P0 volume up -- remove when fixed */
+	udelay(200);
+
 	/* Get status of the GPIO */
 	pm8x41_gpio_get(gpio_number, &status);
 
