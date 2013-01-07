@@ -60,13 +60,30 @@ int gpio_get(uint32_t gpio)
 /* Configure gpio for blsp uart 2 */
 void gpio_config_uart_dm(uint8_t id)
 {
-    /* configure rx gpio */
-	gpio_tlmm_config(5, 2, GPIO_INPUT, GPIO_NO_PULL,
-				GPIO_8MA, GPIO_DISABLE);
+	if (id == 1)
+	{
+		/* configure rx gpio */
+		gpio_tlmm_config(5, 2, GPIO_INPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
 
-    /* configure tx gpio */
-	gpio_tlmm_config(4, 2, GPIO_OUTPUT, GPIO_NO_PULL,
-				GPIO_8MA, GPIO_DISABLE);
+		/* configure tx gpio */
+		gpio_tlmm_config(4, 2, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
+	}
+	else if (id == 7)
+	{
+		/* configure rx gpio */
+		gpio_tlmm_config(46, 2, GPIO_INPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
+
+		/* configure tx gpio */
+		gpio_tlmm_config(45, 2, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
+	}
+	else
+	{
+		dprintf(CRITICAL, "invalid uart id = %d\n", id);
+	}
 }
 
 void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
