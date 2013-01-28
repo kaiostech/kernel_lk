@@ -50,36 +50,9 @@ struct dt_entry * dev_tree_get_entry_ptr(struct dt_table *table)
 
 	dt_entry_ptr = (struct dt_entry *)((char *)table + DEV_TREE_HEADER_SIZE);
 
-	for(i = 0; i < table->num_entries; i++)
-	{
-		/* DTBs are stored in the ascending order of soc revision.
-		 * For eg: Rev0..Rev1..Rev2 & so on.
-		 * we pickup the DTB with highest soc rev number which is less
-		 * than or equal to actual hardware
-		 */
-		if((dt_entry_ptr->platform_id == board_platform_id()) &&
-		   (dt_entry_ptr->variant_id == board_hardware_id()) &&
-		   (dt_entry_ptr->soc_rev == board_soc_version()))
-			{
-				return dt_entry_ptr;
-			}
-		/* if the exact match not found, return the closest match
-		 * assuming it to be the nearest soc version
-		 */
-		if((dt_entry_ptr->platform_id == board_platform_id()) &&
-		  (dt_entry_ptr->variant_id == board_hardware_id()) &&
-		  (dt_entry_ptr->soc_rev <= board_soc_version())) {
-			latest_dt_entry = dt_entry_ptr;
-		}
-		dt_entry_ptr++;
-	}
+	// Return the first dt for virtio as platform id is not present.
 
-	if (latest_dt_entry) {
-		dprintf(SPEW, "Loading DTB with SOC version:%x\n", latest_dt_entry->soc_rev);
-		return latest_dt_entry;
-	}
-
-	return NULL;
+	return dt_entry_ptr;
 }
 
 /* Function to return the offset of flash node - "/qcom,mtd-partitions".
