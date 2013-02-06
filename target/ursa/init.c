@@ -45,9 +45,6 @@
 
 extern  bool target_use_signed_kernel(void);
 
-static unsigned int target_id;
-static unsigned int board_revision;
-
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
 
@@ -70,15 +67,8 @@ void target_early_init(void)
 #endif
 }
 
-extern int gpio_get(uint32_t gpio);
-
-#define HW_ID_0_GPIO  4
-#define HW_ID_1_GPIO  5
-#define HW_ID_2_GPIO 53
-#define HW_ID_3_GPIO 89
-
-#define VOL_UP_PMIC_GPIO 1
-#define VOL_DN_PMIC_GPIO 4
+#define VOL_UP_PMIC_GPIO 4
+#define VOL_DN_PMIC_GPIO 1
 
 /* Return 1 if the specified GPIO is pressed (low) */
 static int target_pmic_gpio_button_pressed(int gpio_number)
@@ -159,7 +149,8 @@ void target_init(void)
 	uint32_t base_addr;
 	uint8_t slot;
 
-	dprintf(INFO, "target_init()\n");
+	dprintf(INFO, "target_init() - platform %d, board %d, board version %d\n",
+		board_platform_id(), board_hardware_id(), board_hardware_version());
 
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
 
@@ -191,7 +182,7 @@ void target_init(void)
 
 unsigned board_machtype(void)
 {
-	return target_id;
+	return LINUX_MACHTYPE_URSA;
 }
 
 /* Do any target specific intialization needed before entering fastboot mode */
@@ -199,45 +190,20 @@ void target_fastboot_init(void)
 {
 	static char board_revision_string[9];
 
-	snprintf(board_revision_string, 9, "%08x", board_revision);
+	snprintf(board_revision_string, 9, "%08x", board_hardware_version());
 	fastboot_publish("revision", board_revision_string);
 
 	/* Set the BOOT_DONE flag in PM8941 */
 	pm8x41_set_boot_done();
 }
 
-/* Config HW ID GPIO */
-static void gpio_config_hwid(int pull)
-{
-	gpio_tlmm_config(HW_ID_0_GPIO, 0, GPIO_INPUT, pull, GPIO_2MA, GPIO_DISABLE);
-	gpio_tlmm_config(HW_ID_1_GPIO, 0, GPIO_INPUT, pull, GPIO_2MA, GPIO_DISABLE);
-	gpio_tlmm_config(HW_ID_2_GPIO, 0, GPIO_INPUT, pull, GPIO_2MA, GPIO_DISABLE);
-	gpio_tlmm_config(HW_ID_3_GPIO, 0, GPIO_INPUT, pull, GPIO_2MA, GPIO_DISABLE);
-
-	/* If these are being brought up, delay long enough for a stable signal */
-	/* TODO: is this delay correct? */
-	if (pull == GPIO_PULL_UP)
-		mdelay(1);
-}
-
-/* Detect the target type */
+/* Detect the target type.
+ * This function sets platform_hw which is the board type and the target type.
+ * Board version is read through ADC in SBL1 and passed-in through SMEM */
 void target_detect(struct board_data *board)
 {
-	/* TODO: is this already set in EEPROM? */
-	board->platform = MSM8974;
 	board->platform_hw = HW_PLATFORM_URSA;
 	board->target = LINUX_MACHTYPE_URSA;
-
-	gpio_config_hwid(GPIO_PULL_UP);
-
-	/* TODO: move to board implementation if necessary */
-	board_revision =
-		(gpio_get(HW_ID_3_GPIO)       ) |
-		(gpio_get(HW_ID_2_GPIO) << 0x1) |
-		(gpio_get(HW_ID_1_GPIO) << 0x2) |
-		(gpio_get(HW_ID_0_GPIO) << 0x3);
-
-	gpio_config_hwid(GPIO_PULL_DOWN);
 }
 
 /* Detect the modem type */

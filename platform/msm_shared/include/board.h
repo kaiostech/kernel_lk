@@ -49,6 +49,7 @@ struct board_data {
 	uint32_t target;
 	uint32_t baseband;
 	struct board_pmic_data pmic_info[MAX_PMIC_DEVICES];
+	uint32_t platform_hw_version;
 };
 
 void board_init();
@@ -61,4 +62,6 @@ uint32_t board_hardware_id();
 uint8_t board_pmic_info(struct board_pmic_data *, uint8_t num_ent);
 uint32_t board_soc_version();
 uint32_t board_hardware_subtype(void);
+uint32_t board_hardware_version();
+
 #endif

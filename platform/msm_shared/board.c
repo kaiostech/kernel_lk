@@ -70,6 +70,7 @@ static void platform_detect()
 		board.platform_version = board_info_v6.board_info_v3.msm_version;
 		board.platform_hw = board_info_v6.board_info_v3.hw_platform;
 		board.platform_subtype = board_info_v6.platform_subtype;
+		board.platform_hw_version = board_info_v6.platform_version;
 	}
 	else if (format == 7)
 	{
@@ -87,6 +88,8 @@ static void platform_detect()
 		board.platform_subtype = board_info_v7.platform_subtype;
 		board.pmic_info[0].pmic_type = board_info_v7.pmic_type;
 		board.pmic_info[0].pmic_version = board_info_v7.pmic_version;
+
+		board.platform_hw_version = board_info_v7.platform_version;
 	}
 	else if (format == 8)
 	{
@@ -159,6 +162,11 @@ uint32_t board_hardware_id()
 uint32_t board_hardware_subtype(void)
 {
 	return board.platform_subtype;
+}
+
+uint32_t board_hardware_version()
+{
+	return board.platform_hw_version;
 }
 
 uint8_t board_pmic_info(struct board_pmic_data *info, uint8_t num_ent)

@@ -40,7 +40,4 @@
 #define BOARD_REVISION_P0          0x01
 #define BOARD_REVISION_MAX         0x01
 
-/* Accessor to get the board revision */
-unsigned target_board_revision(void);
-
 #endif
