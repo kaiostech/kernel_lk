@@ -41,6 +41,9 @@
 #include <pm8x41.h>
 #include <crypto5_wrapper.h>
 
+#define HW_PLATFORM_THOR     19 /* these needs to match with thor.dts */
+#define LINUX_MACHTYPE_THOR  19
+
 extern  bool target_use_signed_kernel(void);
 
 static unsigned int target_id;
@@ -189,7 +192,9 @@ void target_fastboot_init(void)
 /* Detect the target type */
 void target_detect(struct board_data *board)
 {
-	board->target = LINUX_MACHTYPE_UNKNOWN;
+//	board->platform = MSM8974;
+	board->platform_hw = HW_PLATFORM_THOR;
+	board->target = LINUX_MACHTYPE_THOR;
 }
 
 /* Detect the modem type */
