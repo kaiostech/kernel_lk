@@ -48,6 +48,9 @@
 #include <partition_parser.h>
 #include <platform.h>
 #include <crypto_hash.h>
+#ifdef WITH_ENABLE_IDME
+#include <idme.h> // ACOS_MOD_ONELINE
+#endif
 #include <malloc.h>
 #include <boot_stats.h>
 #include <sha.h>
@@ -525,6 +528,12 @@ void generate_atags(unsigned *ptr, const char *cmdline,
 	}
 
 	ptr = atag_cmdline(ptr, cmdline);
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	/*Add IDME atags, and need an idme space*/
+	ptr = target_atag_idme(ptr);
+#endif
+// ACOS_MOD_END
 	ptr = atag_end(ptr);
 }
 
@@ -2046,6 +2055,22 @@ int splash_screen_check_header(struct fbimage *logo)
 	return 0;
 }
 
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+void cmd_idme(const char *arg, void *data, unsigned sz)
+{
+	char response[64] = "idme done";
+
+	if( 0 == fastboot_idme( arg )) {
+		fastboot_info(response);
+		fastboot_okay("");
+	} else {
+		fastboot_fail("idme fail");
+	}
+}
+#endif
+// ACOS_MOD_END
+
 struct fbimage* splash_screen_flash()
 {
 	struct ptentry *ptn;
@@ -2261,6 +2286,12 @@ void aboot_fastboot_register_commands(void)
 			device.charger_screen_enabled);
 	fastboot_publish("charger-screen-enabled",
 			(const char *) charger_screen_enabled);
+
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	fastboot_register("oem idme", cmd_idme);
+#endif
+// ACOS_MOD_END
 }
 
 void aboot_init(const struct app_descriptor *app)
@@ -2284,6 +2315,15 @@ void aboot_init(const struct app_descriptor *app)
 
 	read_device_info(&device);
 
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	idme_initialize();
+
+	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT)
+		/* Boot mode 6: Switch to fastboot */
+		goto fastboot;
+#endif
+// ACOS_MOD_END
 	target_serialno((unsigned char *) sn_buf);
 	dprintf(SPEW,"serial number: %s\n",sn_buf);
 
@@ -2323,6 +2363,12 @@ void aboot_init(const struct app_descriptor *app)
 	} else if(reboot_mode == FASTBOOT_MODE) {
 		boot_into_fastboot = true;
 	}
+
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	idme_boot_info();
+#endif
+// ACOS_MOD_END
 
 	if (!boot_into_fastboot)
 	{

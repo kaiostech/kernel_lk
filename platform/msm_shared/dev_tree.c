@@ -775,6 +775,10 @@ int update_device_tree(void *fdt, const char *cmdline,
 		return ret;
 	}
 
+#ifdef WITH_ENABLE_IDME
+	idme_device_tree_initialize(fdt);
+#endif
+
 	/* Get offset of the chosen node */
 	ret = fdt_path_offset(fdt, "/chosen");
 	if (ret < 0)
