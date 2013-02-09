@@ -70,18 +70,14 @@ void target_early_init(void)
 #endif
 }
 
-/* Return 1 if vol_up pressed */
-static int target_volume_up()
+#define VOL_UP_PMIC_GPIO 4
+#define VOL_DN_PMIC_GPIO 1
+
+/* Return 1 if the specified GPIO is pressed (low) */
+static int target_pmic_gpio_button_pressed(int gpio_number)
 {
 	uint8_t status = 0;
 	struct pm8x41_gpio gpio;
-
-	/* CDP vol_up seems to be always grounded. So gpio status is read as 0,
-	 * whether key is pressed or not.
-	 * Ignore volume_up key on CDP for now.
-	 */
-	if (board_hardware_id() == HW_PLATFORM_SURF)
-		return 0;
 
 	/* Configure the GPIO */
 	gpio.direction = PM_GPIO_DIR_IN;
@@ -89,18 +85,24 @@ static int target_volume_up()
 	gpio.pull      = PM_GPIO_PULL_UP_30;
 	gpio.vin_sel   = 2;
 
-	pm8x41_gpio_config(5, &gpio);
+	pm8x41_gpio_config(gpio_number, &gpio);
 
-	/* Get status of P_GPIO_5 */
-	pm8x41_gpio_get(5, &status);
+	/* Get status of the GPIO */
+	pm8x41_gpio_get(gpio_number, &status);
 
 	return !status; /* active low */
+}
+
+/* Return 1 if vol_up pressed */
+int target_volume_up()
+{
+	return target_pmic_gpio_button_pressed(VOL_UP_PMIC_GPIO);
 }
 
 /* Return 1 if vol_down pressed */
 int target_volume_down()
 {
-	return pm8x41_vol_down_key_status();
+	return target_pmic_gpio_button_pressed(VOL_DN_PMIC_GPIO);
 }
 
 static void target_keystatus()
