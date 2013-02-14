@@ -11,3 +11,6 @@ DEBUG := 1
 #DEFINES += WITH_DEBUG_DCC=1
 DEFINES += WITH_DEBUG_UART=1
 #DEFINES += WITH_DEBUG_FBCON=1
+
+#disable thumb mode in GNU GCC 4.5.3 ARM toolchain
+ENABLE_THUMB := false
