@@ -73,6 +73,9 @@ void target_early_init(void)
 #define VOL_UP_PMIC_GPIO 4
 #define VOL_DN_PMIC_GPIO 1
 
+static char emmc_size[16];
+static char emmc_mid[8];
+
 /* Return 1 if the specified GPIO is pressed (low) */
 static int target_pmic_gpio_button_pressed(int gpio_number)
 {
@@ -189,6 +192,14 @@ void target_fastboot_init(void)
 {
 	/* Set the BOOT_DONE flag in PM8921 */
 	pm8x41_set_boot_done();
+
+	struct mmc_boot_card *card = get_mmc_card();
+
+	sprintf(emmc_size, "%lld", card->capacity);
+	fastboot_publish("emmc_size", emmc_size);
+
+	sprintf(emmc_mid, "0x%x", card->cid.mid);
+	fastboot_publish("emmc_mid", emmc_mid);
 }
 
 /* Detect the target type */
