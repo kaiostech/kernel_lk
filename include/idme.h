@@ -105,6 +105,8 @@ int idme_check_magic_number(struct idme_t *pidme);
 int idme_update_var_ex(const char *name, const char *value, unsigned int length);
 int idme_clean(void);
 void idme_boot_info(void);
+/* For external access to idme fields */
+int idme_get_var_external(const char *name, char *buf, unsigned int length);
 
 #endif // WITH_ENABLE_IDME
 

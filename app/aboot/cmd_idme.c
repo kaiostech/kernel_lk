@@ -425,6 +425,18 @@ int idme_read_first_block(unsigned char * buf)
 	return ret;     /* may be -1 from the mmc_read */
 }
 
+/* idme_get_var_external
+ *
+ * Use this function from areas outside of idme who wish to access
+ * idme fields without having access to the pidme_data struct
+ */
+int idme_get_var_external(const char *name, char *buf, unsigned int length)
+{
+	if(!idme_get_var)
+		return -2; // Something different from idme_get_var
+	return idme_get_var(name, buf, length, pidme_data);
+}
+
 /* NOT USED but interesting - */
 void idme_dump_memory(unsigned char *dst, int size){
 	int i;
