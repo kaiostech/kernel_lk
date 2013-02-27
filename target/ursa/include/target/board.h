@@ -36,8 +36,11 @@
 #define LINUX_MACHTYPE_URSA 3150
 
 /* Board ID Macros */
-#define BOARD_REVISION_INVALID     0x00
-#define BOARD_REVISION_P0          0x01
-#define BOARD_REVISION_MAX         0x01
+#define BOARD_REVISION_INVALID     0x0
+#define BOARD_REVISION_P0          0x1
+#define BOARD_REVISION_P0_5        0x2
+#define BOARD_REVISION_PRE_P1      0x3
+#define BOARD_REVISION_P1          0x4
+#define BOARD_REVISION_MAX         BOARD_REVISION_P1
 
 #endif
