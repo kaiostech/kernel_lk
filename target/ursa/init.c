@@ -45,6 +45,8 @@
 
 extern  bool target_use_signed_kernel(void);
 
+static unsigned int target_id;
+
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
 
@@ -183,7 +185,7 @@ void target_init(void)
 
 unsigned board_machtype(void)
 {
-	return LINUX_MACHTYPE_URSA;
+	return target_id;
 }
 
 /* Do any target specific intialization needed before entering fastboot mode */
@@ -203,8 +205,27 @@ void target_fastboot_init(void)
  * Board version is read through ADC in SBL1 and passed-in through SMEM */
 void target_detect(struct board_data *board)
 {
-	board->platform_hw = HW_PLATFORM_URSA;
-	board->target = LINUX_MACHTYPE_URSA;
+	switch (board_hardware_version())
+	{
+	case BOARD_REVISION_P0:
+		board->platform_hw = HW_PLATFORM_URSA_P0;
+		board->target = LINUX_MACHTYPE_URSA_P0;
+		break;
+
+	case BOARD_REVISION_P0_5:
+	case BOARD_REVISION_PRE_P1:
+	case BOARD_REVISION_P1:
+		board->platform_hw = HW_PLATFORM_URSA_P1;
+		board->target = LINUX_MACHTYPE_URSA_P1;
+		break;
+
+	default:
+		/* Board version is invalid. Will result in boot failure */
+		board->platform_hw = board->target = 0;
+		break;
+	}
+
+	target_id = board->target;
 }
 
 /* Detect the modem type */
