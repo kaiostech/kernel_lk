@@ -325,6 +325,14 @@ int do_idme ( int flag, int argc, char *argv[])
 	}
 
 	if (argc == 1 || strncmp(argv[1], "?", 1) == 0) {
+		if (argc == 3) {
+			char buf[1024];
+			int len = sprintf(buf, "%s: ", argv[2]);
+			if (idme_get_var)
+				idme_get_var(argv[2], buf+len, sizeof(buf)-len, pidme_data);
+			fastboot_info(buf);
+			return 0;
+		} else
 		if(idme_print_var)
 			return idme_print_var(pidme_data);
 		else
