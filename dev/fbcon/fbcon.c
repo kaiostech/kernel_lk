@@ -221,6 +221,13 @@ void fbcon_putImage(struct fbimage *fbimg, bool flag);
 
 void display_image_on_screen()
 {
+// ACOS_MOD_BEGIN
+#if WITH_FBGFX_SPLASH
+    fbgfx_init();
+    fbgfx_apply_image(&splash, FBGFX_CENTERED, FBGFX_CENTERED);
+    fbgfx_flip();
+#else
+// ACOS_MOD_END
 	struct fbimage default_fbimg, *fbimg;
 	bool flag = true;
 
@@ -240,17 +247,11 @@ void display_image_on_screen()
 	}
 
 	fbcon_putImage(fbimg, flag);
+#endif // ACOS_MOD_ONELINE
 }
 
 void fbcon_putImage(struct fbimage *fbimg, bool flag)
 {
-// ACOS_MOD_BEGIN
-#if WITH_FBGFX_SPLASH
-    fbgfx_init();
-    fbgfx_apply_image(&splash, FBGFX_CENTERED, FBGFX_CENTERED);
-    fbgfx_flip();
-#else
-// ACOS_MOD_END
     unsigned i = 0;
     unsigned total_x;
     unsigned total_y;
@@ -329,5 +330,4 @@ void fbcon_putImage(struct fbimage *fbimg, bool flag)
     }
     fbcon_flush();
 #endif
-#endif // ACOS_MOD_ONELINE
 }
