@@ -111,3 +111,31 @@ void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
 		};
 	}
 }
+
+void tlmm_set_val(uint32_t off, uint8_t val)
+{
+	uint32_t reg_val;
+	uint8_t mask = 0x7;
+
+	reg_val = readl(SDC1_HDRV_PULL_CTL);
+
+	reg_val &= ~(mask << off);
+
+	reg_val |= (val << off);
+
+	writel(reg_val, SDC1_HDRV_PULL_CTL);
+}
+
+void tlmm_set_hdrive(uint8_t dat_val, uint8_t cmd_val, uint8_t clk_val)
+{
+	tlmm_set_val(SDC1_DATA_HDRV_CTL_OFF, dat_val);
+	tlmm_set_val(SDC1_CMD_HDRV_CTL_OFF, cmd_val);
+	tlmm_set_val(SDC1_CLK_HDRV_CTL_OFF, clk_val);
+}
+
+void tlmm_set_pull(uint8_t dat_val, uint8_t cmd_val, uint8_t clk_val)
+{
+	tlmm_set_val(SDC1_DATA_PULL_CTL_OFF, dat_val);
+	tlmm_set_val(SDC1_CMD_PULL_CTL_OFF, cmd_val);
+	tlmm_set_val(SDC1_CLK_PULL_CTL_OFF, clk_val);
+}
