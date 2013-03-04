@@ -109,11 +109,11 @@ static void target_keystatus()
 {
 	keys_init();
 
-	if(target_volume_up())
-		keys_post_event(KEY_VOLUMEUP, 1);
-
 	if(target_volume_down())
 		keys_post_event(KEY_VOLUMEDOWN, 1);
+
+	if(target_volume_up())
+		keys_post_event(KEY_VOLUMEUP, 1);
 }
 
 /* Set up params for h/w CE. */
@@ -160,8 +160,9 @@ void target_init(void)
 		target_crypto_init_params();
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
+	dprintf(INFO, "Display Init: Start\n");
 	display_init();
-	dprintf(SPEW, "Diplay initialized\n");
+	dprintf(INFO, "Display Init: Done\n");
 #endif
 
 	/* Trying Slot 1*/
@@ -188,13 +189,13 @@ unsigned board_machtype(void)
 /* Do any target specific intialization needed before entering fastboot mode */
 void target_fastboot_init(void)
 {
+	/* Set the BOOT_DONE flag in PM8921 */
+	pm8x41_set_boot_done();
+
 	static char board_revision_string[9];
 
 	snprintf(board_revision_string, 9, "%08x", board_hardware_version());
 	fastboot_publish("revision", board_revision_string);
-
-	/* Set the BOOT_DONE flag in PM8941 */
-	pm8x41_set_boot_done();
 }
 
 /* Detect the target type.

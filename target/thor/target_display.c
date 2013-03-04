@@ -140,7 +140,6 @@ void display_init(void)
 		return;
 
 	switch (hw_id) {
-	case HW_PLATFORM_SURF:
 	case HW_PLATFORM_MTP:
 	case HW_PLATFORM_FLUID:
 		mipi_toshiba_video_720p_init(&(panel.panel_info));
