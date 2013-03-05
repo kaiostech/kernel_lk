@@ -697,11 +697,21 @@ int boot_linux_from_mmc(void)
 		goto unified_boot;
 	}
 	if (!boot_into_recovery) {
-		index = partition_get_index("boot");
-		ptn = partition_get_offset(index);
-		if(ptn == 0) {
-			dprintf(CRITICAL, "ERROR: No boot partition found\n");
-                    return -1;
+
+		if (idme_boot_mode() == IDME_BOOTMODE_DIAG) {
+			index = partition_get_index("dkernel");
+			ptn = partition_get_offset(index);
+			if(ptn == 0) {
+				dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
+		} else {
+			index = partition_get_index("boot");
+			ptn = partition_get_offset(index);
+			if(ptn == 0) {
+				dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
 		}
 	}
 	else {
@@ -1018,12 +1028,21 @@ int boot_linux_from_flash(void)
 
 	if(!boot_into_recovery)
 	{
-	        ptn = ptable_find(ptable, "boot");
+		if (idme_boot_mode() == IDME_BOOTMODE_DIAG) {
+			ptn = ptable_find(ptable, "dkernel");
 
-	        if (ptn == NULL) {
-		        dprintf(CRITICAL, "ERROR: No boot partition found\n");
-		        return -1;
-	        }
+			if (ptn == NULL) {
+		  		dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
+		} else {
+			ptn = ptable_find(ptable, "boot");
+
+			if (ptn == NULL) {
+				dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
+		}
 	}
 	else
 	{
@@ -2319,9 +2338,13 @@ void aboot_init(const struct app_descriptor *app)
 #ifdef WITH_ENABLE_IDME
 	idme_initialize();
 
-	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT)
+	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT){
 		/* Boot mode 6: Switch to fastboot */
 		goto fastboot;
+	} else if (idme_boot_mode() == IDME_BOOTMODE_RECOVERY){
+		/* Boot mode 6: Switch to fastboot */
+		boot_into_recovery = 1;
+	}
 #endif
 // ACOS_MOD_END
 	target_serialno((unsigned char *) sn_buf);
