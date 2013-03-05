@@ -65,7 +65,10 @@ static uint32_t mmc_sdc_base[] =
 void target_early_init(void)
 {
 #if WITH_DEBUG_UART
-	uart_dm_init(7, 0, BLSP2_UART1_BASE);
+	if (board_hardware_version() == BOARD_REVISION_P0)
+		uart_dm_init(7, 0, BLSP2_UART1_BASE);
+	else
+		uart_dm_init(1, 0, BLSP1_UART1_BASE);
 #endif
 }
 
