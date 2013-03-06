@@ -697,7 +697,7 @@ int boot_linux_from_mmc(void)
 		goto unified_boot;
 	}
 	if (!boot_into_recovery) {
-
+#ifdef WITH_ENABLE_IDME
 		if (idme_boot_mode() == IDME_BOOTMODE_DIAG) {
 			index = partition_get_index("dkernel");
 			ptn = partition_get_offset(index);
@@ -705,7 +705,9 @@ int boot_linux_from_mmc(void)
 				dprintf(CRITICAL, "ERROR: No boot partition found\n");
 				return -1;
 			}
-		} else {
+		} else
+#endif
+		{
 			index = partition_get_index("boot");
 			ptn = partition_get_offset(index);
 			if(ptn == 0) {
@@ -1028,6 +1030,7 @@ int boot_linux_from_flash(void)
 
 	if(!boot_into_recovery)
 	{
+#ifdef WITH_ENABLE_IDME
 		if (idme_boot_mode() == IDME_BOOTMODE_DIAG) {
 			ptn = ptable_find(ptable, "dkernel");
 
@@ -1035,7 +1038,9 @@ int boot_linux_from_flash(void)
 		  		dprintf(CRITICAL, "ERROR: No boot partition found\n");
 				return -1;
 			}
-		} else {
+		} else
+#endif
+		{
 			ptn = ptable_find(ptable, "boot");
 
 			if (ptn == NULL) {
