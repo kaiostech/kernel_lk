@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,6 +31,11 @@
 #include <target/display.h>
 #include <target/board.h>
 #include <dev/lcdc.h>
+#include <smem.h>
+
+#define SIZE_1M ( 1024 * 1024 )
+#define SIZE_4M ( 4 * 1024 * 1024 )
+#define ROUND_TO_MB(x)           ((x >> 20) << 20)
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enabled;
@@ -42,6 +47,34 @@ extern int mipi_nt35510_panel_dsi_config(int);
 extern int lcdc_truly_panel_on(int);
 extern int mipi_hx8389b_panel_dsi_config_skud(int);
 extern int mipi_hx8389b_panel_dsi_config_evbd(int);
+
+/* Determine the Last RAM partition that is available
+for APPS and use the last 4MB of that partition for
+framebuffer address in display */
+uint32_t target_get_fb_addr()
+{
+       struct smem_ram_ptable ram_ptable;
+       uint32_t fb_addr = 0x0;
+       uint32_t i;
+
+       if (smem_ram_ptable_init(&ram_ptable)) {
+               for (i = 0; i < ram_ptable.len; i++) {
+                       if ((ram_ptable.parts[i].attr == READWRITE)
+                           && (ram_ptable.parts[i].domain == APPS_DOMAIN)
+                           && (ram_ptable.parts[i].start != 0x0)
+                           &&
+                           (!(ROUND_TO_MB(ram_ptable.parts[i].size) <=
+                              SIZE_4M)))
+               fb_addr = ram_ptable.parts[i].start + (ram_ptable.parts[i].size - SIZE_4M);
+	      }
+       } else {
+               dprintf(CRITICAL, "ERROR: Unable to read RAM partition\n");
+               ASSERT(0);
+       }
+
+       ASSERT(fb_addr);
+       return fb_addr;
+}
 
 static int msm7627a_mdp_clock_init(int enable)
 {
@@ -89,7 +122,7 @@ void display_init(void)
 #endif
 		panel.clk_func = msm7627a_mdp_clock_init;
 		panel.power_func = mipi_renesas_panel_dsi_config;
-		panel.fb.base = MIPI_FB_ADDR;
+		panel.fb.base = target_get_fb_addr();
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
@@ -106,7 +139,7 @@ void display_init(void)
 #endif
 		panel.clk_func = msm7627a_mdp_clock_init;
 		panel.power_func = mipi_renesas_panel_dsi_config;
-		panel.fb.base = MIPI_FB_ADDR;
+		panel.fb.base = target_get_fb_addr();
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
@@ -124,7 +157,7 @@ void display_init(void)
 #endif
 		panel.clk_func = msm7627a_mdp_clock_init;
 		panel.power_func = mipi_nt35510_panel_dsi_config;
-		panel.fb.base = MIPI_FB_ADDR;
+		panel.fb.base = target_get_fb_addr();
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
@@ -138,7 +171,7 @@ void display_init(void)
 		lcdc_truly_hvga_init(&(panel.panel_info));
 		panel.clk_func = msm7627a_lcdc_clock_init;
 		panel.power_func = lcdc_truly_panel_on;
-		panel.fb.base = LCDC_FB_ADDR;
+		panel.fb.base = target_get_fb_addr();
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
@@ -151,7 +184,7 @@ void display_init(void)
 	case MSM8X25Q_EVBD:
                mipi_hx8389b_video_qhd_init(&(panel.panel_info));
                panel.clk_func = msm7627a_mdp_clock_init;
-               panel.fb.base = MIPI_FB_ADDR;
+               panel.fb.base = target_get_fb_addr();
                panel.fb.width =  panel.panel_info.xres;
                panel.fb.height =  panel.panel_info.yres;
                panel.fb.stride =  panel.panel_info.xres;
