@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -475,6 +475,7 @@ int mipi_dsi_video_config(unsigned short num_of_lanes)
 	unsigned char eof_bllp_pwr = 0x9;	// bit 12, 15, 1:low power stop mode or
 	// let cmd mode eng send packets in hs
 	// or lp mode
+	unsigned fb_base = mipi_fb_cfg.base;
 	unsigned short image_wd = mipi_fb_cfg.width;
 	unsigned short image_ht = mipi_fb_cfg.height;
 	unsigned short display_wd = mipi_fb_cfg.width;
@@ -507,7 +508,7 @@ int mipi_dsi_video_config(unsigned short num_of_lanes)
 	    mdp_setup_dma_p_video_mode(display_wd, display_ht, image_wd,
 				       image_ht, hsync_porch_fp, hsync_porch_bp,
 				       vsync_porch_fp, vsync_porch_bp,
-				       hsync_width, vsync_width, MIPI_FB_ADDR,
+				       hsync_width, vsync_width, fb_base,
 				       image_wd, pack_pattern, ystride);
 
 	ReadValue = readl(DSI_INT_CTRL) & 0x00010000;
@@ -604,7 +605,7 @@ struct fbcon_config *mipi_init(void)
 	mipi_dsi_cmd_bta_sw_trigger();
 	mipi_novatek_manufacture_id();
 #endif
-	mipi_fb_cfg.base = MIPI_FB_ADDR;
+	mipi_fb_cfg.base = target_get_fb_addr();
 
 	if (panel_info->mode == MIPI_VIDEO_MODE)
 		status += mipi_dsi_video_config(panel_info->num_of_lanes);
