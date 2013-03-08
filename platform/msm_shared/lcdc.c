@@ -2,7 +2,7 @@
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,7 +42,6 @@
 #elif PLATFORM_MSM8X60
 #define MSM_MDP_BASE1 0x05100000
 #define LCDC_BASE     0xC0000
-#define LCDC_FB_ADDR  0x43E00000
 #else
 #define MSM_MDP_BASE1 0xAA200000
 #define LCDC_BASE     0xE0000
@@ -128,7 +127,7 @@ struct fbcon_config *lcdc_init_set(struct lcdc_timing_parameters
 
 	dprintf(INFO, "lcdc_init(): panel is %d x %d\n", fb_cfg.width,
 		fb_cfg.height);
-	fb_cfg.base = LCDC_FB_ADDR;
+	fb_cfg.base = target_get_fb_addr();
 
 	writel((unsigned)fb_cfg.base, MSM_MDP_BASE1 + 0x90008);
 
