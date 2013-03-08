@@ -70,6 +70,10 @@ const struct idme_init_values idme_default_values[] = {
 		/* Initial Bootcount */
 		"0"
 	},
+	{ { "panelcal", 160, 1, 0444 },
+		/* Panel Calibration Data */
+		""
+	},
 	{ { "manufacturing", 512, 1, 0444 },
 		/* Manufacturer-specific data */
 		""
