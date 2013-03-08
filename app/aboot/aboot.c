@@ -105,6 +105,7 @@ void write_device_info_flash(device_info *dev);
 static const char *emmc_cmdline = " androidboot.bootdevice=msm_sdcc.1";
 static const char *ufs_cmdline = " androidboot.bootdevice=msm_ufs.1";
 #else
+static const char *bootloader_cmdline= " androidboot.bootloader=" TARGET(BOARD);
 static const char *emmc_cmdline = " androidboot.emmc=true";
 #endif
 static const char *usb_sn_cmdline = " androidboot.serialno=";
@@ -249,6 +250,8 @@ unsigned char *update_cmdline(const char * cmdline)
 #endif
 	}
 
+	cmdline_len += strlen(bootloader_cmdline);
+
 	cmdline_len += strlen(usb_sn_cmdline);
 	cmdline_len += strlen(sn_buf);
 
@@ -338,6 +341,11 @@ unsigned char *update_cmdline(const char * cmdline)
 			have_cmdline = 1;
 			while ((*dst++ = *src++));
 		}
+
+		src = bootloader_cmdline;
+		if (have_cmdline) --dst;
+		have_cmdline = 1;
+		while ((*dst++ = *src++));
 
 		src = usb_sn_cmdline;
 		if (have_cmdline) --dst;
