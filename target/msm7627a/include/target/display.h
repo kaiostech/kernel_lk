@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -71,9 +71,6 @@
 /* NT35510 MIPI WVGA panel */
 #define NT35510_MIPI_FB_WIDTH            480
 #define NT35510_MIPI_FB_HEIGHT           800
-
-#define MIPI_FB_ADDR  0x20000000
-#define LCDC_FB_ADDR  0x20000000
 
 extern int mipi_dsi_phy_init(struct mipi_dsi_panel_config *);
 extern void config_renesas_dsi_video_mode(void);
