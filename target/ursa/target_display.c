@@ -134,6 +134,11 @@ void display_init(void)
 	uint32_t hw_id = board_hardware_id();
 	uint32_t soc_ver = board_soc_version();
 
+	if (target_pause_for_battery_charge()) {
+		/* no splash or display for charging mode */
+		return;
+	}
+
 	dprintf(INFO, "display_init(),target_id=%d.\n", hw_id);
 
 	if (soc_ver >= BOARD_SOC_VERSION2)

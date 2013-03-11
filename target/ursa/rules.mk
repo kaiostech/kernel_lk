@@ -18,6 +18,10 @@ SCRATCH_ADDR     := 0x11000000
 DEFINES += DISPLAY_TYPE_MIPI=1
 DEFINES += DISPLAY_TYPE_DSI6G=1
 
+ifeq ($(TARGET_PRODUCT),factory_ursa)
+DEFINES += FACTORY_MODE=1
+endif
+
 MODULES += \
 	dev/keys \
 	dev/pmic/pm8x41 \
