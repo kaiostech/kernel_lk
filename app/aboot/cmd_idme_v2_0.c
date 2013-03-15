@@ -60,7 +60,11 @@ const struct idme_init_values idme_default_values[] = {
 	},
 	{ { "bootmode", 4, 1, 0444 },
 		/* Default Bootmode */
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+		"2"
+#else
 		"1"
+#endif
 	},
 	{ { "postmode", 4, 1, 0444 },
 		/* Default Postmode */
