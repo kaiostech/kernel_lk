@@ -151,12 +151,22 @@ void target_init(void)
 {
 	uint32_t base_addr;
 	uint8_t slot;
+	int i = 0;
 
 	dprintf(INFO, "target_init()\n");
 
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
 
 	target_keystatus();
+
+	/* Workaround for S2 bite bug */
+	if (pm8x41_reg_read(0x80c) & (1 << 7)) {
+		dprintf(INFO, "Shutting off device due to S2 bite bug...\n");
+		for (i = 0; i < 50; i++)
+			mdelay(100);
+		dprintf(INFO, "Actually shutting down SoC now...\n");
+		shutdown_device();
+	}
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
@@ -283,6 +293,21 @@ unsigned check_reboot_mode(void)
 	writel(0x00, restart_reason_addr);
 
 	return restart_reason;
+}
+
+void shutdown_device(void)
+{
+	/* Configure PMIC for shutdown */
+	pm8x41_reset_configure(0x04);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(500);
+
+	dprintf(CRITICAL, "Shutdown failed\n");
+
+	while (1);
 }
 
 void reboot_device(unsigned reboot_reason)
