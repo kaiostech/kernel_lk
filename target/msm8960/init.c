@@ -276,7 +276,7 @@ void target_uart_init(void)
 	case LINUX_MACHTYPE_8960_APQ:
 	case LINUX_MACHTYPE_8960_LIQUID:
 
-		if(board_baseband() == BASEBAND_SGLTE)
+		if(board_baseband() == BASEBAND_SGLTE || board_baseband() == BASEBAND_SGLTE2)
 		{
 			uart_dm_init(8, 0x1A000000, 0x1A040000);;
 		}
@@ -289,6 +289,7 @@ void target_uart_init(void)
 	case LINUX_MACHTYPE_8930_CDP:
 	case LINUX_MACHTYPE_8930_MTP:
 	case LINUX_MACHTYPE_8930_FLUID:
+	case LINUX_MACHTYPE_8930_EVT:
 
 		uart_dm_init(5, 0x16400000, 0x16440000);
 		break;
@@ -373,6 +374,9 @@ void target_detect(struct board_data *board)
 		case HW_PLATFORM_FLUID:
 			target_id = LINUX_MACHTYPE_8930_FLUID;
 			break;
+		case HW_PLATFORM_QRD:
+			target_id = LINUX_MACHTYPE_8930_EVT;
+			break;
 		default:
 			target_id = LINUX_MACHTYPE_8930_CDP;
 		}
@@ -444,6 +448,8 @@ void target_baseband_detect(struct board_data *board)
 		baseband = BASEBAND_DSDA;
 	else if (platform_subtype == HW_PLATFORM_SUBTYPE_DSDA2)
 		baseband = BASEBAND_DSDA2;
+	else if (platform_subtype == HW_PLATFORM_SUBTYPE_SGLTE2)
+		baseband = BASEBAND_SGLTE2;
 	else {
 		switch(platform) {
 		case APQ8060:
