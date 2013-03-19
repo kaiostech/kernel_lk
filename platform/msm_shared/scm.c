@@ -57,7 +57,7 @@ static struct scm_command *alloc_scm_command(size_t cmd_size, size_t resp_size)
 	size_t len = sizeof(*cmd) + sizeof(struct scm_response) + cmd_size +
 	    resp_size;
 
-	cmd = malloc(len);
+	cmd = memalign(CACHE_LINE, ROUNDUP(len, CACHE_LINE));
 	if (cmd) {
 		cmd->len = len;
 		cmd->buf_offset = offsetof(struct scm_command, buf);
