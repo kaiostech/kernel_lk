@@ -196,6 +196,7 @@ unsigned check_reboot_mode(void)
 void board_info(void)
 {
 	struct smem_board_info_v4 board_info_v4;
+	struct smem_board_info_v7 board_info_v7;
 	unsigned int board_info_len = 0;
 	unsigned smem_status;
 	unsigned format = 0;
@@ -220,6 +221,17 @@ void board_info(void)
 				id = board_info_v4.board_info_v3.hw_platform;
 				target_msm_id =
 				    board_info_v4.board_info_v3.msm_id;
+			}
+		} else if (format == 7) {
+			board_info_len = sizeof(board_info_v7);
+			smem_status =
+			    smem_read_alloc_entry(SMEM_BOARD_INFO_LOCATION,
+						  &board_info_v7,
+						  board_info_len);
+			if (!smem_status) {
+				id = board_info_v7.board_info_v3.hw_platform;
+				target_msm_id =
+				    board_info_v7.board_info_v3.msm_id;
 			}
 		}
 	}
