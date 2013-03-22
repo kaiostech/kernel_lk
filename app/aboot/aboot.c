@@ -281,7 +281,11 @@ unsigned char *update_cmdline(const char * cmdline)
 			break;
 
 		case BASEBAND_MSM:
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+			cmdline_len += strlen(baseband_apq);
+#else
 			cmdline_len += strlen(baseband_msm);
+#endif
 			break;
 
 		case BASEBAND_CSFB:
@@ -393,7 +397,11 @@ unsigned char *update_cmdline(const char * cmdline)
 				break;
 
 			case BASEBAND_MSM:
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+				src = baseband_apq;
+#else
 				src = baseband_msm;
+#endif
 				if (have_cmdline) --dst;
 				while ((*dst++ = *src++));
 				break;
