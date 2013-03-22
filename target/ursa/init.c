@@ -220,9 +220,13 @@ void target_detect(struct board_data *board)
 		board->target = LINUX_MACHTYPE_URSA_P0;
 		break;
 
-	case BOARD_REVISION_P0_5:
 	case BOARD_REVISION_PRE_P1:
+		board->platform_hw = HW_PLATFORM_URSA_PRE_P1;
+		board->target = LINUX_MACHTYPE_URSA_PRE_P1;
+		break;
+
 	case BOARD_REVISION_P1:
+	case BOARD_REVISION_P0_5:
 		board->platform_hw = HW_PLATFORM_URSA_P1;
 		board->target = LINUX_MACHTYPE_URSA_P1;
 		break;
