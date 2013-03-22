@@ -1,5 +1,5 @@
-/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
-
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
@@ -58,6 +58,7 @@ extern unsigned int mmc_boot_mci_base;
 #define MMC_BOOT_MCI_CLK                  MMC_BOOT_MCI_REG(0x004)	/* 16 bits */
 /* Enable MCI bus clock - 0: clock disabled 1: enabled */
 #define MMC_BOOT_MCI_CLK_ENABLE           (1 << 8)
+#define MMC_BOOT_MCI_CLK_DISABLE          (0 << 8)
 /* Disable clk o/p when bus idle- 0:always enabled 1:enabled when bus active */
 #define MMC_BOOT_MCI_CLK_PWRSAVE          (1 << 9)
 /* Enable Widebus mode - 00: 1 bit mode 10:4 bit mode 01/11: 8 bit mode */
@@ -248,7 +249,12 @@ extern unsigned int mmc_boot_mci_base;
 
 #define MMC_BOOT_MCI_FIFO_COUNT           MMC_BOOT_MCI_REG(0x044)
 
+#define MMC_BOOT_MCI_VERSION              MMC_BOOT_MCI_REG(0x050)
+
 #define MMC_BOOT_MCI_CCS_TIMER            MMC_BOOT_MCI_REG(0x0058)
+
+#define MMC_BOOT_MCI_STATUS2              MMC_BOOT_MCI_REG(0x06C)
+#define MMC_BOOT_MCI_MCLK_REG_WR_ACTIVE   (1 << 0)
 
 #define MMC_BOOT_MCI_FIFO                 MMC_BOOT_MCI_REG(0x080)
 
@@ -256,6 +262,7 @@ extern unsigned int mmc_boot_mci_base;
 #define MMC_BOOT_CARD_STATUS(x)          ((x>>9) & 0x0F)
 #define MMC_BOOT_TRAN_STATE              4
 #define MMC_BOOT_PROG_STATE              7
+#define MMC_BOOT_SWITCH_FUNC_ERR_FLAG    (1 << 7)
 
 /* SD Memory Card bus commands */
 #define CMD0_GO_IDLE_STATE               0
@@ -504,6 +511,7 @@ struct mmc_boot_host {
 	unsigned int mclk_rate;
 	unsigned int ocr;
 	unsigned int cmd_retry;
+	uint32_t mmc_cont_version;
 };
 
 /* MACRO used to evoke regcomp */
@@ -595,4 +603,7 @@ unsigned int mmc_erase_card(unsigned long long data_addr,
 
 struct mmc_boot_host *get_mmc_host(void);
 struct mmc_boot_card *get_mmc_card(void);
+void mmc_mclk_reg_wr_delay();
+void mmc_boot_mci_clk_enable();
+void mmc_boot_mci_clk_disable();
 #endif
