@@ -221,8 +221,19 @@ void target_detect(struct board_data *board)
 		break;
 
 	case BOARD_REVISION_PRE_P1:
-		board->platform_hw = HW_PLATFORM_URSA_PRE_P1;
-		board->target = LINUX_MACHTYPE_URSA_PRE_P1;
+		if (board_soc_version() == BOARD_SOC_VERSION2)
+		{
+			/* *HACK* Support for pre-P1 plus
+			 * Load P1 device-tree for pre-P1 with v2 SOCs.
+			 */
+			board->platform_hw = HW_PLATFORM_URSA_P1;
+			board->target = LINUX_MACHTYPE_URSA_P1;
+		}
+		else
+		{
+			board->platform_hw = HW_PLATFORM_URSA_PRE_P1;
+			board->target = LINUX_MACHTYPE_URSA_PRE_P1;
+		}
 		break;
 
 	case BOARD_REVISION_P1:
