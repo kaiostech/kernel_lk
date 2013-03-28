@@ -274,7 +274,7 @@ unsigned char *update_cmdline(const char * cmdline)
 	}
 
 	/* Determine correct androidboot.baseband to use */
-	switch(target_baseband())
+	switch(board_baseband())
 	{
 		case BASEBAND_APQ:
 			cmdline_len += strlen(baseband_apq);
@@ -388,7 +388,7 @@ unsigned char *update_cmdline(const char * cmdline)
 			while ((*dst++ = *src++));
 		}
 
-		switch(target_baseband())
+		switch(board_baseband())
 		{
 			case BASEBAND_APQ:
 				src = baseband_apq;
