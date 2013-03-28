@@ -620,6 +620,8 @@ struct mmc_host {
 #define MMC_CLK_50MHZ                 49152000
 #define MMC_CLK_96MHZ                 96000000
 #define MMC_CLK_200MHZ                200000000
+#define MMC_CLK_192MHZ                192000000
+#define MMC_CLK_400MHZ                400000000
 
 #define MMC_CLK_ENABLE      1
 #define MMC_CLK_DISABLE     0

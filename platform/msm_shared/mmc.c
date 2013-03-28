@@ -3083,8 +3083,18 @@ mmc_erase_card(unsigned long long data_addr, unsigned long long size)
 }
 
 // ACOS_MOD_BEGIN
+
+struct mmc_host *get_mmc_host(void)
+{
+	return &mmc_host;
+}
+
+struct mmc_card *get_mmc_card(void)
+{
+	return &mmc_card;
+}
 static unsigned int
-wait_for_ready(struct mmc_boot_card *card)
+wait_for_ready(struct mmc_card *card)
 {
 	unsigned int mmc_ret = MMC_BOOT_E_SUCCESS;
 	unsigned int status;
@@ -3106,7 +3116,7 @@ static unsigned int
 switch_to_partition(int partition_type)
 {
 	unsigned int mmc_ret = MMC_BOOT_E_SUCCESS;
-	struct mmc_boot_card *card = get_mmc_card();
+	struct mmc_card *card = get_mmc_card();
 
 	mmc_ret = mmc_boot_switch_cmd(card, MMC_BOOT_ACCESS_WRITE,
 					    MMC_BOOT_EXT_PARTITION_CONFIG,

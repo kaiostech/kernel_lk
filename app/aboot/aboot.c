@@ -2361,7 +2361,7 @@ void aboot_init(const struct app_descriptor *app)
 
 	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT){
 		/* Boot mode 6: Switch to fastboot */
-		goto fastboot;
+		boot_into_fastboot = true;
 	} else if (idme_boot_mode() == IDME_BOOTMODE_RECOVERY){
 		/* Boot mode 6: Switch to fastboot */
 		boot_into_recovery = 1;
