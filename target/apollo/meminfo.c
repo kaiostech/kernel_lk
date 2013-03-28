@@ -36,6 +36,7 @@
 #include <libfdt.h>
 #include <platform/iomap.h>
 #include <dev_tree.h>
+#include <mmc.h>
 
 /* Funtion to add the ram partition entries into device tree.
  * The function assumes that all the entire fixed memory regions should
@@ -84,6 +85,12 @@ void *target_get_scratch_address(void)
 
 unsigned target_get_max_flash_size(void)
 {
-	return (512 * 1024 * 1024);
+	struct mmc_boot_card *card = get_mmc_card();
+
+	if (card) {
+		return card->capacity;
+	} else {
+		return (512 * 1024 * 1024);
+	}
 }
 #endif /* DEVICE_TREE */
