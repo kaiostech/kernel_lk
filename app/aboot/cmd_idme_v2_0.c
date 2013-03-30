@@ -32,7 +32,7 @@
 const struct idme_init_values idme_default_values[] = {
 	{ { "board_id", 16, 1, 0444 },
 		/* Default Board ID value */
-		"8020200000000000"
+		"ffffff0000000000"
 	},
 	{ { "serial", 16, 1, 0444 },
 		/* Default DSN value */
