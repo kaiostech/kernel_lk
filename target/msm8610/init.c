@@ -33,11 +33,18 @@
 #include <platform.h>
 #include <uart_dm.h>
 #include <mmc.h>
+#include <platform/gpio.h>
 #include <spmi.h>
 #include <board.h>
+#include <smem.h>
+#include <baseband.h>
+#include <dev/keys.h>
+#include <pm8x41.h>
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
+
+#define TLMM_VOL_UP_BTN_GPIO    72
 
 static uint32_t mmc_sdc_base[] =
 	{ MSM_SDC1_BASE, MSM_SDC2_BASE };
@@ -45,12 +52,40 @@ static uint32_t mmc_sdc_base[] =
 void target_early_init(void)
 {
 #if WITH_DEBUG_UART
-	uart_dm_init(1, 0, BLSP1_UART2_BASE);
+	uart_dm_init(2, 0, BLSP1_UART1_BASE);
 #endif
+}
+
+/* Return 1 if vol_up pressed */
+static int target_volume_up()
+{
+	uint8_t status = 0;
+
+	gpio_tlmm_config(TLMM_VOL_UP_BTN_GPIO, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_2MA, GPIO_ENABLE);
+
+	/* Get status of GPIO */
+	status = gpio_status(TLMM_VOL_UP_BTN_GPIO);
+
+	/* Active low signal. */
+	return !status;
+}
+
+/* Return 1 if vol_down pressed */
+uint32_t target_volume_down()
+{
+	/* Volume down button tied in with PMIC RESIN. */
+	return pm8x41_resin_status();
 }
 
 static void target_keystatus()
 {
+	keys_init();
+
+	if(target_volume_down())
+		keys_post_event(KEY_VOLUMEDOWN, 1);
+
+	if(target_volume_up())
+		keys_post_event(KEY_VOLUMEUP, 1);
 }
 
 void target_init(void)
@@ -61,6 +96,8 @@ void target_init(void)
 	dprintf(INFO, "target_init()\n");
 
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
+
+	target_keystatus();
 
 	/* Trying Slot 1*/
 	slot = 1;
@@ -80,6 +117,112 @@ void target_init(void)
 	}
 }
 
+/* Do any target specific intialization needed before entering fastboot mode */
+void target_fastboot_init(void)
+{
+	/* Set the BOOT_DONE flag in PM8110 */
+	pm8x41_set_boot_done();
+}
+
+/* Detect the target type */
+void target_detect(struct board_data *board)
+{
+	board->target = LINUX_MACHTYPE_UNKNOWN;
+}
+
+/* Detect the modem type */
+void target_baseband_detect(struct board_data *board)
+{
+	uint32_t platform;
+	uint32_t platform_subtype;
+
+	platform         = board->platform;
+	platform_subtype = board->platform_subtype;
+
+	/*
+	 * Look for platform subtype if present, else
+	 * check for platform type to decide on the
+	 * baseband type
+	 */
+	switch(platform_subtype)
+	{
+	case HW_PLATFORM_SUBTYPE_UNKNOWN:
+		break;
+	default:
+		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n", platform_subtype);
+		ASSERT(0);
+	};
+
+	switch(platform)
+	{
+	case MSM8610:
+	case MSM8110:
+	case MSM8210:
+	case MSM8810:
+		board->baseband = BASEBAND_MSM;
+		break;
+	default:
+		dprintf(CRITICAL, "Platform type: %u is not supported\n", platform);
+		ASSERT(0);
+	};
+}
+
+unsigned target_baseband()
+{
+	return board_baseband();
+}
+
+void target_serialno(unsigned char *buf)
+{
+	uint32_t serialno;
+	if (target_is_emmc_boot()) {
+		serialno = mmc_get_psn();
+		snprintf((char *)buf, 13, "%x", serialno);
+	}
+}
+
+unsigned check_reboot_mode(void)
+{
+	uint32_t restart_reason = 0;
+
+	/* Read reboot reason and scrub it */
+	restart_reason = readl(RESTART_REASON_ADDR);
+	writel(0x00, RESTART_REASON_ADDR);
+
+	return restart_reason;
+}
+
+void reboot_device(unsigned reboot_reason)
+{
+	writel(reboot_reason, RESTART_REASON_ADDR);
+
+	/* Configure PMIC for warm reset */
+	pm8x41_reset_configure(PON_PSHOLD_WARM_RESET);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "Rebooting failed\n");
+}
+
+unsigned target_pause_for_battery_charge(void)
+{
+	uint8_t pon_reason = pm8x41_get_pon_reason();
+
+	/* This function will always return 0 to facilitate
+	 * automated testing/reboot with usb connected.
+	 * uncomment if this feature is needed.
+	 */
+	/* if ((pon_reason == USB_CHG) || (pon_reason == DC_CHG))
+	 *	return 1;
+	 */
+
+	return 0;
+}
+
 unsigned board_machtype(void)
 {
+	return 0;
 }

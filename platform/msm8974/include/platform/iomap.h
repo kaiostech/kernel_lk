@@ -84,7 +84,6 @@
 #define GCC_WDOG_DEBUG              (CLK_CTL_BASE +  0x00001780)
 
 #define USB_HS_BCR                  (CLK_CTL_BASE + 0x480)
-#define USB_BOOT_CLOCK_CTL          (CLK_CTL_BASE + 0x1A00)
 
 #define SPMI_BASE                   0xFC4C0000
 #define SPMI_GENI_BASE              (SPMI_BASE + 0xA000)
@@ -154,7 +153,7 @@
 #define BLSP2_QUP5_I2C_APPS_CBCR    (CLK_CTL_BASE + 0xB88)
 
 #define BLSP_QUP_BASE(blsp_id, qup_id)   ((blsp_id == 1) ? \
-                                         (PERIPH_SS_BASE + 0x00023000 \
+                                         (PERIPH_SS_BASE + 0x00123000 \
                                          + (qup_id * 0x1000)) :\
                                          (PERIPH_SS_BASE + 0x00163000 + \
                                          (qup_id * 0x1000)))
