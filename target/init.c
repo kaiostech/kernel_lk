@@ -46,7 +46,7 @@ __WEAK void *target_get_scratch_address(void)
     return (void *)(SCRATCH_ADDR);
 }
 
-__WEAK unsigned target_get_max_flash_size(void)
+__WEAK unsigned long long target_get_max_flash_size(void)
 {
     return (120 * 1024 * 1024);
 }
