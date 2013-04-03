@@ -85,7 +85,7 @@ void *target_get_scratch_address(void)
 
 unsigned target_get_max_flash_size(void)
 {
-	struct mmc_board_card *card = get_mmc_card();
+	struct mmc_boot_card *card = get_mmc_card();
 
 	if (card) {
 		return card->capacity;
