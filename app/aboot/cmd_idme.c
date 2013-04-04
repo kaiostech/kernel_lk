@@ -151,10 +151,12 @@ int idme_initialize(void)
 	int iTmp;
 	unsigned int i = 0;
 
-	memset(gidme_buff, 0x00, CONFIG_IDME_SIZE);
+	if (pidme_data != NULL) {
+		dprintf(INFO, "idme: pidme_data is not NULL, initialization already completed.\n");
+		return 0;
+	}
 
-	if (pidme_data != NULL)
-		dprintf(INFO, "Warning, the pointer of pidme_data is not NULL.\n");
+	memset(gidme_buff, 0x00, CONFIG_IDME_SIZE);
 
 	/* load the idme data from boot area
 	   Please make sure the MMC driver has been initialized before calling this function */
