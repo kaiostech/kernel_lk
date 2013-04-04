@@ -88,9 +88,10 @@ unsigned target_get_max_flash_size(void)
 	struct mmc_boot_card *card = get_mmc_card();
 
 	if (card) {
-		return card->capacity;
+		//return card->capacity;
+		return (1024 * 1024 * 1024);
 	} else {
-		return (512 * 1024 * 1024);
+		return (1024 * 1024 * 1024);
 	}
 }
 #endif /* DEVICE_TREE */
