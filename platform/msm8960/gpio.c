@@ -96,6 +96,16 @@ void gpio_config_uart_dm(uint8_t id)
 			break;
 
 
+               case GSBI_ID_4:
+                       /* configure rx gpio */
+                       gpio_tlmm_config(11, 1, GPIO_INPUT, GPIO_NO_PULL,
+                                                       GPIO_8MA, GPIO_DISABLE);
+                       /* configure tx gpio */
+                       gpio_tlmm_config(10, 1, GPIO_OUTPUT, GPIO_NO_PULL,
+                                                       GPIO_8MA, GPIO_DISABLE);
+                       break;
+
+
 		case GSBI_ID_7:
 			/* configure rx gpio */
 			gpio_tlmm_config(83, 1, GPIO_INPUT, GPIO_NO_PULL,
@@ -316,6 +326,8 @@ static struct pm8xxx_gpio_init pm8921_display_gpios_apq[] = {
 	PM8921_GPIO_OUTPUT_BUFCONF(PM_GPIO(36), 0, LOW, OPEN_DRAIN),
 	/* DISP_RESET_N */
 	PM8921_GPIO_OUTPUT_BUFCONF(PM_GPIO(25), 1, LOW, CMOS),
+	/* Enable the usb load switch */
+	PM8XXX_GPIO_OUTPUT(PM_GPIO(44), 0),
 };
 
 void apq8064_display_gpio_init()
