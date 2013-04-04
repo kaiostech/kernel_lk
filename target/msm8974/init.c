@@ -356,6 +356,17 @@ void target_init(void)
 #else
 	target_mmc_mci_init();
 #endif
+
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	// HACK: Initialize IDME immediately after mmc init,
+	//       then redo target_detect() via board_init().
+	//       This is because board_init() normally is called
+	//       significantly earlier than idme_initialize().
+	idme_initialize();
+	board_init();
+#endif
+// ACOS_MOD_END
 }
 
 unsigned board_machtype(void)
@@ -416,6 +427,22 @@ void target_fastboot_init(void)
 /* Detect the target type */
 void target_detect(struct board_data *board)
 {
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	char buf[16] = {0};
+	int rc = idme_get_var_external("board_id", (char *)buf, 16);
+
+	// If we detect board ID f00010, then add 100 to platform_hw
+	// This command fails originally, so we need to call board_detect
+	// again after idme_initialize
+	if (!rc) {
+		dprintf(INFO, "BoardID %s, rc=%d\n", buf, rc);
+		if(buf[0] == 'f' && buf[1] == '0' && buf[4] == '1')
+			board->platform_hw += 100;
+	}
+#endif
+// ACOS_MOD_END
+
 	board->target = LINUX_MACHTYPE_UNKNOWN;
 }
 
