@@ -82,6 +82,7 @@
 #define DTYPE_GEN_WRITE2 0x23	/* 4th Byte is 0x80 */
 #define DTYPE_GEN_LWRITE 0x29	/* 4th Byte is 0xc0 */
 #define DTYPE_DCS_WRITE1 0x15	/* 4th Byte is 0x80 */
+#define DTYPE_DCS_WRITE  0x05   /* short write, 0 parameter */
 
 #define DSI_RDBK_DATA0 0x06C
 
