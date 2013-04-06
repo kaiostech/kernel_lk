@@ -26,6 +26,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef __PARTITION_PARSER_H
+#define __PARTITION_PARSER_H
+
+#include <mmc.h>
+
 #define INVALID_PTN               -1
 
 #define PARTITION_TYPE_MBR         0
@@ -162,7 +167,7 @@ unsigned int mbr_partition_get_type(unsigned size, unsigned char *partition,
 				    unsigned int *partition_type);
 unsigned int partition_get_type(unsigned size, unsigned char *partition,
 				unsigned int *partition_type);
-unsigned int partition_read_table(struct mmc_host *mmc_host,
+unsigned int partition_read_table(void *mmc_host,
 				  struct mmc_card *mmc_card);
 unsigned int partition_parse_gpt_header(unsigned char *buffer,
 					unsigned long long *first_usable_lba,
@@ -180,3 +185,5 @@ unsigned int write_partition(unsigned size, unsigned char *partition);
 
 /* For Debugging */
 void partition_dump(void);
+
+#endif
