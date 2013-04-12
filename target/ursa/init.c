@@ -213,7 +213,6 @@ void target_fastboot_init(void)
  * Board version is read through ADC in SBL1 and passed-in through SMEM */
 void target_detect(struct board_data *board)
 {
-#if 0
 	switch (board_hardware_version())
 	{
 	case BOARD_REVISION_P0:
@@ -248,9 +247,7 @@ void target_detect(struct board_data *board)
 		board->platform_hw = board->target = 0;
 		break;
 	}
-#endif
-	board->platform_hw = HW_PLATFORM_URSA_P0;
-	board->target = LINUX_MACHTYPE_URSA_P0;
+
 	target_id = board->target;
 }
 
