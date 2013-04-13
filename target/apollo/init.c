@@ -160,7 +160,8 @@ void target_init(void)
 	target_keystatus();
 
 	/* Workaround for S2 bite bug (PMIC V2 10sec reset instead of shutdown) */
-	if ((pm8x41_reg_read(0x80c) & (1 << 7)) && (pm8x41_get_pmic_rev() <= PMIC_VERSION_V2)) {
+	if ((pm8x41_reg_read(0x80c) & (1 << 7)) &&
+			(pm8x41_get_pmic_rev() <= PMIC_VERSION_V2)) {
 		dprintf(INFO, "Shutting off device due to S2 bite bug...\n");
 		for (i = 0; i < 50; i++)
 			mdelay(100);
