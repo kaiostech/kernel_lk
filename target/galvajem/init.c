@@ -198,7 +198,7 @@ void target_fastboot_init(void)
 	/* Set the BOOT_DONE flag in PM8921 */
 	pm8x41_set_boot_done();
 
-	struct mmc_boot_card *card = get_mmc_card();
+	struct mmc_card *card = get_mmc_card();
 
 	sprintf(emmc_size, "%lld", card->capacity);
 	fastboot_publish("emmc_size", emmc_size);
