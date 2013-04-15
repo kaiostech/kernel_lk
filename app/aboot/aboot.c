@@ -1773,6 +1773,13 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	dprintf (SPEW, "total_blks: %d\n", sparse_header->total_blks);
 	dprintf (SPEW, "total_chunks: %d\n", sparse_header->total_chunks);
 
+	sz = sparse_header->blk_sz * sparse_header->total_blks;
+	if (ROUND_TO_PAGE(sz, 511) > size ) {
+		dprintf( CRITICAL, "unsparse image size %u too large for partition\n", sz);
+	    fastboot_fail("unsparse image size too large");
+	    return;
+	 }
+
 	/* Start processing chunks */
 	for (chunk=0; chunk<sparse_header->total_chunks; chunk++)
 	{
