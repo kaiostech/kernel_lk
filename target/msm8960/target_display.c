@@ -319,6 +319,7 @@ void display_init(void)
 	case LINUX_MACHTYPE_8064_MPQ_CDP:
 	case LINUX_MACHTYPE_8064_MPQ_HRD:
 	case LINUX_MACHTYPE_8064_MPQ_DTV:
+	case LINUX_MACHTYPE_8064_MPQ_DMA:
 		hdmi_msm_panel_init(&panel.panel_info);
 
 		panel.clk_func   = mpq8064_hdmi_panel_clock;
