@@ -1674,8 +1674,58 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+unsigned int
+do_mmc_verify(unsigned long long data_addr, unsigned char *verify_buf, unsigned int data_len) {
 
-void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
+	unsigned int read_size = 1<<17;
+
+	unsigned char *b = (unsigned char*) malloc( read_size );
+
+	unsigned int bytes_left = data_len;
+	unsigned int read_len = 0;
+	unsigned int verify_offset = 0;
+
+	while(b && bytes_left) {
+		memset(b,0,read_size);
+		read_len = MIN(bytes_left, read_size);
+		if(mmc_read(data_addr + verify_offset, b, ROUND_TO_PAGE(read_len, 511)))
+		{
+			dprintf(CRITICAL, "mmc read failure at %llu\n", data_addr);
+			free(b);
+			return 1;
+		}
+		else if (memcmp(b,verify_buf+verify_offset,read_len)) {
+			dprintf(CRITICAL, "verification failed within offset range (%d, %d)\n", verify_offset, verify_offset+read_len);
+
+			if(DEBUGLEVEL>=SPEW) {
+				unsigned char* v = verify_buf + verify_offset;
+				for(int i=0;i<read_len-4;i++) {
+					if(b[i]!=v[i]) {
+						dprintf(SPEW, "stream mismatch at %d:\n", verify_offset+i);
+
+						dprintf(SPEW, "Read:   %02x %02x %02x %02x\n", v[i], v[i+1], v[i+2], v[i+3] );
+						dprintf(SPEW, "Expect: %02x %02x %02x %02x\n", b[i], b[i+1], b[i+2], b[i+3] );
+					}
+				}
+			}
+
+			dprintf(INFO, "Verify failed. Images do not match");
+			free(b);
+			return 2;
+		}
+		else {
+			dprintf(SPEW, "verify: bits match within offset range (%d, %d)\n", verify_offset, verify_offset+read_len);
+
+			bytes_left-=read_len;
+			verify_offset+=read_len;
+		}
+	}
+
+	free(b);
+	return 0;
+}
+
+void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz, bool verify)
 {
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
@@ -1710,7 +1760,11 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 			fastboot_fail("size too large");
 			return;
 		}
-		else if (mmc_write(ptn , sz, (unsigned int *)data)) {
+		else if (verify && do_mmc_verify(ptn, (unsigned char*)data, sz)) {
+			fastboot_fail("flash verify failure");
+			return;
+		}
+		else if (!verify && mmc_write(ptn , sz, (unsigned int *)data)) {
 			fastboot_fail("flash write failure");
 			return;
 		}
@@ -1719,7 +1773,7 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 	return;
 }
 
-void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
+void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz, bool verify)
 {
 	unsigned int chunk;
 	unsigned int chunk_data_sz;
@@ -1773,6 +1827,8 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	dprintf (SPEW, "total_blks: %d\n", sparse_header->total_blks);
 	dprintf (SPEW, "total_chunks: %d\n", sparse_header->total_chunks);
 
+	dprintf (SPEW, "size %d, blk_sz*total_blks %d\n", size, sparse_header->blk_sz*sparse_header->total_blks);
+
 	sz = sparse_header->blk_sz * sparse_header->total_blks;
 	if (ROUND_TO_PAGE(sz, 511) > size ) {
 		dprintf( CRITICAL, "unsparse image size %u too large for partition\n", sz);
@@ -1811,11 +1867,14 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 
-			if(mmc_write(ptn + ((uint64_t)total_blocks*sparse_header->blk_sz),
-						chunk_data_sz,
-						(unsigned int*)data))
+			if(!verify && mmc_write(ptn + ((uint64_t)total_blocks*sparse_header->blk_sz), chunk_data_sz, (unsigned int*)data))
 			{
 				fastboot_fail("flash write failure");
+				return;
+			}
+			else if(verify && do_mmc_verify(ptn + ((uint64_t)total_blocks*sparse_header->blk_sz), (unsigned char*)data, chunk_data_sz ))
+			{
+				fastboot_fail("flash verify failure");
 				return;
 			}
 			total_blocks += chunk_header->chunk_sz;
@@ -1884,19 +1943,28 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		}
 	}
 
-	dprintf(INFO, "Wrote %d blocks, expected to write %d blocks\n",
-					total_blocks, sparse_header->total_blks);
+	dprintf(INFO, "%s %d blocks, expected to %s %d blocks\n",
+					verify? "Verified":"Wrote",
+					total_blocks, 
+					verify? "verify":"write",
+					sparse_header->total_blks);
 
 	if(total_blocks != sparse_header->total_blks)
 	{
-		fastboot_fail("sparse image write failure");
+		if(verify) {
+			fastboot_fail("sparse image verify failure");
+		}
+		else {
+			fastboot_fail("sparse image write failure");
+		}
+
 	}
 
 	fastboot_okay("");
 	return;
 }
 
-void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
+void cmd_flash_or_verify_mmc(const char *arg, void *data, unsigned sz, bool verify)
 {
 	sparse_header_t *sparse_header;
 	/* 8 Byte Magic + 2048 Byte xml + Encrypted Data */
@@ -1970,10 +2038,18 @@ void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
 
 	sparse_header = (sparse_header_t *) data;
 	if (sparse_header->magic != SPARSE_HEADER_MAGIC)
-		cmd_flash_mmc_img(arg, data, sz);
+		cmd_flash_mmc_img(arg, data, sz, verify);
 	else
-		cmd_flash_mmc_sparse_img(arg, data, sz);
+		cmd_flash_mmc_sparse_img(arg, data, sz, verify);
 	return;
+}
+
+void cmd_flash_mmc(const char *arg, void *data, unsigned sz) {
+	cmd_flash_or_verify_mmc(arg, data, sz, false);
+}
+
+void cmd_verify_mmc(const char *arg, void *data, unsigned sz) {
+	cmd_flash_or_verify_mmc(arg, data, sz, true);
 }
 
 void cmd_flash(const char *arg, void *data, unsigned sz)
@@ -2338,6 +2414,10 @@ void aboot_fastboot_register_commands(void)
 #ifdef WITH_ENABLE_IDME
 	fastboot_register("oem idme", cmd_idme);
 #endif
+
+	fastboot_register("flash:", cmd_flash_mmc);
+	fastboot_register("verify:", cmd_verify_mmc);
+	fastboot_register("erase:", cmd_erase_mmc);
 // ACOS_MOD_END
 }
 
