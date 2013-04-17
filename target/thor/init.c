@@ -165,7 +165,7 @@ void target_init(void)
 
 	/* Workaround for S2 bite bug (PMIC V2 10sec reset instead of shutdown) */
 	if ((pm8x41_reg_read(0x80c) & (1 << 7)) &&
-			(pm8x41_get_pmic_rev() <= PMIC_VERSION_V2)) {
+			(pmic_ver <= PMIC_VERSION_V2)) {
 		dprintf(INFO, "Shutting off device due to S2 bite bug...\n");
 		for (i = 0; i < 50; i++)
 			mdelay(100);
@@ -300,21 +300,6 @@ unsigned check_reboot_mode(void)
 	return restart_reason;
 }
 
-void shutdown_device(void)
-{
-	/* Configure PMIC for shutdown */
-	pm8x41_reset_configure(0x04);
-
-	/* Drop PS_HOLD for MSM */
-	writel(0x00, MPM2_MPM_PS_HOLD);
-
-	mdelay(500);
-
-	dprintf(CRITICAL, "Shutdown failed\n");
-
-	while (1);
-}
-
 void reboot_device(unsigned reboot_reason)
 {
 	uint32_t soc_ver = 0;
@@ -380,4 +365,23 @@ unsigned target_pause_for_battery_charge(void)
 		return 1;*/
 
 	return 0;
+}
+
+void shutdown_device()
+{
+	dprintf(CRITICAL, "Going down for shutdown.\n");
+
+	/* Configure PMIC for shutdown. */
+	if (pmic_ver == PMIC_VERSION_V2)
+		pm8x41_v2_reset_configure(PON_PSHOLD_SHUTDOWN);
+	else
+		pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "Shutdown failed\n");
+
 }
