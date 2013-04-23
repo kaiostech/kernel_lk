@@ -96,7 +96,7 @@ void target_init(void)
 	unsigned char slot;
 	unsigned platform_id = board_platform_id();
 
-	dprintf(INFO, "target_init()\n");
+	dprintf(INFO, "target_init(): platform_id %d\n",platform_id);
 
 	/* Initialize PMIC driver */
 	pmic.read = (pm8921_read_func) & pa1_ssbi2_read_bytes;
@@ -106,6 +106,13 @@ void target_init(void)
 
 	/* Keypad init */
 	keys_init();
+	if(board_machtype() == LINUX_MACHTYPE_8064_APQ_DMA)
+	{
+		if(pm89xx_vbus_status())
+		{
+			keys_post_event(KEY_VOLUMEDOWN, 1);
+		}
+	}
 
 	switch(platform_id) {
 	case MSM8960:
@@ -312,6 +319,9 @@ void target_uart_init(void)
 		uart_dm_init(5, 0x1A200000, 0x1A240000);
 		break;
 
+	case LINUX_MACHTYPE_8064_APQ_DMA:
+                uart_dm_init(4, 0x16300000, 0x16340000);
+		break;
 	case LINUX_MACHTYPE_8627_CDP:
 	case LINUX_MACHTYPE_8627_MTP:
 
@@ -422,8 +432,12 @@ void target_detect(struct board_data *board)
 		case HW_PLATFORM_LIQUID:
 			target_id = LINUX_MACHTYPE_8064_LIQUID;
 			break;
+		case HW_PLATFORM_DMA:
+			target_id = LINUX_MACHTYPE_8064_APQ_DMA;
+			break;
 		default:
 			target_id = LINUX_MACHTYPE_8064_CDP;
+
 		}
 	} else {
 		dprintf(CRITICAL, "platform (%d) is not identified.\n",
