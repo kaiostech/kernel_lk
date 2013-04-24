@@ -414,7 +414,8 @@ unsigned target_pause_for_battery_charge(void)
 	/* note: USB_CHG is also returned for wall charging; DC_CHG seems unused */
 	if ((pon_reason == USB_CHG) || (pon_reason == DC_CHG)) {
 		/* no boot purpose and USB is plugged in -- divert to charging */
-		return 1;
+		if (board_hardware_version() != BOARD_REVISION_P0)
+			return 1;
 	}
 #endif // !FACTORY_MODE
 
