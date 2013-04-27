@@ -38,6 +38,8 @@
 #include <dev_tree.h>
 #include <mmc.h>
 
+#define MAX_FLASH_SIZE  (512 * 1024 * 1024)
+
 /* Funtion to add the ram partition entries into device tree.
  * The function assumes that all the entire fixed memory regions should
  * be listed in the first bank of the passed in ddr regions.
@@ -85,13 +87,6 @@ void *target_get_scratch_address(void)
 
 unsigned long long target_get_max_flash_size(void)
 {
-	struct mmc_boot_card *card = get_mmc_card();
-
-	if (card) {
-		//return card->capacity;
-		return (1024 * 1024 * 1024);
-	} else {
-		return (1024 * 1024 * 1024);
-	}
+	return MAX_FLASH_SIZE;
 }
 #endif /* DEVICE_TREE */
