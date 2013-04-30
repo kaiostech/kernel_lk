@@ -2446,13 +2446,14 @@ void aboot_init(const struct app_descriptor *app)
 #ifdef WITH_ENABLE_IDME
 	idme_initialize();
 
-	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT){
+	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT) {
 		/* Boot mode 6: Switch to fastboot */
 		boot_into_fastboot = true;
-	} else if (idme_boot_mode() == IDME_BOOTMODE_RECOVERY){
-		/* Boot mode 6: Switch to fastboot */
+	} else if (idme_boot_mode() == IDME_BOOTMODE_RECOVERY) {
+		/* Boot mode 3: Switch to recovery */
 		boot_into_recovery = 1;
 	}
+
 #endif
 // ACOS_MOD_END
 	target_serialno((unsigned char *) sn_buf);
@@ -2494,6 +2495,10 @@ void aboot_init(const struct app_descriptor *app)
 	} else if(reboot_mode == FASTBOOT_MODE) {
 		boot_into_fastboot = true;
 	}
+
+	/* Check for emergency download mode */
+	if (idme_boot_mode() == IDME_BOOTMODE_EMERGENCY)
+		target_enter_emergency_download();
 
 // ACOS_MOD_BEGIN
 #ifdef WITH_ENABLE_IDME

@@ -125,6 +125,11 @@ __WEAK uint32_t target_read_panel_signature(uint32_t panel_signature)
 	return 0;
 }
 
+__WEAK void target_enter_emergency_download(void)
+{
+	return;
+}
+
 /* Default target does not support continuous splash screen feature. */
 __WEAK int target_cont_splash_screen()
 {

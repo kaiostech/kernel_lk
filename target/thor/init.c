@@ -403,3 +403,28 @@ void shutdown_device()
 	dprintf(CRITICAL, "Shutdown failed\n");
 
 }
+
+void target_enter_emergency_download(void)
+{
+	unsigned int *p1 = 0xfe800000 + 0x5000 + 0x1000 - 0x20;
+	unsigned int *p2 = p1 + 1;
+	unsigned int *p3 = p1 + 2;
+
+	const unsigned int cookie1 = 0x188d442f;
+	const unsigned int cookie2 = 0x06d73e09;
+	const unsigned int cookie3 = 0x88888888;
+
+	dprintf(CRITICAL, "Setting up emergency download mode...\n");
+
+	writel(cookie1, p1);
+	writel(cookie2, p2);
+	writel(cookie3, p3);
+
+	dprintf(CRITICAL, "Rebooting into emergency download mode...\n");
+
+	thread_sleep(10);
+	dmb();
+
+	while (1)
+		reboot_device(0);
+}
