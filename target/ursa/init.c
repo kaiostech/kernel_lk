@@ -42,6 +42,9 @@
 #include <pm8x41.h>
 #include <crypto5_wrapper.h>
 #include <target/board.h>
+#ifdef WITH_ENABLE_IDME
+#include <idme.h>
+#endif
 
 extern  bool target_use_signed_kernel(void);
 
@@ -394,6 +397,13 @@ unsigned target_pause_for_battery_charge(void)
 	uint8_t pon_reason = pm8x41_get_pon_reason();
 
 	dprintf(INFO, "REBOOT_INFO: %08X:%02X\n", reboot_mode, pon_reason);
+
+#ifdef WITH_ENABLE_IDME
+	if (idme_boot_mode() == IDME_BOOTMODE_DIAG) {
+		/* don't do charging for factory builds */
+		return 0;
+	}
+#endif
 
 	if (reboot_mode == REBOOT_MODE_NONE ||
 	    reboot_mode == REBOOT_MODE_FASTBOOT ||
