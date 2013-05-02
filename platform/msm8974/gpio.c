@@ -96,6 +96,14 @@ void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
 			gpio_tlmm_config(84, 3, GPIO_OUTPUT, GPIO_NO_PULL,
 						GPIO_6MA, GPIO_DISABLE);
 		break;
+
+		case QUP_ID_5:
+			gpio_tlmm_config(87, 3, GPIO_OUTPUT, GPIO_NO_PULL,
+						GPIO_6MA, GPIO_DISABLE);
+			gpio_tlmm_config(88, 3, GPIO_OUTPUT, GPIO_NO_PULL,
+						GPIO_6MA, GPIO_DISABLE);
+		break;
+
 		default:
 			dprintf(CRITICAL, "Configure gpios for QUP instance: %u\n",
 					  qup_id);

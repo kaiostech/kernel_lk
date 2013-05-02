@@ -22,6 +22,7 @@ DEFINES += CONFIG_ARCH_MSM8974_THOR=1
 MODULES += \
 	dev/keys \
 	dev/pmic/pm8x41 \
+	dev/backlight/lp855x \
 	dev/panel/msm \
     lib/ptable \
     lib/libfdt

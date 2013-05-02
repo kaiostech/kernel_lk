@@ -40,6 +40,7 @@
 #include <dev/keys.h>
 #include <pm8x41.h>
 #include <crypto5_wrapper.h>
+#include <lp855x.h>
 
 #define HW_PLATFORM_APOLLO     20 /* these needs to match with apollo.dts */
 #define LINUX_MACHTYPE_APOLLO  20
@@ -175,8 +176,12 @@ void target_init(void)
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
+
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
+	dprintf(INFO, "Backlight Start\n");
+	lp855x_bl_on();
+
 	dprintf(INFO, "Display Init: Start\n");
 	display_init();
 	dprintf(INFO, "Display Init: Done\n");
