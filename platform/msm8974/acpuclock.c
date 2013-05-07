@@ -416,7 +416,7 @@ void mdp_clock_init(void)
 		ASSERT(0);
 	}
 
-	ret = clk_get_set_enable("mdss_vsync_clk", 0, 1);
+	//ret = clk_get_set_enable("mdss_vsync_clk", 0, 1);
 	if(ret)
 	{
 		dprintf(CRITICAL, "failed to set mdss vsync clk ret = %d\n", ret);
