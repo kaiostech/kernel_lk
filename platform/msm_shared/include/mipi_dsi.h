@@ -72,6 +72,7 @@
 #define DSI_CAL_STRENGTH_CTRL                 REG_DSI(0x100)
 #define DSI_CMD_MODE_DMA_SW_TRIGGER           REG_DSI(0x08C)
 #define DSI_CMD_MODE_MDP_SW_TRIGGER           REG_DSI(0x090)
+#define DSI_HS_TIMER_CTRL                     REG_DSI(0x0B8)
 
 #define DSI_LANE_CTRL                         REG_DSI(0x0A8)
 
@@ -859,6 +860,24 @@ static struct mipi_dsi_cmd novatek_panel_cmd_mode_cmds[] = {
 	{sizeof(novatek_panel_set_width), novatek_panel_set_width}
 	,
 	{sizeof(novatek_panel_set_height), novatek_panel_set_height}
+	,
+	{sizeof(novatek_panel_rgb_888), novatek_panel_rgb_888}
+	,
+	{sizeof(novatek_panel_set_led_pwm1), novatek_panel_set_led_pwm1}
+	,
+	{sizeof(novatek_panel_set_led_pwm2), novatek_panel_set_led_pwm2}
+	,
+	{sizeof(novatek_panel_set_led_pwm3), novatek_panel_set_led_pwm3}
+};
+
+static struct mipi_dsi_cmd sharp_qhd_video_mode_cmds[] = {
+	{sizeof(novatek_panel_sw_reset), novatek_panel_sw_reset}
+	,
+	{sizeof(novatek_panel_exit_sleep), novatek_panel_exit_sleep}
+	,
+	{sizeof(novatek_panel_display_on), novatek_panel_display_on}
+	,
+	{sizeof(novatek_panel_set_twolane), novatek_panel_set_twolane}
 	,
 	{sizeof(novatek_panel_rgb_888), novatek_panel_rgb_888}
 	,
