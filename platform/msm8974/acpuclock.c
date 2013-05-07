@@ -416,12 +416,15 @@ void mdp_clock_init(void)
 		ASSERT(0);
 	}
 
-	//ret = clk_get_set_enable("mdss_vsync_clk", 0, 1);
+#ifdef CONFIG_MACH_URSA
+	//TODO: Implement a way for clock configuration to be specified by the panel driver
+	ret = clk_get_set_enable("mdss_vsync_clk", 0, 1);
 	if(ret)
 	{
 		dprintf(CRITICAL, "failed to set mdss vsync clk ret = %d\n", ret);
 		ASSERT(0);
 	}
+#endif
 
 	ret = clk_get_set_enable("mdss_mdp_clk", 0, 1);
 	if(ret)

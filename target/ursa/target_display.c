@@ -36,6 +36,7 @@
 #include <mdp5.h>
 #include <platform/gpio.h>
 #include <target/display.h>
+#include "include/target/board.h"
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
@@ -44,7 +45,7 @@ extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 extern int mdss_dsi_uniphy_pll_config(void);
 
-static int msm8974_backlight_on()
+static int ursa_backlight_on()
 {
 	static struct pm8x41_wled_data wled_ctrl = {
 		.mod_scheme      = 0xC3,
@@ -62,7 +63,7 @@ static int msm8974_backlight_on()
 	return 0;
 }
 
-static int msm8974_mdss_dsi_panel_clock(uint8_t enable)
+static int ursa_mdss_dsi_panel_clock(uint8_t enable)
 {
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
@@ -71,59 +72,120 @@ static int msm8974_mdss_dsi_panel_clock(uint8_t enable)
 		mmss_clock_init();
 	} else if(!target_cont_splash_screen()) {
 		// * Add here for continuous splash  *
+		dprintf(SPEW, "TODO: Disable display clocks if continuous splash is disabled\n");
 	}
 
 	return 0;
 }
 
-/* Pull DISP_RST_N high to get panel out of reset */
-static void msm8974_mdss_mipi_panel_reset(void)
+static int ursa_display_panel_power(uint8_t enable)
 {
 	struct pm8x41_gpio gpio19_param = {
 		.direction = PM_GPIO_DIR_OUT,
 		.output_buffer = PM_GPIO_OUT_CMOS,
 		.out_strength = PM_GPIO_OUT_DRIVE_MED,
+		.vin_sel = 2 //This GPIO is based on voltage source #2
 	};
 
-	pm8x41_gpio_config(19, &gpio19_param);
-	gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
-
-	pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
-	mdelay(2);
-	pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
-	mdelay(5);
-	pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
-	mdelay(2);
-	gpio_set(58, 2);
-}
-
-
-static int msm8974_mipi_panel_power(uint8_t enable)
-{
 	if (enable) {
-
 		/* Enable backlight */
-		msm8974_backlight_on();
+		ursa_backlight_on();
 
-		/* Turn on LDO8 for lcd1 mipi vdd */
+		dprintf(SPEW, " Entering ursa_display_panel_power\n");
+
+		//tA is the rise time of this regulator (TP_VDD) turning on
 		dprintf(SPEW, " Setting LDO22\n");
-		pm8x41_ldo_set_voltage("LDO22", 3000000);
-		pm8x41_ldo_control("LDO22", enable);
+		pm8x41_ldo_set_voltage("LDO22", 3150000); //vdd_vreg AKA vdd-supply
+		pm8x41_ldo_control("LDO22", 1);
+		udelay(10); //tB
 
 		dprintf(SPEW, " Setting LDO12\n");
-		/* Turn on LDO23 for lcd1 mipi vddio */
+		//vdd_io_vreg == L12 == Core PLL power
 		pm8x41_ldo_set_voltage("LDO12", 1800000);
-		pm8x41_ldo_control("LDO12", enable);
+		pm8x41_ldo_control("LDO12", 1);
+
+		dprintf(SPEW, " Enabling LVS2\n");
+		//vdd_io_panel_vreg
+		pm8x41_reg_write(0x18146, 0x80);
+		if (0x80 != pm8x41_reg_read(0x18146))
+		{
+			dprintf(CRITICAL, "Error enabling LVS2!  Did TrustZone block the write?\n");
+			dprintf(CRITICAL, "Splash screen disabled!\n");
+
+			//Don't want to risk turning L12 off, since it's a core PLL power rail for
+			// a number of systems
+			pm8x41_ldo_control("LDO22", 0);
+			return;
+		}
+		dprintf(SPEW, " LVS2 enabled\n");
 
 		dprintf(SPEW, " Setting LDO2\n");
 		/* Turn on LDO2 for vdda_mipi_dsi */
 		pm8x41_ldo_set_voltage("LDO2", 1200000);
-		pm8x41_ldo_control("LDO2", enable);
+		pm8x41_ldo_control("LDO2", 1);
 
-		dprintf(SPEW, " Panel Reset \n");
-		/* Panel Reset */
-		msm8974_mdss_mipi_panel_reset();
+		//tC is the rise time of the above regulators (IVDDI & co)
+
+		//Touch reset line
+		gpio_tlmm_config(60, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
+		gpio_set(60, 2); //gpio_set(uint32_t gpio, uint32_t dir)
+		mdelay(2); //tH
+
+		//Display reset line
+		pm8x41_gpio_config(19, &gpio19_param);
+
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
+		mdelay(10); //tD
+
+		//+- 5.4V rails
+		gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
+		gpio_set(58, 2); //gpio_set(uint32_t gpio, uint32_t dir)
+		mdelay(2); //tE + tF + tG
+		mdelay(1); //tN
+
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
+		udelay(10);//tO
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
+		mdelay(5); //tL
+
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
+		udelay(10); //tO
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
+		mdelay(5); //tL
+
 		dprintf(SPEW, " Panel Reset Done\n");
+	}
+	else
+	{
+		//Shut it down
+
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
+		mdelay(10); //tQ
+		//wmb();
+
+		gpio_set(58, 0);
+		mdelay(3); //tR + tS + tT + tU
+		//wmb();
+
+		//VDDA
+		pm8x41_ldo_control("LDO2", 0);
+
+		//Here's where we would release L12, but
+		// it's too risky to just cut that rail here since
+		// it's used all over the system
+		//VDD_IO (PLL power)
+		//pm8x41_ldo_control("LDO12", 0);
+
+		//Disable LVS2 (vdd_io_panel_vreg)
+		pm8x41_reg_write(0x18146, 0);
+
+		gpio_set(60, 0); //Touch reset GPIO
+		mdelay(15); //tV + tW
+// 		//tV (1.8V rail falling) is taking 12ms on our hardware
+
+		//VDD (3.15V)
+		pm8x41_ldo_control("LDO22", 0);
+
 	}
 
 	return 0;
@@ -134,20 +196,23 @@ void display_init(void)
 	uint32_t hw_id = board_hardware_id();
 	uint32_t soc_ver = board_soc_version();
 
-	if (target_pause_for_battery_charge()) {
-		/* no splash or display for charging mode */
-		return;
-	}
+// 	if (target_pause_for_battery_charge()) {
+// 		/* no splash or display for charging mode */
+// 		dprintf(INFO, "no splash or display for charging mode\n");
+// 		return;
+// 	}
 
 	dprintf(INFO, "display_init(),target_id=%d.\n", hw_id);
 
 	switch (hw_id) {
-	case HW_PLATFORM_MTP:
-	case HW_PLATFORM_FLUID:
-	case HW_PLATFORM_SURF:
-		mipi_toshiba_video_720p_init(&(panel.panel_info));
-		panel.clk_func = msm8974_mdss_dsi_panel_clock;
-		panel.power_func = msm8974_mipi_panel_power;
+	case HW_PLATFORM_URSA_P0:
+		dprintf(INFO, "Splash screen not supported on P0\n");
+		return;
+	default:
+		dprintf(INFO, "Initializing URSA P1 display\n", hw_id);
+		mipi_ursa_cmd_720p_init(&(panel.panel_info));
+		panel.clk_func = ursa_mdss_dsi_panel_clock;
+		panel.power_func = ursa_display_panel_power;
 		panel.fb.base = MIPI_FB_ADDR;
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
@@ -156,8 +221,6 @@ void display_init(void)
 		panel.fb.format = FB_FORMAT_RGB888;
 		panel.mdp_rev = MDP_REV_50;
 		break;
-	default:
-		return;
 	};
 
 	if (msm_display_init(&panel)) {

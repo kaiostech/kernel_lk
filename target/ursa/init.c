@@ -376,17 +376,18 @@ void reboot_device(unsigned reboot_reason)
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
 {
-	switch(board_hardware_id())
+	dprintf(CRITICAL, "Continuous splash screen disabled, because it is not supported in CMD mode\n");
+	return 0;
+
+	switch(board_hardware_version())
 	{
-		case HW_PLATFORM_SURF:
-		case HW_PLATFORM_MTP:
-		case HW_PLATFORM_FLUID:
+		case BOARD_REVISION_P0:
+			dprintf(SPEW, "Target_cont_splash=0\n");
+			return 0;
+		default:
 			dprintf(SPEW, "Target_cont_splash=1\n");
 			return 1;
 			break;
-		default:
-			dprintf(SPEW, "Target_cont_splash=0\n");
-			return 0;
 	}
 }
 
