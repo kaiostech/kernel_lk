@@ -287,7 +287,8 @@ void target_serialno(unsigned char *buf)
 
 unsigned check_reboot_mode(void)
 {
-	uint32_t restart_reason = 0;
+	static int restart_reason_valid = 0;
+	static uint32_t restart_reason = 0;
 	uint32_t soc_ver = 0;
 	uint32_t restart_reason_addr;
 
@@ -298,9 +299,12 @@ unsigned check_reboot_mode(void)
 	else
 		restart_reason_addr = RESTART_REASON_ADDR;
 
-	/* Read reboot reason and scrub it */
-	restart_reason = readl(restart_reason_addr);
-	writel(0x00, restart_reason_addr);
+	if (!restart_reason_valid) {
+		/* Read reboot reason and scrub it */
+		restart_reason = readl(restart_reason_addr);
+		writel(0x00, restart_reason_addr);
+		restart_reason_valid = 1;
+	}
 
 	return restart_reason;
 }
@@ -359,15 +363,29 @@ int target_cont_splash_screen()
 	}
 }
 
+#define REBOOT_MODE_CHARGE   0x6f656d01
+
 unsigned target_pause_for_battery_charge(void)
 {
+	unsigned reboot_mode = check_reboot_mode();
 	uint8_t pon_reason = pm8x41_get_pon_reason();
 
-        /* This function will always return 0 to facilitate
-         * automated testing/reboot with usb connected.
-         * uncomment if this feature is needed */
-	/* if ((pon_reason == USB_CHG) || (pon_reason == DC_CHG))
-		return 1;*/
+	dprintf(INFO, "REBOOT_INFO: %08X:%02X\n", reboot_mode, pon_reason);
+
+	if (keys_get_state(KEY_HOME) ||
+	    keys_get_state(KEY_VOLUMEUP) ||
+	    keys_get_state(KEY_BACK) ||
+	    keys_get_state(KEY_VOLUMEDOWN)) {
+		/* keys are down, aboot is going to divert into fastboot or recovery */
+		return 0;
+	}
+
+	/* note: USB_CHG is also returned for wall charging; DC_CHG seems unused */
+	if (reboot_mode == REBOOT_MODE_CHARGE &&
+		((pon_reason == USB_CHG) || (pon_reason == DC_CHG))) {
+		/* no boot purpose and USB is plugged in -- divert to charging */
+		return 1;
+	}
 
 	return 0;
 }
