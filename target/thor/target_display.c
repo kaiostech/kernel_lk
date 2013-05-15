@@ -31,7 +31,6 @@
 #include <smem.h>
 #include <msm_panel.h>
 #include <pm8x41.h>
-#include <pm8x41_wled.h>
 #include <board.h>
 #include <mdp5.h>
 #include <platform/gpio.h>
@@ -44,25 +43,7 @@ extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 extern int mdss_dsi_uniphy_pll_config(void);
 
-static int msm8974_backlight_on()
-{
-	static struct pm8x41_wled_data wled_ctrl = {
-		.mod_scheme      = 0xC3,
-		.led1_brightness = (0x0F << 8) | 0xEF,
-		.led2_brightness = (0x0F << 8) | 0xEF,
-		.led3_brightness = (0x0F << 8) | 0xEF,
-		.max_duty_cycle  = 0x01,
-	};
-
-	pm8x41_wled_config(&wled_ctrl);
-	pm8x41_wled_sink_control(1);
-	pm8x41_wled_iled_sync_control(1);
-	pm8x41_wled_enable(1);
-
-	return 0;
-}
-
-static int msm8974_mdss_dsi_panel_clock(uint8_t enable)
+static int thor_mdss_dsi_panel_clock(uint8_t enable)
 {
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
@@ -77,7 +58,7 @@ static int msm8974_mdss_dsi_panel_clock(uint8_t enable)
 }
 
 /* Pull DISP_RST_N high to get panel out of reset */
-static void msm8974_mdss_mipi_panel_reset(void)
+static void thor_mdss_mipi_panel_reset(void)
 {
 	struct pm8x41_gpio gpio19_param = {
 		.direction = PM_GPIO_DIR_OUT,
@@ -89,41 +70,35 @@ static void msm8974_mdss_mipi_panel_reset(void)
 	gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
 
 	pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
-	mdelay(2);
+	mdelay(20);
 	pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
-	mdelay(5);
+	mdelay(200);
 	pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
-	mdelay(2);
+	mdelay(20);
 	gpio_set(58, 2);
+	mdelay(100);
 }
 
-
-static int msm8974_mipi_panel_power(uint8_t enable)
+static int thor_mipi_panel_power(uint8_t enable)
 {
 	if (enable) {
-
-		/* Enable backlight */
-		msm8974_backlight_on();
+		/* backlight enable is out of this */
 
 		/* Turn on LDO8 for lcd1 mipi vdd */
-		dprintf(SPEW, " Setting LDO22\n");
 		pm8x41_ldo_set_voltage("LDO22", 3000000);
 		pm8x41_ldo_control("LDO22", enable);
 
-		dprintf(SPEW, " Setting LDO12\n");
 		/* Turn on LDO23 for lcd1 mipi vddio */
 		pm8x41_ldo_set_voltage("LDO12", 1800000);
 		pm8x41_ldo_control("LDO12", enable);
 
-		dprintf(SPEW, " Setting LDO2\n");
 		/* Turn on LDO2 for vdda_mipi_dsi */
 		pm8x41_ldo_set_voltage("LDO2", 1200000);
 		pm8x41_ldo_control("LDO2", enable);
 
-		dprintf(SPEW, " Panel Reset \n");
+		dprintf(INFO, " Panel Reset \n");
 		/* Panel Reset */
-		msm8974_mdss_mipi_panel_reset();
-		dprintf(SPEW, " Panel Reset Done\n");
+		thor_mdss_mipi_panel_reset();
 	}
 
 	return 0;
@@ -131,29 +106,20 @@ static int msm8974_mipi_panel_power(uint8_t enable)
 
 void display_init(void)
 {
-	uint32_t hw_id = board_hardware_id();
-	uint32_t soc_ver = board_soc_version();
+	dprintf(INFO, "display_init()\n");
 
-	dprintf(INFO, "display_init(),target_id=%d.\n", hw_id);
+	mipi_novatek_video_1080p_init(&(panel.panel_info));
 
-	switch (hw_id) {
-	case HW_PLATFORM_MTP:
-	case HW_PLATFORM_FLUID:
-	case HW_PLATFORM_SURF:
-		mipi_toshiba_video_720p_init(&(panel.panel_info));
-		panel.clk_func = msm8974_mdss_dsi_panel_clock;
-		panel.power_func = msm8974_mipi_panel_power;
-		panel.fb.base = MIPI_FB_ADDR;
-		panel.fb.width =  panel.panel_info.xres;
-		panel.fb.height =  panel.panel_info.yres;
-		panel.fb.stride =  panel.panel_info.xres;
-		panel.fb.bpp =  panel.panel_info.bpp;
-		panel.fb.format = FB_FORMAT_RGB888;
-		panel.mdp_rev = MDP_REV_50;
-		break;
-	default:
-		return;
-	};
+	panel.clk_func = thor_mdss_dsi_panel_clock;
+	panel.power_func = thor_mipi_panel_power;
+	panel.fb.base = MIPI_FB_ADDR;
+	panel.fb.width =  panel.panel_info.xres;
+	panel.fb.height =  panel.panel_info.yres;
+	panel.fb.stride =  panel.panel_info.xres;
+	panel.fb.bpp =  panel.panel_info.bpp;
+	panel.fb.format = FB_FORMAT_RGB888;
+	panel.mdp_rev = MDP_REV_50;
+	dprintf(INFO, "panel.fb.width =%d. panel.fb.height = %d \n", panel.fb.width, panel.fb.height);
 
 	if (msm_display_init(&panel)) {
 		dprintf(CRITICAL, "Display init failed!\n");

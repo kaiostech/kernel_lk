@@ -31,13 +31,13 @@
 
 #define MIPI_FB_ADDR  0x0D200000
 
-#define MIPI_HSYNC_PULSE_WIDTH       12
-#define MIPI_HSYNC_BACK_PORCH_DCLK   32
-#define MIPI_HSYNC_FRONT_PORCH_DCLK  144
+#define MIPI_HSYNC_PULSE_WIDTH       24
+#define MIPI_HSYNC_BACK_PORCH_DCLK   16
+#define MIPI_HSYNC_FRONT_PORCH_DCLK  48
 
-#define MIPI_VSYNC_PULSE_WIDTH       4
-#define MIPI_VSYNC_BACK_PORCH_LINES  3
-#define MIPI_VSYNC_FRONT_PORCH_LINES 9
+#define MIPI_VSYNC_PULSE_WIDTH       2
+#define MIPI_VSYNC_BACK_PORCH_LINES  9
+#define MIPI_VSYNC_FRONT_PORCH_LINES 10
 
 extern int mdss_dsi_phy_init(struct mipi_dsi_panel_config *, uint32_t ctl_base);
 extern int mdss_dsi_uniphy_pll_config(void);

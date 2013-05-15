@@ -179,12 +179,11 @@ void target_init(void)
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
-	dprintf(INFO, "Backlight Start\n");
-	lp855x_bl_on();
-
 	dprintf(INFO, "Display Init: Start\n");
 	display_init();
-	dprintf(INFO, "Display Init: Done\n");
+
+	dprintf(INFO, "Backlight Start\n");
+	lp855x_bl_on();
 #endif
 
 	/* Trying Slot 1*/

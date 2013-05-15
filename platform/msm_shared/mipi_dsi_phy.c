@@ -257,8 +257,48 @@ int mdss_dsi_uniphy_pll_config(void)
 	writel(0x00, MIPI_DSI_BASE + 0x0290); /* CAL CFG9 */
 	writel(0x20, MIPI_DSI_BASE + 0x029c); /* EFUSE CFG */
 #else
+#ifdef CONFIG_ARCH_MSM8974_THOR
 	/* Configuring the Pll Vco clk to 424 Mhz */
+	
+	/* Loop filter resistance value */
+	writel(0x08, MIPI_DSI_BASE + 0x022c);
+	/* Loop filter capacitance values : c1 and c2 */
+	writel(0x70, MIPI_DSI_BASE + 0x0230);
+	writel(0x15, MIPI_DSI_BASE + 0x0234);
 
+	writel(0x02, MIPI_DSI_BASE + 0x0208); /* ChgPump */
+	writel(0x00, MIPI_DSI_BASE + 0x0204); /* postDiv1 */
+	writel(0x03, MIPI_DSI_BASE + 0x0224); /* postDiv2 */
+	writel(0x02, MIPI_DSI_BASE + 0x0228); /* postDiv3 */
+
+	writel(0x2b, MIPI_DSI_BASE + 0x0278); /* Cal CFG3 */
+	writel(0x66, MIPI_DSI_BASE + 0x027c); /* Cal CFG4 */
+	writel(0x05, MIPI_DSI_BASE + 0x0264); /* LKDetect CFG2 */
+
+	writel(0x0a, MIPI_DSI_BASE + 0x023c); /* SDM CFG1 */
+	writel(0x00, MIPI_DSI_BASE + 0x0240); /* SDM CFG2 */
+	writel(0xb8, MIPI_DSI_BASE + 0x0244); /* SDM CFG3 */
+	writel(0x00, MIPI_DSI_BASE + 0x0248); /* SDM CFG4 */
+
+	udelay(10);
+
+	writel(0x01, MIPI_DSI_BASE + 0x0200); /* REFCLK CFG */
+	writel(0x00, MIPI_DSI_BASE + 0x0214); /* PWRGEN CFG */
+	writel(0x71, MIPI_DSI_BASE + 0x020c); /* VCOLPF CFG */
+	writel(0x00, MIPI_DSI_BASE + 0x0210); /* VREG CFG */
+	writel(0x00, MIPI_DSI_BASE + 0x0238); /* SDM CFG0 */
+
+	writel(0x60, MIPI_DSI_BASE + 0x028c); /* CAL CFG8 */
+	writel(0xc2, MIPI_DSI_BASE + 0x0294); /* CAL CFG10 */
+	writel(0x01, MIPI_DSI_BASE + 0x0298); /* CAL CFG11 */
+	writel(0x0a, MIPI_DSI_BASE + 0x026c); /* CAL CFG0 */
+	writel(0x30, MIPI_DSI_BASE + 0x0284); /* CAL CFG6 */
+	writel(0x00, MIPI_DSI_BASE + 0x0288); /* CAL CFG7 */
+	writel(0x00, MIPI_DSI_BASE + 0x0290); /* CAL CFG9 */
+	writel(0x20, MIPI_DSI_BASE + 0x029c); /* EFUSE CFG */
+#else
+	/* Configuring the Pll Vco clk to 424 Mhz */
+	
 	/* Loop filter resistance value */
 	writel(0x08, MIPI_DSI_BASE + 0x022c);
 	/* Loop filter capacitance values : c1 and c2 */
@@ -295,6 +335,7 @@ int mdss_dsi_uniphy_pll_config(void)
 	writel(0x00, MIPI_DSI_BASE + 0x0288); /* CAL CFG7 */
 	writel(0x00, MIPI_DSI_BASE + 0x0290); /* CAL CFG9 */
 	writel(0x20, MIPI_DSI_BASE + 0x029c); /* EFUSE CFG */
+#endif
 #endif
 
 	mdss_dsi_uniphy_pll_sw_reset();
@@ -490,4 +531,9 @@ int mdss_dsi_phy_init(struct mipi_dsi_panel_config *pinfo, uint32_t ctl_base)
 	writel(0x41b, ctl_base + 0x0c4);
 	dmb();
 
+#ifdef CONFIG_ARCH_MSM8974_THOR
+	/* LANE_SWAP */
+	writel(0x1, MIPI_DSI_BASE + 0x0b0);
+	dmb();
+#endif
 }

@@ -517,7 +517,7 @@ int mipi_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo)
 		status = mipi_dsi_cmds_tx(pinfo->panel_cmds,
 					  pinfo->num_of_panel_cmds);
 	}
-
+	mdelay(100);
 	return status;
 }
 

@@ -457,6 +457,14 @@ static const unsigned char toshiba_mdt61_set_pixel_format[4] = {
 	0x3A, 0x70, DTYPE_DCS_WRITE1, 0x80,
 };
 
+/*Novatek 1080P commands*/
+/*[32 01 00 00 64 02 00 00];*/
+/*Turn ON peripheral command*/
+static const unsigned char novatek_on_cmd[4] = {
+	0x00, 0x00,  0x32, 0x80,
+};
+
+
 /* Done Toshiba MDT61 Panel Commands */
 /* Toshiba MDT61 (R69320) End */
 
@@ -789,6 +797,10 @@ static struct mipi_dsi_cmd toshiba_mdt61_video_mode_cmds[] = {
 	 (char *)toshiba_mdt61_set_pixel_format},
 	{sizeof(dsi_display_exit_sleep), (char *)dsi_display_exit_sleep},
 	{sizeof(dsi_display_display_on), (char *)dsi_display_display_on},
+};
+
+static struct mipi_dsi_cmd novatek_1080p_video_mode_cmds[] = {
+	{sizeof(novatek_on_cmd), (char *)novatek_on_cmd},
 };
 
 static struct mipi_dsi_cmd toshiba_mdv24_video_mode_cmds[] = {
