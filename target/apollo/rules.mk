@@ -16,10 +16,10 @@ SCRATCH_ADDR     := 0x11000000
 
 SIGNING_TOOL_PATH := $(LK_TOP_DIR)/signing/gensecimage/
 
-#DEFINES += DISPLAY_SPLASH_SCREEN=1
+DEFINES += DISPLAY_SPLASH_SCREEN=1
 DEFINES += DISPLAY_TYPE_MIPI=1
 DEFINES += DISPLAY_TYPE_DSI6G=1
-DEFINES += CONFIG_ARCH_MSM8974_APOLLO=1
+DEFINES += CONFIG_ARCH_MSM8974_THOR=1
 
 MODULES += \
 	dev/keys \
@@ -27,7 +27,9 @@ MODULES += \
 	dev/backlight/lp855x \
 	dev/panel/msm \
     lib/ptable \
-    lib/libfdt
+    lib/libfdt \
+    dev/fbgfx \
+    lib/zlib
 
 DEFINES += \
 	MEMSIZE=$(MEMSIZE) \
@@ -43,3 +45,9 @@ OBJS += \
     $(LOCAL_DIR)/init.o \
     $(LOCAL_DIR)/meminfo.o \
     $(LOCAL_DIR)/target_display.o
+
+# For WITH_FBGFX_SPLASH. Below image is RLE encoded. We now use gzipped
+#OBJS += \
+#    $(LOCAL_DIR)/splash.o
+
+include $(LOCAL_DIR)/image/rules.mk
