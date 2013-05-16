@@ -27,7 +27,8 @@ MODULES += \
 	dev/backlight/lp855x \
 	dev/panel/msm \
     lib/ptable \
-    lib/libfdt
+    lib/libfdt \
+    dev/fbgfx
 
 DEFINES += \
 	MEMSIZE=$(MEMSIZE) \
@@ -42,4 +43,5 @@ DEFINES += \
 OBJS += \
     $(LOCAL_DIR)/init.o \
     $(LOCAL_DIR)/meminfo.o \
-    $(LOCAL_DIR)/target_display.o
+    $(LOCAL_DIR)/target_display.o \
+    $(LOCAL_DIR)/splash.o
