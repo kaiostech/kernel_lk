@@ -42,6 +42,12 @@
 #include <crypto5_wrapper.h>
 #include <lp855x.h>
 
+#if WITH_FBGFX_SPLASH
+#include <dev/fbgfx.h>
+struct fbgfx_image splash;
+extern struct fbgfx_image image_thor;
+#endif
+
 #define HW_PLATFORM_THOR     19 /* these needs to match with thor.dts */
 #define LINUX_MACHTYPE_THOR  19
 
@@ -179,6 +185,12 @@ void target_init(void)
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
+
+#if WITH_FBGFX_SPLASH
+	/* if fbcon.c does not hardcode 'splash' we can skip this memcpy */
+	memcpy(&splash, &image_thor, sizeof(struct fbgfx_image));
+#endif
+
 	dprintf(INFO, "Display Init: Start\n");
 	display_init();
 

@@ -31,3 +31,9 @@ DEFINES += ABOOT_FORCE_TAGS_ADDR=0x01e00000
 ifeq ($(EMMC_BOOT),1)
 DEFINES += _EMMC_BOOT=1
 endif
+
+# rules for image files
+#$(BUILDDIR)/%.o: %.gz
+#	@$(MKDIR)
+#	$(OBJCOPY) -I binary -O elf32-littlearm -B arm -K $^ $@
+

@@ -35,6 +35,7 @@
 #include <dev/fbgfx.h>
 #include <platform.h>
 #include <string.h>
+#include <lib/zlib.h>
 
 #include "font.h"
 
@@ -297,11 +298,98 @@ static void fbgfx_rle_decode(unsigned char *decoded_buffer, const unsigned char 
 	}
 }
 
+#define	ZALLOC_ALIGNMENT	16
+
+static void *zalloc(void *x, unsigned items, unsigned size)
+{
+	void *p;
+
+	size *= items;
+	size = (size + ZALLOC_ALIGNMENT - 1) & ~(ZALLOC_ALIGNMENT - 1);
+
+	p = malloc (size);
+
+	return (p);
+}
+
+static void zfree(void *x, void *addr, unsigned nb)
+{
+	free (addr);
+}
+
+#define HEAD_CRC	2
+#define EXTRA_FIELD	4
+#define ORIG_NAME	8
+#define COMMENT		0x10
+#define RESERVED	0xe0
+
+#define DEFLATED	8
+
+static int fbgfx_gzip_decode(unsigned char *decoded_buffer, unsigned int decode_bufsize, unsigned char *gzip_buffer, unsigned long *decoded_size)
+{
+	void *dst = decoded_buffer;
+	int dstlen = decode_bufsize;
+	unsigned char *src = gzip_buffer;
+	unsigned long *lenp = decoded_size;
+
+	z_stream s;
+	int r, flags;
+	unsigned long i;
+
+	/* skip header */
+	i = 10;
+	flags = src[3];
+	if (src[2] != DEFLATED || (flags & RESERVED) != 0) {
+		dprintf(CRITICAL, "Error: Bad gzipped data\n");
+		return (-1);
+	}
+	if ((flags & EXTRA_FIELD) != 0)
+		i = 12 + src[10] + (src[11] << 8);
+	if ((flags & ORIG_NAME) != 0)
+		while (src[i++] != 0)
+			;
+	if ((flags & COMMENT) != 0)
+		while (src[i++] != 0)
+			;
+	if ((flags & HEAD_CRC) != 0)
+		i += 2;
+	if (i >= *lenp) {
+		dprintf(CRITICAL, "Error: gunzip out of data in header\n");
+		return (-1);
+	}
+
+	s.zalloc = zalloc;
+	s.zfree = zfree;
+	s.outcb = Z_NULL;
+
+	r = inflateInit2(&s, -MAX_WBITS);
+	if (r != Z_OK) {
+		dprintf(CRITICAL, "Error: inflateInit2() returned %d\n", r);
+		return (-1);
+	}
+	s.next_in = src + i;
+	s.avail_in = *lenp - i;
+	s.next_out = dst;
+	s.avail_out = dstlen;
+	r = inflate(&s, Z_FINISH);
+	if (r != Z_OK && r != Z_STREAM_END) {
+		dprintf(CRITICAL, "Error: inflate() returned %d\n", r);
+		return (-1);
+	}
+	*lenp = s.next_out - (unsigned char *) dst;
+	inflateEnd(&s);
+
+	return (0);
+}
+
 void fbgfx_preload_image(struct fbgfx_image *image)
 {
 	unsigned int i;
 	unsigned char swap;
 	unsigned int pixel_data_size;
+	unsigned char *rle_data;
+	unsigned char *gunzip_data;
+	unsigned long gunzip_size;
 
 	if (image->expanded_pixel_data != NULL) {
 		return;
@@ -315,16 +403,29 @@ void fbgfx_preload_image(struct fbgfx_image *image)
 	pixel_data_size = image->width * image->height * image->bytes_per_pixel;
 	image->expanded_pixel_data = (unsigned char *)memalign(4096, pixel_data_size);
 	if (image->expanded_pixel_data == NULL) {
+		dprintf(CRITICAL, "%s: no memory.\n", __func__);
 		return;
 	}
 
-	fbgfx_rle_decode(image->expanded_pixel_data, image->rle_pixel_data, pixel_data_size, image->bytes_per_pixel);
+	/* do gzip first because it's gzipped rle data */
+	if (image->format == FBGFX_IMAGE_FORMAT_GZIP) {
+		gunzip_data = image->expanded_pixel_data;
+		gunzip_size = pixel_data_size; /* max input buf size */
+		fbgfx_gzip_decode(gunzip_data, pixel_data_size, image->pixel_data, &gunzip_size);
 
-	for (i = 0; i < pixel_data_size; i += image->bytes_per_pixel) {
-		/* swap to BGR for the display */
-		swap = image->expanded_pixel_data[i];
-		image->expanded_pixel_data[i] = image->expanded_pixel_data[i + 2];
-		image->expanded_pixel_data[i + 2] = swap;
+		dprintf(INFO, "unziped image size %ld\n", gunzip_size);
+	}
+
+	if (image->format == FBGFX_IMAGE_FORMAT_RLE) {
+		rle_data = image->pixel_data;
+		fbgfx_rle_decode(image->expanded_pixel_data, rle_data, pixel_data_size, image->bytes_per_pixel);
+
+		for (i = 0; i < pixel_data_size; i += image->bytes_per_pixel) {
+			/* swap to BGR for the display. This swap is only done for RLE */
+			swap = image->expanded_pixel_data[i];
+			image->expanded_pixel_data[i] = image->expanded_pixel_data[i + 2];
+			image->expanded_pixel_data[i + 2] = swap;
+		}
 	}
 }
 
@@ -332,6 +433,8 @@ void fbgfx_apply_image(struct fbgfx_image *image, int x, int y)
 {
 	unsigned char *source, *target, *target_baseline;
 	unsigned int i, j;
+
+	dprintf(INFO, "fbgfx image width %d height %d format %d", image->width, image->height, image->format);
 
 	if (target_buffer == NULL) {
 		dprintf(CRITICAL, "%s: fbgfx not initialized properly.\n", __func__);

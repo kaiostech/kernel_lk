@@ -28,6 +28,12 @@
  *
  */
 
+typedef enum {
+	FBGFX_IMAGE_FORMAT_RAW,
+	FBGFX_IMAGE_FORMAT_RLE,
+	FBGFX_IMAGE_FORMAT_GZIP /* Gzip of the raw image */
+} FBGFX_IMAGE_FORMAT;
+	
 /*
  * rle_pixel_data must be in 1-byte RLE format, which can be exported from
  * (e.g.) GIMP and used with only minor (structure definition) changes.
@@ -41,8 +47,9 @@ struct fbgfx_image {
 	unsigned int   width;
 	unsigned int   height;
 	unsigned int   bytes_per_pixel; /* 3:RGB, 4:RGBA */
+	FBGFX_IMAGE_FORMAT   format;
 	unsigned char *expanded_pixel_data;
-	unsigned char  rle_pixel_data[];
+	unsigned char *pixel_data;
 };
 
 /* the font is 5x12; set this constant to scale up the font so it is easily

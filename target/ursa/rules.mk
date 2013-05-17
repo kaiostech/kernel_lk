@@ -26,9 +26,11 @@ MODULES += \
 	dev/keys \
 	dev/pmic/pm8x41 \
 	dev/panel/msm \
-    lib/ptable \
-    lib/libfdt \
-    dev/fbgfx
+	lib/ptable \
+	lib/libfdt \
+	dev/fbgfx\
+	lib/zlib
+
 
 DEFINES += \
 	MEMSIZE=$(MEMSIZE) \

@@ -28,7 +28,8 @@ MODULES += \
 	dev/panel/msm \
     lib/ptable \
     lib/libfdt \
-    dev/fbgfx
+    dev/fbgfx \
+    lib/zlib
 
 DEFINES += \
 	MEMSIZE=$(MEMSIZE) \
@@ -43,5 +44,10 @@ DEFINES += \
 OBJS += \
     $(LOCAL_DIR)/init.o \
     $(LOCAL_DIR)/meminfo.o \
-    $(LOCAL_DIR)/target_display.o \
-    $(LOCAL_DIR)/splash.o
+    $(LOCAL_DIR)/target_display.o
+
+# For WITH_FBGFX_SPLASH. Below image is RLE encoded. We now use gzipped
+#OBJS += \
+#    $(LOCAL_DIR)/splash.o
+
+include $(LOCAL_DIR)/image/rules.mk

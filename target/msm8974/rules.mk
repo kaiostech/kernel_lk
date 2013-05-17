@@ -28,6 +28,7 @@ MODULES += \
 	dev/gcdb/display \
     lib/ptable \
     lib/libfdt \
+    lib/zlib \
     dev/fbgfx
 
 DEFINES += \
