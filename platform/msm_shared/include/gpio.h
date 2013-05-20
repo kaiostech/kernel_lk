@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -26,35 +26,43 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __PLATFORM_COPPER_GPIO_H
-#define __PLATFORM_COPPER_GPIO_H
+#ifndef _GPIO_H_
+#define _GPIO_H_
 
-#include <gpio.h>
+#define TLMM_PULL_MASK  0x3
+#define TLMM_HDRV_MASK  0x7
 
-/* GPIO TLMM: Direction */
-#define GPIO_INPUT      0
-#define GPIO_OUTPUT     1
+/* Current values for tlmm pins */
+enum {
+	TLMM_CUR_VAL_16MA = 0x7,
+	TLMM_CUR_VAL_10MA = 0x4,
+} tlmm_drive_config;
 
-/* GPIO TLMM: Pullup/Pulldown */
-#define GPIO_NO_PULL    0
-#define GPIO_PULL_DOWN  1
-#define GPIO_KEEPER     2
-#define GPIO_PULL_UP    3
+enum {
+	TLMM_PULL_UP = 0x3,
+	TLMM_NO_PULL = 0x0,
+} tlmm_pull_values;
 
-/* GPIO TLMM: Drive Strength */
-#define GPIO_2MA        0
-#define GPIO_4MA        1
-#define GPIO_6MA        2
-#define GPIO_8MA        3
-#define GPIO_10MA       4
-#define GPIO_12MA       5
-#define GPIO_14MA       6
-#define GPIO_16MA       7
+/* Bit offsets in the TLMM register */
+enum {
+	SDC1_DATA_HDRV_CTL_OFF = 0,
+	SDC1_CMD_HDRV_CTL_OFF  = 3,
+	SDC1_CLK_HDRV_CTL_OFF  = 6,
+	SDC1_DATA_PULL_CTL_OFF = 9,
+	SDC1_CMD_PULL_CTL_OFF  = 11,
+	SDC1_CLK_PULL_CTL_OFF  = 13,
+} tlmm_drv_ctrl;
 
-/* GPIO TLMM: Status */
-#define GPIO_ENABLE     0
-#define GPIO_DISABLE    1
+/* Input for the tlmm config function */
+struct tlmm_cfgs {
+	uint32_t off;  /* Bit offeset in the register */
+	uint8_t val;   /* Current value */
+	uint8_t mask;  /* Mask for the clk/dat/cmd control */
+};
 
-void gpio_config_uart_dm(uint8_t id);
-void gpio_config_blsp_i2c(uint8_t, uint8_t);
+/* APIs: exposed for other drivers */
+/* API: Hdrive control for tlmm pins */
+void tlmm_set_hdrive_ctrl(struct tlmm_cfgs *, uint8_t);
+/* API:  Pull control for tlmm pins */
+void tlmm_set_pull_ctrl(struct tlmm_cfgs *, uint8_t);
 #endif

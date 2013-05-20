@@ -90,6 +90,8 @@ void write_device_info_flash(device_info *dev);
 
 static const char *emmc_cmdline = " androidboot.emmc=true";
 static const char *usb_sn_cmdline = " androidboot.serialno=";
+static const char *androidboot_mode = " androidboot.mode=";
+static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
 
@@ -185,6 +187,8 @@ unsigned char *update_cmdline(const char * cmdline)
 	int have_cmdline = 0;
 	unsigned char *cmdline_final = NULL;
 	int pause_at_bootup = 0;
+	char ffbm[10];
+	bool boot_into_ffbm = get_ffbm(ffbm, sizeof(ffbm));
 
 	if (cmdline && cmdline[0]) {
 		cmdline_len = strlen(cmdline);
@@ -197,7 +201,12 @@ unsigned char *update_cmdline(const char * cmdline)
 	cmdline_len += strlen(usb_sn_cmdline);
 	cmdline_len += strlen(sn_buf);
 
-	if (target_pause_for_battery_charge()) {
+	if (boot_into_ffbm) {
+		cmdline_len += strlen(androidboot_mode);
+		cmdline_len += strlen(ffbm);
+		/* reduce kernel console messages to speed-up boot */
+		cmdline_len += strlen(loglevel);
+	} else if (target_pause_for_battery_charge()) {
 		pause_at_bootup = 1;
 		cmdline_len += strlen(battchg_pause);
 	}
@@ -273,7 +282,17 @@ unsigned char *update_cmdline(const char * cmdline)
 		have_cmdline = 1;
 		while ((*dst++ = *src++));
 
-		if (pause_at_bootup) {
+		if (boot_into_ffbm) {
+			src = androidboot_mode;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+			src = ffbm;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+			src = loglevel;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		} else if (pause_at_bootup) {
 			src = battchg_pause;
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
@@ -655,7 +674,7 @@ int boot_linux_from_mmc(void)
 			 */
 			void *dtb;
 			dtb = dev_tree_appended((void*) hdr->kernel_addr,
-						(void *)hdr->tags_addr);
+						(void *)hdr->tags_addr, hdr->kernel_size);
 			if (!dtb) {
 				dprintf(CRITICAL, "ERROR: Appended Device Tree Blob not found\n");
 				return -1;
@@ -752,7 +771,7 @@ int boot_linux_from_mmc(void)
 			 */
 			void *dtb;
 			dtb = dev_tree_appended((void*) hdr->kernel_addr,
-						(void *)hdr->tags_addr);
+						(void *)hdr->tags_addr, hdr->kernel_size);
 			if (!dtb) {
 				dprintf(CRITICAL, "ERROR: Appended Device Tree Blob not found\n");
 				return -1;
@@ -1285,7 +1304,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	 */
 	if (!dtb_copied) {
 		void *dtb;
-		dtb = dev_tree_appended((void *)hdr->kernel_addr, (void *)hdr->tags_addr);
+		dtb = dev_tree_appended((void *)hdr->kernel_addr, (void *)hdr->tags_addr, hdr->kernel_size);
 		if (!dtb) {
 			fastboot_fail("dtb not found");
 			return;
@@ -1419,6 +1438,11 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 
 	/* Read and skip over sparse image header */
 	sparse_header = (sparse_header_t *) data;
+	if ((sparse_header->total_blks * sparse_header->blk_sz) > size) {
+		fastboot_fail("size too large");
+		return;
+	}
+
 	data += sparse_header->file_hdr_sz;
 	if(sparse_header->file_hdr_sz > sizeof(sparse_header_t))
 	{
@@ -1785,6 +1809,7 @@ void aboot_init(const struct app_descriptor *app)
 	unsigned reboot_mode = 0;
 	unsigned usb_init = 0;
 	unsigned sz = 0;
+	bool boot_into_fastboot = false;
 
 	/* Setup page size information for nand/emmc reads */
 	if (target_is_emmc_boot())
@@ -1809,61 +1834,72 @@ void aboot_init(const struct app_descriptor *app)
 	surf_udc_device.serialno = sn_buf;
 
 	/* Check if we should do something other than booting up */
-	if (keys_get_state(KEY_HOME) != 0)
-		boot_into_recovery = 1;
-	if (keys_get_state(KEY_VOLUMEUP) != 0)
-		boot_into_recovery = 1;
-	if(!boot_into_recovery)
+	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN))
 	{
-		if (keys_get_state(KEY_BACK) != 0)
-			goto fastboot;
-		if (keys_get_state(KEY_VOLUMEDOWN) != 0)
-			goto fastboot;
+		dprintf(ALWAYS,"dload mode key sequence detected");
+		if (set_download_mode())
+		{
+			dprintf(CRITICAL,"dload mode not supported by target");
+		}
+		else
+		{
+			reboot_device(0);
+			dprintf(CRITICAL,"Failed to reboot into dload mode");
+		}
+		boot_into_fastboot = true;
 	}
-
+	if (!boot_into_fastboot)
+	{
+		if (keys_get_state(KEY_HOME) || keys_get_state(KEY_VOLUMEUP))
+			boot_into_recovery = 1;
+		if (!boot_into_recovery &&
+			(keys_get_state(KEY_BACK) || keys_get_state(KEY_VOLUMEDOWN)))
+			boot_into_fastboot = true;
+	}
 	#if NO_KEYPAD_DRIVER
 	if (fastboot_trigger())
-		goto fastboot;
+		boot_into_fastboot = true;
 	#endif
 
 	reboot_mode = check_reboot_mode();
 	if (reboot_mode == RECOVERY_MODE) {
 		boot_into_recovery = 1;
 	} else if(reboot_mode == FASTBOOT_MODE) {
-		goto fastboot;
+		boot_into_fastboot = true;
 	}
 
-	if (target_is_emmc_boot())
+	if (!boot_into_fastboot)
 	{
-		if(emmc_recovery_init())
-			dprintf(ALWAYS,"error in emmc_recovery_init\n");
-		if(target_use_signed_kernel())
+		if (target_is_emmc_boot())
 		{
-			if((device.is_unlocked) || (device.is_tampered))
+			if(emmc_recovery_init())
+				dprintf(ALWAYS,"error in emmc_recovery_init\n");
+			if(target_use_signed_kernel())
 			{
-			#ifdef TZ_TAMPER_FUSE
-				set_tamper_fuse_cmd();
-			#endif
-			#if USE_PCOM_SECBOOT
-				set_tamper_flag(device.is_tampered);
-			#endif
+				if((device.is_unlocked) || (device.is_tampered))
+				{
+				#ifdef TZ_TAMPER_FUSE
+					set_tamper_fuse_cmd();
+				#endif
+				#if USE_PCOM_SECBOOT
+					set_tamper_flag(device.is_tampered);
+				#endif
+				}
 			}
+			boot_linux_from_mmc();
 		}
-		boot_linux_from_mmc();
+		else
+		{
+			recovery_init();
+	#if USE_PCOM_SECBOOT
+		if((device.is_unlocked) || (device.is_tampered))
+			set_tamper_flag(device.is_tampered);
+	#endif
+			boot_linux_from_flash();
+		}
+		dprintf(CRITICAL, "ERROR: Could not do normal boot. Reverting "
+			"to fastboot mode.\n");
 	}
-	else
-	{
-		recovery_init();
-#if USE_PCOM_SECBOOT
-	if((device.is_unlocked) || (device.is_tampered))
-		set_tamper_flag(device.is_tampered);
-#endif
-		boot_linux_from_flash();
-	}
-	dprintf(CRITICAL, "ERROR: Could not do normal boot. Reverting "
-		"to fastboot mode.\n");
-
-fastboot:
 
 	sz = target_get_max_flash_size();
 

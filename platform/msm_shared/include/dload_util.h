@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -26,54 +26,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _BOOTLOADER_RECOVERY_H
-#define _BOOTLOADER_RECOVERY_H
+#ifndef __DLOAD_UTIL_H
+#define __DLOAD_UTIL_H
 
-#define UPDATE_MAGIC       "MSM-RADIO-UPDATE"
-#define UPDATE_MAGIC_SIZE  16
-#define UPDATE_VERSION     0x00010000
+#include <sys/types.h>
 
-
-/* Recovery Message */
-struct recovery_message {
-	char command[32];
-	char status[32];
-	char recovery[1024];
-};
-
-
-struct update_header {
-	unsigned char MAGIC[UPDATE_MAGIC_SIZE];
-
-	unsigned version;
-	unsigned size;
-
-	unsigned image_offset;
-	unsigned image_length;
-
-	unsigned bitmap_width;
-	unsigned bitmap_height;
-	unsigned bitmap_bpp;
-
-	unsigned busy_bitmap_offset;
-	unsigned busy_bitmap_length;
-
-	unsigned fail_bitmap_offset;
-	unsigned fail_bitmap_length;
-};
-
-int write_misc(unsigned page_offset, void *buf, unsigned size);
-
-int get_recovery_message(struct recovery_message *out);
-int set_recovery_message(const struct recovery_message *in);
-
-int read_update_header_for_bootloader(struct update_header *header);
-int update_firmware_image (struct update_header *header, char *name);
-
-int recovery_init (void);
-
-bool get_ffbm(char *ffbm, unsigned size);
-
-extern unsigned boot_into_recovery;
+void dload_util_write_cookie(uint32_t target_dload_mode_addr);
 
 #endif
