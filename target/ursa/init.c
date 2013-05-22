@@ -373,6 +373,25 @@ void reboot_device(unsigned reboot_reason)
 	dprintf(CRITICAL, "Rebooting failed\n");
 }
 
+#define PARAMETER_OVERRIDE_C 0x82
+/* Do URSA specific usb initialization */
+void target_usb_init(void)
+{
+	uint32_t boardrev = board_hardware_version();
+	switch (boardrev)
+	{
+	case BOARD_REVISION_P1:
+	case BOARD_REVISION_P0_5:
+		/* set PARAMETER_OVERRIDE_C register value to 0x2b */
+		ulpi_write(0x2b, PARAMETER_OVERRIDE_C);
+		break;
+
+	default:
+		/* Board version is invalid or no need for special USB init work */
+		break;
+	}
+}
+
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
 {
