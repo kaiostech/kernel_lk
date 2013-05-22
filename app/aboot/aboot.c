@@ -1705,6 +1705,7 @@ do_mmc_verify(unsigned long long data_addr, unsigned char *verify_buf, unsigned 
 
 						dprintf(SPEW, "Read:   %02x %02x %02x %02x\n", v[i], v[i+1], v[i+2], v[i+3] );
 						dprintf(SPEW, "Expect: %02x %02x %02x %02x\n", b[i], b[i+1], b[i+2], b[i+3] );
+						break;
 					}
 				}
 			}
