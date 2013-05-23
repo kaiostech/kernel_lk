@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -224,12 +224,16 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 	if (ret)
 		goto msm_display_init_out;
 
+	if (pdata->update_panel_info)
+		pdata->update_panel_info(pdata);
+
 	ret = msm_fb_alloc(&(panel->fb));
 	if (ret)
 		goto msm_display_init_out;
 
 	fbcon_setup(&(panel->fb));
 	display_image_on_screen();
+
 	ret = msm_display_config();
 	if (ret)
 		goto msm_display_init_out;
