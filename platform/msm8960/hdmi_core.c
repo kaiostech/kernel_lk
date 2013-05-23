@@ -81,7 +81,7 @@ static unsigned hdmi_pll_on;
 
 void hdmi_msm_init_phy()
 {
-	dprintf(INFO, "phy init\n");
+	dprintf(SPEW, "phy init\n");
 	uint32_t offset;
 
 	writel(0x1B, HDMI_PHY_REG_0);
@@ -253,6 +253,8 @@ void hdmi_pll_enable(void)
 	writel(val, HDMI_PHY_PLL_PWRDN_B);
 	writel(0x80, HDMI_PHY_REG_2);
 
+	udelay(350);
+
 	timeout_count = 1000;
 	while (!(readl(HDMI_PHY_PLL_STATUS0) & BIT(0)) &&
 			timeout_count && pll_lock_retry) {
@@ -298,7 +300,7 @@ void hdmi_pll_enable(void)
 }
 
 
-int hdmi_dtv_on()
+int hdmi_dtv_on(uint32_t rate)
 {
 	uint32_t ahb_en_reg = readl(AHB_EN_REG);
 	uint32_t ahb_enabled = ahb_en_reg & BIT(4);
@@ -314,34 +316,152 @@ int hdmi_dtv_on()
 	if (hdmi_pll_on)
 		hdmi_pll_disable();
 
-	/* 1080p60/1080p50 case */
-	writel(0x2, HDMI_PHY_PLL_REFCLK_CFG);
-	writel(0x2, HDMI_PHY_PLL_CHRG_PUMP_CFG);
-	writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
-	writel(0x33, HDMI_PHY_PLL_LOOP_FLT_CFG1);
-	writel(0x2C, HDMI_PHY_PLL_IDAC_ADJ_CFG);
-	writel(0x6, HDMI_PHY_PLL_I_VI_KVCO_CFG);
-	writel(0xA, HDMI_PHY_PLL_PWRDN_B);
-	writel(0x76, HDMI_PHY_PLL_SDM_CFG0);
-	writel(0x01, HDMI_PHY_PLL_SDM_CFG1);
-	writel(0x4C, HDMI_PHY_PLL_SDM_CFG2);
-	writel(0xC0, HDMI_PHY_PLL_SDM_CFG3);
-	writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
-	writel(0x9A, HDMI_PHY_PLL_SSC_CFG0);
-	writel(0x00, HDMI_PHY_PLL_SSC_CFG1);
-	writel(0x00, HDMI_PHY_PLL_SSC_CFG2);
-	writel(0x00, HDMI_PHY_PLL_SSC_CFG3);
-	writel(0x10, HDMI_PHY_PLL_LOCKDET_CFG0);
-	writel(0x1A, HDMI_PHY_PLL_LOCKDET_CFG1);
-	writel(0x0D, HDMI_PHY_PLL_LOCKDET_CFG2);
-	writel(0xe6, HDMI_PHY_PLL_VCOCAL_CFG0);
-	writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
-	writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
-	writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG3);
-	writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
-	writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
-	writel(0x33, HDMI_PHY_PLL_VCOCAL_CFG6);
-	writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG7);
+	switch (rate) {
+	case 27030000:
+		/* 480p60/480i60 case */
+		writel(0xA, HDMI_PHY_PLL_PWRDN_B);
+		writel(0x38, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x2, HDMI_PHY_PLL_CHRG_PUMP_CFG);
+		writel(0x20, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0xFF, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0x4E, HDMI_PHY_PLL_SDM_CFG1);
+		writel(0xD7, HDMI_PHY_PLL_SDM_CFG2);
+		writel(0x03, HDMI_PHY_PLL_SDM_CFG3);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
+		writel(0x2A, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x03, HDMI_PHY_PLL_VCOCAL_CFG1);
+		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG3);
+		writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
+		writel(0x33, HDMI_PHY_PLL_VCOCAL_CFG6);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG7);
+	break;
+
+	case 25200000:
+		/* 640x480p60 */
+		writel(0x32, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x2, HDMI_PHY_PLL_CHRG_PUMP_CFG);
+		writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0x33, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0x2C, HDMI_PHY_PLL_IDAC_ADJ_CFG);
+		writel(0x6, HDMI_PHY_PLL_I_VI_KVCO_CFG);
+		writel(0xA, HDMI_PHY_PLL_PWRDN_B);
+		writel(0x77, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0x4C, HDMI_PHY_PLL_SDM_CFG1);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG2);
+		writel(0xC0, HDMI_PHY_PLL_SDM_CFG3);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
+		writel(0x9A, HDMI_PHY_PLL_SSC_CFG0);
+		writel(0x00, HDMI_PHY_PLL_SSC_CFG1);
+		writel(0x00, HDMI_PHY_PLL_SSC_CFG2);
+		writel(0x20, HDMI_PHY_PLL_SSC_CFG3);
+		writel(0x10, HDMI_PHY_PLL_LOCKDET_CFG0);
+		writel(0x1A, HDMI_PHY_PLL_LOCKDET_CFG1);
+		writel(0x0D, HDMI_PHY_PLL_LOCKDET_CFG2);
+		writel(0xF4, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
+		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG3);
+		writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
+		writel(0x33, HDMI_PHY_PLL_VCOCAL_CFG6);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG7);
+	break;
+
+	case 27000000:
+		/* 576p50/576i50 case */
+		writel(0x32, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x2, HDMI_PHY_PLL_CHRG_PUMP_CFG);
+		writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0x33, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0x2C, HDMI_PHY_PLL_IDAC_ADJ_CFG);
+		writel(0x6, HDMI_PHY_PLL_I_VI_KVCO_CFG);
+		writel(0xA, HDMI_PHY_PLL_PWRDN_B);
+		writel(0x7B, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0x01, HDMI_PHY_PLL_SDM_CFG1);
+		writel(0x4C, HDMI_PHY_PLL_SDM_CFG2);
+		writel(0xC0, HDMI_PHY_PLL_SDM_CFG3);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
+		writel(0x9A, HDMI_PHY_PLL_SSC_CFG0);
+		writel(0x00, HDMI_PHY_PLL_SSC_CFG1);
+		writel(0x00, HDMI_PHY_PLL_SSC_CFG2);
+		writel(0x00, HDMI_PHY_PLL_SSC_CFG3);
+		writel(0x10, HDMI_PHY_PLL_LOCKDET_CFG0);
+		writel(0x1A, HDMI_PHY_PLL_LOCKDET_CFG1);
+		writel(0x0D, HDMI_PHY_PLL_LOCKDET_CFG2);
+		writel(0x2a, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x03, HDMI_PHY_PLL_VCOCAL_CFG1);
+		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG3);
+		writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
+		writel(0x33, HDMI_PHY_PLL_VCOCAL_CFG6);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG7);
+	break;
+
+	case 74250000:
+		/* 720p60/720p50/1080i60/1080i50
+		 * 1080p24/1080p30/1080p25 case
+		 */
+		writel(0xA, HDMI_PHY_PLL_PWRDN_B);
+		writel(0x12, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0x33, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0x76, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0xE6, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
+		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
+	break;
+
+	case 108000000:
+		writel(0x08, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x21, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0xF9, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0x1C, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
+		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
+		writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
+		writel(0x49, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0x49, HDMI_PHY_PLL_SDM_CFG1);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG2);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG3);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
+	break;
+
+	case 148500000:
+		/* 1080p60/1080p50 case */
+		writel(0x2, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x2, HDMI_PHY_PLL_CHRG_PUMP_CFG);
+		writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0x33, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0x2C, HDMI_PHY_PLL_IDAC_ADJ_CFG);
+		writel(0x6, HDMI_PHY_PLL_I_VI_KVCO_CFG);
+		writel(0xA, HDMI_PHY_PLL_PWRDN_B);
+		writel(0x76, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0x01, HDMI_PHY_PLL_SDM_CFG1);
+		writel(0x4C, HDMI_PHY_PLL_SDM_CFG2);
+		writel(0xC0, HDMI_PHY_PLL_SDM_CFG3);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
+		writel(0x9A, HDMI_PHY_PLL_SSC_CFG0);
+		writel(0x00, HDMI_PHY_PLL_SSC_CFG1);
+		writel(0x00, HDMI_PHY_PLL_SSC_CFG2);
+		writel(0x00, HDMI_PHY_PLL_SSC_CFG3);
+		writel(0x10, HDMI_PHY_PLL_LOCKDET_CFG0);
+		writel(0x1A, HDMI_PHY_PLL_LOCKDET_CFG1);
+		writel(0x0D, HDMI_PHY_PLL_LOCKDET_CFG2);
+		writel(0xe6, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
+		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG3);
+		writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
+		writel(0x33, HDMI_PHY_PLL_VCOCAL_CFG6);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG7);
+	break;
+	}
 
 	udelay(10);
 
@@ -365,7 +485,7 @@ int hdmi_dtv_on()
 	ns_val &= ~BIT(7);
 	writel(ns_val, TV_NS_REG);
 
-	// confiure hdmi_ref clk to run @ 148.5 MHz
+	// confiure hdmi_ref clk
 	val = readl(MISC_CC2_REG);
 	val |= BIT(11);
 	writel(val, MISC_CC2_REG);

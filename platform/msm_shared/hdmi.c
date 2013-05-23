@@ -37,18 +37,166 @@
 #define MDP4_RGB_OFF            0x10000
 #define DBC_START_OFFSET	4
 #define SHORT_VIDEO_DESCRIPTOR	2
+#define HDMI_MSM_BPP		24
 
-struct hdmi_disp_mode_timing_type hdmi_timing_default = {
-	.height         = 1080,
-	.hsync_porch_fp = 88,
-	.hsync_width    = 44,
-	.hsync_porch_bp = 148,
-	.width          = 1920,
-	.vsync_porch_fp = 4,
-	.vsync_width    = 5,
-	.vsync_porch_bp = 36,
-	.bpp            = 24,
+/* all video formats defined by CEA 861D */
+#define HDMI_VFRMT_UNKNOWN		0
+#define HDMI_VFRMT_640x480p60_4_3	1
+#define HDMI_VFRMT_720x480p60_4_3	2
+#define HDMI_VFRMT_720x480p60_16_9	3
+#define HDMI_VFRMT_1280x720p60_16_9	4
+#define HDMI_VFRMT_1920x1080i60_16_9	5
+#define HDMI_VFRMT_720x480i60_4_3	6
+#define HDMI_VFRMT_1440x480i60_4_3	HDMI_VFRMT_720x480i60_4_3
+#define HDMI_VFRMT_720x480i60_16_9	7
+#define HDMI_VFRMT_1440x480i60_16_9	HDMI_VFRMT_720x480i60_16_9
+#define HDMI_VFRMT_720x240p60_4_3	8
+#define HDMI_VFRMT_1440x240p60_4_3	HDMI_VFRMT_720x240p60_4_3
+#define HDMI_VFRMT_720x240p60_16_9	9
+#define HDMI_VFRMT_1440x240p60_16_9	HDMI_VFRMT_720x240p60_16_9
+#define HDMI_VFRMT_2880x480i60_4_3	10
+#define HDMI_VFRMT_2880x480i60_16_9	11
+#define HDMI_VFRMT_2880x240p60_4_3	12
+#define HDMI_VFRMT_2880x240p60_16_9	13
+#define HDMI_VFRMT_1440x480p60_4_3	14
+#define HDMI_VFRMT_1440x480p60_16_9	15
+#define HDMI_VFRMT_1920x1080p60_16_9	16
+#define HDMI_VFRMT_720x576p50_4_3	17
+#define HDMI_VFRMT_720x576p50_16_9	18
+#define HDMI_VFRMT_1280x720p50_16_9	19
+#define HDMI_VFRMT_1920x1080i50_16_9	20
+#define HDMI_VFRMT_720x576i50_4_3	21
+#define HDMI_VFRMT_1440x576i50_4_3	HDMI_VFRMT_720x576i50_4_3
+#define HDMI_VFRMT_720x576i50_16_9	22
+#define HDMI_VFRMT_1440x576i50_16_9	HDMI_VFRMT_720x576i50_16_9
+#define HDMI_VFRMT_720x288p50_4_3	23
+#define HDMI_VFRMT_1440x288p50_4_3	HDMI_VFRMT_720x288p50_4_3
+#define HDMI_VFRMT_720x288p50_16_9	24
+#define HDMI_VFRMT_1440x288p50_16_9	HDMI_VFRMT_720x288p50_16_9
+#define HDMI_VFRMT_2880x576i50_4_3	25
+#define HDMI_VFRMT_2880x576i50_16_9	26
+#define HDMI_VFRMT_2880x288p50_4_3	27
+#define HDMI_VFRMT_2880x288p50_16_9	28
+#define HDMI_VFRMT_1440x576p50_4_3	29
+#define HDMI_VFRMT_1440x576p50_16_9	30
+#define HDMI_VFRMT_1920x1080p50_16_9	31
+#define HDMI_VFRMT_1920x1080p24_16_9	32
+#define HDMI_VFRMT_1920x1080p25_16_9	33
+#define HDMI_VFRMT_1920x1080p30_16_9	34
+#define HDMI_VFRMT_2880x480p60_4_3	35
+#define HDMI_VFRMT_2880x480p60_16_9	36
+#define HDMI_VFRMT_2880x576p50_4_3	37
+#define HDMI_VFRMT_2880x576p50_16_9	38
+#define HDMI_VFRMT_1920x1250i50_16_9	39
+#define HDMI_VFRMT_1920x1080i100_16_9	40
+#define HDMI_VFRMT_1280x720p100_16_9	41
+#define HDMI_VFRMT_720x576p100_4_3	42
+#define HDMI_VFRMT_720x576p100_16_9	43
+#define HDMI_VFRMT_720x576i100_4_3	44
+#define HDMI_VFRMT_1440x576i100_4_3	HDMI_VFRMT_720x576i100_4_3
+#define HDMI_VFRMT_720x576i100_16_9	45
+#define HDMI_VFRMT_1440x576i100_16_9	HDMI_VFRMT_720x576i100_16_9
+#define HDMI_VFRMT_1920x1080i120_16_9	46
+#define HDMI_VFRMT_1280x720p120_16_9	47
+#define HDMI_VFRMT_720x480p120_4_3	48
+#define HDMI_VFRMT_720x480p120_16_9	49
+#define HDMI_VFRMT_720x480i120_4_3	50
+#define HDMI_VFRMT_1440x480i120_4_3	HDMI_VFRMT_720x480i120_4_3
+#define HDMI_VFRMT_720x480i120_16_9	51
+#define HDMI_VFRMT_1440x480i120_16_9	HDMI_VFRMT_720x480i120_16_9
+#define HDMI_VFRMT_720x576p200_4_3	52
+#define HDMI_VFRMT_720x576p200_16_9	53
+#define HDMI_VFRMT_720x576i200_4_3	54
+#define HDMI_VFRMT_1440x576i200_4_3	HDMI_VFRMT_720x576i200_4_3
+#define HDMI_VFRMT_720x576i200_16_9	55
+#define HDMI_VFRMT_1440x576i200_16_9	HDMI_VFRMT_720x576i200_16_9
+#define HDMI_VFRMT_720x480p240_4_3	56
+#define HDMI_VFRMT_720x480p240_16_9	57
+#define HDMI_VFRMT_720x480i240_4_3	58
+#define HDMI_VFRMT_1440x480i240_4_3	HDMI_VFRMT_720x480i240_4_3
+#define HDMI_VFRMT_720x480i240_16_9	59
+#define HDMI_VFRMT_1440x480i240_16_9	HDMI_VFRMT_720x480i240_16_9
+#define HDMI_VFRMT_1280x720p24_16_9	60
+#define HDMI_VFRMT_1280x720p25_16_9	61
+#define HDMI_VFRMT_1280x720p30_16_9	62
+#define HDMI_VFRMT_1920x1080p120_16_9	63
+#define HDMI_VFRMT_1920x1080p100_16_9	64
+/* Video Identification Codes from 65-127 are reserved for the future */
+#define HDMI_VFRMT_END			127
+
+struct msm_hdmi_mode_timing_info {
+	uint32_t	video_format;
+	uint32_t	active_h;
+	uint32_t	front_porch_h;
+	uint32_t	pulse_width_h;
+	uint32_t	back_porch_h;
+	uint32_t	active_low_h;
+	uint32_t	active_v;
+	uint32_t	front_porch_v;
+	uint32_t	pulse_width_v;
+	uint32_t	back_porch_v;
+	uint32_t	active_low_v;
+	/* Must divide by 1000 to get the actual frequency in MHZ */
+	uint32_t	pixel_freq;
+	/* Must divide by 1000 to get the actual frequency in HZ */
+	uint32_t	refresh_rate;
 };
+
+static const struct msm_hdmi_mode_timing_info timings_db[HDMI_VFRMT_END] =
+{
+	[HDMI_VFRMT_640x480p60_4_3] = {HDMI_VFRMT_640x480p60_4_3,
+	    640, 16, 96, 48, true, 480, 10, 2, 33, true, 25200, 60000},
+
+	[HDMI_VFRMT_720x480p60_4_3] = {HDMI_VFRMT_720x480p60_4_3,
+	    720, 16, 62, 60, true, 480, 9, 6, 30, true, 27030, 60000},
+
+	[HDMI_VFRMT_720x480p60_16_9] = {HDMI_VFRMT_720x480p60_16_9,
+	    720, 16, 62, 60, true, 480, 9, 6, 30, true, 27030, 60000},
+
+	[HDMI_VFRMT_1280x720p60_16_9] = {HDMI_VFRMT_1280x720p60_16_9,
+	    1280, 110, 40, 220, false, 720, 5, 5, 20, false, 74250, 60000},
+
+	[HDMI_VFRMT_1920x1080i60_16_9] = {HDMI_VFRMT_1920x1080i60_16_9,
+	    1920, 88, 44, 148, false, 540, 2, 5, 5, false, 74250, 60000},
+
+	[HDMI_VFRMT_1440x480i60_4_3] = {HDMI_VFRMT_1440x480i60_4_3,
+	    1440, 38, 124, 114, true, 240, 4, 3, 15, true, 27000, 60000},
+
+	[HDMI_VFRMT_1440x480i60_16_9] = {HDMI_VFRMT_1440x480i60_16_9,
+	    1440, 38, 124, 114, true, 240, 4, 3, 15, true, 27000, 60000},
+
+	[HDMI_VFRMT_1920x1080p60_16_9] = {HDMI_VFRMT_1920x1080p60_16_9,
+	    1920, 88, 44, 148, false, 1080, 4, 5, 36, false, 148500, 60000},
+
+	[HDMI_VFRMT_720x576p50_4_3] = {HDMI_VFRMT_720x576p50_4_3,
+	    720, 12, 64, 68, true, 576,  5, 5, 39, true, 27000, 50000},
+
+	[HDMI_VFRMT_720x576p50_16_9] = {HDMI_VFRMT_720x576p50_16_9,
+	    720, 12, 64, 68, true, 576,  5, 5, 39, true, 27000, 50000},
+
+	[HDMI_VFRMT_1280x720p50_16_9] = {HDMI_VFRMT_1280x720p50_16_9,
+	    1280, 440, 40, 220, false, 720, 5, 5, 20, false, 74250, 50000},
+
+	[HDMI_VFRMT_1440x576i50_4_3] = {HDMI_VFRMT_1440x576i50_4_3,
+	    1440, 24, 126, 138, true, 288, 2, 3, 19, true, 27000, 50000},
+
+	[HDMI_VFRMT_1440x576i50_16_9] = {HDMI_VFRMT_1440x576i50_16_9,
+	    1440, 24, 126, 138, true, 288, 2, 3, 19, true, 27000, 50000},
+
+	[HDMI_VFRMT_1920x1080p50_16_9] = {HDMI_VFRMT_1920x1080p50_16_9,
+	    1920, 528, 44, 148, false, 1080, 4, 5, 36, false, 148500, 50000},
+
+	[HDMI_VFRMT_1920x1080p24_16_9] = {HDMI_VFRMT_1920x1080p24_16_9,
+	    1920, 638, 44, 148, false, 1080, 4, 5, 36, false, 74250, 24000},
+
+	[HDMI_VFRMT_1920x1080p25_16_9] = {HDMI_VFRMT_1920x1080p25_16_9,
+	    1920, 528, 44, 148, false, 1080, 4, 5, 36, false, 74250, 25000},
+
+	[HDMI_VFRMT_1920x1080p30_16_9] = {HDMI_VFRMT_1920x1080p30_16_9,
+	    1920, 88, 44, 148, false, 1080, 4, 5, 36, false, 74250, 30000}
+};
+
+static struct msm_hdmi_mode_timing_info hdmi_msm_res_timing;
 
 static uint8_t hdmi_msm_avi_iframe_lut[][16] = {
 /*	480p60	480i60	576p50	576i50	720p60	 720p50	1080p60	1080i60	1080p50
@@ -93,14 +241,10 @@ void hdmi_msm_set_mode(int on)
 	}
 }
 
-struct hdmi_disp_mode_timing_type *hdmi_common_init_panel_info()
-{
-	return &hdmi_timing_default;
-}
-
+static void *hdmi_addr_base = NULL;
 void hdmi_set_fb_addr(void *addr)
 {
-	hdmi_timing_default.base = addr;
+	hdmi_addr_base = addr;
 }
 
 void hdmi_msm_read_edid(uint32_t dev_addr, uint32_t offset, uint8_t *data_buf,
@@ -192,7 +336,7 @@ const uint8_t *hdmi_edid_find_block(const uint8_t *in_buf,
 		uint8_t block_len = in_buf[offset] & 0x1F;
 		if ((in_buf[offset] >> 5) == type) {
 			*len = block_len;
-			dprintf(INFO,
+			dprintf(SPEW,
 				"EDID: block=%d found @ %d with length=%d\n",
 				type, offset, block_len);
 			return in_buf + offset;
@@ -213,9 +357,13 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 	uint8_t *b			= edid_buf;
 	const uint8_t *svd		= NULL;
 	struct msm_panel_info *pinfo	= NULL;
+	uint32_t preferred_format	= 0;
 	uint32_t video_format;
 	uint8_t len, i;
 	int ndx;
+
+	if (!pdata)
+		return;
 
 	pinfo = &pdata->panel_info;
 
@@ -223,7 +371,7 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 			   block_size, 5, "EDID");
 
 	for (ndx = 0; ndx < block_size; ndx += 16)
-		dprintf(INFO, "EDID[%02x-%02x] %02x %02x %02x %02x  "
+		dprintf(SPEW, "EDID[%02x-%02x] %02x %02x %02x %02x  "
 			"%02x %02x %02x %02x    %02x %02x %02x %02x  "
 			"%02x %02x %02x %02x\n", ndx, ndx+15,
 			b[ndx+0], b[ndx+1], b[ndx+2], b[ndx+3],
@@ -238,28 +386,65 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 		++svd;
 		for (i = 0; i < len; ++i, ++svd) {
 			video_format = (*svd & 0x7F);
-			dprintf(INFO, "Supported video format = %d\n",
+			dprintf(SPEW, "Supported video format = %d\n",
 				video_format);
+			if (i == 0)
+				preferred_format = video_format;
 		}
+	}
+
+	if (preferred_format) {
+		struct msm_hdmi_mode_timing_info timing =
+			timings_db[preferred_format];
+
+		hdmi_msm_res_timing = timing;
+
+		dprintf(INFO, "%s: preferred format=%d\n",
+			__func__, hdmi_msm_res_timing.video_format);
+
+		pinfo->xres     = hdmi_msm_res_timing.active_h;
+		pinfo->yres     = hdmi_msm_res_timing.active_v;
+		pinfo->clk_rate = hdmi_msm_res_timing.pixel_freq * 1000;
+
+		pinfo->hdmi.h_back_porch  = hdmi_msm_res_timing.back_porch_h;
+		pinfo->hdmi.h_front_porch = hdmi_msm_res_timing.front_porch_h;
+		pinfo->hdmi.h_pulse_width = hdmi_msm_res_timing.pulse_width_h;
+		pinfo->hdmi.v_back_porch  = hdmi_msm_res_timing.back_porch_v;
+		pinfo->hdmi.v_front_porch = hdmi_msm_res_timing.front_porch_v;
+		pinfo->hdmi.v_pulse_width = hdmi_msm_res_timing.pulse_width_v;
+
+		pdata->fb.width  =  pinfo->xres;
+		pdata->fb.height =  pinfo->yres;
+		pdata->fb.stride =  pinfo->xres;
 	}
 }
 
 void hdmi_msm_panel_init(struct msm_panel_info *pinfo)
 {
+	struct msm_hdmi_mode_timing_info timing =
+		timings_db[HDMI_VFRMT_1280x720p60_16_9];
+
+
+	hdmi_msm_res_timing = timing;
+
+	dprintf(INFO, "%s: default format=%d\n",
+		__func__, hdmi_msm_res_timing.video_format);
+
 	if (!pinfo)
 		return;
 
-	pinfo->xres = hdmi_timing_default.width;
-	pinfo->yres = hdmi_timing_default.height;
-	pinfo->bpp  = hdmi_timing_default.bpp;
-	pinfo->type = HDMI_PANEL;
+	pinfo->xres     = hdmi_msm_res_timing.active_h;
+	pinfo->yres     = hdmi_msm_res_timing.active_v;
+	pinfo->clk_rate = hdmi_msm_res_timing.pixel_freq * 1000;
+	pinfo->bpp      = HDMI_MSM_BPP;
+	pinfo->type     = HDMI_PANEL;
 
-	pinfo->hdmi.h_back_porch  = hdmi_timing_default.hsync_porch_bp;
-	pinfo->hdmi.h_front_porch = hdmi_timing_default.hsync_porch_fp;
-	pinfo->hdmi.h_pulse_width = hdmi_timing_default.hsync_width;
-	pinfo->hdmi.v_back_porch  = hdmi_timing_default.vsync_porch_bp;
-	pinfo->hdmi.v_front_porch = hdmi_timing_default.vsync_porch_fp;
-	pinfo->hdmi.v_pulse_width = hdmi_timing_default.vsync_width;
+	pinfo->hdmi.h_back_porch  = hdmi_msm_res_timing.back_porch_h;
+	pinfo->hdmi.h_front_porch = hdmi_msm_res_timing.front_porch_h;
+	pinfo->hdmi.h_pulse_width = hdmi_msm_res_timing.pulse_width_h;
+	pinfo->hdmi.v_back_porch  = hdmi_msm_res_timing.back_porch_v;
+	pinfo->hdmi.v_front_porch = hdmi_msm_res_timing.front_porch_v;
+	pinfo->hdmi.v_pulse_width = hdmi_msm_res_timing.pulse_width_v;
 }
 
 void hdmi_frame_ctrl_reg()
@@ -285,27 +470,26 @@ void hdmi_video_setup()
 	uint32_t vsync_active = 0;
 	uint32_t hdmi_frame_ctrl = 0;
 	uint32_t val;
-	struct hdmi_disp_mode_timing_type *hdmi_timing =
-	    hdmi_common_init_panel_info();
+	struct msm_hdmi_mode_timing_info *hdmi_timing = &hdmi_msm_res_timing;
 
-	hsync_total = hdmi_timing->width + hdmi_timing->hsync_porch_fp
-	    + hdmi_timing->hsync_porch_bp + hdmi_timing->hsync_width - 1;
-	vsync_total = hdmi_timing->height + hdmi_timing->vsync_porch_fp
-	    + hdmi_timing->vsync_porch_bp + hdmi_timing->vsync_width - 1;
+	hsync_total = hdmi_timing->active_h + hdmi_timing->front_porch_h
+	    + hdmi_timing->back_porch_h + hdmi_timing->pulse_width_h - 1;
+	vsync_total = hdmi_timing->active_v + hdmi_timing->front_porch_v
+	    + hdmi_timing->back_porch_v + hdmi_timing->pulse_width_v - 1;
 
 	hvsync_total = (vsync_total << 16) & 0x0FFF0000;
 	hvsync_total |= (hsync_total << 0) & 0x00000FFF;
 	writel(hvsync_total, HDMI_TOTAL);
 
-	hsync_start = hdmi_timing->hsync_porch_bp + hdmi_timing->hsync_width;
-	hsync_end = (hsync_total + 1) - hdmi_timing->hsync_porch_fp;
+	hsync_start = hdmi_timing->back_porch_h + hdmi_timing->pulse_width_h;
+	hsync_end = (hsync_total + 1) - hdmi_timing->front_porch_h;
 	hsync_active = (hsync_end << 16) & 0x0FFF0000;
 	hsync_active |= (hsync_start << 0) & 0x00000FFF;
 	writel(hsync_active, HDMI_ACTIVE_HSYNC);
 
 	vsync_start =
-	    hdmi_timing->vsync_porch_bp + hdmi_timing->vsync_width - 1;
-	vsync_end = vsync_total - hdmi_timing->vsync_porch_fp;
+	    hdmi_timing->back_porch_v + hdmi_timing->pulse_width_v - 1;
+	vsync_end = vsync_total - hdmi_timing->front_porch_v;
 	vsync_active = (vsync_end << 16) & 0x0FFF0000;
 	vsync_active |= (vsync_start << 0) & 0x00000FFF;
 	writel(vsync_active, HDMI_ACTIVE_VSYNC);
@@ -323,7 +507,63 @@ void hdmi_msm_avi_info_frame(void)
 	uint32_t sum;
 	uint32_t regVal;
 	uint8_t  i;
-	uint8_t  mode = 6; //HDMI_VFRMT_1920x1080p60_16_9
+	uint8_t  mode;
+
+	switch (hdmi_msm_res_timing.video_format) {
+	case HDMI_VFRMT_720x480p60_4_3:
+		mode = 0;
+		break;
+	case HDMI_VFRMT_720x480i60_16_9:
+		mode = 1;
+		break;
+	case HDMI_VFRMT_720x576p50_16_9:
+		mode = 2;
+		break;
+	case HDMI_VFRMT_720x576i50_16_9:
+		mode = 3;
+		break;
+	case HDMI_VFRMT_1280x720p60_16_9:
+		mode = 4;
+		break;
+	case HDMI_VFRMT_1280x720p50_16_9:
+		mode = 5;
+		break;
+	case HDMI_VFRMT_1920x1080p60_16_9:
+		mode = 6;
+		break;
+	case HDMI_VFRMT_1920x1080i60_16_9:
+		mode = 7;
+		break;
+	case HDMI_VFRMT_1920x1080p50_16_9:
+		mode = 8;
+		break;
+	case HDMI_VFRMT_1920x1080i50_16_9:
+		mode = 9;
+		break;
+	case HDMI_VFRMT_1920x1080p24_16_9:
+		mode = 10;
+		break;
+	case HDMI_VFRMT_1920x1080p30_16_9:
+		mode = 11;
+		break;
+	case HDMI_VFRMT_1920x1080p25_16_9:
+		mode = 12;
+		break;
+	case HDMI_VFRMT_640x480p60_4_3:
+		mode = 13;
+		break;
+	case HDMI_VFRMT_720x480p60_16_9:
+		mode = 14;
+		break;
+	case HDMI_VFRMT_720x576p50_4_3:
+		mode = 15;
+		break;
+	default:
+		dprintf("%s: mode %d not supported\n", __func__,
+			hdmi_msm_res_timing.video_format);
+		return;
+	}
+
 
 	/* InfoFrame Type = 82 */
 	aviInfoFrame[0]  = 0x82;
@@ -475,7 +715,7 @@ int hdmi_dtv_init()
 	uint32_t data_en_polarity;
 	uint32_t ctrl_polarity;
 	uint32_t dtv_border_clr = 0;
-	uint32_t dtv_underflow_clr = 0;
+	uint32_t dtv_underflow_clr = 0xff;
 	uint32_t active_v_start = 0;
 	uint32_t active_v_end = 0;
 	uint32_t dtv_hsync_skew = 0;
@@ -484,13 +724,13 @@ int hdmi_dtv_init()
 	unsigned char *overlay_base;
 	uint32_t val;
 
-	struct hdmi_disp_mode_timing_type *timing =
-			hdmi_common_init_panel_info();
+	struct msm_hdmi_mode_timing_info *timing = &hdmi_msm_res_timing;
 
 	// MDP E config
-	writel((unsigned)timing->base, MDP_BASE + 0xb0008);	//FB Address
-	writel(((timing->height << 16) | timing->width), MDP_BASE + 0xb0004);
-	writel((timing->width * timing->bpp / 8), MDP_BASE + 0xb000c);
+	writel((unsigned)hdmi_addr_base, MDP_BASE + 0xb0008);	//FB Address
+	writel(((timing->active_v << 16) | timing->active_h),
+		MDP_BASE + 0xb0004);
+	writel((timing->active_h * HDMI_MSM_BPP / 8), MDP_BASE + 0xb000c);
 	writel(0, MDP_BASE + 0xb0010);
 
 	writel(DMA_PACK_PATTERN_RGB | DMA_DSTC0G_8BITS | DMA_DSTC1B_8BITS |
@@ -502,12 +742,12 @@ int hdmi_dtv_init()
 	// overlay rgb setup RGB2
 	rgb_base = MDP_BASE + MDP4_RGB_BASE;
 	rgb_base += (MDP4_RGB_OFF * 1);
-	writel(((timing->height << 16) | timing->width), rgb_base + 0x0000);
+	writel(((timing->active_v << 16) | timing->active_h), rgb_base + 0x0000);
 	writel(0x0, rgb_base + 0x0004);
-	writel(((timing->height << 16) | timing->width), rgb_base + 0x0008);
+	writel(((timing->active_v << 16) | timing->active_h), rgb_base + 0x0008);
 	writel(0x0, rgb_base + 0x000c);
-	writel(timing->base, rgb_base + 0x0010);	//FB address
-	writel((timing->width * timing->bpp / 8), rgb_base + 0x0040);
+	writel(hdmi_addr_base, rgb_base + 0x0010);	//FB address
+	writel((timing->active_h * HDMI_MSM_BPP / 8), rgb_base + 0x0040);
 	writel(0x2443F, rgb_base + 0x0050);	//format
 	writel(0x20001, rgb_base + 0x0054);	//pattern
 	writel(0x0, rgb_base + 0x0058);
@@ -531,30 +771,30 @@ int hdmi_dtv_init()
 
 	writel(0x0, MDP_BASE + 0x0038);	//EXternal interface select
 
-	data = ((timing->height << 16) | timing->width);
+	data = ((timing->active_v << 16) | timing->active_h);
 	writel(data, overlay_base + 0x0008);
-	writel(timing->base, overlay_base + 0x000c);
-	writel((timing->width * timing->bpp / 8), overlay_base + 0x0010);
+	writel(hdmi_addr_base, overlay_base + 0x000c);
+	writel((timing->active_h * HDMI_MSM_BPP / 8), overlay_base + 0x0010);
 	writel(0x10, overlay_base + 0x104);
 	writel(0x10, overlay_base + 0x124);
 	writel(0x10, overlay_base + 0x144);
 	writel(0x01, overlay_base + 0x0004);	/* directout */
 
 	hsync_period =
-	    timing->hsync_width + timing->hsync_porch_bp + timing->width +
-	    timing->hsync_porch_fp;
-	hsync_ctrl = (hsync_period << 16) | timing->hsync_width;
-	hsync_start_x = timing->hsync_width + timing->hsync_porch_bp;
-	hsync_end_x = hsync_period - timing->hsync_porch_fp - 1;
+	    timing->pulse_width_h + timing->back_porch_h + timing->active_h +
+	    timing->front_porch_h;
+	hsync_ctrl = (hsync_period << 16) | timing->pulse_width_h;
+	hsync_start_x = timing->pulse_width_h + timing->back_porch_h;
+	hsync_end_x = hsync_period - timing->front_porch_h - 1;
 	display_hctl = (hsync_end_x << 16) | hsync_start_x;
 
 	vsync_period =
-	    (timing->vsync_width + timing->vsync_porch_bp + timing->height +
-	     timing->vsync_porch_fp) * hsync_period;
+	    (timing->pulse_width_v + timing->back_porch_v + timing->active_v +
+	     timing->front_porch_v) * hsync_period;
 	display_v_start =
-	    (timing->vsync_width + timing->vsync_porch_bp) * hsync_period;
+	    (timing->pulse_width_v + timing->back_porch_v) * hsync_period;
 	display_v_end =
-	    vsync_period - (timing->vsync_porch_bp * hsync_period) - 1;
+	    vsync_period - (timing->front_porch_v * hsync_period) - 1;
 
 	dtv_underflow_clr |= 0x80000000;
 	hsync_polarity     = 0;
@@ -563,20 +803,20 @@ int hdmi_dtv_init()
 	ctrl_polarity      =
 	    (data_en_polarity << 2) | (vsync_polarity << 1) | (hsync_polarity);
 
-	writel(hsync_ctrl,      MDP_BASE + DTV_BASE + 0x4);
-	writel(vsync_period,    MDP_BASE + DTV_BASE + 0x8);
-	writel(timing->vsync_width * hsync_period,
-	                        MDP_BASE + DTV_BASE + 0xc);
-	writel(display_hctl,    MDP_BASE + DTV_BASE + 0x18);
-	writel(display_v_start, MDP_BASE + DTV_BASE + 0x1c);
-	writel(0x25a197,        MDP_BASE + DTV_BASE + 0x20);
-	writel(dtv_border_clr,  MDP_BASE + DTV_BASE + 0x40);
-	writel(0x8fffffff,      MDP_BASE + DTV_BASE + 0x44);
-	writel(dtv_hsync_skew,  MDP_BASE + DTV_BASE + 0x48);
-	writel(ctrl_polarity,   MDP_BASE + DTV_BASE + 0x50);
-	writel(0x0,             MDP_BASE + DTV_BASE + 0x2c);
-	writel(active_v_start,  MDP_BASE + DTV_BASE + 0x30);
-	writel(active_v_end,    MDP_BASE + DTV_BASE + 0x38);
+	writel(hsync_ctrl,		MDP_BASE + DTV_BASE + 0x4);
+	writel(vsync_period,		MDP_BASE + DTV_BASE + 0x8);
+	writel(timing->pulse_width_v * hsync_period,
+					MDP_BASE + DTV_BASE + 0xc);
+	writel(display_hctl,		MDP_BASE + DTV_BASE + 0x18);
+	writel(display_v_start,		MDP_BASE + DTV_BASE + 0x1c);
+	writel(display_v_end,		MDP_BASE + DTV_BASE + 0x20);
+	writel(dtv_border_clr,		MDP_BASE + DTV_BASE + 0x40);
+	writel(dtv_underflow_clr,	MDP_BASE + DTV_BASE + 0x44);
+	writel(dtv_hsync_skew,		MDP_BASE + DTV_BASE + 0x48);
+	writel(ctrl_polarity,		MDP_BASE + DTV_BASE + 0x50);
+	writel(0x0,			MDP_BASE + DTV_BASE + 0x2c);
+	writel(active_v_start,		MDP_BASE + DTV_BASE + 0x30);
+	writel(active_v_end,		MDP_BASE + DTV_BASE + 0x38);
 
 	/* Enable DTV block */
 	writel(0x01, MDP_BASE + DTV_BASE);
