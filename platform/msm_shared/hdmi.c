@@ -35,6 +35,8 @@
 #define MDP4_OVERLAYPROC1_BASE  0x18000
 #define MDP4_RGB_BASE           0x40000
 #define MDP4_RGB_OFF            0x10000
+#define DBC_START_OFFSET	4
+#define SHORT_VIDEO_DESCRIPTOR	2
 
 struct hdmi_disp_mode_timing_type hdmi_timing_default = {
 	.height         = 1080,
@@ -99,6 +101,147 @@ struct hdmi_disp_mode_timing_type *hdmi_common_init_panel_info()
 void hdmi_set_fb_addr(void *addr)
 {
 	hdmi_timing_default.base = addr;
+}
+
+void hdmi_msm_read_edid(uint32_t dev_addr, uint32_t offset, uint8_t *data_buf,
+			uint32_t data_len, int retry, const char *what)
+{
+	uint32_t reg_val, ndx;
+
+	/* INIT DDC */
+	writel((10 << 16) | (2 << 0),	MSM_HDMI_BASE + 0x0220);
+	writel(0xff000000,		MSM_HDMI_BASE + 0x0224);
+	writel((1 << 16) | (27 << 0),	MSM_HDMI_BASE + 0x027C);
+
+again:
+
+	/* Reset DDC interrupts */
+	writel((1 << 2) | (1 << 1), 0x0214);
+
+	/* Ensure Device Address has LSB set to 0 to indicate Slave addr read */
+	dev_addr &= 0xFE;
+
+	/* DDC read configurations */
+	writel((0x1UL << 31) | (dev_addr << 8),	MSM_HDMI_BASE + 0x0238);
+	writel(offset << 8,			MSM_HDMI_BASE + 0x0238);
+	writel((dev_addr | 1) << 8,		MSM_HDMI_BASE + 0x0238);
+	writel((1 << 12) | (1 << 16),		MSM_HDMI_BASE + 0x0228);
+	writel(1 | (1 << 12) | (1 << 13) | (data_len << 16),
+						MSM_HDMI_BASE + 0x022C);
+
+	/* Kick off DDC read */
+	writel( (1 << 0) | (1 << 20), MSM_HDMI_BASE + 0x020C);
+
+	/* wait 500 msec for read to complete */
+	mdelay(500);
+
+	/* Clear interrupts */
+	writel(0x2, MSM_HDMI_BASE + 0x0214);
+
+	/* Read DDC status */
+	reg_val = readl(MSM_HDMI_BASE + 0x0218);
+	reg_val &= 0x00001000 | 0x00002000 | 0x00004000 | 0x00008000;
+
+	/* Check if any NACK occurred */
+	if (reg_val) {
+		writel(BIT(3), MSM_HDMI_BASE + 0x020C); /* SW_STATUS_RESET */
+		writel(BIT(1), MSM_HDMI_BASE + 0x020C); /* SOFT_RESET */
+		if (retry-- > 0) {
+			dprintf(CRITICAL, "Error EDID read, retry %d\n", retry);
+			goto again;
+		}
+
+		dprintf(CRITICAL, "Error EDID read, stopping\n");
+
+		return;
+	}
+
+	/* Write this data to DDC buffer */
+	writel(0x1 | (3 << 16) | (1 << 31), MSM_HDMI_BASE + 0x0238);
+
+	/* Discard first byte */
+	readl(MSM_HDMI_BASE + 0x0238);
+
+	for (ndx = 0; ndx < data_len; ++ndx) {
+		reg_val = readl(MSM_HDMI_BASE + 0x0238);
+		data_buf[ndx] = (uint8_t) ((reg_val & 0x0000FF00) >> 8);
+	}
+
+	dprintf(INFO, "%s read success\n", what);
+}
+
+const uint8_t *hdmi_edid_find_block(const uint8_t *in_buf,
+		uint32_t start_offset, uint8_t type, uint8_t *len)
+{
+	/* the start of data block collection, start of Video Data Block */
+	uint32_t offset = start_offset;
+	uint32_t end_dbc_offset = in_buf[2];
+
+	*len = 0;
+
+	/*edid buffer 1, byte 2 being 4 means no non-DTD/Data block collection
+	  present.
+	  edid buffer 1, byte 2 being 0 menas no non-DTD/DATA block collection
+	  present and no DTD data present.*/
+	if ((end_dbc_offset == 0) || (end_dbc_offset == 4)) {
+		dprintf(INFO, "EDID: no DTD or non-DTD data present\n");
+		return NULL;
+	}
+
+	while (offset < end_dbc_offset) {
+		uint8_t block_len = in_buf[offset] & 0x1F;
+		if ((in_buf[offset] >> 5) == type) {
+			*len = block_len;
+			dprintf(INFO,
+				"EDID: block=%d found @ %d with length=%d\n",
+				type, offset, block_len);
+			return in_buf + offset;
+		}
+		offset += 1 + block_len;
+	}
+	dprintf(CRITICAL,
+		"EDID: type=%d block not found in EDID block\n", type);
+
+	return NULL;
+}
+
+void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
+{
+	int block 			= 1;
+	int block_size			= 0x80;
+	uint8_t edid_buf[0x80]		= {0};
+	uint8_t *b			= edid_buf;
+	const uint8_t *svd		= NULL;
+	struct msm_panel_info *pinfo	= NULL;
+	uint32_t video_format;
+	uint8_t len, i;
+	int ndx;
+
+	pinfo = &pdata->panel_info;
+
+	hdmi_msm_read_edid(0xA0, block * block_size, edid_buf,
+			   block_size, 5, "EDID");
+
+	for (ndx = 0; ndx < block_size; ndx += 16)
+		dprintf(INFO, "EDID[%02x-%02x] %02x %02x %02x %02x  "
+			"%02x %02x %02x %02x    %02x %02x %02x %02x  "
+			"%02x %02x %02x %02x\n", ndx, ndx+15,
+			b[ndx+0], b[ndx+1], b[ndx+2], b[ndx+3],
+			b[ndx+4], b[ndx+5], b[ndx+6], b[ndx+7],
+			b[ndx+8], b[ndx+9], b[ndx+10], b[ndx+11],
+			b[ndx+12], b[ndx+13], b[ndx+14], b[ndx+15]);
+
+	svd = hdmi_edid_find_block(edid_buf, DBC_START_OFFSET,
+				   SHORT_VIDEO_DESCRIPTOR, &len);
+
+	if (svd != NULL) {
+		++svd;
+		for (i = 0; i < len; ++i, ++svd) {
+			video_format = (*svd & 0x7F);
+			dprintf(INFO, "Supported video format = %d\n",
+				video_format);
+		}
+	}
 }
 
 void hdmi_msm_panel_init(struct msm_panel_info *pinfo)

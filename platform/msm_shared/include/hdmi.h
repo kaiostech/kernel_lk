@@ -35,6 +35,7 @@
 #include <bits.h>
 #include <dev/fbcon.h>
 #include <target/display.h>
+#include <msm_panel.h>
 
 #define MDP_GET_PACK_PATTERN(a,x,y,z,bit) (((a)<<(bit*3))|((x)<<(bit*2))|((y)<<bit)|(z))
 #define DMA_PACK_ALIGN_LSB 0
@@ -67,6 +68,7 @@ void hdmi_msm_init_phy(void);
 void hdmi_display_shutdown(void);
 void hdmi_msm_reset_core(void);
 void hdmi_set_fb_addr(void *addr);
+void hdmi_update_panel_info(struct msm_fb_panel_data *pdata);
 
 struct hdmi_disp_mode_timing_type {
 	uint32_t height;
