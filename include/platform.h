@@ -23,6 +23,9 @@
 #ifndef __PLATFORM_H
 #define __PLATFORM_H
 
+#define PA(x) platform_get_virt_to_phys_mapping(x)
+#define VA(x) platform_get_phys_to_virt_mapping(x)
+
 time_t current_time(void);
 bigtime_t current_time_hires(void);
 
@@ -34,6 +37,8 @@ void platform_init(void);
 
 /* called by the arch init code to get the platform to set up any mmu mappings it may need */
 void platform_init_mmu_mappings(void);
+addr_t platform_get_virt_to_phys_mapping(addr_t virt_addr);
+addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr);
 
 void display_init(void);
 void display_shutdown(void);
