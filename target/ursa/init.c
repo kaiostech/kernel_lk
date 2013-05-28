@@ -249,6 +249,11 @@ void target_detect(struct board_data *board)
 		board->target = LINUX_MACHTYPE_URSA_P1;
 		break;
 
+	case BOARD_REVISION_P2:
+		board->platform_hw = HW_PLATFORM_URSA_P2;
+		board->target = LINUX_MACHTYPE_URSA_P2;
+		break;
+
 	default:
 		/* Board version is invalid. Will result in boot failure */
 		board->platform_hw = board->target = 0;
