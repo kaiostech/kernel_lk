@@ -131,6 +131,11 @@
 #define MMC_R1_CC_ERROR                           (1 << 20)
 #define MMC_R1_WP_VIOLATION                       (1 << 26)
 #define MMC_R1_ADDR_OUT_OF_RANGE                  (1 << 31)
+#define MMC_R1_WP_ERASE_SKIP                      BIT(15)
+#define MMC_US_PERM_WP_DIS                        BIT(4)
+#define MMC_US_PWR_WP_DIS                         BIT(3)
+#define MMC_US_PERM_WP_EN                         BIT(2)
+#define MMC_US_PWR_WP_EN                          BIT(0)
 
 /* RCA of the card */
 #define MMC_RCA                                   2
@@ -193,6 +198,8 @@
 #define CMD55_APP_CMD                             55
 
 #define MMC_SAVE_TIMING(host, TIMING)              host->timing = TIMING
+
+#define MMC_ADDR_OUT_OF_RANGE(resp)              ((resp >> 31) & 0x01)
 
 /* Can be used to unpack array of upto 32 bits data */
 #define UNPACK_BITS(array, start, len, size_of)           \
@@ -324,6 +331,9 @@ uint32_t mmc_sdhci_erase(struct mmc_device *dev, uint32_t blk_addr, uint64_t len
 uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uint64_t len, uint8_t set_clr);
 /* API: Get the WP status of write protect groups starting at addr */
 uint32_t mmc_get_wp_status(struct mmc_device *dev, uint32_t addr, uint8_t *wp_status);
+<<<<<<< HEAD
 /* API: Put the mmc card in sleep mode */
 void mmc_put_card_to_sleep(struct mmc_device *dev);
+=======
+>>>>>>> fe3e17e... msm_shared: mmc: Add support for erase and WP function
 #endif
