@@ -33,6 +33,7 @@
 #include <mdp4.h>
 #include <target/display.h>
 #include <target/board.h>
+#include <hdmi.h>
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
@@ -322,15 +323,16 @@ void display_init(void)
 	case LINUX_MACHTYPE_8064_MPQ_DMA:
 		hdmi_msm_panel_init(&panel.panel_info);
 
-		panel.clk_func   = mpq8064_hdmi_panel_clock;
-		panel.power_func = mpq8064_hdmi_panel_power;
-		panel.fb.base    = 0x89000000;
-		panel.fb.width   = panel.panel_info.xres;
-		panel.fb.height  = panel.panel_info.yres;
-		panel.fb.stride  = panel.panel_info.xres;
-		panel.fb.bpp     = panel.panel_info.bpp;
-		panel.fb.format  = FB_FORMAT_RGB565;
-		panel.mdp_rev    = MDP_REV_44;
+		panel.clk_func          = mpq8064_hdmi_panel_clock;
+		panel.power_func        = mpq8064_hdmi_panel_power;
+		panel.update_panel_info = hdmi_update_panel_info;
+		panel.fb.base           = 0x89000000;
+		panel.fb.width   	= panel.panel_info.xres;
+		panel.fb.height  	= panel.panel_info.yres;
+		panel.fb.stride  	= panel.panel_info.xres;
+		panel.fb.bpp     	= panel.panel_info.bpp;
+		panel.fb.format         = FB_FORMAT_RGB565;
+		panel.mdp_rev           = MDP_REV_44;
 
 		hdmi_set_fb_addr(panel.fb.base);
 		break;
