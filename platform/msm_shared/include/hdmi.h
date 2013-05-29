@@ -62,7 +62,7 @@ void gpio_tlmm_config(uint32_t gpio, uint8_t func,
 		      uint8_t dir, uint8_t pull,
 		      uint8_t drvstr, uint32_t enable);
 
-int  hdmi_dtv_on(void);
+int  hdmi_dtv_on(uint32_t rate);
 void hdmi_msm_set_mode(int on);
 void hdmi_msm_init_phy(void);
 void hdmi_display_shutdown(void);
@@ -70,17 +70,4 @@ void hdmi_msm_reset_core(void);
 void hdmi_set_fb_addr(void *addr);
 void hdmi_update_panel_info(struct msm_fb_panel_data *pdata);
 
-struct hdmi_disp_mode_timing_type {
-	uint32_t height;
-	uint32_t hsync_porch_fp;
-	uint32_t hsync_width;
-	uint32_t hsync_porch_bp;
-	uint32_t width;
-	uint32_t vsync_porch_fp;
-	uint32_t vsync_width;
-	uint32_t vsync_porch_bp;
-	uint32_t refresh_rate;
-	uint32_t bpp;
-	void *base;
-};
 #endif				/* __PLATFORM_MSM_SHARED_HDMI_H */

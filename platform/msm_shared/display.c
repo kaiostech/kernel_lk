@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -38,7 +38,7 @@ static int hdmi_dtv_init(void)
         return 0;
 }
 
-static int hdmi_dtv_on(void)
+static int hdmi_dtv_on(uint32_t rate)
 {
         return 0;
 }
@@ -180,7 +180,7 @@ int msm_display_on()
 		break;
 	case HDMI_PANEL:
 		dprintf(INFO, "Turn on HDMI PANEL.\n");
-		ret = hdmi_dtv_on();
+		ret = hdmi_dtv_on(pinfo->clk_rate);
 		if (ret)
 			goto msm_display_on_out;
 
