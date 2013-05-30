@@ -129,7 +129,7 @@ static int ursa_display_panel_power(uint8_t enable)
 		//Touch reset line
 		gpio_tlmm_config(60, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
 		gpio_set(60, 2); //gpio_set(uint32_t gpio, uint32_t dir)
-		mdelay(2); //tH
+		mdelay(3); //tH, padded slightly to avoid needing udelay
 
 		//Display reset line
 		pm8x41_gpio_config(19, &gpio19_param);
