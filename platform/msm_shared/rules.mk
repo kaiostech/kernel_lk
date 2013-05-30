@@ -71,6 +71,7 @@ ifeq ($(PLATFORM),msm8960)
 endif
 
 ifeq ($(PLATFORM),msm8974)
+DEFINES += DISPLAY_TYPE_MDSS=1
 	OBJS += $(LOCAL_DIR)/qgic.o \
 			$(LOCAL_DIR)/qtimer.o \
 			$(LOCAL_DIR)/qtimer_mmap.o \
@@ -100,6 +101,7 @@ ifeq ($(PLATFORM),msm8974)
 endif
 
 ifeq ($(PLATFORM),msm8226)
+DEFINES += DISPLAY_TYPE_MDSS=1
 	OBJS += $(LOCAL_DIR)/qgic.o \
 			$(LOCAL_DIR)/qtimer.o \
 			$(LOCAL_DIR)/qtimer_mmap.o \
