@@ -420,13 +420,15 @@ void fbgfx_preload_image(struct fbgfx_image *image)
 		rle_data = image->pixel_data;
 		fbgfx_rle_decode(image->expanded_pixel_data, rle_data, pixel_data_size, image->bytes_per_pixel);
 
-		for (i = 0; i < pixel_data_size; i += image->bytes_per_pixel) {
-			/* swap to BGR for the display. This swap is only done for RLE */
-			swap = image->expanded_pixel_data[i];
-			image->expanded_pixel_data[i] = image->expanded_pixel_data[i + 2];
-			image->expanded_pixel_data[i + 2] = swap;
-		}
 	}
+
+	for (i = 0; i < pixel_data_size; i += image->bytes_per_pixel) {
+		/* swap to BGR for the display. */
+		swap = image->expanded_pixel_data[i];
+		image->expanded_pixel_data[i] = image->expanded_pixel_data[i + 2];
+		image->expanded_pixel_data[i + 2] = swap;
+	}
+
 }
 
 void fbgfx_apply_image(struct fbgfx_image *image, int x, int y)
