@@ -55,6 +55,7 @@ static char buf[4096];
 
 unsigned boot_into_recovery = 0;
 
+extern uint32_t get_page_size();
 extern void reset_device_info();
 extern void set_device_root();
 
@@ -478,12 +479,19 @@ int _emmc_recovery_init(void)
 static int read_misc(unsigned page_offset, void *buf, unsigned size)
 {
 	const char *ptn_name = "misc";
-	void *scratch_addr = target_get_scratch_address();
+	uint32_t pagesize = get_page_size();
 	unsigned offset;
-	unsigned aligned_size;
 
-	if (size == 0 || buf == NULL || scratch_addr == NULL)
+	if (size == 0 || buf == NULL)
 		return -1;
+
+	offset = page_offset * pagesize;
+
+	if (size & (pagesize - 1))
+	{
+		dprintf(CRITICAL, "Buffer space is insufficient.\n");
+		return -1;
+	}
 
 	if (target_is_emmc_boot())
 	{
@@ -501,16 +509,14 @@ static int read_misc(unsigned page_offset, void *buf, unsigned size)
 		ptn = partition_get_offset(index);
 		ptn_size = partition_get_size(index);
 
-		offset = page_offset * BLOCK_SIZE;
-		aligned_size = ROUND_TO_PAGE(size, (unsigned)BLOCK_SIZE - 1);
-		if (ptn_size < offset + aligned_size)
+		if (ptn_size < offset + size)
 		{
 			dprintf(CRITICAL, "Read request out of '%s' boundaries\n",
 					ptn_name);
 			return -1;
 		}
 
-		if (mmc_read(ptn + offset, (unsigned int *)scratch_addr, aligned_size))
+		if (mmc_read(ptn + offset, (unsigned int *)buf, size))
 		{
 			dprintf(CRITICAL, "Reading MMC failed\n");
 			return -1;
@@ -518,41 +524,9 @@ static int read_misc(unsigned page_offset, void *buf, unsigned size)
 	}
 	else
 	{
-		struct ptentry *ptn;
-		struct ptable *ptable;
-		unsigned pagesize = flash_page_size();
-
-		ptable = flash_get_ptable();
-		if (ptable == NULL)
-		{
-			dprintf(CRITICAL, "Partition table not found\n");
-			return -1;
-		}
-
-		ptn = ptable_find(ptable, ptn_name);
-		if (ptn == NULL)
-		{
-			dprintf(CRITICAL, "No '%s' partition found\n", ptn_name);
-			return -1;
-		}
-
-		offset = page_offset * pagesize;
-		aligned_size = ROUND_TO_PAGE(size, pagesize - 1);
-		if (ptn->length < offset + aligned_size)
-		{
-			dprintf(CRITICAL, "Read request out of '%s' boundaries\n",
-					ptn_name);
-			return -1;
-		}
-
-		if (flash_read(ptn, offset, scratch_addr, aligned_size)) {
-			dprintf(CRITICAL, "Reading flash failed\n");
-			return -1;
-		}
+		dprintf(CRITICAL, "Misc partition not supported for NAND targets.\n");
+		return -1;
 	}
-
-	if (scratch_addr != buf)
-		memcpy(buf, scratch_addr, size);
 
 	return 0;
 }
@@ -644,23 +618,28 @@ bool get_ffbm(char *ffbm, unsigned size)
 {
 	const char *ffbm_cmd = "ffbm-";
 	const unsigned ffbm_submode_size = 2;
-	unsigned ffbm_mode_size = strlen(ffbm_cmd) + ffbm_submode_size;
+	uint32_t page_size = get_page_size();
+	void *scratch = target_get_scratch_address();
 
-	if (size < ffbm_mode_size + 1)
+	if (!target_is_emmc_boot())
+	{
+		dprintf(CRITICAL, "get_ffbm not supported for device");
+		ASSERT(0);
+	}
+	if (size < FFBM_MODE_BUF_SIZE)
 	{
 		dprintf(CRITICAL, "Buffer too short to get FFBM string\n");
 		return false;
 	}
-
-	if (read_misc(0, ffbm, ffbm_mode_size))
+	if (read_misc(0, scratch, page_size))
 	{
 		dprintf(CRITICAL, "Error reading MISC partition\n");
 		return false;
 	}
-	ffbm[ffbm_mode_size] = 0;
-
+	strlcpy(ffbm, scratch, size);
 	if (!strncmp(ffbm, ffbm_cmd, strlen(ffbm_cmd)))
 		return true;
-
 	return false;
 }
+
+
