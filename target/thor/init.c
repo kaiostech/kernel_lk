@@ -53,6 +53,7 @@ extern struct fbgfx_image image_thor;
 #define LINUX_MACHTYPE_THOR  19
 
 extern  bool target_use_signed_kernel(void);
+extern void check_battery_condition(void);
 extern int get_display_image_type();
 extern void show_image(Image_types type);
 
@@ -182,6 +183,8 @@ void target_init(void)
 		dprintf(INFO, "Actually shutting down SoC now...\n");
 		shutdown_device();
 	}
+
+	check_battery_condition();
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
