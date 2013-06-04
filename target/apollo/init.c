@@ -310,6 +310,13 @@ unsigned check_reboot_mode(void)
 	return restart_reason;
 }
 
+int emmc_recovery_init(void)
+{
+	int rc;
+	rc = _emmc_recovery_init();
+	return rc;
+}
+
 void reboot_device(unsigned reboot_reason)
 {
 	uint32_t soc_ver = 0;

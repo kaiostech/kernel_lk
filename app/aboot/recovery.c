@@ -48,6 +48,7 @@
 #define BOOT_FLAGS	1
 #define UPDATE_STATUS	2
 #define ROUND_TO_PAGE(x,y) (((x) + (y)) & (~(y)))
+#define MISC_PTN	"misc"
 
 static const int MISC_PAGES = 3;			// number of pages to save
 static const int MISC_COMMAND_PAGE = 1;		// bootloader command is this page
@@ -72,10 +73,10 @@ int get_recovery_message(struct recovery_message *out)
 		dprintf(CRITICAL, "ERROR: Partition table not found\n");
 		return -1;
 	}
-	ptn = ptable_find(ptable, "misc");
+	ptn = ptable_find(ptable, MISC_PTN);
 
 	if (ptn == NULL) {
-		dprintf(CRITICAL, "ERROR: No misc partition found\n");
+		dprintf(CRITICAL, "ERROR: No %s partition found\n", MISC_PTN);
 		return -1;
 	}
 
@@ -103,10 +104,10 @@ int set_recovery_message(const struct recovery_message *in)
 		dprintf(CRITICAL, "ERROR: Partition table not found\n");
 		return -1;
 	}
-	ptn = ptable_find(ptable, "misc");
+	ptn = ptable_find(ptable, MISC_PTN);
 
 	if (ptn == NULL) {
-		dprintf(CRITICAL, "ERROR: No misc partition found\n");
+		dprintf(CRITICAL, "ERROR: No %s partition found\n", MISC_PTN);
 		return -1;
 	}
 
@@ -385,7 +386,7 @@ SEND_RECOVERY_MSG:
 
 static int emmc_set_recovery_msg(struct recovery_message *out)
 {
-	char *ptn_name = "misc";
+	char *ptn_name = MISC_PTN;
 	unsigned long long ptn = 0;
 	unsigned int size = ROUND_TO_PAGE(sizeof(*out),511);
 	unsigned char data[size];
@@ -407,7 +408,7 @@ static int emmc_set_recovery_msg(struct recovery_message *out)
 
 static int emmc_get_recovery_msg(struct recovery_message *in)
 {
-	char *ptn_name = "misc";
+	char *ptn_name = MISC_PTN;
 	unsigned long long ptn = 0;
 	unsigned int size = ROUND_TO_PAGE(sizeof(*in),511);
 	unsigned char data[size];
@@ -443,6 +444,16 @@ int _emmc_recovery_init(void)
 
 	if (!strncmp(msg.command, "boot-recovery", strlen("boot-recovery"))) {
 		boot_into_recovery = 1;
+	}
+
+	msg.command[sizeof(msg.command)-1] = '\0'; //Ensure termination
+
+	if (!strcmp("boot-recovery",msg.command)) {
+		/* to safe against multiple reboot into recovery */
+		strlcpy(msg.command, "", sizeof(msg.command));
+		strlcpy(msg.status, "OKAY", sizeof(msg.status));
+		boot_into_recovery = 1;		// Boot in recovery mode
+		return 0;
 	}
 
 	if (!strcmp("update-radio",msg.command))
