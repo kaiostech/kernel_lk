@@ -48,7 +48,7 @@
 #include <platform/timer.h>
 #include <platform/interrupts.h>
 
-static struct qup_i2c_dev *dev_addr = NULL;
+static struct qup_i2c_dev *dev_addr[12] = {NULL};
 
 /* QUP Registers */
 enum {
@@ -146,12 +146,12 @@ static inline void qup_print_status(struct qup_i2c_dev *dev)
 }
 #endif
 
-static irqreturn_t qup_i2c_interrupt(void)
+static irqreturn_t qup_i2c_interrupt(void* i2c_dev)
 {
-	struct qup_i2c_dev *dev = dev_addr;
+	struct qup_i2c_dev *dev = i2c_dev;
 	if (!dev) {
 		dprintf(CRITICAL,
-			"dev_addr is NULL, that means i2c_qup_init failed...\n");
+			"dev is NULL, that means i2c_qup_init failed...\n");
 		return IRQ_FAIL;
 	}
 	unsigned status = readl(dev->qup_base + QUP_I2C_STATUS);
@@ -696,7 +696,7 @@ void qup_i2c_sec_init(struct qup_i2c_dev *dev, uint32_t clk_freq,
 	dev->clk_ctl = 0;
 
 	/* Register the GSBIn QUP IRQ */
-	register_int_handler(dev->qup_irq, (int_handler) qup_i2c_interrupt, 0);
+	register_int_handler(dev->qup_irq, (int_handler) qup_i2c_interrupt, dev);
 
 	/* Then disable it */
 	mask_interrupt(dev->qup_irq);
@@ -706,8 +706,15 @@ struct qup_i2c_dev *qup_i2c_init(uint8_t gsbi_id, unsigned clk_freq,
 				 unsigned src_clk_freq)
 {
 	struct qup_i2c_dev *dev;
-	if (dev_addr != NULL) {
-		return dev_addr;
+	size_t i;
+
+	/* Try to find the right i2c device if there is one. */
+	for( i = 0; i < sizeof(dev_addr) / sizeof(dev_addr[0]); ++i ) {
+		if( dev_addr[i] != NULL ) {
+			if( dev_addr[i]->gsbi_number == gsbi_id ) {
+				return dev_addr[i];
+			}
+		}
 	}
 
 	dev = malloc(sizeof(struct qup_i2c_dev));
@@ -725,8 +732,13 @@ struct qup_i2c_dev *qup_i2c_init(uint8_t gsbi_id, unsigned clk_freq,
 	dev->gsbi_base = GSBI_BASE(gsbi_id);
 	dev->gsbi_number = gsbi_id;
 
-	/* This must be done for qup_i2c_interrupt to work. */
-	dev_addr = dev;
+	/* Find an empty spot to save the created device. */
+	for( i = 0; i < sizeof(dev_addr) / sizeof(dev_addr[0]); ++i ) {
+		if( dev_addr[i] == NULL ) {
+			dev_addr[i] = dev;
+			break;
+		}
+	}
 
 	/* Initialize the GPIO for GSBIn as i2c */
 	gpio_config_i2c(dev->gsbi_number);
@@ -740,13 +752,22 @@ struct qup_i2c_dev *qup_i2c_init(uint8_t gsbi_id, unsigned clk_freq,
 	return dev;
 }
 
+extern void clock_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id);
+
 struct qup_i2c_dev *qup_blsp_i2c_init(uint8_t blsp_id, uint8_t qup_id,
 									  uint32_t clk_freq, uint32_t src_clk_freq)
 {
 	struct qup_i2c_dev *dev;
+	size_t i;
 
-	if (dev_addr != NULL) {
-		return dev_addr;
+	/* Try to find the right i2c device if there is one. */
+	for( i = 0; i < sizeof(dev_addr)/sizeof(dev_addr[0]); ++i ) {
+		if( dev_addr[i] != NULL ) {
+			if( (dev_addr[i]->blsp_id == blsp_id) &&
+				(dev_addr[i]->qup_id == qup_id) ) {
+				return dev_addr[i];
+			}
+		}
 	}
 
 	dev = malloc(sizeof(struct qup_i2c_dev));
@@ -756,11 +777,18 @@ struct qup_i2c_dev *qup_blsp_i2c_init(uint8_t blsp_id, uint8_t qup_id,
 	dev = memset(dev, 0, sizeof(struct qup_i2c_dev));
 
 	/* Platform uses BLSP */
+	dev->blsp_id = blsp_id;
+	dev->qup_id = qup_id;
 	dev->qup_irq = BLSP_QUP_IRQ(blsp_id, qup_id);
 	dev->qup_base = BLSP_QUP_BASE(blsp_id, qup_id);
 
-	/* This must be done for qup_i2c_interrupt to work. */
-	dev_addr = dev;
+	/* Try to find an empty spot for the i2c device. */
+	for( i = 0; i < sizeof(dev_addr)/sizeof(dev_addr[0]); ++i ) {
+		if( dev_addr[i] == NULL ) {
+			dev_addr[i] = dev;
+			break;
+		}
+	}
 
 	/* Initialize the GPIO for BLSP i2c */
 	gpio_config_blsp_i2c(blsp_id, qup_id);
@@ -774,8 +802,19 @@ struct qup_i2c_dev *qup_blsp_i2c_init(uint8_t blsp_id, uint8_t qup_id,
 
 int qup_i2c_deinit(struct qup_i2c_dev *dev)
 {
+	size_t i;
+
 	/* Disable the qup_irq */
 	mask_interrupt(dev->qup_irq);
+
+	/* Look up the dev in dev_addr and set it to NULL. */
+	for( i = 0; i < sizeof(dev_addr)/sizeof(dev_addr[0]); ++i ) {
+		if( dev_addr[i] == dev ) {
+			dev_addr[i] = NULL;
+			break;
+		}
+	}
+
 	/* Free the memory used for dev */
 	free(dev);
 	return 0;
