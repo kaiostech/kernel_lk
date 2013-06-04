@@ -163,6 +163,7 @@ struct getvar_partition_info {
 struct getvar_partition_info part_info[] =
 {
 	{ "system"  , "partition-size:", "partition-type:", "", "ext4" },
+	{ "dfs"     , "partition-size:", "partition-type:", "@", "ext4" },
 	{ "userdata", "partition-size:", "partition-type:", "", "ext4" },
 	{ "cache"   , "partition-size:", "partition-type:", "", "ext4" },
 };
