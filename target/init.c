@@ -25,6 +25,7 @@
 #include <target.h>
 #include <compiler.h>
 #include <dload_util.h>
+#include <certificate.h>
 #include <mmc.h>
 
 #define EXPAND(NAME) #NAME
@@ -197,4 +198,14 @@ __WEAK const char * target_usb_controller()
 /* override for target specific usb phy reset. */
 __WEAK void target_usb_phy_reset(void)
 {
+}
+
+__WEAK const unsigned char *target_certificate(void)
+{
+	return certBuffer;
+}
+
+__WEAK int target_certificate_size(void)
+{
+	return sizeof(certBuffer);
 }

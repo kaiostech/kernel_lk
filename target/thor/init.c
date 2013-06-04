@@ -41,6 +41,7 @@
 #include <pm8x41.h>
 #include <crypto5_wrapper.h>
 #include <lp855x.h>
+#include "target_cert.h"
 
 #if WITH_FBGFX_SPLASH
 #include <dev/fbgfx.h>
@@ -443,4 +444,14 @@ void target_enter_emergency_download(void)
 
 	while (1)
 		reboot_device(0);
+}
+
+const unsigned char *target_certificate(void)
+{
+	return certificate_data;
+}
+
+int target_certificate_size(void)
+{
+	return sizeof(certificate_data);
 }

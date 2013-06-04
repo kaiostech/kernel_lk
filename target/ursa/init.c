@@ -45,6 +45,7 @@
 #ifdef WITH_ENABLE_IDME
 #include <idme.h>
 #endif
+#include "target_cert.h"
 
 extern  bool target_use_signed_kernel(void);
 
@@ -501,3 +502,12 @@ void target_enter_emergency_download(void)
         reboot_device(0);
 }
 
+const unsigned char *target_certificate(void)
+{
+	return certificate_data;
+}
+
+int target_certificate_size(void)
+{
+	return sizeof(certificate_data);
+}

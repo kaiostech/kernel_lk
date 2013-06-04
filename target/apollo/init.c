@@ -41,6 +41,7 @@
 #include <pm8x41.h>
 #include <crypto5_wrapper.h>
 #include <lp855x.h>
+#include "target_cert.h"
 
 #define HW_PLATFORM_APOLLO     20 /* these needs to match with apollo.dts */
 #define LINUX_MACHTYPE_APOLLO  20
@@ -432,4 +433,14 @@ void target_enter_emergency_download(void)
 
 	while (1)
 		reboot_device(0);
+}
+
+const unsigned char *target_certificate(void)
+{
+	return certificate_data;
+}
+
+int target_certificate_size(void)
+{
+	return sizeof(certificate_data);
 }
