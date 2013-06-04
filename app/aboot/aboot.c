@@ -722,6 +722,9 @@ int boot_linux_from_mmc(void)
 				dprintf(CRITICAL, "ERROR: No boot partition found\n");
 				return -1;
 			}
+			dprintf(INFO, "********************\n");
+			dprintf(INFO, "BOOTING INTO DKERNEL\n");
+			dprintf(INFO, "********************\n");
 		} else
 #endif
 		{
@@ -731,6 +734,9 @@ int boot_linux_from_mmc(void)
 				dprintf(CRITICAL, "ERROR: No boot partition found\n");
 				return -1;
 			}
+			dprintf(INFO, "***************\n");
+			dprintf(INFO, "BOOTING INTO OS\n");
+			dprintf(INFO, "***************\n");
 		}
 	}
 	else {
@@ -740,6 +746,9 @@ int boot_linux_from_mmc(void)
 			dprintf(CRITICAL, "ERROR: No recovery partition found\n");
                     return -1;
 		}
+		dprintf(INFO, "*********************\n");
+		dprintf(INFO, "BOOTING INTO RECOVERY\n");
+		dprintf(INFO, "*********************\n");
 	}
 
 	if (mmc_read(ptn + offset, (unsigned int *) buf, page_size)) {
