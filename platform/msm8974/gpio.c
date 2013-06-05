@@ -54,7 +54,7 @@ void gpio_set(uint32_t gpio, uint32_t dir)
 
 int gpio_get(uint32_t gpio)
 {
-	return (readl((unsigned int *)GPIO_CONFIG_ADDR(gpio)) & 1);
+	return (readl((unsigned int *)GPIO_IN_OUT_ADDR(gpio)) & 1);
 }
 
 /* Configure gpio for blsp uart 2 */
