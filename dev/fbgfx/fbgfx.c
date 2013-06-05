@@ -37,6 +37,13 @@
 #include <string.h>
 #include <lib/zlib.h>
 
+#ifdef CONFIG_MACH_URSA
+//Used for MDP kickoff command required to redraw command mode displays
+#include <reg.h>
+#include <platform/iomap.h>
+#include <mdp5.h>
+#endif
+
 #include "font.h"
 
 /* tools for building an image and transferring to the frame buffer */
@@ -706,6 +713,13 @@ void fbgfx_flip()
 		dprintf(CRITICAL, "%s: fbgfx not initialized properly.\n", __func__);
 		return;
 	}
+
+#ifdef CONFIG_MACH_URSA
+	//MDP kickoff command required to redraw command mode displays
+	writel(0x32048, MDP_CTL_0_FLUSH);
+	writel(0x01, MDP_CTL_0_START);
+	mdelay(16);
+#endif
 
 	if (double_buffer_enabled == 0) {
 		return;
