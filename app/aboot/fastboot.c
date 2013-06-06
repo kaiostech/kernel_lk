@@ -579,8 +579,8 @@ int fastboot_init(void *base, unsigned size)
 		}
 		image_bottom = (display_height / 2) + (splash.height / 2) - scroll_height;
 
-		/* make sure there are 80 iterations of the loop regardless of size */
-		scroll_step = (scroll_height + 79) / 80;
+		/* make sure there are 20 iterations of the loop regardless of size */
+		scroll_step = (scroll_height + 79) / 20;
 		if (scroll_step == 0) {
 			scroll_step = 1;
 		}
@@ -593,7 +593,6 @@ int fastboot_init(void *base, unsigned size)
 			}
 			fbgfx_scroll_up(scroll_step, 0, 0, FBGFX_MAX, FBGFX_MAX);
 			fbgfx_flip();
-			mdelay(2);
 		}
 
 		/*

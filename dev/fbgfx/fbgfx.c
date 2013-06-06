@@ -426,7 +426,6 @@ void fbgfx_preload_image(struct fbgfx_image *image)
 	if (image->format == FBGFX_IMAGE_FORMAT_RLE) {
 		rle_data = image->pixel_data;
 		fbgfx_rle_decode(image->expanded_pixel_data, rle_data, pixel_data_size, image->bytes_per_pixel);
-
 	}
 
 	for (i = 0; i < pixel_data_size; i += image->bytes_per_pixel) {
@@ -435,7 +434,6 @@ void fbgfx_preload_image(struct fbgfx_image *image)
 		image->expanded_pixel_data[i] = image->expanded_pixel_data[i + 2];
 		image->expanded_pixel_data[i + 2] = swap;
 	}
-
 }
 
 void fbgfx_apply_image(struct fbgfx_image *image, int x, int y)
@@ -718,8 +716,9 @@ void fbgfx_flip()
 	//MDP kickoff command required to redraw command mode displays
 	writel(0x32048, MDP_CTL_0_FLUSH);
 	writel(0x01, MDP_CTL_0_START);
-	mdelay(16);
 #endif
+
+	mdelay(16);
 
 	if (double_buffer_enabled == 0) {
 		return;

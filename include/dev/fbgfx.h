@@ -33,7 +33,7 @@ typedef enum {
 	FBGFX_IMAGE_FORMAT_RLE,
 	FBGFX_IMAGE_FORMAT_GZIP /* Gzip of the raw image */
 } FBGFX_IMAGE_FORMAT;
-	
+
 /*
  * rle_pixel_data must be in 1-byte RLE format, which can be exported from
  * (e.g.) GIMP and used with only minor (structure definition) changes.
@@ -91,4 +91,4 @@ extern void fbgfx_printf(const char *format, ...);
 
 /* see README for double-buffering notes */
 extern void fbgfx_enable_double_buffer(); /* call before fbgfx_init */
-extern void fbgfx_flip(); /* no-op if direct buffering */
+extern void fbgfx_flip(); /* just a 16ms delay if direct buffering */
