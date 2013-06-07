@@ -140,60 +140,61 @@ struct msm_hdmi_mode_timing_info {
 	uint32_t	pixel_freq;
 	/* Must divide by 1000 to get the actual frequency in HZ */
 	uint32_t	refresh_rate;
+	uint32_t	is_supported;
 };
 
 static const struct msm_hdmi_mode_timing_info timings_db[HDMI_VFRMT_END] =
 {
 	[HDMI_VFRMT_640x480p60_4_3] = {HDMI_VFRMT_640x480p60_4_3,
-	    640, 16, 96, 48, true, 480, 10, 2, 33, true, 25200, 60000},
+	    640, 16, 96, 48, true, 480, 10, 2, 33, true, 25200, 60000, true},
 
 	[HDMI_VFRMT_720x480p60_4_3] = {HDMI_VFRMT_720x480p60_4_3,
-	    720, 16, 62, 60, true, 480, 9, 6, 30, true, 27030, 60000},
+	    720, 16, 62, 60, true, 480, 9, 6, 30, true, 27030, 60000, true},
 
 	[HDMI_VFRMT_720x480p60_16_9] = {HDMI_VFRMT_720x480p60_16_9,
-	    720, 16, 62, 60, true, 480, 9, 6, 30, true, 27030, 60000},
+	    720, 16, 62, 60, true, 480, 9, 6, 30, true, 27030, 60000, true},
 
 	[HDMI_VFRMT_1280x720p60_16_9] = {HDMI_VFRMT_1280x720p60_16_9,
-	    1280, 110, 40, 220, false, 720, 5, 5, 20, false, 74250, 60000},
+	1280, 110, 40, 220, false, 720, 5, 5, 20, false, 74250, 60000, true},
 
 	[HDMI_VFRMT_1920x1080i60_16_9] = {HDMI_VFRMT_1920x1080i60_16_9,
-	    1920, 88, 44, 148, false, 540, 2, 5, 5, false, 74250, 60000},
+	    1920, 88, 44, 148, false, 540, 2, 5, 5, false, 74250, 60000, false},
 
 	[HDMI_VFRMT_1440x480i60_4_3] = {HDMI_VFRMT_1440x480i60_4_3,
-	    1440, 38, 124, 114, true, 240, 4, 3, 15, true, 27000, 60000},
+	    1440, 38, 124, 114, true, 240, 4, 3, 15, true, 27000, 60000, false},
 
 	[HDMI_VFRMT_1440x480i60_16_9] = {HDMI_VFRMT_1440x480i60_16_9,
-	    1440, 38, 124, 114, true, 240, 4, 3, 15, true, 27000, 60000},
+	    1440, 38, 124, 114, true, 240, 4, 3, 15, true, 27000, 60000, false},
 
 	[HDMI_VFRMT_1920x1080p60_16_9] = {HDMI_VFRMT_1920x1080p60_16_9,
-	    1920, 88, 44, 148, false, 1080, 4, 5, 36, false, 148500, 60000},
+	1920, 88, 44, 148, false, 1080, 4, 5, 36, false, 148500, 60000, true},
 
 	[HDMI_VFRMT_720x576p50_4_3] = {HDMI_VFRMT_720x576p50_4_3,
-	    720, 12, 64, 68, true, 576,  5, 5, 39, true, 27000, 50000},
+	    720, 12, 64, 68, true, 576,  5, 5, 39, true, 27000, 50000, true},
 
 	[HDMI_VFRMT_720x576p50_16_9] = {HDMI_VFRMT_720x576p50_16_9,
-	    720, 12, 64, 68, true, 576,  5, 5, 39, true, 27000, 50000},
+	    720, 12, 64, 68, true, 576,  5, 5, 39, true, 27000, 50000, true},
 
 	[HDMI_VFRMT_1280x720p50_16_9] = {HDMI_VFRMT_1280x720p50_16_9,
-	    1280, 440, 40, 220, false, 720, 5, 5, 20, false, 74250, 50000},
+	1280, 440, 40, 220, false, 720, 5, 5, 20, false, 74250, 50000, true},
 
 	[HDMI_VFRMT_1440x576i50_4_3] = {HDMI_VFRMT_1440x576i50_4_3,
-	    1440, 24, 126, 138, true, 288, 2, 3, 19, true, 27000, 50000},
+	    1440, 24, 126, 138, true, 288, 2, 3, 19, true, 27000, 50000, false},
 
 	[HDMI_VFRMT_1440x576i50_16_9] = {HDMI_VFRMT_1440x576i50_16_9,
-	    1440, 24, 126, 138, true, 288, 2, 3, 19, true, 27000, 50000},
+	    1440, 24, 126, 138, true, 288, 2, 3, 19, true, 27000, 50000, false},
 
 	[HDMI_VFRMT_1920x1080p50_16_9] = {HDMI_VFRMT_1920x1080p50_16_9,
-	    1920, 528, 44, 148, false, 1080, 4, 5, 36, false, 148500, 50000},
+	1920, 528, 44, 148, false, 1080, 4, 5, 36, false, 148500, 50000, true},
 
 	[HDMI_VFRMT_1920x1080p24_16_9] = {HDMI_VFRMT_1920x1080p24_16_9,
-	    1920, 638, 44, 148, false, 1080, 4, 5, 36, false, 74250, 24000},
+	1920, 638, 44, 148, false, 1080, 4, 5, 36, false, 74250, 24000, true},
 
 	[HDMI_VFRMT_1920x1080p25_16_9] = {HDMI_VFRMT_1920x1080p25_16_9,
-	    1920, 528, 44, 148, false, 1080, 4, 5, 36, false, 74250, 25000},
+	1920, 528, 44, 148, false, 1080, 4, 5, 36, false, 74250, 25000, true},
 
 	[HDMI_VFRMT_1920x1080p30_16_9] = {HDMI_VFRMT_1920x1080p30_16_9,
-	    1920, 88, 44, 148, false, 1080, 4, 5, 36, false, 74250, 30000}
+	    1920, 88, 44, 148, false, 1080, 4, 5, 36, false, 74250, 30000, true}
 };
 
 static struct msm_hdmi_mode_timing_info hdmi_msm_res_timing;
@@ -386,10 +387,12 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 		++svd;
 		for (i = 0; i < len; ++i, ++svd) {
 			video_format = (*svd & 0x7F);
-			dprintf(SPEW, "Supported video format = %d\n",
-				video_format);
-			if (i == 0)
+			dprintf(SPEW, "video format=%d\n",
+					video_format);
+			if (timings_db[video_format].is_supported) {
 				preferred_format = video_format;
+				break;
+			}
 		}
 	}
 
