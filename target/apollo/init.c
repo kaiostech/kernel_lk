@@ -390,7 +390,7 @@ unsigned target_pause_for_battery_charge(void)
 
 	/* note: USB_CHG is also returned for wall charging; DC_CHG seems unused */
 	if (reboot_mode == REBOOT_MODE_CHARGE &&
-		((pon_reason == USB_CHG) || (pon_reason == DC_CHG))) {
+		(pon_reason & (USB_CHG | DC_CHG))) {
 		/* no boot purpose and USB is plugged in -- divert to charging */
 		return 1;
 	}
