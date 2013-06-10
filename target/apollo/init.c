@@ -381,9 +381,9 @@ unsigned target_pause_for_battery_charge(void)
 	dprintf(INFO, "REBOOT_INFO: %08X:%02X\n", reboot_mode, pon_reason);
 
 	if (keys_get_state(KEY_HOME) ||
-	    keys_get_state(KEY_VOLUMEUP) ||
+	    target_volume_up() ||
 	    keys_get_state(KEY_BACK) ||
-	    keys_get_state(KEY_VOLUMEDOWN)) {
+	    target_volume_down()) {
 		/* keys are down, aboot is going to divert into fastboot or recovery */
 		return 0;
 	}
