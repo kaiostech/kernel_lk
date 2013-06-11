@@ -36,9 +36,16 @@
 #include <platform/gpio.h>
 #include <platform/iomap.h>
 #include <target/display.h>
+#include <dev/fbgfx.h>
+
+extern struct fbgfx_image image_charge;
+extern struct fbgfx_image image_hot;
+extern struct fbgfx_image image_low;
+extern struct fbgfx_image image_thor;
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
+static int image_type;
 
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
@@ -112,29 +119,69 @@ void display_init(void)
 {
 	dprintf(INFO, "display_init()\n");
 
-	mipi_novatek_video_1080p_init(&(panel.panel_info));
+        if (!display_enable)
+        {
+                mipi_novatek_video_1080p_init(&(panel.panel_info));
 
-	panel.clk_func = thor_mdss_dsi_panel_clock;
-	panel.power_func = thor_mipi_panel_power;
-	panel.fb.base = MIPI_FB_ADDR;
-	panel.fb.width =  panel.panel_info.xres;
-	panel.fb.height =  panel.panel_info.yres;
-	panel.fb.stride =  panel.panel_info.xres;
-	panel.fb.bpp =  panel.panel_info.bpp;
-	panel.fb.format = FB_FORMAT_RGB888;
-	panel.mdp_rev = MDP_REV_50;
-	dprintf(INFO, "panel.fb.width =%d. panel.fb.height = %d \n", panel.fb.width, panel.fb.height);
+                panel.clk_func = thor_mdss_dsi_panel_clock;
+                panel.power_func = thor_mipi_panel_power;
+                panel.fb.base = MIPI_FB_ADDR;
+                panel.fb.width =  panel.panel_info.xres;
+                panel.fb.height =  panel.panel_info.yres;
+                panel.fb.stride =  panel.panel_info.xres;
+                panel.fb.bpp =  panel.panel_info.bpp;
+                panel.fb.format = FB_FORMAT_RGB888;
+                panel.mdp_rev = MDP_REV_50;
+                dprintf(INFO, "panel.fb.width =%d. panel.fb.height = %d \n", panel.fb.width, panel.fb.height);
 
-	if (msm_display_init(&panel)) {
-		dprintf(CRITICAL, "Display init failed!\n");
-		return;
-	}
+                if (msm_display_init(&panel)) {
+                        dprintf(CRITICAL, "Display init failed!\n");
+                        return;
+                }
 
-	display_enable = 1;
+                display_enable = 1;
+        }
 }
 
 void display_shutdown(void)
 {
-	if (display_enable)
-		msm_display_off();
+	if (display_enable){
+                msm_display_off();
+                set_display_image_type(IMAGE_NONE);
+       }
+}
+
+int get_display_image_type()
+{
+        return image_type;
+}
+
+void set_display_image_type(Image_types type)
+{
+        image_type = type;
+}
+
+void show_image(Image_types type)
+{
+        dprintf(CRITICAL, "%s: Image_types=%d\n",__func__,type);
+        display_init();
+        set_display_image_type(type);
+        fbgfx_init();
+        switch(type)
+        {
+            case IMAGE_CHARGING:
+                fbgfx_apply_image(&image_charge, FBGFX_CENTERED, FBGFX_CENTERED);
+                break;
+            case IMAGE_LOWBATTERY:
+                fbgfx_apply_image(&image_low, FBGFX_CENTERED, FBGFX_CENTERED);
+                break;
+            case IMAGE_DEVICEHOT:
+                fbgfx_apply_image(&image_hot, FBGFX_CENTERED, FBGFX_CENTERED);
+                break;
+            case IMAGE_LOGO:
+            default:
+                fbgfx_apply_image(&image_thor, FBGFX_CENTERED, FBGFX_CENTERED);
+                break;
+        }
+        fbgfx_flip();
 }

@@ -39,6 +39,14 @@
 #define MIPI_VSYNC_BACK_PORCH_LINES  9
 #define MIPI_VSYNC_FRONT_PORCH_LINES 10
 
+typedef enum {
+        IMAGE_NONE = 0,
+        IMAGE_LOGO,
+        IMAGE_CHARGING,
+        IMAGE_LOWBATTERY,
+        IMAGE_DEVICEHOT
+} Image_types;
+
 extern int mdss_dsi_phy_init(struct mipi_dsi_panel_config *, uint32_t ctl_base);
 extern int thor_dsi_uniphy_pll_config(uint32_t ctl_base);
 
