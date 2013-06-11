@@ -88,9 +88,6 @@ static int ursa_display_panel_power(uint8_t enable)
 	};
 
 	if (enable) {
-		/* Enable backlight */
-		ursa_backlight_on();
-
 		dprintf(SPEW, " Entering ursa_display_panel_power\n");
 
 		//tA is the rise time of this regulator (TP_VDD) turning on
@@ -229,6 +226,10 @@ void display_init(void)
 	}
 
 	display_enable = 1;
+
+	//Give the LCD time to boot up and get to a known state
+	mdelay(60);
+	ursa_backlight_on();
 }
 
 void display_shutdown(void)
