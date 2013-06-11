@@ -425,7 +425,8 @@ unsigned target_pause_for_battery_charge(void)
 	dprintf(INFO, "REBOOT_INFO: %08X:%02X\n", reboot_mode, pon_reason);
 
 #ifdef WITH_ENABLE_IDME
-	if (idme_boot_mode() == IDME_BOOTMODE_DIAG) {
+	if (idme_boot_mode() == IDME_BOOTMODE_DIAG
+	 || idme_boot_mode() == IDME_BOOTMODE_CHARGING_DISABLED) {
 		/* don't do charging for factory builds */
 		return 0;
 	}
