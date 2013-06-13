@@ -2475,31 +2475,25 @@ void aboot_init(const struct app_descriptor *app)
 	/* Check if we should do something other than booting up */
 	if (keys_get_state(KEY_HOME) != 0)
 		boot_into_recovery = 1;
-	if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
-		{
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 		if (target_volume_up() != 0)
 			boot_into_recovery = 1;
-		}
-	else
-		{
+#else
 		if (keys_get_state(KEY_VOLUMEUP) != 0)
 			boot_into_recovery = 1;
-		}
+#endif
 	if(!boot_into_recovery)
 	{
 		if (keys_get_state(KEY_BACK) != 0)
-			goto fastboot;
+			boot_into_fastboot = true;
 
-		if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
-		{
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 			if (target_volume_down() != 0)
-				goto fastboot;
-		}
-		else
-		{
+				boot_into_fastboot = true;
+#else
 			if (keys_get_state(KEY_VOLUMEDOWN) != 0)
-				goto fastboot;
-		}
+				boot_into_fastboot = true;
+#endif
 	}
 	#if NO_KEYPAD_DRIVER
 	if (fastboot_trigger())
