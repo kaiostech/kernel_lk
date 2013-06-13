@@ -2473,27 +2473,33 @@ void aboot_init(const struct app_descriptor *app)
 	memset(display_panel_buf, '\0', MAX_PANEL_BUF_SIZE);
 
 	/* Check if we should do something other than booting up */
-	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN))
-	{
-		dprintf(ALWAYS,"dload mode key sequence detected\n");
-		if (set_download_mode(EMERGENCY_DLOAD))
+	if (keys_get_state(KEY_HOME) != 0)
+		boot_into_recovery = 1;
+	if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 		{
-			dprintf(CRITICAL,"dload mode not supported by target\n");
+		if (target_volume_up() != 0)
+			boot_into_recovery = 1;
+		}
+	else
+		{
+		if (keys_get_state(KEY_VOLUMEUP) != 0)
+			boot_into_recovery = 1;
+		}
+	if(!boot_into_recovery)
+	{
+		if (keys_get_state(KEY_BACK) != 0)
+			goto fastboot;
+
+		if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+		{
+			if (target_volume_down() != 0)
+				goto fastboot;
 		}
 		else
 		{
-			reboot_device(0);
-			dprintf(CRITICAL,"Failed to reboot into dload mode\n");
+			if (keys_get_state(KEY_VOLUMEDOWN) != 0)
+				goto fastboot;
 		}
-		boot_into_fastboot = true;
-	}
-	if (!boot_into_fastboot)
-	{
-		if (keys_get_state(KEY_HOME) || keys_get_state(KEY_VOLUMEUP))
-			boot_into_recovery = 1;
-		if (!boot_into_recovery &&
-			(keys_get_state(KEY_BACK) || keys_get_state(KEY_VOLUMEDOWN)))
-			boot_into_fastboot = true;
 	}
 	#if NO_KEYPAD_DRIVER
 	if (fastboot_trigger())
