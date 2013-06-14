@@ -104,6 +104,9 @@ struct adc_conf {
 #define GND_REF_CHAN_ID                 14
 #define VDD_VADC_CHAN_ID                15
 #define VADC_BAT_CHAN_ID                49
+#define MPP_4_CHAN_ID			19	
+#define MPP_6_CHAN_ID			21
+#define MPP_8_CHAN_ID			23
 
 /* Calibration type */
 #define CALIB_ABS                       0
