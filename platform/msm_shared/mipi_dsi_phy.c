@@ -434,3 +434,49 @@ int mdss_dsi_phy_init(struct mipi_dsi_panel_config *pinfo)
 	dmb();
 
 }
+
+int mdss_dsi_v2_phy_init(struct mipi_dsi_panel_config *pinfo)
+{
+	struct mdss_dsi_phy_ctrl *pd;
+	uint32_t i, ln, off = 0, offset;
+
+	pd = pinfo->mdss_dsi_phy_config;
+	/* DSI PHY configuration */
+	writel(pd->strength[0], DSIPHY_STRENGTH_CTRL(0));
+	writel(pd->strength[1], DSIPHY_STRENGTH_CTRL(2));
+
+	writel(0x10, DSIPHY_CTRL(3));
+	writel(0x5F, DSIPHY_CTRL(0));
+
+	for (i = 0; i < 5; i++)
+		writel(pd->regulator[i], DSIPHY_REGULATOR_CTRL(i));
+
+	mipi_dsi_calibration();
+
+	/* 4 lanes + clk lane configuration */
+	/* lane config n * (0 - 4) & DataPath setup */
+	for (ln = 0; ln < 5; ln++) {
+		off = 0x0300 + (ln * 0x40);
+		for (i = 0; i < 9; i++) {
+			offset = i + (ln * 9);
+			writel(pd->laneCfg[offset], MIPI_DSI_BASE + off);
+			dmb();
+			off += 4;
+		}
+	}
+
+	for (i = 0; i < 12; i++)
+		writel(pd->timing[i], DSIPHY_TIMING_CTRL(i));
+
+	if (1 == pinfo->num_of_lanes)
+		writel(0x8, DSIPHY_PLL_CTRL(11));
+
+
+	if (pinfo->lane_swap)
+		writel(pinfo->lane_swap, DSIPHY_LANE_SWAP);
+
+	/* T_CLK_POST, T_CLK_PRE for CLK lane P/N HS 200 mV timing
+	length should > data lane HS timing length */
+	writel(0x41b, DSI_CLKOUT_TIMING_CTRL);
+	return 0;
+}
