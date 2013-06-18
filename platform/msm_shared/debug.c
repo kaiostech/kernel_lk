@@ -30,12 +30,14 @@
  * SUCH DAMAGE.
  */
 
+#include <stdlib.h>
 #include <debug.h>
 #include <printf.h>
 #include <arch/arm/dcc.h>
 #include <dev/fbcon.h>
 #include <dev/uart.h>
 #include <platform/timer.h>
+#include <platform.h>
 
 static void write_dcc(char c)
 {
@@ -52,8 +54,49 @@ static void write_dcc(char c)
 		timeout--;
 	}
 }
+
+#if WITH_DEBUG_LOG_BUF
+
+#ifndef LK_LOG_BUF_SIZE
+#define LK_LOG_BUF_SIZE    (4096) /* align on 4k */
+#endif
+
+#define LK_LOG_COOKIE    0x474f4c52 /* "RLOG" in ASCII */
+
+struct lk_log {
+	struct lk_log_header {
+		unsigned cookie;
+		unsigned max_size;
+		unsigned size_written;
+		unsigned idx;
+	} header;
+	char data[LK_LOG_BUF_SIZE];
+};
+
+static struct lk_log log = {
+	.header = {
+		.cookie = LK_LOG_COOKIE,
+		.max_size = sizeof(log.data),
+		.size_written = 0,
+		.idx = 0,
+	},
+	.data = {0}
+};
+
+static void log_putc(char c)
+{
+	log.data[log.header.idx++] = c;
+	log.header.size_written++;
+	if (unlikely(log.header.idx >= log.header.max_size))
+		log.header.idx = 0;
+}
+#endif /* WITH_DEBUG_LOG_BUF */
+
 void _dputc(char c)
 {
+#if WITH_DEBUG_LOG_BUF
+	log_putc(c);
+#endif
 #if WITH_DEBUG_DCC
 	if (c == '\n') {
 		write_dcc('\r');
@@ -91,6 +134,16 @@ int dgetc(char *c, bool wait)
 
 void platform_halt(void)
 {
-	dprintf(INFO, "HALT: spinning forever...\n");
+	if (set_download_mode(NORMAL_DLOAD) == 0)
+	{
+		dprintf(CRITICAL, "HALT: reboot into dload mode...\n");
+		reboot_device(0);
+		dprintf(CRITICAL, "HALT: reboot_device failed\n");
+	}
+	else
+	{
+		dprintf(CRITICAL, "HALT: set_download_mode not supported\n");
+	}
+	dprintf(CRITICAL, "HALT: spinning forever...\n");
 	for (;;) ;
 }
