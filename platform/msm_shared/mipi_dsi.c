@@ -592,7 +592,7 @@ struct fbcon_config *mipi_init(void)
 	}
 
 	/* Enable MMSS_AHB_ARB_MATER_PORT_E for arbiter master0 and master 1 request */
-#if (!DISPLAY_MIPI_PANEL_RENESAS && !DISPLAY_TYPE_DSI6G)
+#if (!DISPLAY_MIPI_PANEL_RENESAS && !DISPLAY_TYPE_DSI6G && !DISPLAY_TYPE_8610)
 	writel(0x00001800, MMSS_SFPB_GPREG);
 #endif
 
@@ -639,7 +639,7 @@ int mipi_config(struct msm_fb_panel_data *panel)
 
 	/* Enable MMSS_AHB_ARB_MATER_PORT_E for
 	   arbiter master0 and master 1 request */
-#if (!DISPLAY_MIPI_PANEL_RENESAS && !DISPLAY_TYPE_DSI6G)
+#if (!DISPLAY_MIPI_PANEL_RENESAS && !DISPLAY_TYPE_DSI6G && !DISPLAY_TYPE_8610)
 	writel(0x00001800, MMSS_SFPB_GPREG);
 #endif
 
@@ -671,7 +671,10 @@ int mdss_dsi_config(struct msm_fb_panel_data *panel)
 	mipi_pinfo.lane_swap = pinfo->mipi.lane_swap;
 	mipi_pinfo.pack = 0;
 
-	mdss_dsi_phy_init(&mipi_pinfo);
+	if (mdp_get_revision() == MDP_REV_304)
+		mdss_dsi_v2_phy_init(&mipi_pinfo);
+	else
+		mdss_dsi_phy_init(&mipi_pinfo);
 
 	ret += mipi_dsi_panel_initialize(&mipi_pinfo);
 
@@ -926,9 +929,11 @@ int mipi_dsi_off()
 	{
 		writel(0, DSI_CLK_CTRL);
 		writel(0x1F1, DSI_CTRL);
+#if (!DISPLAY_TYPE_8610)
 		writel(0x00000001, DSIPHY_SW_RESET);
 		writel(0x00000000, DSIPHY_SW_RESET);
 		mdelay(10);
+#endif
 		writel(0x0001, DSI_SOFT_RESET);
 		writel(0x0000, DSI_SOFT_RESET);
 		writel(0x1115501, DSI_INT_CTRL);
