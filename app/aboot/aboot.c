@@ -2373,6 +2373,8 @@ static void publish_getvar_partition_info(struct getvar_partition_info *info, ui
 }
 
 /* register commands and variables for fastboot */
+extern void cmd_dump(const char *arg, void *data, unsigned sz);
+
 void aboot_fastboot_register_commands(void)
 {
 	if (target_is_emmc_boot())
@@ -2429,6 +2431,7 @@ void aboot_fastboot_register_commands(void)
 	fastboot_register("flash:", cmd_flash_mmc);
 	fastboot_register("verify:", cmd_verify_mmc);
 	fastboot_register("erase:", cmd_erase_mmc);
+	fastboot_register("dump:", cmd_dump);
 // ACOS_MOD_END
 }
 

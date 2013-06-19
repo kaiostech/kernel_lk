@@ -54,5 +54,4 @@ void fastboot_okay(const char *result);
 void fastboot_fail(const char *reason);
 void fastboot_info(const char *reason);
 
-
 #endif

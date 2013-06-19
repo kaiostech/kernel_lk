@@ -464,6 +464,56 @@ static void cmd_download(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+/* Dump one parition via fastboot. */
+void cmd_dump(const char *arg, void *data, unsigned sz)
+{
+	char* ptn_name;
+	int ptn_index;
+	unsigned long long ptn_size;
+	unsigned long long ptn_offset;
+	unsigned char* ptn_buf;
+	unsigned long long i;
+	char msg[1024];
+
+	/* Response to "dump:partition_name" command. */
+	ptn_name = strtok((char*)arg, " ");
+
+	ptn_index = partition_get_index(ptn_name);
+	if (ptn_index == -1) {
+		snprintf(msg, sizeof(msg), "Partition %s not found.", ptn_name);
+		fastboot_fail(msg);
+		return;
+	}
+
+	ptn_size = partition_get_size(ptn_index);
+	ptn_offset = partition_get_offset(ptn_index);
+
+	/* Ready to send the partition content. */
+	snprintf(msg, sizeof(msg), "Dumping partition %s, size=%lld",
+		ptn_name, ptn_size);
+	fastboot_okay(msg);
+
+	/* Write the partition size first. */
+	usb_if.usb_write(&ptn_size, sizeof(ptn_size));
+
+	/* Write to the host with 4KB block data. */
+	ptn_buf = (unsigned char*)malloc(4096);
+	for (i = 0; i < ptn_size / 4096; ++i) {
+		mmc_read(ptn_offset + i * 4096, (unsigned int*)ptn_buf, 4096);
+		usb_if.usb_write(ptn_buf, 4096);
+	}
+
+	/* Write the rest of the data if there is any. */
+	if (ptn_size - i * 4096 > 0) {
+		mmc_read(ptn_offset + i * 4096, (unsigned int*)ptn_buf,
+			ptn_size - i * 4096);
+		usb_if.usb_write(ptn_buf, ptn_size - i * 4096);
+	}
+
+	snprintf(msg, sizeof(msg), "Dumping partition %s done.", ptn_name);
+	free(ptn_buf);
+}
+
 static void fastboot_command_loop(void)
 {
 	struct fastboot_cmd *cmd;
