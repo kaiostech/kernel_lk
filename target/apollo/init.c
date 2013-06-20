@@ -42,11 +42,19 @@
 #include <crypto5_wrapper.h>
 #include <lp855x.h>
 #include "target_cert.h"
+#include <target/display.h>
+#if WITH_FBGFX_SPLASH
+#include <dev/fbgfx.h>
+struct fbgfx_image splash;
+extern struct fbgfx_image image_apollo;
+#endif
 
 #define HW_PLATFORM_APOLLO     20 /* these needs to match with apollo.dts */
 #define LINUX_MACHTYPE_APOLLO  20
 
 extern  bool target_use_signed_kernel(void);
+extern int get_display_image_type();
+extern void show_image(Image_types type);
 
 static unsigned int target_id;
 static uint32_t pmic_ver;
@@ -180,12 +188,18 @@ void target_init(void)
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
+
+#if WITH_FBGFX_SPLASH
+	/* if fbcon.c does not hardcode 'splash' we can skip this memcpy */
+	memcpy(&splash, &image_apollo, sizeof(struct fbgfx_image));
+#endif
+	dprintf(INFO, "Display Init: Start\n");
+
+        if (IMAGE_NONE == get_display_image_type())
+            show_image(IMAGE_LOGO);
 	dprintf(INFO, "Backlight Start\n");
 	lp855x_bl_on();
 
-	dprintf(INFO, "Display Init: Start\n");
-	display_init();
-	dprintf(INFO, "Display Init: Done\n");
 #endif
 
 	/* Trying Slot 1*/

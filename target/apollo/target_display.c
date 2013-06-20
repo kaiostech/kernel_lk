@@ -36,9 +36,16 @@
 #include <mdp5.h>
 #include <platform/gpio.h>
 #include <target/display.h>
+#include <dev/fbgfx.h>
+
+extern struct fbgfx_image image_charge;
+extern struct fbgfx_image image_hot;
+extern struct fbgfx_image image_low;
+extern struct fbgfx_image image_apollo;
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
+static int image_type;
 
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
@@ -136,11 +143,9 @@ void display_init(void)
 
 	dprintf(INFO, "display_init(),target_id=%d.\n", hw_id);
 
-	switch (hw_id) {
-	case HW_PLATFORM_MTP:
-	case HW_PLATFORM_FLUID:
-	case HW_PLATFORM_SURF:
-		mipi_toshiba_video_720p_init(&(panel.panel_info));
+        if (!display_enable)
+        {
+		mipi_jdi_video_wqxga_init(&(panel.panel_info));
 		panel.clk_func = msm8974_mdss_dsi_panel_clock;
 		panel.power_func = msm8974_mipi_panel_power;
 		panel.fb.base = MIPI_FB_ADDR;
@@ -150,21 +155,55 @@ void display_init(void)
 		panel.fb.bpp =  panel.panel_info.bpp;
 		panel.fb.format = FB_FORMAT_RGB888;
 		panel.mdp_rev = MDP_REV_50;
-		break;
-	default:
-		return;
-	};
 
-	if (msm_display_init(&panel)) {
-		dprintf(CRITICAL, "Display init failed!\n");
-		return;
-	}
+		if (msm_display_init(&panel)) {
+			dprintf(CRITICAL, "Display init failed!\n");
+			return;
+		}
 
-	display_enable = 1;
+		display_enable = 1;
+        }
 }
 
 void display_shutdown(void)
 {
-	if (display_enable)
-		msm_display_off();
+	if (display_enable){
+                msm_display_off();
+                set_display_image_type(IMAGE_NONE);
+       }
+}
+
+int get_display_image_type()
+{
+        return image_type;
+}
+
+void set_display_image_type(Image_types type)
+{
+        image_type = type;
+}
+
+void show_image(Image_types type)
+{
+        dprintf(CRITICAL, "%s: Image_types=%d\n",__func__,type);
+        display_init();
+        set_display_image_type(type);
+        fbgfx_init();
+        switch(type)
+        {
+            case IMAGE_CHARGING:
+                fbgfx_apply_image(&image_charge, FBGFX_CENTERED, FBGFX_CENTERED);
+                break;
+            case IMAGE_LOWBATTERY:
+                fbgfx_apply_image(&image_low, FBGFX_CENTERED, FBGFX_CENTERED);
+                break;
+            case IMAGE_DEVICEHOT:
+                fbgfx_apply_image(&image_hot, FBGFX_CENTERED, FBGFX_CENTERED);
+                break;
+            case IMAGE_LOGO:
+            default:
+                fbgfx_apply_image(&image_apollo, FBGFX_CENTERED, FBGFX_CENTERED);
+                break;
+        }
+        fbgfx_flip();
 }
