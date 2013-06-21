@@ -26,3 +26,8 @@ OBJS += \
 	$(LOCAL_DIR)/mipi_toshiba_video_720p.o \
 	$(LOCAL_DIR)/mipi_sharp_video_qhd.o
 endif
+
+ifeq ($(PLATFORM),msm8610)
+OBJS += \
+	$(LOCAL_DIR)/mipi_truly_video_wvga.o
+endif
