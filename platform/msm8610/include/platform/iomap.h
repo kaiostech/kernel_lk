@@ -1,5 +1,8 @@
 /* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
+ * Copyright (c) 2008, Google Inc.
+ * All rights reserved.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
@@ -82,6 +85,75 @@
 #define TLMM_BASE_ADDR              0xFD510000
 #define GPIO_CONFIG_ADDR(x)         (TLMM_BASE_ADDR + 0x1000 + (x)*0x10)
 #define GPIO_IN_OUT_ADDR(x)         (TLMM_BASE_ADDR + 0x1004 + (x)*0x10)
+
+#define MSM_MMSS_CLK_CTL_BASE       0xFD8C0000
+
+/* DSI */
+#define MIPI_DSI_BASE               0xFDD00000
+#define REG_DSI(off)                (MIPI_DSI_BASE + (off))
+
+#define DSIPHY_REGULATOR_BASE       0x500
+#define DSIPHY_TIMING_BASE          0x440
+#define DSIPHY_CTRL_BASE            0x470
+#define DSIPHY_PLL_BASE             0x200
+#define DSIPHY_STRENGTH_BASE        0x480
+#define DSIPHY_CAL_SW_BASE          0x52C
+#define DSIPHY_CAL_HW_BASE          0x538
+
+/* Range 0 - 4 */
+#define DSIPHY_REGULATOR_CTRL(x)    REG_DSI(DSIPHY_REGULATOR_BASE + (x) * 4)
+/* Range 0 - 11 */
+#define DSIPHY_TIMING_CTRL(x)       REG_DSI(DSIPHY_TIMING_BASE + (x) * 4)
+/* Range 0 - 3 */
+#define DSIPHY_CTRL(x)              REG_DSI(DSIPHY_CTRL_BASE + (x) * 4)
+/* Range 0 - 2 */
+#define DSIPHY_STRENGTH_CTRL(x)     REG_DSI(DSIPHY_STRENGTH_BASE + (x) * 4)
+/* Range 0 - 19 */
+#define DSIPHY_PLL_CTRL(x)          REG_DSI(DSIPHY_PLL_BASE + (x) * 4)
+/* Range 0 - 2 */
+#define DSIPHY_CAL_SW_CFG(x)        REG_DSI(DSIPHY_CAL_SW_BASE + (x) * 4)
+/* Range 0 - 4 */
+#define DSIPHY_CAL_HW_CFG(x)        REG_DSI(DSIPHY_CAL_HW_BASE + (x) * 4)
+
+#define DSIPHY_REGULATOR_CAL_PWR_CFG REG_DSI(0x518)
+#define DSIPHY_CAL_HW_TRIGGER       REG_DSI(0x528)
+#define DSIPHY_SW_RESET             REG_DSI(0x128)
+#define DSIPHY_LANE_SWAP            REG_DSI(0x0ac)
+#define DSIPHY_PLL_READY            REG_DSI(0x280)
+
+/* MDP */
+#define MDP_BASE                    0xFD900000
+#define REG_MDP(off)                (MDP_BASE + (off))
+
+#define MDP_DMA_P_CONFIG            REG_MDP(0x90000)
+#define MDP_DMA_P_OUT_XY            REG_MDP(0x90010)
+#define MDP_DMA_P_SIZE              REG_MDP(0x90004)
+#define MDP_DMA_P_BUF_ADDR          REG_MDP(0x90008)
+#define MDP_DMA_P_BUF_Y_STRIDE      REG_MDP(0x9000C)
+
+#define MDP_DSI_VIDEO_EN                 REG_MDP(0xF0000)
+#define MDP_DSI_VIDEO_HSYNC_CTL          REG_MDP(0xF0004)
+#define MDP_DSI_VIDEO_VSYNC_PERIOD       REG_MDP(0xF0008)
+#define MDP_DSI_VIDEO_VSYNC_PULSE_WIDTH  REG_MDP(0xF000C)
+#define MDP_DSI_VIDEO_DISPLAY_HCTL       REG_MDP(0xF0010)
+#define MDP_DSI_VIDEO_DISPLAY_V_START    REG_MDP(0xF0014)
+#define MDP_DSI_VIDEO_DISPLAY_V_END      REG_MDP(0xF0018)
+#define MDP_DSI_VIDEO_BORDER_CLR         REG_MDP(0xF0028)
+#define MDP_DSI_VIDEO_HSYNC_SKEW         REG_MDP(0xF0030)
+#define MDP_DSI_VIDEO_CTL_POLARITY       REG_MDP(0xF0038)
+#define MDP_DSI_VIDEO_TEST_CTL           REG_MDP(0xF0034)
+
+#define MDP_DMA_P_START                REG_MDP(0x00044)
+#define MDP_DMA_S_START                REG_MDP(0x00048)
+#define MDP_DISP_INTF_SEL              REG_MDP(0x00038)
+#define MDP_MAX_RD_PENDING_CMD_CONFIG  REG_MDP(0x0004C)
+#define MDP_INTR_ENABLE                REG_MDP(0x00020)
+#define MDP_INTR_CLEAR                 REG_MDP(0x00028)
+#define MDP_DSI_CMD_MODE_ID_MAP        REG_MDP(0xF1000)
+#define MDP_DSI_CMD_MODE_TRIGGER_EN    REG_MDP(0XF1004)
+
+#define MDP_TEST_MODE_CLK           REG_MDP(0xF0000)
+#define MDP_INTR_STATUS             REG_MDP(0x00054)
 
 #define MPM2_MPM_CTRL_BASE          0xFC4A1000
 #define MPM2_MPM_PS_HOLD            0xFC4AB000
