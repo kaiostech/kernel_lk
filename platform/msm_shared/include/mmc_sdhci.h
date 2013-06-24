@@ -37,6 +37,7 @@
 #define CMD2_ALL_SEND_CID                         2
 #define CMD3_SEND_RELATIVE_ADDR                   3
 #define CMD4_SET_DSR                              4
+#define CMD5_SLEEP_AWAKE                          5
 #define CMD6_SWITCH_FUNC                          6
 #define CMD7_SELECT_DESELECT_CARD                 7
 #define CMD8_SEND_EXT_CSD                         8
@@ -80,6 +81,7 @@
 #define MMC_SWITCH_FUNC_ERR_FLAG                  (1 << 7)
 #define MMC_STATUS_INACTIVE                       0
 #define MMC_STATUS_ACTIVE                         1
+#define MMC_READY_FOR_DATA                        (1 << 8)
 
 /* EXT_CSD */
 /* Offsets in the ext csd */
@@ -94,29 +96,40 @@
 #define MMC_PART_CONFIG                           179
 #define MMC_ERASE_GRP_DEF                         175
 #define MMC_USR_WP                                171
+#define MMC_HC_ERASE_GRP_SIZE                     224
 
 /* Values for ext csd fields */
 #define MMC_HS_TIMING                             0x1
 #define MMC_HS200_TIMING                          0x2
 #define MMC_ACCESS_WRITE                          0x3
+#define MMC_SET_BIT                               0x1
 #define MMC_HS_DDR_MODE                           (BIT(2) | BIT(3))
 #define MMC_HS_HS200_MODE                         (BIT(4) | BIT(5))
 #define MMC_SEC_COUNT4_SHIFT                      24
 #define MMC_SEC_COUNT3_SHIFT                      16
 #define MMC_SEC_COUNT2_SHIFT                      8
+#define MMC_HC_ERASE_MULT                         (512 * 1024)
 
 /* Command related */
 #define MMC_MAX_COMMAND_RETRY                     1000
+#define MMC_MAX_CARD_STAT_RETRY                   10000
 #define MMC_RD_BLOCK_LEN                          512
 #define MMC_WR_BLOCK_LEN                          512
 #define MMC_R1_BLOCK_LEN_ERR                      (1 << 29)
 #define MMC_R1_ADDR_ERR                           (1 << 30)
+#define MMC_R1_WP_ERASE_SKIP                      BIT(15)
+#define MMC_US_PERM_WP_DIS                        BIT(4)
+#define MMC_US_PWR_WP_DIS                         BIT(3)
+#define MMC_US_PERM_WP_EN                         BIT(2)
+#define MMC_US_PWR_WP_EN                          BIT(0)
 
 /* RCA of the card */
 #define MMC_RCA                                   2
+#define MMC_CARD_RCA_BIT                          16
 
 /* Misc card macros */
 #define MMC_BLK_SZ                                512
+#define MMC_CARD_SLEEP                            (1 << 15)
 
 /* Clock rates */
 #define MMC_CLK_400KHZ                            400000
@@ -127,6 +140,8 @@
 #define MMC_CLK_50MHZ                             49152000
 #define MMC_CLK_96MHZ                             96000000
 #define MMC_CLK_200MHZ                            200000000
+
+#define MMC_ADDR_OUT_OF_RANGE(resp)              ((resp >> 31) & 0x01)
 
 /* Can be used to unpack array of upto 32 bits data */
 #define UNPACK_BITS(array, start, len, size_of)           \
@@ -218,4 +233,12 @@ struct mmc_device *mmc_init(struct mmc_config_data *);
 uint32_t mmc_sdhci_read(struct mmc_device *dev, void *dest, uint64_t blk_addr, uint32_t num_blocks);
 /* API: Write requried number of blocks from source to card */
 uint32_t mmc_sdhci_write(struct mmc_device *dev, void *src, uint64_t blk_addr, uint32_t num_blocks);
+/* API: Erase len bytes (after converting to number of erase groups), from specified address */
+uint32_t mmc_sdhci_erase(struct mmc_device *dev, uint32_t blk_addr, uint64_t len);
+/* API: Write protect or release len bytes (after converting to number of write protect groups) from specified start address*/
+uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uint64_t len, uint8_t set_clr);
+/* API: Get the WP status of write protect groups starting at addr */
+uint32_t mmc_get_wp_status(struct mmc_device *dev, uint32_t addr, uint8_t *wp_status);
+/* API: Put the mmc card in sleep mode */
+void mmc_put_card_to_sleep(struct mmc_device *dev);
 #endif
