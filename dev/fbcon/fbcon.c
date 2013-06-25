@@ -2,7 +2,7 @@
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2011, 2013 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -208,6 +208,9 @@ struct fbcon_config* fbcon_display(void)
     return config;
 }
 
+
+extern logo_img_header* splash_screen();
+
 void display_image_on_screen(void)
 {
     unsigned i = 0;
@@ -215,6 +218,8 @@ void display_image_on_screen(void)
     unsigned total_y;
     unsigned bytes_per_bpp;
     unsigned image_base;
+    unsigned width, pitch, height;
+    unsigned char *logo_base;
 
     if (!config) {
        dprintf(CRITICAL,"NULL configuration, image cannot be displayed\n");
@@ -227,22 +232,49 @@ void display_image_on_screen(void)
     total_y = config->height;
     bytes_per_bpp = ((config->bpp) / 8);
     image_base = ((((total_y/2) - (SPLASH_IMAGE_WIDTH / 2) - 1) *
-		    (config->width)) + (total_x/2 - (SPLASH_IMAGE_HEIGHT / 2)));
+        (config->width)) + (total_x/2 - (SPLASH_IMAGE_HEIGHT / 2)));
 
 #if DISPLAY_TYPE_MIPI
     if (bytes_per_bpp == 3)
     {
-        for (i = 0; i < SPLASH_IMAGE_WIDTH; i++)
-        {
+        logo_img_header* header = splash_screen();
+        if (header) {
+            if (header->width == config->width && header->height == config->height) {
+                // optimized the full-screen case, save a memcpy
+                return;
+            }
+            logo_base = (unsigned char *)config->base + LOGO_IMG_OFFSET;
+            if (header->width > config->width) {
+                    width = config->width;
+                    pitch = header->width;
+                    logo_base += (header->width - config->width) / 2 * bytes_per_bpp;
+            } else {
+                    width = pitch = header->width;
+            }
+            if (header->height > config->height) {
+                    height = config->height;
+                    logo_base += (header->height - config->height) / 2 * pitch * bytes_per_bpp;
+            } else {
+                height = header->height;
+            }
+        } else {
+            width = pitch = SPLASH_IMAGE_HEIGHT;
+            height = SPLASH_IMAGE_WIDTH;
+            logo_base = (unsigned char *)imageBuffer_rgb888;
+        }
+
+        image_base = ((((total_y/2) - (height / 2) ) *
+                    (config->width)) + (total_x/2 - (width / 2)));
+        for (i = 0; i < height; i++) {
             memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
-		    imageBuffer_rgb888 + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
-		    SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
-	}
+            logo_base + (i * pitch * bytes_per_bpp),
+            width * bytes_per_bpp);
+        }
     }
     fbcon_flush();
 #if DISPLAY_MIPI_PANEL_NOVATEK_BLUE
-    if(is_cmd_mode_enabled())
-        mipi_dsi_cmd_mode_trigger();
+        if(is_cmd_mode_enabled())
+            mipi_dsi_cmd_mode_trigger();
 #endif
 
 #else
@@ -251,9 +283,9 @@ void display_image_on_screen(void)
         for (i = 0; i < SPLASH_IMAGE_WIDTH; i++)
         {
             memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
-		    imageBuffer + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
-		    SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
-	}
+            imageBuffer + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
+            SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
+        }
     }
     fbcon_flush();
 #endif
