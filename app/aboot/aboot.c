@@ -1551,33 +1551,121 @@ void cmd_oem_devinfo(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-void splash_screen ()
+logo_img_header logo_header = {0};
+
+int splash_screen_check_header(logo_img_header *logo)
+{
+	if (memcmp(logo->magic, LOGO_IMG_MAGIC, LOGO_IMG_MAGIC_SIZE))
+		return -1;
+	if (logo->width == 0 || logo->height == 0)
+		return -1;
+	return 0;
+}
+
+logo_img_header* splash_screen_flash()
 {
 	struct ptentry *ptn;
 	struct ptable *ptable;
 	struct fbcon_config *fb_display = NULL;
+	logo_img_header *logo = &logo_header;
 
-	if (!target_is_emmc_boot())
-	{
-		ptable = flash_get_ptable();
-		if (ptable == NULL) {
-			dprintf(CRITICAL, "ERROR: Partition table not found\n");
-			return;
-		}
 
-		ptn = ptable_find(ptable, "splash");
-		if (ptn == NULL) {
-			dprintf(CRITICAL, "ERROR: No splash partition found\n");
-		} else {
-			fb_display = fbcon_display();
-			if (fb_display) {
-				if (flash_read(ptn, 0, fb_display->base,
-					(fb_display->width * fb_display->height * fb_display->bpp/8))) {
-					fbcon_clear();
-					dprintf(CRITICAL, "ERROR: Cannot read splash image\n");
-				}
-			}
+	ptable = flash_get_ptable();
+	if (ptable == NULL) {
+	dprintf(CRITICAL, "ERROR: Partition table not found\n");
+	return NULL;
+	}
+	ptn = ptable_find(ptable, "splash");
+	if (ptn == NULL) {
+		dprintf(CRITICAL, "ERROR: splash Partition not found\n");
+		return NULL;
+	}
+
+	if (flash_read(ptn, 0,(unsigned int *) logo, sizeof(*logo))) {
+		dprintf(CRITICAL, "ERROR: Cannot read boot image header\n");
+		return NULL;
+	}
+
+	if (splash_screen_check_header(logo)) {
+		dprintf(CRITICAL, "ERROR: Boot image header invalid\n");
+		return NULL;
+	}
+
+	dprintf(INFO, "splash_screen_mmc :%d, %d\n",logo->width, logo->height);
+	fb_display = fbcon_display();
+	if (fb_display) {
+		uint8_t *base = (uint8_t *) fb_display->base;
+		if (logo->width != fb_display->width || logo->height != fb_display->height) {
+				base += LOGO_IMG_OFFSET;
+	}
+
+		if (flash_read(ptn + sizeof(*logo), 0,
+			base,
+			((((logo->width * logo->height * fb_display->bpp/8) + 511) >> 9) << 9))) {
+			fbcon_clear();
+			dprintf(CRITICAL, "ERROR: Cannot read splash image\n");
+			return NULL;
 		}
+	}
+
+	return logo;
+}
+
+logo_img_header* splash_screen_mmc()
+{
+	int index = INVALID_PTN;
+	unsigned long long ptn = 0;
+	struct fbcon_config *fb_display = NULL;
+	logo_img_header *logo = &logo_header;
+
+	index = partition_get_index("splash");
+	if (index == 0) {
+		dprintf(CRITICAL, "ERROR: splash Partition table not found\n");
+		return NULL;
+	}
+
+	ptn = partition_get_offset(index);
+	if (ptn == 0) {
+		dprintf(CRITICAL, "ERROR: splash Partition invalid\n");
+		return NULL;
+	}
+
+	if (mmc_read(ptn, (unsigned int *) logo, sizeof(*logo))) {
+		dprintf(CRITICAL, "ERROR: Cannot read boot image header\n");
+		return NULL;
+	}
+
+	if (splash_screen_check_header(logo)) {
+		dprintf(CRITICAL, "ERROR: Boot image header invalid\n");
+		return NULL;
+	}
+
+	dprintf(INFO, "splash_screen_mmc :%d, %d\n",logo->width, logo->height);
+	fb_display = fbcon_display();
+	if (fb_display) {
+		uint8_t *base = (uint8_t *) fb_display->base;
+		if (logo->width != fb_display->width || logo->height != fb_display->height)
+				base += LOGO_IMG_OFFSET;
+
+		if (mmc_read(ptn + sizeof(*logo),
+			base,
+			((((logo->width * logo->height * fb_display->bpp/8) + 511) >> 9) << 9))) {
+			fbcon_clear();
+			dprintf(CRITICAL, "ERROR: Cannot read splash image\n");
+			return NULL;
+		}
+	}
+
+	return logo;
+}
+
+
+logo_img_header* splash_screen()
+{
+	if (target_is_emmc_boot()) {
+		return splash_screen_mmc();
+	} else {
+		return splash_screen_flash();
 	}
 }
 
