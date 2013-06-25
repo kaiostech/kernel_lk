@@ -161,6 +161,9 @@ void display_init(void)
 			return;
 		}
 
+		dprintf(INFO, "Backlight Start\n");
+		lp855x_bl_on();
+
 		display_enable = 1;
         }
 }
