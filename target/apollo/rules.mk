@@ -25,6 +25,9 @@ MODULES += \
 	dev/keys \
 	dev/pmic/pm8x41 \
 	dev/backlight/lp855x \
+	dev/battery/bq27741 \
+	dev/thermal/tmp103 \
+	dev/charger/smb349 \
 	dev/panel/msm \
     lib/ptable \
     lib/libfdt \
@@ -44,7 +47,8 @@ DEFINES += \
 OBJS += \
     $(LOCAL_DIR)/init.o \
     $(LOCAL_DIR)/meminfo.o \
-    $(LOCAL_DIR)/target_display.o
+    $(LOCAL_DIR)/target_display.o \
+    $(LOCAL_DIR)/../thor/battery_loop.o
 
 # For WITH_FBGFX_SPLASH. Below image is RLE encoded. We now use gzipped
 #OBJS += \
