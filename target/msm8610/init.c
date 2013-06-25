@@ -152,6 +152,12 @@ void target_baseband_detect(struct board_data *board)
 	{
 	case HW_PLATFORM_SUBTYPE_UNKNOWN:
 		break;
+	case HW_PLATFORM_SUBTYPE_SKUAA:
+		break;
+	case HW_PLATFORM_SUBTYPE_SKUF:
+		break;
+	case HW_PLATFORM_SUBTYPE_SKUAB:
+		break;
 	default:
 		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n", platform_subtype);
 		ASSERT(0);
