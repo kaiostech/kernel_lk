@@ -48,6 +48,10 @@
 
 #define TLMM_VOL_UP_BTN_GPIO    72
 
+#define HW_PLATFORM_SUBTYPE_SKUAA 0x01
+#define HW_PLATFORM_SUBTYPE_SKUF 0x02
+#define HW_PLATFORM_SUBTYPE_SKUAB 0x03
+
 static uint32_t mmc_sdc_base[] =
 	{ MSM_SDC1_BASE, MSM_SDC2_BASE };
 
