@@ -2,7 +2,7 @@
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2010, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2010, 2013 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,19 @@
 
 #ifndef __DEV_FBCON_H
 #define __DEV_FBCON_H
+
+#define LOGO_IMG_OFFSET (12*1024*1024)
+#define LOGO_IMG_MAGIC_SIZE 8
+#define LOGO_IMG_MAGIC "SPLASH!!"
+
+typedef struct logo_img_header logo_img_header;
+
+struct logo_img_header {
+    unsigned char magic[LOGO_IMG_MAGIC_SIZE]; // "SPLASH!!"
+    unsigned width; // logo's width, little endian
+    unsigned height; // logo's height, little endian
+    unsigned char reserved[512-16];
+};
 
 #define FB_FORMAT_RGB565 0
 #define FB_FORMAT_RGB888 1
