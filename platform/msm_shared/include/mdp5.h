@@ -32,28 +32,34 @@
 
 #include <msm_panel.h>
 
-#define MDP_VP_0_RGB_0_SSPP_SRC0_ADDR           REG_MDP(0x1E14)
-#define MDP_VP_0_RGB_0_SSPP_SRC_YSTRIDE         REG_MDP(0x1E24)
-#define MDP_VP_0_RGB_0_SSPP_SRC_IMG_SIZE        REG_MDP(0x1E04)
-#define MDP_VP_0_RGB_0_SSPP_SRC_SIZE            REG_MDP(0x1E00)
-#define MDP_VP_0_RGB_0_SSPP_SRC_OUT_SIZE        REG_MDP(0x1E0C)
-#define MDP_VP_0_RGB_0_SSPP_SRC_XY              REG_MDP(0x1E08)
-#define MDP_VP_0_RGB_0_SSPP_OUT_XY              REG_MDP(0x1E10)
-#define MDP_VP_0_RGB_0_SSPP_SRC_FORMAT          REG_MDP(0x1E30)
-#define MDP_VP_0_RGB_0_SSPP_SRC_UNPACK_PATTERN  REG_MDP(0x1E34)
-#define MDP_VP_0_RGB_0_SSPP_SRC_OP_MODE         REG_MDP(0x1E38)
+#define MDP_VP_0_RGB_0_BASE                     REG_MDP(0x1E00)
+#define MDP_VP_0_RGB_1_BASE                     REG_MDP(0x2200)
 
-#define MDP_VP_0_LAYER_0_OUT_SIZE               REG_MDP(0x3204)
-#define MDP_VP_0_LAYER_0_OP_MODE                REG_MDP(0x3200)
-#define MDP_VP_0_LAYER_0_BORDER_COLOR_0         REG_MDP(0x3208)
-#define MDP_VP_0_LAYER_0_BLEND_OP               REG_MDP(0x3220)
-#define MDP_VP_0_LAYER_0_BLEND0_FG_ALPHA        REG_MDP(0x3224)
-#define MDP_VP_0_LAYER_1_BLEND_OP               REG_MDP(0x3250)
-#define MDP_VP_0_LAYER_1_BLEND0_FG_ALPHA        REG_MDP(0x3254)
-#define MDP_VP_0_LAYER_2_BLEND_OP               REG_MDP(0x3280)
-#define MDP_VP_0_LAYER_2_BLEND0_FG_ALPHA        REG_MDP(0x3284)
-#define MDP_VP_0_LAYER_3_BLEND_OP               REG_MDP(0x32B0)
-#define MDP_VP_0_LAYER_3_BLEND0_FG_ALPHA        REG_MDP(0x32B4)
+#define PIPE_SSPP_SRC0_ADDR                     0x14
+#define PIPE_SSPP_SRC_YSTRIDE                   0x24
+#define PIPE_SSPP_SRC_IMG_SIZE                  0x04
+#define PIPE_SSPP_SRC_SIZE                      0x00
+#define PIPE_SSPP_SRC_OUT_SIZE                  0x0C
+#define PIPE_SSPP_SRC_XY                        0x08
+#define PIPE_SSPP_OUT_XY                        0x10
+#define PIPE_SSPP_SRC_FORMAT                    0x30
+#define PIPE_SSPP_SRC_UNPACK_PATTERN            0x34
+#define PIPE_SSPP_SRC_OP_MODE                   0x38
+
+#define MDP_VP_0_MIXER_0_BASE                   REG_MDP(0x3200)
+#define MDP_VP_0_MIXER_1_BASE                   REG_MDP(0x3600)
+
+#define LAYER_0_OUT_SIZE                        0x04
+#define LAYER_0_OP_MODE                         0x00
+#define LAYER_0_BORDER_COLOR_0                  0x08
+#define LAYER_0_BLEND_OP                        0x20
+#define LAYER_0_BLEND0_FG_ALPHA                 0x24
+#define LAYER_1_BLEND_OP                        0x50
+#define LAYER_1_BLEND0_FG_ALPHA                 0x54
+#define LAYER_2_BLEND_OP                        0x80
+#define LAYER_2_BLEND0_FG_ALPHA                 0x84
+#define LAYER_3_BLEND_OP                        0xB0
+#define LAYER_3_BLEND0_FG_ALPHA                 0xB4
 
 
 #define MDSS_MDP_HW_REV_100                     0x10000000
@@ -71,28 +77,39 @@
 
 #define MDP_INTF_1_TIMING_ENGINE_EN             REG_MDP(0x12700)
 
-#define MDP_CTL_0_LAYER_0                       REG_MDP(0x600)
-#define MDP_CTL_0_TOP                           REG_MDP(0x614)
-#define MDP_CTL_0_FLUSH                         REG_MDP(0x618)
-#define MDP_CTL_0_START                         REG_MDP(0x61C)
+#define MDP_CTL_0_BASE                          REG_MDP(0x600)
+#define MDP_CTL_1_BASE                          REG_MDP(0x700)
 
-#define MDP_INTF_1_HSYNC_CTL                    REG_MDP(0x12708)
-#define MDP_INTF_1_VSYNC_PERIOD_F0              REG_MDP(0x1270C)
-#define MDP_INTF_1_VSYNC_PERIOD_F1              REG_MDP(0x12710)
-#define MDP_INTF_1_VSYNC_PULSE_WIDTH_F0         REG_MDP(0x12714)
-#define MDP_INTF_1_VSYNC_PULSE_WIDTH_F1         REG_MDP(0x12718)
-#define MDP_INTF_1_DISPLAY_HCTL                 REG_MDP(0x1273C)
-#define MDP_INTF_1_DISPLAY_V_START_F0           REG_MDP(0x1271C)
-#define MDP_INTF_1_DISPLAY_V_START_F1           REG_MDP(0x12720)
-#define MDP_INTF_1_DISPLAY_V_END_F0             REG_MDP(0x12724)
-#define MDP_INTF_1_DISPLAY_V_END_F1             REG_MDP(0x12728)
-#define MDP_INTF_1_ACTIVE_HCTL                  REG_MDP(0x12740)
-#define MDP_INTF_1_ACTIVE_V_START_F0            REG_MDP(0x1272C)
-#define MDP_INTF_1_ACTIVE_V_START_F1            REG_MDP(0x12730)
-#define MDP_INTF_1_ACTIVE_V_END_F0              REG_MDP(0x12734)
-#define MDP_INTF_1_ACTIVE_V_END_F1              REG_MDP(0x12738)
-#define MDP_INTF_1_UNDERFFLOW_COLOR             REG_MDP(0x12748)
-#define MDP_INTF_1_PANEL_FORMAT                 REG_MDP(0x12790)
+#define CTL_LAYER_0                             0x00
+#define CTL_LAYER_1                             0x04
+#define CTL_TOP                                 0x14
+#define CTL_FLUSH                               0x18
+#define CTL_START                               0x1C
+
+#define MDP_TG_SINK                             REG_MDP(0x4F0)
+#define MDP_REG_SPLIT_DISPLAY_EN                REG_MDP(0x3F4)
+#define MDP_REG_SPLIT_DISPLAY_UPPER_PIPE_CTL    REG_MDP(0x3F8)
+
+#define MDP_INTF_1_BASE                         REG_MDP(0x12700)
+#define MDP_INTF_2_BASE                         REG_MDP(0x12900)
+
+#define MDP_HSYNC_CTL                           0x08
+#define MDP_VSYNC_PERIOD_F0                     0x0C
+#define MDP_VSYNC_PERIOD_F1                     0x10
+#define MDP_VSYNC_PULSE_WIDTH_F0                0x14
+#define MDP_VSYNC_PULSE_WIDTH_F1                0x18
+#define MDP_DISPLAY_HCTL                        0x3C
+#define MDP_DISPLAY_V_START_F0                  0x1C
+#define MDP_DISPLAY_V_START_F1                  0x20
+#define MDP_DISPLAY_V_END_F0                    0x24
+#define MDP_DISPLAY_V_END_F1                    0x28
+#define MDP_ACTIVE_HCTL                         0x40
+#define MDP_ACTIVE_V_START_F0                   0x2C
+#define MDP_ACTIVE_V_START_F1                   0x30
+#define MDP_ACTIVE_V_END_F0                     0x34
+#define MDP_ACTIVE_V_END_F1                     0x38
+#define MDP_UNDERFFLOW_COLOR                    0x48
+#define MDP_PANEL_FORMAT                        0x90
 
 #define MDP_CLK_CTRL0                           REG_MDP(0x03AC)
 #define MDP_CLK_CTRL1                           REG_MDP(0x03B4)
@@ -101,10 +118,24 @@
 #define MDP_CLK_CTRL4                           REG_MDP(0x04B0)
 #define MDP_CLK_CTRL5                           REG_MDP(0x04B8)
 
+#define MMSS_MDP_CLIENT_ID_RGB0                 0x00000010
+#define MMSS_MDP_CLIENT_ID_RGB1                 0x00000011
+
+#define MMSS_MDP_MAX_SMP_SIZE                   0x00001000
 #define MMSS_MDP_SMP_ALLOC_W_0                  REG_MDP(0x0180)
 #define MMSS_MDP_SMP_ALLOC_W_1                  REG_MDP(0x0184)
 #define MMSS_MDP_SMP_ALLOC_R_0                  REG_MDP(0x0230)
 #define MMSS_MDP_SMP_ALLOC_R_1                  REG_MDP(0x0234)
+
+#define RGB0_REQPRIORITY_FIFO_WATERMARK0        REG_MDP(0x1E50)
+#define RGB0_REQPRIORITY_FIFO_WATERMARK1        REG_MDP(0x1E54)
+#define RGB0_REQPRIORITY_FIFO_WATERMARK2        REG_MDP(0x1E58)
+
+#define RGB1_REQPRIORITY_FIFO_WATERMARK0        REG_MDP(0x2250)
+#define RGB1_REQPRIORITY_FIFO_WATERMARK1        REG_MDP(0x2254)
+#define RGB1_REQPRIORITY_FIFO_WATERMARK2        REG_MDP(0x2258)
+
+#define MDP_QOS_REMAPPER_CLASS_0                REG_MDP(0x02E0)
 
 #define VBIF_VBIF_DDR_FORCE_CLK_ON              REG_MDP(0x24004)
 #define VBIF_VBIF_DDR_OUT_MAX_BURST             REG_MDP(0x240D8)
