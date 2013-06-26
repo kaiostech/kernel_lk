@@ -149,12 +149,6 @@ void target_init(void)
 		dprintf(CRITICAL,"Keyboard is not supported for platform: %d\n",platform_id);
 	};
 
-	/* Display splash screen if enabled */
-#if DISPLAY_SPLASH_SCREEN
-	display_init();
-	dprintf(SPEW, "Diplay initialized\n");
-#endif
-
 	if ((platform_id == MSM8960) || (platform_id == MSM8960AB) ||
 		(platform_id == APQ8060AB) || (platform_id == MSM8260AB) ||
 		(platform_id == MSM8660AB) || (platform_id == MSM8660A) ||
@@ -176,6 +170,12 @@ void target_init(void)
 			ASSERT(0);
 		}
 	}
+	/* Display splash screen if enabled */
+#if DISPLAY_SPLASH_SCREEN
+	display_init();
+	dprintf(SPEW, "Diplay initialized\n");
+#endif
+
 }
 
 unsigned board_machtype(void)
