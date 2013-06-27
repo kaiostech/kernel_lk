@@ -190,7 +190,7 @@ void target_fastboot_init(void)
 /* Detect the target type */
 void target_detect(struct board_data *board)
 {
-	board->target = LINUX_MACHTYPE_UNKNOWN;
+	board->target = board->target;
 }
 
 /* Detect the modem type */
