@@ -543,8 +543,6 @@ int smb349_check_usb_vbus_connection(int *wall_charger)
 		return -1;
 	}
 
-	dprintf(INFO, "Read SMB349_STATUS_REG_D value = [%d] \n", usb_status);
-
 	switch(usb_status) {
 		case SMB349_APSD_RESULT_NONE: return 0; break;
 		case SMB349_APSD_RESULT_OTHER:

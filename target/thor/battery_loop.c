@@ -260,6 +260,7 @@ int get_battery_charging_info(struct battery_charging_info *data)
     return 0;
 }
 
+extern int target_volume_down();
 void check_battery_condition(void)
 {
     struct battery_charging_info info;
@@ -369,6 +370,12 @@ void check_battery_condition(void)
             /* Display status */
             dprintf(INFO, "t = %5d, voltage = %4d mV, current = %4d mA, capacity = %2d %%, temperature = %3d C, temp103 = %3d C\n",
                         sec, info.voltage, info.current, info.capacity, info.temperature, info.tmp103_temp );
+
+            delay_ms(3000);
+            if (target_volume_down()) {
+                dprintf(INFO, "Detect volume down key pressed, break the charging loop \n");
+                break;
+            }
 
             /* Temperature check */
             if ((info.temperature > TEMPERATURE_HOT_LIMIT) ||
