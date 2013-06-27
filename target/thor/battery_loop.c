@@ -231,31 +231,9 @@ int get_battery_charging_info(struct battery_charging_info *data)
         dprintf(INFO, "Unable to determine battery current\n");
     }
 
-/*
- * NOTICE: In factory, some station will use Main board without real battery to power on,
- *         We can't shut down the device for this case.
- */
-#if 0
-    i = 0;
-    do {
-        if (!bq27741_temperature(&data->temperature))
-            break;
-        else {
-            dprintf(INFO, "Unable to determine battery temperature (%d)\n", i);
-            delay_ms(100);
-        }
-    } while (++i < READ_TEMP_ERR_COUNT_LIMIT);
-
-    if(i >= READ_TEMP_ERR_COUNT_LIMIT) {
-        dprintf(INFO, "Too many error to read the temperature, shut down the device..\n");
-        shut_down();
-    }
-#else
     if (bq27741_temperature(&data->temperature)) {
         dprintf(INFO, "Unable to determine battery temperature\n");
-        return -1;
     }
-#endif
 
 #endif /* CONFIG_BQ27741 */
     i = 0;
@@ -272,6 +250,15 @@ int get_battery_charging_info(struct battery_charging_info *data)
         dprintf(INFO, "Too many error to read the temperature, shut down the device..\n");
         shut_down();
     }
+
+#if defined(CONFIG_BQ27741)
+    if ((data->voltage == 0) &&
+            (data->capacity == 0) &&
+            (data->current == 0) &&
+            (data->temperature == 0)) {
+        return -1;
+    }
+#endif
 
     return 0;
 }
@@ -308,9 +295,14 @@ void check_battery_condition(void)
         }
     } else {
         dprintf(INFO, "No usb connected \n");
-	}
+    }
 
     ret = get_battery_charging_info(&info);
+
+    if (ret == -1) {
+        dprintf(INFO, "Battery gas gauge not responding, skipping charge loop...\n");
+        return;
+    }
 
     /* Display battery information */
     dprintf(INFO, "Battery: voltage = %4d mV, current = %4d mA,\n", info.voltage, info.current);
