@@ -60,10 +60,10 @@ const struct idme_init_values idme_default_values[] = {
 	},
 	{ { "bootmode", 4, 1, 0444 },
 		/* Default Bootmode */
-#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
-		"2"
+#if defined(CONFIG_MACH_MSM8974)
+		"1" /* Devices that do not go through factory should be 1 */
 #else
-		"1"
+		"2" /* Anything that begins in a factory should be 2 */
 #endif
 	},
 	{ { "postmode", 4, 1, 0444 },
