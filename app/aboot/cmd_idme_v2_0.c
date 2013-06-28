@@ -82,6 +82,12 @@ const struct idme_init_values idme_default_values[] = {
 		/* Manufacturer-specific data */
 		""
 	},
+#if defined(CONFIG_MACH_URSA)
+	{ { "imei", 16, 1, 0444 },
+		/* Product IMEI */
+		"0"
+	},
+#endif
 	{ { "", 0, 0, 0 }, 0 },
 };
 
