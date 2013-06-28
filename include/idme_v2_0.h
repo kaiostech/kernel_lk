@@ -8,6 +8,7 @@
 #define IDME_VERSION_2P1 "2.1"
 
 int idme_init_var_v2p0(void *data);
+int idme_update_table_v2p0(void *data);
 int idme_get_var_v2p0(const char *name, char *buf, unsigned int length, void *data);
 int idme_update_var_v2p0(const char *name, const char *value, unsigned int length, void *data);
 int idme_print_var_v2p0(void *data);

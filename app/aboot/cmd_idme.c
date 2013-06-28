@@ -29,6 +29,7 @@ void idme_dump_memory(unsigned char *dst, int size);
 static int idme_null_func(void);
 int do_idme ( int flag, int argc, char *argv[]);
 static int (*idme_init_var)(void *data);
+static int (*idme_update_table)(void *data);
 static int (*idme_get_var)(const char *name, char *buf, unsigned int length, void *data);
 static int (*idme_update_var)(const char *name, const char *value, unsigned int length, void *data);
 static int (*idme_print_var)(void *data);
@@ -181,6 +182,7 @@ int idme_initialize(void)
 					idme_ver_table[i].ver_type == IDME_VER_2P1) {
 				dprintf(INFO, "Idme version is 2.x and set related function to V2.x\n");
 				idme_init_var = idme_init_var_v2p0;
+				idme_update_table = idme_update_table_v2p0;
 				idme_get_var = idme_get_var_v2p0;
 				idme_update_var = idme_update_var_v2p0;
 				idme_print_var = idme_print_var_v2p0;
@@ -206,6 +208,12 @@ int idme_initialize(void)
 		idme_init_var((void*)pidme_data);
 		idme_write((const unsigned char *)pidme_data);
 	}
+#ifdef WITH_IDME_UPDATE_TABLE
+	/* This function is non-functional unless WITH_IDME_UPDATE_TABLE is defined */
+	else if (0 == idme_update_table((void*)pidme_data)) {
+		idme_write((const unsigned char *)pidme_data);
+	}
+#endif
 
 	return 0;
 }

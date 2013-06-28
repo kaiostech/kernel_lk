@@ -91,6 +91,71 @@ const struct idme_init_values idme_default_values[] = {
 	{ { "", 0, 0, 0 }, 0 },
 };
 
+#ifdef WITH_IDME_UPDATE_TABLE
+int idme_update_table_v2p0(void *data)
+{
+	struct idme_t *pidme = (struct idme_t *)data;
+	char *idme_limit = (char *)pidme + CONFIG_IDME_SIZE;
+	struct item_t *pitem = (struct item_t *)(&(pidme->item_data[0]));
+	unsigned int items_num = 0;
+	unsigned int update_table = 0;
+	int retval = -2;
+
+	if (idme_check_magic_number(pidme)){
+		dprintf(CRITICAL, "idme_update_table: idme magic number error\n");
+		return -1;
+	}
+	if ( 0 != strncmp(pidme->version, IDME_VERSION_2P1, strlen(IDME_VERSION_2P1)) ) {
+		dprintf(CRITICAL, "idme_update_table: version number error\n");
+		return -1;
+	}
+
+	/* use default values to initialize idme data */
+	const struct idme_init_values *ptr = &idme_default_values[0];
+
+	while (strlen(ptr->desc.name)) {
+		if ( 0 == strncmp(ptr->desc.name, pitem->desc.name, IDME_MAX_NAME_LEN) ) {
+			dprintf(SPEW, "idme_update_table: found %s, do nothing\n", ptr->desc.name);
+		} else if ( pitem->desc.name[0] != '\0' ) {
+			dprintf(CRITICAL, "idme_update_table: error: template does not match IDME contents\n");
+			return -1;
+		} else {
+			update_table = 1;
+			dprintf(INFO, "idme_update_table: %s not found, adding...\n", ptr->desc.name);
+		}
+
+		if (update_table) {
+			IDME_ITEM_INIT(pitem, idme_limit,
+				ptr->desc.name,
+				ptr->desc.size,
+				ptr->desc.exportable,
+				ptr->desc.permission,
+				ptr->value);
+		}
+
+		items_num++;
+		ptr++;
+
+		if (strlen(ptr->desc.name))
+			IDME_ITEM_NEXT(pitem);
+	}
+
+	if(update_table) {
+		pidme->items_num = items_num;
+		retval = 0;
+	}
+
+	dprintf(INFO, "idme_update_table: finished, %s\n", update_table ? "updated table" : "no changes");
+	return retval;
+}
+#else
+int idme_update_table_v2p0(void *data)
+{
+	dprintf(INFO, "idme_update_table: disabled\n");
+	return -2;
+}
+#endif
+
 int idme_init_var_v2p0(void *data)
 {
 	struct idme_t *pidme = (struct idme_t *)data;
