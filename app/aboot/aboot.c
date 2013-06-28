@@ -2510,10 +2510,6 @@ void aboot_init(const struct app_descriptor *app)
 		boot_into_fastboot = true;
 	}
 
-	/* Check for emergency download mode */
-	if (idme_boot_mode() == IDME_BOOTMODE_EMERGENCY)
-		target_enter_emergency_download();
-
 // ACOS_MOD_BEGIN
 #ifdef WITH_ENABLE_IDME
 	idme_boot_info();
@@ -2522,6 +2518,11 @@ void aboot_init(const struct app_descriptor *app)
 
 	if (!boot_into_fastboot)
 	{
+		/* Check for emergency download mode */
+		if (idme_boot_mode() == IDME_BOOTMODE_EMERGENCY)
+		{
+			target_enter_emergency_download();
+		}
 		if (target_is_emmc_boot())
 		{
 			if(emmc_recovery_init())
