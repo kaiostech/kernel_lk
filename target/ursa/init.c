@@ -494,7 +494,6 @@ int target_cont_splash_screen()
 
 unsigned target_pause_for_battery_charge(void)
 {
-#if !FACTORY_MODE
 	unsigned reboot_mode = check_reboot_mode();
 	uint8_t pon_reason = pm8x41_get_pon_reason();
 
@@ -530,7 +529,6 @@ unsigned target_pause_for_battery_charge(void)
 		if (board_hardware_version() != BOARD_REVISION_P0)
 			return 1;
 	}
-#endif // !FACTORY_MODE
 
 	return 0;
 }
@@ -551,7 +549,6 @@ void shutdown_device()
 	mdelay(5000);
 
 	dprintf(CRITICAL, "Shutdown failed\n");
-
 }
 
 static void set_sdc_power_ctrl()
