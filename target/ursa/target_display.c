@@ -122,6 +122,7 @@ static int ursa_display_panel_power(uint8_t enable)
 		pm8x41_ldo_control("LDO2", 1);
 
 		//tC is the rise time of the above regulators (IVDDI & co)
+		mdelay(1);
 
 		//Touch reset line
 		gpio_tlmm_config(60, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
