@@ -77,6 +77,8 @@ struct mmc_device *dev;
 #define SSD_PARTITION_SIZE      8192
 #endif
 
+#define BOARD_SOC_VERSION1(soc_rev) (soc_rev >= 0x10000 && soc_rev < 0x20000)
+
 #if MMC_SDHCI_SUPPORT
 static uint32_t mmc_sdhci_base[] =
 	{ MSM_SDC1_SDHCI_BASE, MSM_SDC2_SDHCI_BASE, MSM_SDC3_SDHCI_BASE, MSM_SDC4_SDHCI_BASE };
@@ -90,6 +92,27 @@ void target_early_init(void)
 #if WITH_DEBUG_UART
 	uart_dm_init(1, 0, BLSP1_UART1_BASE);
 #endif
+}
+
+/* Check for 8974 chip */
+static int target_is_8974()
+{
+	uint32_t platform = board_platform_id();
+	int ret = 0;
+
+	switch(platform)
+	{
+		case APQ8074:
+		case MSM8274:
+		case MSM8674:
+		case MSM8974:
+			ret = 1;
+			break;
+		default:
+			ret = 0;
+	};
+
+	return ret;
 }
 
 /* Return 1 if vol_up pressed */
@@ -192,10 +215,10 @@ static target_mmc_sdhci_init()
 	switch(board_hardware_id())
 	{
 		case HW_PLATFORM_FLUID:
-			if (soc_ver >= BOARD_SOC_VERSION2)
-				config.bus_width = DATA_BUS_WIDTH_8BIT;
-			else
+			if (target_is_8974() && BOARD_SOC_VERSION1(soc_ver))
 				config.bus_width = DATA_BUS_WIDTH_4BIT;
+			else
+				config.bus_width = DATA_BUS_WIDTH_8BIT;
 			break;
 		default:
 			config.bus_width = DATA_BUS_WIDTH_8BIT;
@@ -268,10 +291,10 @@ void target_mmc_caps(struct mmc_host *host)
 	switch(board_hardware_id())
 	{
 		case HW_PLATFORM_FLUID:
-			if (soc_ver >= BOARD_SOC_VERSION2)
-				host->caps.bus_width = MMC_BOOT_BUS_WIDTH_8_BIT;
-			else
+			if (target_is_8974() && BOARD_SOC_VERSION1(soc_ver))
 				host->caps.bus_width = MMC_BOOT_BUS_WIDTH_4_BIT;
+			else
+				host->caps.bus_width = MMC_BOOT_BUS_WIDTH_8_BIT;
 			break;
 		default:
 			host->caps.bus_width = MMC_BOOT_BUS_WIDTH_8_BIT;
@@ -406,9 +429,21 @@ void target_baseband_detect(struct board_data *board)
 	case MSM8974:
 	case MSM8274:
 	case MSM8674:
+	case MSM8274AA:
+	case MSM8274AB:
+	case MSM8274AC:
+	case MSM8674AA:
+	case MSM8674AB:
+	case MSM8674AC:
+	case MSM8974AA:
+	case MSM8974AB:
+	case MSM8974AC:
 		board->baseband = BASEBAND_MSM;
 		break;
 	case APQ8074:
+	case APQ8074AA:
+	case APQ8074AB:
+	case APQ8074AC:
 		board->baseband = BASEBAND_APQ;
 		break;
 	default:
@@ -439,10 +474,10 @@ unsigned check_reboot_mode(void)
 
 	soc_ver = board_soc_version();
 
-	if (soc_ver >= BOARD_SOC_VERSION2)
-		restart_reason_addr = RESTART_REASON_ADDR_V2;
-	else
+	if (target_is_8974() && BOARD_SOC_VERSION1(soc_ver))
 		restart_reason_addr = RESTART_REASON_ADDR;
+	else
+		restart_reason_addr = RESTART_REASON_ADDR_V2;
 
 	/* Read reboot reason and scrub it */
 	restart_reason = readl(restart_reason_addr);
@@ -458,10 +493,10 @@ void reboot_device(unsigned reboot_reason)
 	soc_ver = board_soc_version();
 
 	/* Write the reboot reason */
-	if (soc_ver >= BOARD_SOC_VERSION2)
-		writel(reboot_reason, RESTART_REASON_ADDR_V2);
-	else
+	if (target_is_8974() && BOARD_SOC_VERSION1(soc_ver))
 		writel(reboot_reason, RESTART_REASON_ADDR);
+	else
+		writel(reboot_reason, RESTART_REASON_ADDR_V2);
 
 	/* Configure PMIC for warm reset */
 	if (pmic_ver == PMIC_VERSION_V2)
@@ -496,9 +531,20 @@ int set_download_mode(enum dload_mode mode)
 	return 0;
 }
 
+/* Check if MSM needs VBUS mimic for USB */
+static int target_needs_vbus_mimic()
+{
+	if (target_is_8974())
+		return 0;
+
+	return 1;
+}
+
 /* Do target specific usb initialization */
 void target_usb_init(void)
 {
+	uint32_t val;
+
 	/* Enable secondary USB PHY on DragonBoard8074 */
 	if (board_hardware_id() == HW_PLATFORM_DRAGON) {
 		/* Route ChipIDea to use secondary USB HS port2 */
@@ -523,6 +569,21 @@ void target_usb_init(void)
 		* then configure related parameters within the PHY */
 		writel_relaxed(((readl_relaxed(USB_PORTSC) & 0xC0000000)
 				| 0x8c000004), USB_PORTSC);
+	}
+
+	if (target_needs_vbus_mimic())
+	{
+		/* Select and enable external configuration with USB PHY */
+		ulpi_write(ULPI_MISC_A_VBUSVLDEXTSEL | ULPI_MISC_A_VBUSVLDEXT, ULPI_MISC_A_SET);
+
+		/* Enable sess_vld */
+		val = readl(USB_GENCONFIG_2) | GEN2_SESS_VLD_CTRL_EN;
+		writel(val, USB_GENCONFIG_2);
+
+		/* Enable external vbus configuration in the LINK */
+		val = readl(USB_USBCMD);
+		val |= SESS_VLD_CTRL;
+		writel(val, USB_USBCMD);
 	}
 }
 
@@ -613,4 +674,13 @@ static void set_sdc_power_ctrl()
 int emmc_recovery_init(void)
 {
 	return _emmc_recovery_init();
+}
+
+void target_usb_stop(void)
+{
+	uint32_t platform = board_platform_id();
+
+	/* Disable VBUS mimicing in the controller. */
+	if (target_needs_vbus_mimic())
+		ulpi_write(ULPI_MISC_A_VBUSVLDEXTSEL | ULPI_MISC_A_VBUSVLDEXT, ULPI_MISC_A_CLEAR);
 }

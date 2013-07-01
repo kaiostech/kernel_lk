@@ -26,3 +26,9 @@ OBJS += \
 	$(LOCAL_DIR)/mipi_toshiba_video_720p.o \
 	$(LOCAL_DIR)/mipi_sharp_video_qhd.o
 endif
+
+ifeq ($(PLATFORM),msm8226)
+OBJS += \
+	$(LOCAL_DIR)/mipi_nt35590_video_720p.o \
+	$(LOCAL_DIR)/mipi_nt35590_cmd_720p.o
+endif

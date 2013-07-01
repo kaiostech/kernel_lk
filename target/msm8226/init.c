@@ -59,6 +59,12 @@ static void set_sdc_power_ctrl(void);
 
 #define TLMM_VOL_UP_BTN_GPIO    106
 
+enum target_subtype {
+	HW_PLATFORM_SUBTYPE_SKUAA = 1,
+	HW_PLATFORM_SUBTYPE_SKUF = 2,
+	HW_PLATFORM_SUBTYPE_SKUAB = 3,
+};
+
 static uint32_t mmc_sdhci_base[] =
 	{ MSM_SDC1_SDHCI_BASE, MSM_SDC2_SDHCI_BASE, MSM_SDC3_SDHCI_BASE };
 
@@ -174,6 +180,13 @@ void target_init(void)
 
 	target_keystatus();
 
+	/* Display splash screen if enabled */
+#if DISPLAY_SPLASH_SCREEN
+	dprintf(SPEW, "Display Init: Start\n");
+	display_init();
+	dprintf(SPEW, "Display Init: Done\n");
+#endif
+
 	target_sdc_init();
 
 	if (target_use_signed_kernel())
@@ -210,6 +223,12 @@ void target_baseband_detect(struct board_data *board)
 	switch(platform_subtype)
 	{
 	case HW_PLATFORM_SUBTYPE_UNKNOWN:
+		break;
+	case HW_PLATFORM_SUBTYPE_SKUAA:
+		break;
+	case HW_PLATFORM_SUBTYPE_SKUF:
+		break;
+	case HW_PLATFORM_SUBTYPE_SKUAB:
 		break;
 	default:
 		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n", platform_subtype);
@@ -306,6 +325,23 @@ void target_usb_init(void)
 	val = readl(USB_USBCMD);
 	val |= SESS_VLD_CTRL;
 	writel(val, USB_USBCMD);
+}
+
+/* Returns 1 if target supports continuous splash screen. */
+int target_cont_splash_screen()
+{
+	switch(board_hardware_id())
+	{
+		case HW_PLATFORM_MTP:
+		case HW_PLATFORM_QRD:
+		case HW_PLATFORM_SURF:
+			dprintf(SPEW, "Target_cont_splash=1\n");
+			return 1;
+			break;
+		default:
+			dprintf(SPEW, "Target_cont_splash=0\n");
+			return 0;
+	}
 }
 
 unsigned target_pause_for_battery_charge(void)
