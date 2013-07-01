@@ -81,10 +81,7 @@ extern int bq27741_temperature(int16_t *temp);
 #ifdef CONFIG_SMB349
 /* charger function */
 extern int smb349_init(int *wall_charger);
-extern int smb349_redo_apsd(void);
-extern int smb349_apsd_process(int apsd, int *wall_charger);
 extern int smb349_check_usb_vbus_connection(int *wall_charger);
-#define DOUBLE_CHECK_APSD_TIME 4 /* 4 secs */
 #endif
 
 #define TEMPERATURE_COLD_LIMIT -19 /* -19 C */
@@ -176,7 +173,7 @@ static void show_error_logo(enum pic_type type, int pre_ms, int max_ms)
     remain_ms = ms - (CHECK_VBUS_MS * times);
     for (; times-- > 0;) {
         delay_ms(CHECK_VBUS_MS);
-		cable_status = smb349_check_usb_vbus_connection(NULL);
+        cable_status = smb349_check_usb_vbus_connection(NULL);
         if (check_vbus_flag && cable_status != 1) {
             shut_down();
         }
@@ -274,9 +271,6 @@ void check_battery_condition(void)
     int cable_status = 0;
     int ret = 0;
     int delay_time = 0;
-#ifdef CONFIG_SMB349
-    int redo_apsd_flag = 1;
-#endif
 
 #ifdef CONFIG_SMB349
     if (smb349_init(&wall_charger) == -1)
@@ -287,7 +281,7 @@ void check_battery_condition(void)
 		dprintf(INFO, "SMB349 detect usb vbus fasiled \n");
 #endif
 
-    if(cable_status == 1) {
+    if (cable_status == 1) {
         if(wall_charger == 1) {
             dprintf(INFO, "Detect wall charger.\n");
         } else {
@@ -316,6 +310,7 @@ void check_battery_condition(void)
 
         shut_down();
     }
+
     if ((info.voltage >= LOW_BATTERY_VOLTAGE_LIMIT) && (info.capacity >= LOW_BATTERY_CAPACITY_LIMIT)) {
         dprintf(INFO, "cond: voltage = %d, capacity = %d can start to boot..\n", info.voltage, info.capacity);
     }
@@ -348,13 +343,9 @@ void check_battery_condition(void)
 
             charge_screen_displayed = 1;
         }
-        else
+        else {
             dprintf(INFO, "Unable to dispay low battery (charging) notification\n");
-/*
-        //FIXME: prcm_reinit_battery_chrg() would cost 5 secs, it's too long.
-        prcm_reinit_battery_chrg(BATTERY_CHRG_ON);
-        scale_reinit_vcores(BATTERY_CHRG_ON);
-*/
+        }
 
         dprintf(INFO, "Entering charge loop...\n");
 
@@ -365,30 +356,12 @@ void check_battery_condition(void)
             cable_status = smb349_check_usb_vbus_connection(NULL);
             if (cable_status == -1) {
                 dprintf(INFO, "SMB349 detect usb vbus failed \n");
-				shut_down();
-			}
+                shut_down();
+            }
 
             if(cable_status == 0) {
                 dprintf(INFO, "USB Cable have been plug out \n");
                 shut_down();
-            } else if (redo_apsd_flag) {
-                int ret = smb349_init(&wall_charger);
-                if (ret == 0) {
-                    if(wall_charger == 1)
-                        dprintf(INFO, "Detect wall charger.\n");
-                    else
-                        dprintf(INFO, "Detect usb.\n");
-                }
-                else if ((ret == 1) && (sec >= DOUBLE_CHECK_APSD_TIME)) {
-                    int apsd = smb349_redo_apsd();
-                    smb349_apsd_process(apsd, &wall_charger);
-                    if(wall_charger == 1)
-                        dprintf(INFO, "Double detect wall charger.\n");
-                    else
-                        dprintf(INFO, "Double detect usb.\n");
-
-                    redo_apsd_flag = 0;
-                }
             }
 #endif
             get_battery_charging_info(&info);
@@ -430,16 +403,9 @@ void check_battery_condition(void)
                     break;
                 }
             }
-            else
+            else {
                 charge_enough = 0;
-
-#if 0
-            /* Check for Wall Charger and exit if present. */
-            if (info.current > LOW_CURRENT_LIMIT) {
-                dprintf(INFO, "Charging current is high enough to boot into system.");
-                break;
             }
-#endif
 
             /* Delay for ~5 seconds and check the power key status */
             pwr_key_pressed = check_pwr_key_press(&powerkey_ms);
@@ -460,10 +426,5 @@ void check_battery_condition(void)
         }
 
         dprintf(INFO, "Leaving charge loop...\n");
-/*
-        scale_reinit_vcores(BATTERY_CHRG_OFF);
-        prcm_reinit_battery_chrg(BATTERY_CHRG_OFF);
-*/
     }
 }
-

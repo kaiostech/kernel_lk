@@ -273,110 +273,6 @@ done:
     return status;
 }
 
-int smb349_redo_apsd(void)
-{
-    int status = -1, timeout = 0;
-    uint8_t val = 0;
-
-    status = 0;
-
-    /* Enable volatile writes to config registers */
-    if (smb349_config_enable(1))
-        goto done;
-
-    udelay(1000);
-
-    /* Disable APSD */
-    if (smb349_i2c_read(0x04, &val)) {
-        SMB349_LOG("Unable to read config reg 4 to disable APSD\n");
-        goto done;
-    }
-
-    udelay(1000);
-    val &= ~(1 << 2);
-
-    if (smb349_i2c_write(0x04, val)) {
-        SMB349_LOG("Unable to write config reg 4 to disable APSD\n");
-        goto done;
-    }
-
-    udelay(1000);
-
-    /* Enable APSD */
-    val |= (1 << 2);
-
-    if (smb349_i2c_write(0x04, val)) {
-        SMB349_LOG("Unable to write config reg 4 to enable APSD\n");
-        goto done;
-    }
-
-    udelay(1000);
-
-    /* Disable volatile writes to config registers */
-    if (smb349_config_enable(0))
-        goto done;
-
-    udelay(1000);
-
-    /* Loop until APSD is done, or timeout (10 ms) */
-    while (timeout <= 100) {
-        if (smb349_i2c_read(SMB349_STATUS_REG_D, &val)) {
-            SMB349_LOG("Unable to read status reg D\n");
-            goto done;
-        }
-
-        if (smb349_check_apsd_result(val) != -1)
-            break;
-
-        timeout++;
-        udelay(1000);
-    }
-
-    if (timeout > 100) {
-        SMB349_LOG("APSD timed out\n");
-        goto done;
-    }
-    status = val;
-done:
-    return status;
-}
-
-int smb349_apsd_process(int apsd, int *wall_charger)
-{
-    uint8_t mode = 0;
-    int status = -1;
-
-    if (apsd != -1 && smb349_check_apsd_result(apsd) != -1) {
-        SMB349_LOG("%s detected\n", smb349_apsd_result_string(apsd));
-
-        if (smb349_check_apsd_result(apsd) == SMB349_APSD_RESULT_DCP && wall_charger)
-            *wall_charger = 1;
-
-        if (smb349_check_apsd_result(apsd) == SMB349_APSD_RESULT_OTHER) {
-            /*
-             * 3rd party chargers we need to manually enable
-             * HC mode
-             */
-            if (smb349_i2c_read(SMB349_COMMAND_REG_B, &mode))
-                goto done;
-
-            /*
-             * FIXME: If on a dead battery and turn on HC mode,
-             * device will reset, so do NOT turn on HC mode
-             * when there's no battery
-             */
-            mode |= 0x03;
-
-            if (smb349_i2c_write(SMB349_COMMAND_REG_B, mode))
-                goto done;
-        }
-    }
-
-    status = 0;
-done:
-    return status;
-}
-
 static inline void smb349_parse_status_reg_a(uint8_t value)
 {
     SMB349_LOG("Status Register A = 0x%02x\n", value);
@@ -666,7 +562,7 @@ int smb349_check_usb_vbus_connection(int *wall_charger)
 
 int smb349_init(int *wall_charger)
 {
-	uint8_t status = -1, apsd = 0;
+	uint8_t status = -1;
 	uint8_t val = 0, mode = 0, tmp = 0;
 	int vusb = 0;
 
@@ -693,7 +589,7 @@ int smb349_init(int *wall_charger)
 		SMB349_LOG("Detect vusb failed \n");
 		goto done;
 	}
-	if (vusb == 1) {
+	if (vusb != 1) {
 		/* Nothing on USB, skip USB detection */
 		SMB349_LOG("Nothing on USB\n");
 		status = 0;
