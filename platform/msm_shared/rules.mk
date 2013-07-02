@@ -13,7 +13,8 @@ OBJS += \
 	$(LOCAL_DIR)/hsusb.o \
 	$(LOCAL_DIR)/jtag_hook.o \
 	$(LOCAL_DIR)/jtag.o \
-	$(LOCAL_DIR)/partition_parser.o
+	$(LOCAL_DIR)/partition_parser.o \
+	$(LOCAL_DIR)/boot_stats.o
 
 ifeq ($(ENABLE_SDHCI_SUPPORT),1)
 OBJS += \
@@ -110,6 +111,11 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 			$(LOCAL_DIR)/clock_lib2.o \
 			$(LOCAL_DIR)/uart_dm.o \
 			$(LOCAL_DIR)/board.o \
+			$(LOCAL_DIR)/scm.o \
+			$(LOCAL_DIR)/mdp5.o \
+			$(LOCAL_DIR)/display.o \
+			$(LOCAL_DIR)/mipi_dsi.o \
+			$(LOCAL_DIR)/mipi_dsi_phy.o \
 			$(LOCAL_DIR)/spmi.o \
 			$(LOCAL_DIR)/bam.o \
 			$(LOCAL_DIR)/qpic_nand.o \

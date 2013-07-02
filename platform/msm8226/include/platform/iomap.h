@@ -45,6 +45,10 @@
 #define DLOAD_MODE_ADDR             (MSM_SHARED_IMEM_BASE + 0x0)
 #define EMERGENCY_DLOAD_MODE_ADDR   (MSM_SHARED_IMEM_BASE + 0xFE0)
 
+#define BS_INFO_OFFSET                       (0x6B0)
+#define BS_INFO_ADDR                         (MSM_SHARED_IMEM_BASE + BS_INFO_OFFSET)
+#define MPM2_MPM_SLEEP_TIMETICK_COUNT_VAL    0xFC4A3000
+
 #define MSM_GIC_DIST_BASE           APPS_SS_BASE
 #define MSM_GIC_CPU_BASE            (APPS_SS_BASE + 0x2000)
 #define APPS_APCS_QTMR_AC_BASE      (APPS_SS_BASE + 0x00020000)
@@ -90,6 +94,11 @@
 #define TLMM_BASE_ADDR              0xFD510000
 #define GPIO_CONFIG_ADDR(x)         (TLMM_BASE_ADDR + 0x1000 + (x)*0x10)
 #define GPIO_IN_OUT_ADDR(x)         (TLMM_BASE_ADDR + 0x1004 + (x)*0x10)
+#define GPIO_OUT_SET_ADDR(x)        (TLMM_BASE_ADDR + 0x3040 + (x/32)*0x04)
+#define GPIO_OUT_CLR_ADDR(x)        (TLMM_BASE_ADDR + 0x3020 + (x/32)*0x04)
+#define GPIO_OUT_VAL(x)             (1 << (x - (x/32)*32))
+#define GPIO_OUT_OE_SET_ADDR(x)     (TLMM_BASE_ADDR + 0x3120 + (x/32)*0x04)
+#define GPIO_OUT_OE_VAL(x)          (1 << (x - (x/32)*32))
 
 #define MPM2_MPM_CTRL_BASE          0xFC4A1000
 #define MPM2_MPM_PS_HOLD            0xFC4AB000
@@ -141,4 +150,14 @@
 
 /* DRV strength for sdcc */
 #define SDC1_HDRV_PULL_CTL           (TLMM_BASE_ADDR + 0x00002044)
+
+/* MDSS */
+#define MSM_MMSS_CLK_CTL_BASE       0xFD8C0000
+#define MIPI_DSI_BASE               (0xFD922800)
+#define MIPI_DSI0_BASE              MIPI_DSI_BASE
+#define MIPI_DSI1_BASE              MIPI_DSI_BASE
+#define REG_DSI(off)                (MIPI_DSI_BASE + 0x04 + (off))
+#define MDP_BASE                    (0xfd900000)
+#define REG_MDP(off)                (MDP_BASE + (off))
+
 #endif
