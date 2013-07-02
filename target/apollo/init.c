@@ -387,8 +387,6 @@ int target_cont_splash_screen()
 	}
 }
 
-#define REBOOT_MODE_CHARGE   0x6f656d01
-
 unsigned target_pause_for_battery_charge(void)
 {
 	unsigned reboot_mode = check_reboot_mode();
@@ -407,6 +405,8 @@ unsigned target_pause_for_battery_charge(void)
 	/* Divert to charging if reboot mode set */
 	if (reboot_mode == REBOOT_MODE_CHARGE) {
 		return 1;
+	} else if (reboot_mode == REBOOT_MODE_EMERGENCY) {
+		target_enter_emergency_download();
 	}
 
 	return 0;

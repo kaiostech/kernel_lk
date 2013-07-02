@@ -513,6 +513,8 @@ unsigned target_pause_for_battery_charge(void)
 	    reboot_mode == REBOOT_MODE_RECOVERY) {
 		/* this boot has a specific purpose, don't divert to charging */
 		return 0;
+	} else if (reboot_mode == REBOOT_MODE_EMERGENCY) {
+		target_enter_emergency_download();
 	}
 
 	if (keys_get_state(KEY_HOME) ||

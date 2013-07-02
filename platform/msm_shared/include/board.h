@@ -35,6 +35,8 @@
 #define LINUX_MACHTYPE_UNKNOWN 0
 #define BOARD_SOC_VERSION2     0x20000
 #define MAX_PMIC_DEVICES       SMEM_MAX_PMIC_DEVICES
+#define REBOOT_MODE_EMERGENCY  0x6f656d02
+#define REBOOT_MODE_CHARGE     0x6f656d01
 
 struct board_pmic_data {
 	uint32_t pmic_type;
