@@ -102,4 +102,10 @@ void lp855x_bl_on()
 	lp855x_bl_i2c_write(LP8557_REG_BRTHI, 101); /* default brightness */
 }
 
+void lp855x_bl_off()
+{
+        lp855x_bl_i2c_write(LP8557_REG_BRTHI, 0);
+        lp855x_bl_i2c_write(LP8557_REG_CMD, LP8557_BL_CMD_OFF);
+        gpio_set(LP8557_BACKLIGHT_EN_GPIO, 0);
 
+}

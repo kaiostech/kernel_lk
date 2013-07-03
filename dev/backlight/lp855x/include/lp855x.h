@@ -46,5 +46,6 @@
 
 /* function prototypes */
 void lp855x_bl_on(void);
+void lp855x_bl_off(void);
 
 #endif

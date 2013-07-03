@@ -149,6 +149,7 @@ void display_init(void)
 void display_shutdown(void)
 {
 	if (display_enable){
+                lp855x_bl_off();
                 msm_display_off();
                 set_display_image_type(IMAGE_NONE);
        }
