@@ -313,6 +313,8 @@ int idme_print_var_v2p0(void *data)
 {
 	unsigned int i;
 	char temp[IDME_MAX_PRINT_SIZE + 1];
+        char buf[512];
+        int len;
 	struct idme_t *pdata = (struct idme_t *)data;
 	struct item_t *pitem = NULL;
 
@@ -334,6 +336,13 @@ int idme_print_var_v2p0(void *data)
 			pitem->desc.exportable,
 			idme_permission_to_string(pitem->desc.permission),
 			temp);
+
+                        /* will print name on terminal */
+			if ((strcmp(pitem->desc.name,"manufacturing") != 0) && (strcmp(pitem->desc.name,"mac_sec") != 0)){
+				len=sprintf(buf, "%s: ", pitem->desc.name);
+				idme_get_var_v2p0(pitem->desc.name, buf+len, sizeof(buf)-len, pdata);
+				fastboot_info(buf);
+			}
 		IDME_ITEM_NEXT(pitem);
 	}
 
