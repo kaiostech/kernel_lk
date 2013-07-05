@@ -40,16 +40,19 @@ extern void display_shutdown(void);
 int Init_LCD(void)
 {
 	dprintf(INFO, "Init LCD\n");
+	return 0;
 }
 
 void Power_on_LCD(void)
 {
 	dprintf(INFO, "Power on LCD\n");
+	lp855x_bl_on();
 }
 
 void Power_off_LCD(void)
 {
 	dprintf(INFO, "Power off LCD\n");
+	lp855x_bl_off();
 }
 
 void show_lowbattery(void)
@@ -180,6 +183,7 @@ static void show_error_logo(enum pic_type type, int pre_ms, int max_ms)
     }
     if (remain_ms)
         delay_ms(remain_ms);
+    delay_ms(5000);
 
     Power_off_LCD();
 }
@@ -193,8 +197,7 @@ static int check_pwr_key_press(int *ms)
     for (local_ms = 0; local_ms < 20; local_ms++) {
 
         /* Read whether a button was pressed/released */
-		pressed = keys_get_state(KEY_HOME);
-
+        pressed = pm8x41_reg_read(0x810) & 0x1;
         delay_ms(50); //50ms
     }
 
