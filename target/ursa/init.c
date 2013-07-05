@@ -477,14 +477,11 @@ void target_usb_init(void)
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
 {
-	dprintf(CRITICAL, "Continuous splash screen disabled, because it is not supported in CMD mode\n");
-	return 0;
-
 	switch(board_hardware_version())
 	{
 		case BOARD_REVISION_P0:
-			dprintf(SPEW, "Target_cont_splash=0\n");
-			return 0;
+			dprintf(SPEW, "Target_cont_splash=1\n");
+			return 1;
 		default:
 			dprintf(SPEW, "Target_cont_splash=1\n");
 			return 1;
