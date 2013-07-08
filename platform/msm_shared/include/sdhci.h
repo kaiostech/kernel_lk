@@ -63,6 +63,7 @@ struct sdhci_host {
  */
 struct mmc_data {
 	void *data_ptr;      /* Points to stream of data */
+	uint32_t blk_sz;     /* Block size for the data */
 	uint32_t num_blocks; /* num of blocks, each always of size SDHCI_MMC_BLK_SZ */
 };
 
@@ -87,7 +88,7 @@ struct mmc_command {
 struct desc_entry {
 	uint16_t tran_att;   /* Attribute for transfer data */
 	uint16_t len;        /* Length of data */
-	void *addr;          /* Address of the data */
+	uint32_t addr;       /* Address of the data */
 };
 
 /*
@@ -261,7 +262,7 @@ enum {
 #define SDHCI_ADMA_MASK                           BIT(9)
 #define SDHCI_READ_MODE                           BIT(4)
 #define SDHCI_SWITCH_CMD                          6
-#define SDHCI_CMD_TIMEOUT                         0xE
+#define SDHCI_CMD_TIMEOUT                         0xF
 #define SDHCI_MAX_CMD_RETRY                       10000
 #define SDHCI_MAX_TRANS_RETRY                     100000
 
