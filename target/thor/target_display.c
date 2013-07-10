@@ -26,7 +26,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 #include <debug.h>
 #include <smem.h>
 #include <msm_panel.h>
@@ -38,10 +37,16 @@
 #include <target/display.h>
 #include <dev/fbgfx.h>
 
+#define Y_POSITION_LOW_POWER  773 /* for  y */
+#define Y_POSITION_CHARGER  1072 /* for  y */
+#define Y_POSITION_LOGO  681 /* for  y */
+
 extern struct fbgfx_image image_charge;
 extern struct fbgfx_image image_hot;
 extern struct fbgfx_image image_low;
 extern struct fbgfx_image image_thor;
+extern struct fbgfx_image image_boot_Kindle;
+extern struct fbgfx_image image_boot;
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
@@ -140,6 +145,7 @@ void display_init(void)
                 }
 
                 dprintf(INFO, "Backlight Start\n");
+                mdelay(30);
                 lp855x_bl_on();
 
                 display_enable = 1;
@@ -174,17 +180,18 @@ void show_image(Image_types type)
         switch(type)
         {
             case IMAGE_CHARGING:
-                fbgfx_apply_image(&image_charge, FBGFX_CENTERED, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_low, FBGFX_CENTERED, Y_POSITION_LOW_POWER);
+                fbgfx_apply_image(&image_charge, FBGFX_CENTERED, Y_POSITION_CHARGER);
                 break;
             case IMAGE_LOWBATTERY:
-                fbgfx_apply_image(&image_low, FBGFX_CENTERED, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_low, FBGFX_CENTERED, Y_POSITION_LOW_POWER);
                 break;
             case IMAGE_DEVICEHOT:
                 fbgfx_apply_image(&image_hot, FBGFX_CENTERED, FBGFX_CENTERED);
                 break;
             case IMAGE_LOGO:
             default:
-                fbgfx_apply_image(&image_thor, FBGFX_CENTERED, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_boot_Kindle, FBGFX_CENTERED, Y_POSITION_LOGO);
                 break;
         }
         fbgfx_flip();
