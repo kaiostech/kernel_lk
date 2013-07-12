@@ -84,7 +84,7 @@ static void thor_mdss_mipi_panel_reset(void)
 	pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
 	mdelay(20);
 	gpio_set(58, 2);
-	mdelay(100);
+	mdelay(130);
 }
 
 static int thor_mipi_panel_power(uint8_t enable)
