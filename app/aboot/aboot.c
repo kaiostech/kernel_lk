@@ -601,7 +601,7 @@ int boot_linux_from_mmc(void)
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + second_actual +
 							dt_actual);
 
-		if (check_aboot_addr_range_overlap(hdr->tags_addr, hdr->dt_size))
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_actual))
 		{
 			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
 			return -1;
@@ -609,6 +609,12 @@ int boot_linux_from_mmc(void)
 #else
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
 #endif
+
+		if (check_aboot_addr_range_overlap(image_addr, imagesize_actual))
+		{
+			dprintf(CRITICAL, "Boot image buffer address overlaps with aboot addresses.\n");
+			return -1;
+		}
 
 		/* Read image without signature */
 		if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
@@ -618,6 +624,13 @@ int boot_linux_from_mmc(void)
 		}
 
 		offset = imagesize_actual;
+
+		if (check_aboot_addr_range_overlap(image_addr + offset, page_size))
+		{
+			dprintf(CRITICAL, "Signature read buffer address overlaps with aboot addresses.\n");
+			return -1;
+		}
+
 		/* Read signature */
 		if(mmc_read(ptn + offset, (void *)(image_addr + offset), page_size))
 		{
