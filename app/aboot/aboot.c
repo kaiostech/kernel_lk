@@ -597,6 +597,14 @@ int boot_linux_from_mmc(void)
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
 #endif
 
+		dprintf(INFO, "Loading boot image (%d): start\n", imagesize_actual);
+
+		if (check_aboot_addr_range_overlap(image_addr, imagesize_actual))
+		{
+			dprintf(CRITICAL, "Boot image buffer address overlaps with aboot addresses.\n");
+			return -1;
+		}
+
 		/* Read image without signature */
 		if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
 		{
@@ -605,6 +613,13 @@ int boot_linux_from_mmc(void)
 		}
 
 		offset = imagesize_actual;
+
+		if (check_aboot_addr_range_overlap(image_addr + offset, page_size))
+		{
+			dprintf(CRITICAL, "Signature read buffer address overlaps with aboot addresses.\n");
+			return -1;
+		}
+
 		/* Read signature */
 		if(mmc_read(ptn + offset, (void *)(image_addr + offset), page_size))
 		{
