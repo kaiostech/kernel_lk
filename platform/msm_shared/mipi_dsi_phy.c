@@ -234,8 +234,8 @@ int mdss_dsi_uniphy_pll_config(uint32_t ctl_base)
 	writel(0x05, ctl_base + 0x0264); /* LKDetect CFG2 */
 
 	writel(0x0a, ctl_base + 0x023c); /* SDM CFG1 */
-	writel(0x77, ctl_base + 0x0240); /* SDM CFG2 */
-	writel(0x0e, ctl_base + 0x0244); /* SDM CFG3 */
+	writel(0x00, ctl_base + 0x0240); /* SDM CFG2 */
+	writel(0xaa, ctl_base + 0x0244); /* SDM CFG3 */
 	writel(0x00, ctl_base + 0x0248); /* SDM CFG4 */
 
 	udelay(10);
@@ -247,7 +247,7 @@ int mdss_dsi_uniphy_pll_config(uint32_t ctl_base)
 	writel(0x00, ctl_base + 0x0238); /* SDM CFG0 */
 
 	writel(0x60, ctl_base + 0x028c); /* CAL CFG8 */
-	writel(0xa9, ctl_base + 0x0294); /* CAL CFG10 */
+	writel(0xc0, ctl_base + 0x0294); /* CAL CFG10 */
 	writel(0x01, ctl_base + 0x0298); /* CAL CFG11 */
 	writel(0x0a, ctl_base + 0x026c); /* CAL CFG0 */
 	writel(0x30, ctl_base + 0x0284); /* CAL CFG6 */
