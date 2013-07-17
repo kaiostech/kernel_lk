@@ -42,6 +42,7 @@
 #include <crypto5_wrapper.h>
 #include <lp855x.h>
 #include "target_cert.h"
+#include "target_production_cert.h"
 #include <target/display.h>
 #if WITH_FBGFX_SPLASH
 #include <dev/fbgfx.h>
@@ -517,4 +518,19 @@ const unsigned char *target_certificate(void)
 int target_certificate_size(void)
 {
 	return sizeof(certificate_data);
+}
+
+const unsigned char *target_production_certificate(void)
+{
+	return production_certificate_data;
+}
+
+int target_production_certificate_size(void)
+{
+	return sizeof(production_certificate_data);
+}
+
+int target_production_gpio(void)
+{
+	return 92;
 }

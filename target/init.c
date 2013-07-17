@@ -209,3 +209,18 @@ __WEAK int target_certificate_size(void)
 {
 	return sizeof(certBuffer);
 }
+
+__WEAK const unsigned char *target_production_certificate(void)
+{
+	return NULL;
+}
+
+__WEAK int target_production_certificate_size(void)
+{
+	return 0;
+}
+
+__WEAK int target_production_gpio(void)
+{
+	return 0;
+}

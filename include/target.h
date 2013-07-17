@@ -67,5 +67,10 @@ enum boot_device
 	BOOT_EMMC=2,
 	BOOT_UFS=4,
 };
+const unsigned char *target_certificate(void);
+int target_certificate_size(void);
+const unsigned char *target_production_certificate(void);
+int target_production_certificate_size(void);
+int target_production_gpio(void);
 
 #endif
