@@ -783,6 +783,10 @@ int hdmi_dtv_init()
 	writel(0x10, overlay_base + 0x144);
 	writel(0x01, overlay_base + 0x0004);	/* directout */
 
+	writel(0x02222, MDP_BASE + 0x004c); /* 3 pending requests */
+	writel(0x7FF, MDP_BASE + 0x0400);
+	writel(0x70050, MDP_BASE + 0x0404);
+
 	hsync_period =
 	    timing->pulse_width_h + timing->back_porch_h + timing->active_h +
 	    timing->front_porch_h;
