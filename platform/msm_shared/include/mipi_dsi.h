@@ -1073,6 +1073,43 @@ static struct mipi_dsi_cmd sharp_qhd_video_mode_cmds[] = {
 	{sizeof(novatek_panel_set_led_pwm3), novatek_panel_set_led_pwm3, 0}
 };
 
+/* Ursa CMD mode 720p panel commands */
+//TODO: Move these out to the panel driver and/or implement generic MIPI DSI DCS
+// driver so we don't need these command lists
+static const unsigned char ursa_cmd_sleep_out[4] = {
+	0x11, 0x00, DTYPE_DCS_WRITE, 0x80,
+};
+
+static const unsigned char ursa_cmd_mem_access_ctl[4] = {
+	0x36, 0x00, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static const unsigned char ursa_cmd_ctrl_display[4] = {
+	0x53, 0x2C, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static const unsigned char ursa_cmd_display_brightness[4] = {
+	0x51, 0xFF, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static const unsigned char ursa_cmd_power_save[4] = {
+	0x55, 0x03, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static const unsigned char ursa_cmd_display_on[4] = {
+	0x29, 0x00, DTYPE_DCS_WRITE, 0x80,
+};
+
+static const unsigned char ursa_cmd_tear_on[4] = {
+	0x35, 0x00, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static struct mipi_dsi_cmd ursa_cmd_mode_cmds[] = {
+	{sizeof(ursa_cmd_sleep_out), (char *)ursa_cmd_sleep_out},
+	{sizeof(ursa_cmd_display_on), (char *)ursa_cmd_display_on},
+	{sizeof(ursa_cmd_tear_on), (char *)ursa_cmd_tear_on},
+};
+
 static struct mipi_dsi_phy_ctrl mipi_dsi_novatek_panel_phy_ctrl = {
 	/* DSI_BIT_CLK at 500MHz, 2 lane, RGB888 */
 	{0x03, 0x01, 0x01, 0x00},	/* regulator */
