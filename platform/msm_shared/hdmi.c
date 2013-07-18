@@ -123,6 +123,7 @@
 #define HDMI_VFRMT_1920x1080p100_16_9	64
 /* Video Identification Codes from 65-127 are reserved for the future */
 #define HDMI_VFRMT_END			127
+#define HDMI_VFRMT_MAX			(HDMI_VFRMT_END + 1)
 
 struct msm_hdmi_mode_timing_info {
 	uint32_t	video_format;
@@ -230,6 +231,25 @@ static uint8_t hdmi_msm_avi_iframe_lut[][16] = {
 	 0x07,	0x07,	0x07,	0x07,	0x02, 0x02, 0x02}  /*12*/
 };
 
+static int hdmi_msm_res_priority[HDMI_VFRMT_MAX] = {
+	[HDMI_VFRMT_720x240p60_4_3]    = 1,
+	[HDMI_VFRMT_1440x480i60_16_9]  = 2,
+	[HDMI_VFRMT_1440x576i50_4_3]   = 3,
+	[HDMI_VFRMT_1440x576i50_16_9]  = 4,
+	[HDMI_VFRMT_1920x1080i60_16_9] = 5,
+	[HDMI_VFRMT_640x480p60_4_3]    = 6,
+	[HDMI_VFRMT_720x480p60_4_3]    = 7,
+	[HDMI_VFRMT_720x480p60_16_9]   = 8,
+	[HDMI_VFRMT_720x576p50_4_3]    = 9,
+	[HDMI_VFRMT_720x576p50_16_9]   = 10,
+	[HDMI_VFRMT_1280x720p50_16_9]  = 11,
+	[HDMI_VFRMT_1280x720p60_16_9]  = 12,
+	[HDMI_VFRMT_1920x1080p24_16_9] = 13,
+	[HDMI_VFRMT_1920x1080p25_16_9] = 14,
+	[HDMI_VFRMT_1920x1080p30_16_9] = 15,
+	[HDMI_VFRMT_1920x1080p50_16_9] = 16,
+	[HDMI_VFRMT_1920x1080p60_16_9] = 17,
+};
 void hdmi_msm_set_mode(int on)
 {
 	uint32_t val = 0;
@@ -261,7 +281,7 @@ void hdmi_msm_read_edid(uint32_t dev_addr, uint32_t offset, uint8_t *data_buf,
 again:
 
 	/* Reset DDC interrupts */
-	writel((1 << 2) | (1 << 1), 0x0214);
+	writel((1 << 2) | (1 << 1), MSM_HDMI_BASE + 0x0214);
 
 	/* Ensure Device Address has LSB set to 0 to indicate Slave addr read */
 	dev_addr &= 0xFE;
@@ -277,7 +297,7 @@ again:
 	/* Kick off DDC read */
 	writel( (1 << 0) | (1 << 20), MSM_HDMI_BASE + 0x020C);
 
-	/* wait 500 msec for read to complete */
+	/*Wait for 500ms for read to complete*/
 	mdelay(500);
 
 	/* Clear interrupts */
@@ -290,9 +310,11 @@ again:
 	/* Check if any NACK occurred */
 	if (reg_val) {
 		writel(BIT(3), MSM_HDMI_BASE + 0x020C); /* SW_STATUS_RESET */
-		writel(BIT(1), MSM_HDMI_BASE + 0x020C); /* SOFT_RESET */
+		if (retry == 1)
+			writel(BIT(1), MSM_HDMI_BASE + 0x020C); /* SOFT_RESET */
 		if (retry-- > 0) {
 			dprintf(CRITICAL, "Error EDID read, retry %d\n", retry);
+			mdelay(10);
 			goto again;
 		}
 
@@ -313,6 +335,7 @@ again:
 	}
 
 	dprintf(INFO, "%s read success\n", what);
+	return;
 }
 
 const uint8_t *hdmi_edid_find_block(const uint8_t *in_buf,
@@ -369,7 +392,7 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 
 	hdmi_msm_read_edid(0xA0, block * block_size, edid_buf,
-			   block_size, 5, "EDID");
+			block_size, 5, "EDID");
 
 	for (ndx = 0; ndx < block_size; ndx += 16)
 		dprintf(SPEW, "EDID[%02x-%02x] %02x %02x %02x %02x  "
@@ -389,9 +412,11 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 			video_format = (*svd & 0x7F);
 			dprintf(SPEW, "video format=%d\n",
 					video_format);
-			if (timings_db[video_format].is_supported) {
-				preferred_format = video_format;
-				break;
+			if ((timings_db[video_format].is_supported)
+				&& hdmi_msm_res_priority[video_format]) {
+				if (hdmi_msm_res_priority[video_format] >
+							preferred_format)
+					preferred_format = video_format;
 			}
 		}
 	}
@@ -425,7 +450,7 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 void hdmi_msm_panel_init(struct msm_panel_info *pinfo)
 {
 	struct msm_hdmi_mode_timing_info timing =
-		timings_db[HDMI_VFRMT_1280x720p60_16_9];
+		timings_db[HDMI_VFRMT_1920x1080p60_16_9];
 
 
 	hdmi_msm_res_timing = timing;
