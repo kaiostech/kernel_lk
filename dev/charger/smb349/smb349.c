@@ -543,6 +543,10 @@ int smb349_check_usb_vbus_connection(int *wall_charger)
 		return -1;
 	}
 
+	if (usb_status != SMB349_APSD_RESULT_NONE)
+		SMB349_LOG("Detected charger: %s\n",
+				smb349_apsd_result_string(usb_status));
+
 	switch(usb_status) {
 		case SMB349_APSD_RESULT_NONE: return 0; break;
 		case SMB349_APSD_RESULT_OTHER:
@@ -558,7 +562,7 @@ int smb349_check_usb_vbus_connection(int *wall_charger)
 	}
 }
 
-int smb349_init(int *wall_charger)
+int smb349_init(void)
 {
 	uint8_t status = -1;
 	uint8_t val = 0, mode = 0, tmp = 0;
@@ -579,21 +583,8 @@ int smb349_init(int *wall_charger)
 		SMB349_LOG("Can't detect SMB349 IC \n");
 		goto done;
 	}
+
 	smb349_init_flag = 1;
-
-	/* Check if we have VBUS */
-	vusb = smb349_check_usb_vbus_connection(wall_charger);
-	if (vusb == -1) {
-		SMB349_LOG("Detect vusb failed \n");
-		goto done;
-	}
-	if (vusb != 1) {
-		/* Nothing on USB, skip USB detection */
-		SMB349_LOG("Nothing on USB\n");
-		status = 0;
-		goto done;
-	}
-
 	status = 0;
 done:
 
