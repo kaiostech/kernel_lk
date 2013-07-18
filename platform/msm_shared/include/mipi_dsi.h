@@ -641,6 +641,21 @@ struct mdss_dsi_phy_ctrl {
 	char laneCfg[45];
 };
 
+typedef struct mdss_dsi_pll_config {
+	uint32_t  pixel_clock;
+	uint32_t  pixel_clock_mhz;
+	uint32_t  byte_clock;
+	uint32_t  bit_clock;
+	uint32_t  halfbit_clock;
+	uint32_t  vco_clock;
+	uint8_t   directpath;
+	uint8_t   posdiv1;
+	uint8_t   posdiv3;
+	uint8_t   pclk_m;
+	uint8_t   pclk_n;
+	uint8_t   pclk_d;
+};
+
 struct mipi_dsi_cmd {
 	int size;
 	char *payload;
@@ -937,6 +952,15 @@ enum {		/* mipi dsi panel */
 #define DSI_CMD_TRIGGER_SW		0x04
 #define DSI_CMD_TRIGGER_SW_SEOF		0x05	/* cmd dma only */
 #define DSI_CMD_TRIGGER_SW_TE		0x06
+
+#define DSI_DATALANE_SWAP_0123 0
+#define DSI_DATALANE_SWAP_3012 1
+#define DSI_DATALANE_SWAP_2301 2
+#define DSI_DATALANE_SWAP_1230 3
+#define DSI_DATALANE_SWAP_0321 4
+#define DSI_DATALANE_SWAP_1032 5
+#define DSI_DATALANE_SWAP_2103 6
+#define DSI_DATALANE_SWAP_3210 7
 
 int mipi_config(struct msm_fb_panel_data *panel);
 int mdss_dsi_config(struct msm_fb_panel_data *panel);

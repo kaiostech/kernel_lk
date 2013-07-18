@@ -55,6 +55,8 @@ static void set_sdc_power_ctrl(void);
 #define CRYPTO_ENGINE_FIFO_SIZE            64
 #define CRYPTO_ENGINE_READ_PIPE            3
 #define CRYPTO_ENGINE_WRITE_PIPE           2
+#define CRYPTO_READ_PIPE_LOCK_GRP          0
+#define CRYPTO_WRITE_PIPE_LOCK_GRP         0
 #define CRYPTO_ENGINE_CMD_ARRAY_SIZE       20
 
 #define TLMM_VOL_UP_BTN_GPIO    106
@@ -122,9 +124,11 @@ void target_crypto_init_params()
 	ce_params.bam_base         = MSM_CE1_BAM_BASE;
 
 	/* Set up BAM config. */
-	ce_params.bam_ee           = CRYPTO_ENGINE_EE;
-	ce_params.pipes.read_pipe  = CRYPTO_ENGINE_READ_PIPE;
-	ce_params.pipes.write_pipe = CRYPTO_ENGINE_WRITE_PIPE;
+	ce_params.bam_ee               = CRYPTO_ENGINE_EE;
+	ce_params.pipes.read_pipe      = CRYPTO_ENGINE_READ_PIPE;
+	ce_params.pipes.write_pipe     = CRYPTO_ENGINE_WRITE_PIPE;
+	ce_params.pipes.read_pipe_grp  = CRYPTO_READ_PIPE_LOCK_GRP;
+	ce_params.pipes.write_pipe_grp = CRYPTO_WRITE_PIPE_LOCK_GRP;
 
 	/* Assign buffer sizes. */
 	ce_params.num_ce           = CRYPTO_ENGINE_CMD_ARRAY_SIZE;
@@ -349,15 +353,9 @@ int target_cont_splash_screen()
 unsigned target_pause_for_battery_charge(void)
 {
 	uint8_t pon_reason = pm8x41_get_pon_reason();
-
-	/* This function will always return 0 to facilitate
-	 * automated testing/reboot with usb connected.
-	 * uncomment if this feature is needed.
-	 */
-	/* if ((pon_reason == USB_CHG) || (pon_reason == DC_CHG))
-	 *	return 1;
-	 */
-
+	uint8_t is_cold_boot = pm8x41_get_is_cold_boot();
+	if (is_cold_boot && ((pon_reason == USB_CHG) || (pon_reason == DC_CHG)))
+		 return 1;
 	return 0;
 }
 
