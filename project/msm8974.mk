@@ -6,7 +6,7 @@ TARGET := msm8974
 
 MODULES += app/aboot
 
-DEBUG := 1
+DEBUG := 2
 EMMC_BOOT := 1
 ENABLE_SDHCI_SUPPORT := 0
 
