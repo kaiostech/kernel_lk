@@ -83,7 +83,7 @@ extern int bq27741_temperature(int16_t *temp);
 
 #ifdef CONFIG_SMB349
 /* charger function */
-extern int smb349_init(int *wall_charger);
+extern int smb349_init(void);
 extern int smb349_check_usb_vbus_connection(int *wall_charger);
 #endif
 
@@ -277,7 +277,7 @@ void check_battery_condition(void)
     int delay_time = 0;
 
 #ifdef CONFIG_SMB349
-    if (smb349_init(&wall_charger) == -1)
+    if (smb349_init() == -1)
         dprintf(INFO, "SMB349 initial failed\n");
 
     cable_status = smb349_check_usb_vbus_connection(&wall_charger);
