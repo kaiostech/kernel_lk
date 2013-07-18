@@ -282,7 +282,7 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 		goto msm_display_init_out;
 
 	fbcon_setup(&(panel->fb));
-#ifndef CONFIG_ARCH_MSM8974_THOR
+#if !defined(CONFIG_ARCH_MSM8974_THOR) && !defined(CONFIG_ARCH_MSM8974_APOLLO)
 	display_image_on_screen();
 #endif
 	ret = msm_display_config();

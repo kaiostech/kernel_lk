@@ -48,6 +48,10 @@
 struct fbgfx_image splash;
 extern struct fbgfx_image image_apollo;
 #endif
+#ifdef WITH_ENABLE_IDME
+#include <idme.h> // ACOS_MOD_ONELINE
+#endif
+#define FASTBOOT_MODE   0x77665500
 
 #define HW_PLATFORM_APOLLO     20 /* these needs to match with apollo.dts */
 #define LINUX_MACHTYPE_APOLLO  20
@@ -159,6 +163,48 @@ crypto_engine_type board_ce_type(void)
 	return CRYPTO_ENGINE_TYPE_HW;
 }
 
+static bool fastboot_mode_boot_check()
+{
+	bool boot_into_fastboot = false;
+         bool boot_into_recovery=false;
+
+#ifdef WITH_ENABLE_IDME
+	idme_initialize();
+
+	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT) {
+		/* Boot mode 6: Switch to fastboot */
+		boot_into_fastboot = true;
+	} else if (idme_boot_mode() == IDME_BOOTMODE_RECOVERY) {
+		/* Boot mode 3: Switch to recovery */
+		boot_into_recovery = 1;
+	}
+
+#endif
+
+	if (target_volume_up() && target_volume_down())
+                   boot_into_fastboot = true;
+
+	if (!boot_into_fastboot)
+	{
+		if (keys_get_state(KEY_HOME) || target_volume_up())
+			boot_into_recovery = 1;
+		if (!boot_into_recovery &&
+			(keys_get_state(KEY_BACK) || target_volume_down()))
+			boot_into_fastboot = true;
+	}
+
+	#if NO_KEYPAD_DRIVER
+	if (fastboot_trigger())
+		boot_into_fastboot = true;
+	#endif
+
+	if(FASTBOOT_MODE == check_reboot_mode()){
+                   boot_into_fastboot = true;
+	 }
+
+        return boot_into_fastboot;
+}
+
 void target_init(void)
 {
 	uint32_t base_addr;
@@ -188,22 +234,6 @@ void target_init(void)
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
 
-	/* Display splash screen if enabled */
-#if DISPLAY_SPLASH_SCREEN
-
-#if WITH_FBGFX_SPLASH
-	/* if fbcon.c does not hardcode 'splash' we can skip this memcpy */
-	memcpy(&splash, &image_apollo, sizeof(struct fbgfx_image));
-#endif
-	dprintf(INFO, "Display Init: Start\n");
-
-        if (IMAGE_NONE == get_display_image_type())
-            show_image(IMAGE_LOGO);
-	dprintf(INFO, "Backlight Start\n");
-	lp855x_bl_on();
-
-#endif
-
 	/* Trying Slot 1*/
 	slot = 1;
 	base_addr = mmc_sdc_base[slot - 1];
@@ -218,6 +248,29 @@ void target_init(void)
 			ASSERT(0);
 		}
 	}
+
+	/* Display splash screen if enabled */
+#if DISPLAY_SPLASH_SCREEN
+
+#if WITH_FBGFX_SPLASH
+	/* if fbcon.c does not hardcode 'splash' we can skip this memcpy */
+	memcpy(&splash, &image_apollo, sizeof(struct fbgfx_image));
+#endif
+	dprintf(INFO, "Display Init: Start\n");
+
+        if(false == fastboot_mode_boot_check()){
+                if (IMAGE_NONE == get_display_image_type())
+                        show_image(IMAGE_LOGO);
+         } else {
+                display_init();
+                display_image_on_screen();
+         }
+
+	dprintf(INFO, "Backlight Start\n");
+	lp855x_bl_on();
+
+#endif
+
 }
 
 unsigned board_machtype(void)

@@ -38,10 +38,16 @@
 #include <target/display.h>
 #include <dev/fbgfx.h>
 
+#define HEIGHT_IMAGE_LOW   234
+#define Y_POSITION_LOW_POWER  1269 /* for  y */
+#define Y_POSITION_CHARGER  (Y_POSITION_LOW_POWER -  HEIGHT_IMAGE_LOW - 78)  /* for  y */
+#define Y_POSITION_LOGO  1310 /* for  y */
+
 extern struct fbgfx_image image_charge;
 extern struct fbgfx_image image_hot;
 extern struct fbgfx_image image_low;
 extern struct fbgfx_image image_apollo;
+extern struct fbgfx_image image_boot_Kindle;
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
@@ -195,17 +201,18 @@ void show_image(Image_types type)
         switch(type)
         {
             case IMAGE_CHARGING:
-                fbgfx_apply_image(&image_charge, FBGFX_CENTERED, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_low, Y_POSITION_LOW_POWER, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_charge, Y_POSITION_CHARGER, FBGFX_CENTERED);
                 break;
             case IMAGE_LOWBATTERY:
-                fbgfx_apply_image(&image_low, FBGFX_CENTERED, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_low, Y_POSITION_LOW_POWER, FBGFX_CENTERED);
                 break;
             case IMAGE_DEVICEHOT:
                 fbgfx_apply_image(&image_hot, FBGFX_CENTERED, FBGFX_CENTERED);
                 break;
             case IMAGE_LOGO:
             default:
-                fbgfx_apply_image(&image_apollo, FBGFX_CENTERED, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_boot_Kindle, Y_POSITION_LOGO, FBGFX_CENTERED);
                 break;
         }
         fbgfx_flip();
