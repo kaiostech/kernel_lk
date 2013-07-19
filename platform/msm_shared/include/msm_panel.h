@@ -107,6 +107,8 @@ struct lcdc_panel_info {
 struct mipi_panel_info {
 	char mode;		/* video/cmd */
 	char interleave_mode;
+	int eof_bllp_power;
+	uint32_t bitclock;
 	char crc_check;
 	char ecc_check;
 	char dst_format;	/* shared by video and command */
@@ -127,6 +129,7 @@ struct mipi_panel_info {
 	char vc;	/* virtual channel */
 	struct mipi_dsi_phy_ctrl *dsi_phy_db;
 	struct mdss_dsi_phy_ctrl *mdss_dsi_phy_db;
+	struct mdss_dsi_pll_config *dsi_pll_config;
 	struct mipi_dsi_cmd *panel_cmds;
 	int num_of_panel_cmds;
 	/* video mode */
@@ -175,6 +178,9 @@ struct msm_panel_info {
 	uint32_t type;
 	uint32_t wait_cycle;
 	uint32_t clk_rate;
+	uint32_t rotation;
+	uint32_t broadcastmode;
+	char     lowpowerstop;
 
 	struct lcd_panel_info lcd;
 	struct lcdc_panel_info lcdc;
@@ -198,6 +204,7 @@ struct msm_fb_panel_data {
 	/* function entry chain */
 	int (*power_func) (int enable);
 	int (*clk_func) (int enable);
+	int (*pll_clk_func) (int enable, struct msm_panel_info *);
 };
 
 
