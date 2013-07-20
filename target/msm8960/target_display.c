@@ -328,7 +328,7 @@ void display_init(void)
 		panel.clk_func          = mpq8064_hdmi_panel_clock;
 		panel.power_func        = mpq8064_hdmi_panel_power;
 		panel.update_panel_info = hdmi_update_panel_info;
-		panel.fb.base           = 0x89000000;
+		panel.fb.base           = 0x90000000;
 		panel.fb.width   	= panel.panel_info.xres;
 		panel.fb.height  	= panel.panel_info.yres;
 		panel.fb.stride  	= panel.panel_info.xres;
