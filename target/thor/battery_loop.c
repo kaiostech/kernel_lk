@@ -170,19 +170,7 @@ static void show_error_logo(enum pic_type type, int pre_ms, int max_ms)
     if ((pre_ms > 0) || ((pre_ms == 0) && (type == PIC_CHARGING)))
         check_vbus_flag = 1;
 
-    //keep display for ms delay
-    ms = max_ms - (pre_ms * 50);
-    times = ms / CHECK_VBUS_MS;
-    remain_ms = ms - (CHECK_VBUS_MS * times);
-    for (; times-- > 0;) {
-        delay_ms(CHECK_VBUS_MS);
-        cable_status = smb349_check_usb_vbus_connection(NULL);
-        if (check_vbus_flag && cable_status != 1) {
-            shut_down();
-        }
-    }
-    if (remain_ms)
-        delay_ms(remain_ms);
+    /* Delay for 5 seconds */
     delay_ms(5000);
 
     Power_off_LCD();
@@ -199,6 +187,9 @@ static int check_pwr_key_press(int *ms)
         /* Read whether a button was pressed/released */
         pressed = pm8x41_reg_read(0x810) & 0x1;
         delay_ms(50); //50ms
+
+	if (pressed)
+		break;
     }
 
     *ms = local_ms;
@@ -374,7 +365,6 @@ void check_battery_condition(void)
             dprintf(INFO, "t = %5d, voltage = %4d mV, current = %4d mA, capacity = %2d %%, temperature = %3d C, temp103 = %3d C\n",
                         sec, info.voltage, info.current, info.capacity, info.temperature, info.tmp103_temp );
 
-            delay_ms(3000);
             if (target_volume_down()) {
                 dprintf(INFO, "Detect volume down key pressed, break the charging loop \n");
                 break;
