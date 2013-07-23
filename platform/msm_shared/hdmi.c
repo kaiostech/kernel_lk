@@ -392,6 +392,7 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 	uint32_t video_format;
 	uint8_t len, i;
 	int ndx;
+	uint32_t edid_status = 0;
 
 	if (!pdata)
 		return;
@@ -431,6 +432,9 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 					preferred_format = video_format;
 			}
 		}
+	} else {
+		/*Propagate the failure message to Kernel*/
+		edid_status = 0x1;
 	}
 
 	if (preferred_format) {
@@ -457,6 +461,9 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 		pdata->fb.height =  pinfo->yres;
 		pdata->fb.stride =  pinfo->xres;
 	}
+
+	edid_status = (hdmi_msm_res_timing.video_format << 4 ) | edid_status ;
+	writel(edid_status, MDP_BASE + 0x003c);
 }
 
 void hdmi_msm_panel_init(struct msm_panel_info *pinfo)
