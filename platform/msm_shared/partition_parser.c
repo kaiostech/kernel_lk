@@ -602,45 +602,6 @@ patch_gpt(uint8_t *gptImage, uint64_t density, uint32_t array_size,
 }
 
 /*
- * Compare if the mmc data in data_addr is as same as buf.
- * Returns 0 when same.
- */
-static int
-cmp_mmc_buf( unsigned long long data_addr, unsigned int data_len,
-	unsigned char* buf )
-{
-	int ret;
-	unsigned char* mmc_buf = malloc( data_len );
-	ASSERT( mmc_buf != NULL );
-
-	mmc_read( data_addr, (unsigned int*)mmc_buf, data_len );
-	ret = memcmp( mmc_buf, buf, data_len );
-
-	free( mmc_buf );
-	return ret;
-}
-
-/*
- * Compare if the partition array is the same.
- * Returns 0 when same.
- */
-static int
-cmp_gpt_partition_array( unsigned char *header,
-	unsigned int partition_array_start,
-	unsigned int array_size )
-{
-	unsigned long long partition_entry_lba;
-	unsigned long long partition_entry_array_start_location;
-
-	partition_entry_lba =
-	    GET_LLWORD_FROM_BYTE(&header[PARTITION_ENTRIES_OFFSET]);
-	partition_entry_array_start_location = partition_entry_lba * BLOCK_SIZE;
-
-	return cmp_mmc_buf( partition_entry_array_start_location, array_size,
-		(unsigned char*)partition_array_start );
-}
-
-/*
  * Write the GPT to the MMC.
  */
 static unsigned int write_gpt(uint32_t size, uint8_t *gptImage, uint32_t block_size)
@@ -695,65 +656,6 @@ static unsigned int write_gpt(uint32_t size, uint8_t *gptImage, uint32_t block_s
 	/* Patching the primary and the backup header of the GPT table */
 	patch_gpt(gptImage, device_density, partition_entry_array_size,
 		  max_partition_count, partition_entry_size, block_size);
-
-	/* Check if there is any difference in the new GPT table. */
-	do {
-		/* Compare the protective MBR. */
-		ret = cmp_mmc_buf(0, PROTECTIVE_MBR_SIZE, gptImage );
-		if( ret ) {
-			dprintf( SPEW, "Protective MBR is different.\n" );
-			break;
-		}
-
-		/* Compare the primary GPT header. */
-		ret = cmp_mmc_buf(PROTECTIVE_MBR_SIZE, BLOCK_SIZE,
-			primary_gpt_header );
-		if( ret ) {
-			dprintf( SPEW, "Primitive GPT header is different.\n" );
-			break;
-		}
-
-		/* Comapre the backup GPT header. */
-		backup_header_lba = GET_LLWORD_FROM_BYTE
-			(&primary_gpt_header[BACKUP_HEADER_OFFSET]);
-		secondary_header_location = backup_header_lba * BLOCK_SIZE;
-		ret = cmp_mmc_buf( secondary_header_location, BLOCK_SIZE,
-			secondary_gpt_header);
-		if( ret ) {
-			dprintf( SPEW, "Secondary GPT header is different.\n" );
-			break;
-		}
-
-		/* Compare the partition entries array for the primary header */
-		partition_entry_array_start = (unsigned int)(primary_gpt_header
-			+ BLOCK_SIZE);
-		ret = cmp_gpt_partition_array( primary_gpt_header,
-			partition_entry_array_start,
-			partition_entry_array_size );
-		if( ret ) {
-			dprintf( SPEW,
-				"Primary partition entries are different.\n" );
-			break;
-		}
-
-		/* Compare the partition entries array for the backup header */
-		partition_entry_array_start = (unsigned int)(primary_gpt_header
-			+ BLOCK_SIZE + partition_entry_array_size);
-		ret = cmp_gpt_partition_array( secondary_gpt_header,
-					partition_entry_array_start,
-					partition_entry_array_size );
-		if( ret ) {
-			dprintf( SPEW,
-				"Secondary partition entries are different.\n" );
-			break;
-		}
-	} while( 0 );
-
-	if( !ret ) {
-		dprintf( INFO,
-			"The GPT table is not changed, GPT write skipped.\n" );
-		goto end;
-	}
 
 	/* Erasing the eMMC card before writing */
 	ret = mmc_erase_card(0x00000000, device_density);
