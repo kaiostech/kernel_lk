@@ -83,10 +83,15 @@ image_decrypt_signature(unsigned char *signature_ptr, unsigned char *plain_text)
 			X509_free(x509_certificate);
 			x509_certificate = NULL;
 		}
+
 		if (pub_key != NULL) {
 			EVP_PKEY_free(pub_key);
 			pub_key = NULL;
 		}
+
+		/* If authenticated with production key already, done */
+		if (ret != -1)
+			goto cleanup;
 	}
 
 	/* If it's an engineering device, authenticate with engineering key */
