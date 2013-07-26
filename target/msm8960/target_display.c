@@ -38,6 +38,12 @@
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
 
+
+#define	PM_GPIO_VIN_VPH		0 /* 3v ~ 4.4v */
+#define	PM_GPIO_VIN_BB		1 /* ~3.3v */
+#define	PM_GPIO_VIN_S4		2 /* 1.8v */
+#define	PM_GPIO_VIN_L15		3
+
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 
@@ -137,6 +143,24 @@ static void msm8960_mipi_panel_reset(void)
 	pm8921_gpio_config(PM_GPIO(43), &gpio43_param);
 }
 
+static void apq8064_hdmi_5v_supply(void)
+{
+	struct pm8921_gpio gpio44_param = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = 0,
+		.output_value = 1,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = PM_GPIO_VIN_S4,
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+		.disable_pin = 0,
+	};
+	gpio44_param.output_value = 1;
+	pm8921_gpio_config(PM_GPIO(44), &gpio44_param);
+}
+
+
 static int msm8960_mipi_panel_clock(int enable)
 {
 	if (enable) {
@@ -161,8 +185,14 @@ static int mpq8064_hdmi_panel_clock(int enable)
 
 static int mpq8064_hdmi_panel_power(int enable)
 {
-	if (enable)
+	int target_id = board_target_id();
+
+	if (enable) {
+		if (target_id == LINUX_MACHTYPE_8064_APQ_DMA) {
+			apq8064_hdmi_5v_supply();
+		}
 		hdmi_power_init();
+	}
 
 	return 0;
 }
@@ -198,11 +228,6 @@ static int msm8960_mipi_panel_power(int enable)
 
 	return 0;
 }
-
-#define	PM_GPIO_VIN_VPH			0 /* 3v ~ 4.4v */
-#define	PM_GPIO_VIN_BB			1 /* ~3.3v */
-#define	PM_GPIO_VIN_S4			2 /* 1.8v */
-#define	PM_GPIO_VIN_L15			3
 
 static int msm8960_liquid_mipi_panel_power(int enable)
 {
