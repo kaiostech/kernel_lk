@@ -798,12 +798,11 @@ int boot_linux_from_mmc(void)
 #endif
 
 	/* Authenticate Kernel */
-	dprintf(INFO, "use_signed_kernel=%d, is_unlocked=%d, is_tampered=%d.\n",
+	dprintf(INFO, "use_signed_kernel=%d, is_tampered=%d.\n",
 		(int) target_use_signed_kernel(),
-		device.is_unlocked,
 		device.is_tampered);
 
-	if(target_use_signed_kernel() && (!device.is_unlocked))
+	if(target_use_signed_kernel())
 	{
 		offset = 0;
 
