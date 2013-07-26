@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include "board.h"
 #include "baseband.h"
+#include <target/board.h>
 
 #define SIZE_1M     (1024 * 1024)
 #define SIZE_2M     (2 * SIZE_1M)
@@ -142,6 +143,7 @@ unsigned *target_first_256M_atag(unsigned *ptr)
 {
 	unsigned int platform_id = board_platform_id();
 	unsigned int baseband = board_baseband();
+	unsigned int machtype = board_machtype();
 
 	switch (platform_id) {
 		case APQ8064:
@@ -153,6 +155,12 @@ unsigned *target_first_256M_atag(unsigned *ptr)
 				ptr = target_atag(ptr,
 							apq8064_fusion_first_256M,
 							ARRAY_SIZE(apq8064_fusion_first_256M));
+			} else if (machtype == LINUX_MACHTYPE_8064_APQ_DMA) {
+				/* For APQ DMA board use MPQ 8064 memory map,
+				 since Wconnect and GSS are unused */
+				ptr = target_atag(ptr,
+							mpq8064_first_256M,
+							ARRAY_SIZE(mpq8064_first_256M));
 			} else {
 				/* Use 8064 standalone memory map */
 				ptr = target_atag(ptr,
