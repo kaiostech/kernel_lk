@@ -122,7 +122,6 @@ enum pic_type {
 extern int tmp103_temperature_read(void *buffer, size_t size);
 
 extern void shutdown_device();
-extern void target_set_charging(int enable);
 
 static void shut_down(void)
 {
@@ -428,72 +427,4 @@ void check_battery_condition(void)
 
         dprintf(INFO, "Leaving charge loop...\n");
     }
-}
-
-
-
-void charge_mode_loop(void)
-{
-	struct battery_charging_info info;
-	int pwr_key_pressed = 0;
-	int powerkey_ms = 0;
-	int cable_status = 0;
-
-#ifdef CONFIG_SMB349
-	if (smb349_init() == -1) {
-		dprintf(INFO, "SMB349 init failed\n");
-		shut_down();
-	}
-#endif
-
-	dprintf(INFO, "Entering charge mode loop...\n");
-	Power_off_LCD();
-
-	while(1) {
-
-#ifdef CONFIG_SMB349
-		/* USB/Charger connection check */
-		cable_status = smb349_check_usb_vbus_connection(NULL);
-		if (cable_status == -1) {
-			dprintf(INFO, "SMB349 detect usb vbus failed \n");
-			shut_down();
-		}
-#endif
-		if (cable_status <= 0) {
-			dprintf(INFO, "Charger has been removed, halting \n");
-			shut_down();
-		}
-
-		get_battery_charging_info(&info);
-
-		/* Display status */
-		dprintf(INFO,
-			"v=%4dmV current=%4dmA cap=%2d%% temp=%3dC %s\n",
-			info.voltage, info.current,
-			info.capacity, info.temperature,
-			target_get_charging() ?
-			"Charging enabled" : "Charging disabled");
-
-		/* Temperature check */
-		if ((info.temperature > TEMPERATURE_HOT_LIMIT) ||
-			(info.temperature < TEMPERATURE_COLD_LIMIT)) {
-			dprintf(INFO,
-				"Battery temperature threshold reached: %d C",
-				info.temperature);
-
-			/* Turn off charging but stay in loop */
-			if (target_get_charging())
-				target_set_charging(0);
-		} else {
-			/* Temp back to normal, turn on charging if off */
-			if (!target_get_charging())
-				target_set_charging(1);
-		}
-
-		/* Delay for ~5 seconds and check the power key status */
-		pwr_key_pressed = check_pwr_key_press(&powerkey_ms);
-		if (pwr_key_pressed) {
-			break;
-		}
-        }
 }

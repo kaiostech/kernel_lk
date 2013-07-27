@@ -59,11 +59,8 @@ extern struct fbgfx_image image_apollo;
 
 extern  bool target_use_signed_kernel(void);
 extern void check_battery_condition(void);
-extern void charge_mode_loop(void);
 extern int get_display_image_type();
 extern void show_image(Image_types type);
-
-void check_charge_mode(void);
 
 static unsigned int target_id;
 static uint32_t pmic_ver;
@@ -233,10 +230,7 @@ void target_init(void)
 		dprintf(INFO, "Actually shutting down SoC now...\n");
 		shutdown_device();
 	}
-
 	check_battery_condition();
-
-	check_charge_mode();
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
@@ -447,28 +441,28 @@ int target_cont_splash_screen()
 	}
 }
 
-void check_charge_mode(void)
+unsigned target_pause_for_battery_charge(void)
 {
 	unsigned reboot_mode = check_reboot_mode();
+	uint8_t pon_reason = pm8x41_get_pon_reason();
+
+	dprintf(INFO, "REBOOT_INFO: %08X:%02X\n", reboot_mode, pon_reason);
 
 	if (keys_get_state(KEY_HOME) ||
 	    target_volume_up() ||
 	    keys_get_state(KEY_BACK) ||
 	    target_volume_down()) {
 		/* keys are down, aboot is going to divert into fastboot or recovery */
-		return;
+		return 0;
 	}
 
-	/* Divert to charging */
+	/* Divert to charging if reboot mode set */
 	if (reboot_mode == REBOOT_MODE_CHARGE) {
-		charge_mode_loop();
+		return 1;
 	} else if (reboot_mode == REBOOT_MODE_EMERGENCY) {
 		target_enter_emergency_download();
 	}
-}
 
-unsigned target_pause_for_battery_charge(void)
-{
 	return 0;
 }
 
@@ -539,30 +533,4 @@ int target_production_certificate_size(void)
 int target_production_gpio(void)
 {
 	return 92;
-}
-
-#define SMB349_CHG_ENABLE_GPIO	10
-int charge_enabled = 1;
-
-void target_set_charging(int enable)
-{
-	uint8_t status = 0;
-	struct pm8x41_gpio gpio;
-
-	/* Configure the GPIO */
-	gpio.direction = PM_GPIO_DIR_OUT;
-	gpio.function  = 0;
-
-	pm8x41_gpio_config(SMB349_CHG_ENABLE_GPIO, &gpio);
-
-	/* Set GPIO value */
-	pm8x41_gpio_set(SMB349_CHG_ENABLE_GPIO,
-			enable ? PM_GPIO_FUNC_LOW : PM_GPIO_FUNC_HIGH);
-
-	charge_enabled = enable;
-}
-
-int target_get_charging(void)
-{
-	return charge_enabled;
 }
