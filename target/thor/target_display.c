@@ -39,7 +39,8 @@
 
 #define Y_POSITION_LOW_POWER  773 /* for  y */
 #define Y_POSITION_CHARGER  1072 /* for  y */
-#define Y_POSITION_LOGO  681 /* for  y */
+#define Y_POSITION_LOGO  732 /* for  y */
+#define Y_POSITION_HOT  690 /* for  y */
 
 extern struct fbgfx_image image_charge;
 extern struct fbgfx_image image_hot;
