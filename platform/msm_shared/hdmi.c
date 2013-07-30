@@ -271,7 +271,7 @@ void hdmi_set_fb_addr(void *addr)
 void hdmi_msm_read_edid(uint32_t dev_addr, uint32_t offset, uint8_t *data_buf,
 			uint32_t data_len, int retry, const char *what)
 {
-	uint32_t reg_val, ndx;
+	uint32_t reg_val, ndx, time_out;
 
 	/* INIT DDC */
 	writel((10 << 16) | (2 << 0),	MSM_HDMI_BASE + 0x0220);
@@ -279,6 +279,8 @@ void hdmi_msm_read_edid(uint32_t dev_addr, uint32_t offset, uint8_t *data_buf,
 	writel((1 << 16) | (27 << 0),	MSM_HDMI_BASE + 0x027C);
 
 again:
+
+	time_out = 50;
 
 	/* Reset DDC interrupts */
 	writel((1 << 2) | (1 << 1), MSM_HDMI_BASE + 0x0214);
@@ -297,8 +299,13 @@ again:
 	/* Kick off DDC read */
 	writel( (1 << 0) | (1 << 20), MSM_HDMI_BASE + 0x020C);
 
-	/*Wait for 500ms for read to complete*/
-	mdelay(500);
+	/*poll for 500ms for read to complete*/
+	reg_val = readl(MSM_HDMI_BASE + 0x0214);
+	while (!(reg_val & 0x1) && time_out) {
+		reg_val = readl(MSM_HDMI_BASE + 0x0214);
+		time_out--;
+		mdelay(10);
+	}
 
 	/* Clear interrupts */
 	writel(0x2, MSM_HDMI_BASE + 0x0214);
@@ -313,7 +320,6 @@ again:
 		if (retry == 1)
 			writel(BIT(1), MSM_HDMI_BASE + 0x020C); /* SOFT_RESET */
 		if (retry-- > 0) {
-			dprintf(CRITICAL, "Error EDID read, retry %d\n", retry);
 			mdelay(10);
 			goto again;
 		}
@@ -724,6 +730,8 @@ int hdmi_msm_turn_on(void)
 
 	// AVI info setup
 	hdmi_msm_avi_info_frame();
+
+	dprintf(INFO, "%s HDMI Turned on!\n",__func__);
 
 	return 0;
 }
