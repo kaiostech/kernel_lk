@@ -88,6 +88,14 @@ const struct idme_init_values idme_default_values[] = {
 		"0"
 	},
 #endif
+	{ { "time_offset", 16, 1, 0444 },
+		/* Time offset */
+		"0"
+	},
+	{ { "unlock_code", 1024, 1, 0000 },
+		/* Unlock code */
+		""
+	},
 	{ { "", 0, 0, 0 }, 0 },
 };
 
