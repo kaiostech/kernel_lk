@@ -53,13 +53,17 @@ extern struct fbgfx_image image_thor;
 #define HW_PLATFORM_THOR     19 /* these needs to match with thor.dts */
 #define LINUX_MACHTYPE_THOR  19
 
+#define MIN_BOOT_BATTERY_CAPACITY 2
+
 extern  bool target_use_signed_kernel(void);
-extern void check_battery_condition(void);
+extern void check_battery_condition(int min_capacity);
 extern void charge_mode_loop(void);
 extern int get_display_image_type();
 extern void show_image(Image_types type);
 
 void check_charge_mode(void);
+void shutdown_device(void);
+void target_enter_emergency_download(void);
 
 static unsigned int target_id;
 static uint32_t pmic_ver;
@@ -194,7 +198,7 @@ void target_init(void)
 		shutdown_device();
 	}
 
-	check_battery_condition();
+	check_battery_condition(MIN_BOOT_BATTERY_CAPACITY);
 
 	check_charge_mode();
 
@@ -399,6 +403,8 @@ int target_cont_splash_screen()
 			dprintf(SPEW, "Target_cont_splash=0\n");
 			return 0;
 	}
+
+	return 0;
 }
 
 void check_charge_mode(void)
@@ -426,7 +432,7 @@ unsigned target_pause_for_battery_charge(void)
 	return 0;
 }
 
-void shutdown_device()
+void shutdown_device(void)
 {
 	dprintf(CRITICAL, "Going down for shutdown.\n");
 

@@ -32,6 +32,7 @@
 #include <partition_parser.h>
 #include <scm.h>
 #include <target/display.h>
+#include <lp855x.h>
 
 /* display function */
 extern void show_image(Image_types type);
@@ -89,7 +90,6 @@ extern int smb349_check_usb_vbus_connection(int *wall_charger);
 
 #define TEMPERATURE_COLD_LIMIT -19 /* -19 C */
 #define TEMPERATURE_HOT_LIMIT 59 /*  59 C */
-#define LOW_BATTERY_CAPACITY_LIMIT 2 /*  2% */
 #define LOW_BATTERY_VOLTAGE_LIMIT 3430 /* 3.43 V */
 #define LOW_BATTERY_SPLASH_VOLTAGE_LIMIT 3100   /* 3.1 V */
 #define LOW_CURRENT_LIMIT 1400 /* 1400 mA (Wall Charger) */
@@ -142,11 +142,6 @@ static void delay_ms(int ms)
 
 static void show_error_logo(enum pic_type type, int pre_ms, int max_ms)
 {
-#define CHECK_VBUS_MS 500
-    int ms, times, remain_ms;
-    int check_vbus_flag = 0;
-    int cable_status = 0;
-
     if(!Init_LCD())
         Power_on_LCD();
 
@@ -167,9 +162,6 @@ static void show_error_logo(enum pic_type type, int pre_ms, int max_ms)
             dprintf(INFO, "Error to display picture with type %d...\n", type);
         break;
     }
-
-    if ((pre_ms > 0) || ((pre_ms == 0) && (type == PIC_CHARGING)))
-        check_vbus_flag = 1;
 
     /* Delay for 5 seconds */
     delay_ms(5000);
@@ -256,7 +248,7 @@ int get_battery_charging_info(struct battery_charging_info *data)
 }
 
 extern int target_volume_down();
-void check_battery_condition(void)
+void check_battery_condition(int min_capacity)
 {
     struct battery_charging_info info;
     int wall_charger = -1;
@@ -307,7 +299,7 @@ void check_battery_condition(void)
         shut_down();
     }
 
-    if ((info.voltage >= LOW_BATTERY_VOLTAGE_LIMIT) && (info.capacity >= LOW_BATTERY_CAPACITY_LIMIT)) {
+    if ((info.voltage >= LOW_BATTERY_VOLTAGE_LIMIT) && (info.capacity >= min_capacity)) {
         dprintf(INFO, "cond: voltage = %d, capacity = %d can start to boot..\n", info.voltage, info.capacity);
     }
     else {
@@ -398,7 +390,7 @@ void check_battery_condition(void)
 
             /* Check if battery is good enough to boot into system */
             if ((info.voltage >= LOW_BATTERY_VOLTAGE_LIMIT) &&
-                (info.capacity >= LOW_BATTERY_CAPACITY_LIMIT)) {
+                (info.capacity >= min_capacity)) {
                 if (++charge_enough > BATTERY_READY_TO_BOOT_COUNT) {
                     dprintf(INFO, "Battery is enough to boot into system, breaking out of loop\n");
                     break;
