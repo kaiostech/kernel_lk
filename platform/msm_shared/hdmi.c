@@ -232,6 +232,7 @@ static uint8_t hdmi_msm_avi_iframe_lut[][16] = {
 };
 
 static int hdmi_msm_res_priority[HDMI_VFRMT_MAX] = {
+	[HDMI_VFRMT_UNKNOWN]	   = 0,
 	[HDMI_VFRMT_720x240p60_4_3]    = 1,
 	[HDMI_VFRMT_1440x480i60_16_9]  = 2,
 	[HDMI_VFRMT_1440x576i50_4_3]   = 3,
@@ -421,7 +422,7 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 			if ((timings_db[video_format].is_supported)
 				&& hdmi_msm_res_priority[video_format]) {
 				if (hdmi_msm_res_priority[video_format] >
-							preferred_format)
+					hdmi_msm_res_priority[preferred_format])
 					preferred_format = video_format;
 			}
 		}
