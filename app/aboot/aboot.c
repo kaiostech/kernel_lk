@@ -2443,6 +2443,7 @@ void aboot_fastboot_register_commands(void)
 	fastboot_register("verify:", cmd_verify_mmc);
 	fastboot_register("erase:", cmd_erase_mmc);
 	fastboot_register("dump:", cmd_dump);
+	fastboot_publish("production", (gpio_get(target_production_gpio())==1)?"1":"0");
 // ACOS_MOD_END
 }
 
