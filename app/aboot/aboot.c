@@ -1740,11 +1740,23 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz, bool verify)
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
 	int index = INVALID_PTN;
+	int retry;
+	int ret;
 
 	if (!strcmp(arg, "partition"))
 	{
 		dprintf(INFO, "Attempt to write partition image.\n");
-		if (write_partition(sz, (unsigned char *) data)) {
+
+		for( retry = 0; retry < 5; ++retry ) {
+			ret = write_partition(sz, (unsigned char*)data);
+			if( ret ) {
+				dprintf( CRITICAL, "Failed to write partition." );
+				mdelay(5);
+			} else {
+				break;
+			}
+		}
+		if( (retry == 5) && ret ) {
 			fastboot_fail("failed to write partition");
 			return;
 		}
