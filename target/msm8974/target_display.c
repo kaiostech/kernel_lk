@@ -175,9 +175,11 @@ static int msm8974_mdss_edp_panel_clock(int enable)
 		mdp_gdsc_ctrl(enable);
 		mdp_clock_init();
 		edp_clk_enable();
-		mmss_clock_init();
 	} else if (!target_cont_splash_screen()) {
 		/* Add here for continuous splash */
+		edp_clk_disable();
+		mdp_clock_disable();
+		mdp_gdsc_ctrl(enable);
 	}
 
 	return 0;
@@ -214,6 +216,7 @@ static int msm8974_edp_panel_power(int enable)
 		dprintf(SPEW, "Panel Enable Done\n");
 	} else {
 		/* Keep LDO12 on, otherwise kernel will not boot */
+		gpio_set(58, 0);
 		pm8x41_gpio_set(36, PM_GPIO_FUNC_LOW);
 	}
 
@@ -222,7 +225,6 @@ static int msm8974_edp_panel_power(int enable)
 
 void display_init(void)
 {
-	struct edp_panel_data edp_panel;
 	uint32_t hw_id = board_hardware_id();
 	uint32_t soc_ver = board_soc_version();
 
@@ -256,15 +258,10 @@ void display_init(void)
 		panel.mdp_rev = MDP_REV_50;
 		break;
 	case HW_PLATFORM_LIQUID:
-		edp_panel.panel_data = &panel;
-		edp_auo_1080p_init(&edp_panel);
+		edp_panel_init(&(panel.panel_info));
 		panel.clk_func = msm8974_mdss_edp_panel_clock;
 		panel.power_func = msm8974_edp_panel_power;
 		panel.fb.base = (void *)EDP_FB_ADDR;
-		panel.fb.width =  panel.panel_info.xres;
-		panel.fb.height =  panel.panel_info.yres;
-		panel.fb.stride =  panel.panel_info.xres;
-		panel.fb.bpp =  panel.panel_info.bpp;
 		panel.fb.format = FB_FORMAT_RGB888;
 		panel.mdp_rev = MDP_REV_50;
 		break;
