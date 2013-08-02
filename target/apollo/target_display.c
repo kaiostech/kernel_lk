@@ -38,10 +38,11 @@
 #include <target/display.h>
 #include <dev/fbgfx.h>
 
-#define HEIGHT_IMAGE_LOW   234
+#define HEIGHT_IMAGE_CHARGE  219
 #define Y_POSITION_LOW_POWER  1269 /* for  y */
-#define Y_POSITION_CHARGER  (Y_POSITION_LOW_POWER -  HEIGHT_IMAGE_LOW - 78)  /* for  y */
-#define Y_POSITION_LOGO  1310 /* for  y */
+#define Y_POSITION_CHARGER  (Y_POSITION_LOW_POWER -  HEIGHT_IMAGE_CHARGE - 78)  /* for  y */
+#define Y_POSITION_LOGO  1558 /* for  y */
+#define Y_POSITION_HOT  1162 /* for  y */
 
 extern struct fbgfx_image image_charge;
 extern struct fbgfx_image image_hot;
