@@ -502,3 +502,21 @@ void mmss_clock_disable(uint32_t dual_dsi)
 	clk_disable(clk_get("mmss_mmssnoc_axi_clk"));
 
 }
+
+void edp_clk_enable(void)
+{
+	int ret;
+
+	ret = clk_get_set_enable("edp_pixel_clk", 138500000, 1);
+	if (ret) {
+		dprintf(CRITICAL, "failed to set edp_pixel_clk ret = %d\n",
+				ret);
+		ASSERT(0);
+	}
+
+	ret = clk_get_set_enable("edp_link_clk", 270000000, 1);
+	if (ret) {
+		dprintf(CRITICAL, "failed to set edp_link_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+}
