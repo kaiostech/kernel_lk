@@ -142,14 +142,14 @@ void clock_config_mmc(uint32_t interface, uint32_t freq)
 	}
 	else
 	{
-		dprintf(CRITICAL, "sdc frequency (%d) is not supported\n", freq);
+		dprintf(CRITICAL, "sdc frequency (%u) is not supported\n", freq);
 		ASSERT(0);
 	}
 
 
 	if(ret)
 	{
-		dprintf(CRITICAL, "failed to set sdc1_core_clk ret = %d\n", ret);
+		dprintf(CRITICAL, "failed to set sdc%u_core_clk ret = %d\n", interface, ret);
 		ASSERT(0);
 	}
 
@@ -501,4 +501,26 @@ void mmss_clock_disable(uint32_t dual_dsi)
 	/* Disable MMSSNOC AXI clock */
 	clk_disable(clk_get("mmss_mmssnoc_axi_clk"));
 
+}
+
+/* enables usb30 interface and master clocks */
+void clock_usb30_init(void)
+{
+	int ret;
+
+	/* interface clock */
+	ret = clk_get_set_enable("usb30_iface_clk", 0, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set usb30_iface_clk. ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	/* master clock */
+	ret = clk_get_set_enable("usb30_master_clk", 125000000, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set usb30_master_clk. ret = %d\n", ret);
+		ASSERT(0);
+	}
 }
