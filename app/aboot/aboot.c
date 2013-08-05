@@ -70,8 +70,6 @@
 #include "scm.h"
 
 extern  bool target_use_signed_kernel(void);
-extern void dsb();
-extern void isb();
 extern void platform_uninit(void);
 
 void write_device_info_mmc(device_info *dev);
