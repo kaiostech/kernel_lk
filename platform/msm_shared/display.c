@@ -64,6 +64,8 @@ static int msm_fb_alloc(struct fbcon_config *fb)
 							* fb->height
 							* (fb->bpp / 8));
 
+	memset(fb->base, 0 , fb->width* fb->height* (fb->bpp / 8));
+
 	if (fb->base == NULL)
 		return ERROR;
 
