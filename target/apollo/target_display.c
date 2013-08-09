@@ -167,10 +167,6 @@ void display_init(void)
 			dprintf(CRITICAL, "Display init failed!\n");
 			return;
 		}
-
-		dprintf(INFO, "Backlight Start\n");
-		lp855x_bl_on();
-
 		display_enable = 1;
         }
 }
@@ -217,4 +213,11 @@ void show_image(Image_types type)
                 break;
         }
         fbgfx_flip();
+
+	/* Open the backlight after the image has been update to the screen.*/
+        if (!display_enable)
+	{
+		dprintf(INFO, "Backlight Start\n");
+		lp855x_bl_on();
+	}
 }
