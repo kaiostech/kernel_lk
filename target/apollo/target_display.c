@@ -79,6 +79,7 @@ static void apollo_mdss_mipi_panel_reset(uint8_t enable)
 		.direction = PM_GPIO_DIR_OUT,
 		.output_buffer = PM_GPIO_OUT_CMOS,
 		.out_strength = PM_GPIO_OUT_DRIVE_MED,
+		.vin_sel = 0x02,
 	};
 
 	pm8x41_gpio_config(19, &gpio19_param);
