@@ -92,6 +92,12 @@ void write_device_info_flash(device_info *dev);
 
 #define MAX_TAGS_SIZE   1024
 
+#ifndef MEMSIZE
+#define MEMSIZE 1024*1024
+#endif
+
+#define MAX_TAGS_SIZE   1024
+
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
