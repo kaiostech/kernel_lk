@@ -723,6 +723,35 @@ void hdmi_app_clk_init(int on)
 	}
 }
 
+static void hdmi_audio_playback(void)
+{
+	uint32_t data_base;
+	data_base = memalign(4096, 0x1000);
+	if (data_base == NULL)
+		return;
+	memset(data_base, 0, 0x1000);
+
+	writel(0x0000095E, 0x28106000);
+	writel(data_base, 0x28106004);
+	writel(0x000005FF, 0x28106008);
+	writel(0x000005FF, 0x28106010);
+	udelay(10);
+	writel(0x0000095F, 0x28106000);
+	writel(0x00000010, 0x28101004);
+	udelay(10);
+
+	writel(0x00000170,0x04A000E4);
+	writel(0x00000000,0x04A000E8);
+	writel(0x000000F3,0x04A0002C);
+	writel(0x00000000,0x04A00204);
+	writel(0x24414000,0x04A000C4);
+	writel(0x00001000,0x04A000C8);
+	writel(0x80010110,0x04A00024);
+	writel(0x00000001,0x04A00044);
+	writel(0x00000081,0x04A001D0);
+	writel(0x00000011,0x04A00020);
+	udelay(20);
+}
 int hdmi_msm_turn_on(void)
 {
 	uint32_t hotplug_control;
@@ -734,6 +763,8 @@ int hdmi_msm_turn_on(void)
 
 	// Enable USEC REF timer
 	writel(0x0001001B, HDMI_USEC_REFTIMER);
+	//play audio
+	hdmi_audio_playback();
 
 	// Write 1 to HDMI_CTRL to enable HDMI
 	hdmi_msm_set_mode(1);
