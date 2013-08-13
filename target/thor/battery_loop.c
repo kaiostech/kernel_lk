@@ -12,6 +12,7 @@
 #include <platform/iomap.h>
 #include <platform/gpio.h>
 #include <platform/clock.h>
+#include <platform/timer.h>
 #include <reg.h>
 #include <target.h>
 #include <platform.h>
@@ -37,24 +38,7 @@
 /* display function */
 extern void show_image(Image_types type);
 extern void display_shutdown(void);
-
-int Init_LCD(void)
-{
-	dprintf(INFO, "Init LCD\n");
-	return 0;
-}
-
-void Power_on_LCD(void)
-{
-	dprintf(INFO, "Power on LCD\n");
-	lp855x_bl_on();
-}
-
-void Power_off_LCD(void)
-{
-	dprintf(INFO, "Power off LCD\n");
-	lp855x_bl_off();
-}
+extern void display_clear(void);
 
 void show_lowbattery(void)
 {
@@ -142,9 +126,6 @@ static void delay_ms(int ms)
 
 static void show_error_logo(enum pic_type type, int pre_ms, int max_ms)
 {
-    if(!Init_LCD())
-        Power_on_LCD();
-
     switch(type) {
         case PIC_LOWBATTERY:
             show_lowbattery();
@@ -163,10 +144,14 @@ static void show_error_logo(enum pic_type type, int pre_ms, int max_ms)
         break;
     }
 
+    /* Turn on backlight */
+    lp855x_bl_on();
+
     /* Delay for 5 seconds */
     delay_ms(5000);
 
-    Power_off_LCD();
+    /* Turn off backlight */
+    lp855x_bl_off();
 }
 
 static int check_pwr_key_press(int *ms)
@@ -419,6 +404,7 @@ void check_battery_condition(int min_capacity)
         }
 
         dprintf(INFO, "Leaving charge loop...\n");
+	display_clear();
     }
 }
 
@@ -439,7 +425,7 @@ void charge_mode_loop(void)
 #endif
 
 	dprintf(INFO, "Entering charge mode loop...\n");
-	Power_off_LCD();
+	lp855x_bl_off();
 
 	while(1) {
 

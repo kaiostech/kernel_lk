@@ -189,6 +189,12 @@ void set_display_image_type(Image_types type)
         image_type = type;
 }
 
+void display_clear(void)
+{
+	fbgfx_clear();
+	set_display_image_type(IMAGE_NONE);
+}
+
 void show_image(Image_types type)
 {
         dprintf(CRITICAL, "%s: Image_types=%d\n",__func__,type);
