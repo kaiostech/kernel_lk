@@ -2717,6 +2717,11 @@ unsigned mmc_get_psn(void)
 	return mmc_card.cid.psn;
 }
 
+uint8_t mmc_get_manfid(void)
+{
+        return mmc_card.cid.mid;
+}
+
 /*
  * Read/write data from/to SDC FIFO.
  */

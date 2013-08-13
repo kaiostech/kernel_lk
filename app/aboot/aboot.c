@@ -72,6 +72,8 @@
 
 #include "scm.h"
 
+#include "base64.h"
+
 extern  bool target_use_signed_kernel(void);
 extern void platform_uninit(void);
 extern void target_uninit(void);
@@ -115,6 +117,7 @@ static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
 static const char *secondary_gpt_enable = " gpt";
+static const char *unlocked_kernel = " androidboot.unlocked_kernel=true";
 
 static const char *baseband_apq     = " androidboot.baseband=apq";
 static const char *baseband_msm     = " androidboot.baseband=msm";
@@ -130,6 +133,10 @@ static unsigned page_size = 0;
 static unsigned page_mask = 0;
 static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
 static bool boot_into_ffbm;
+
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+int skip_authentication = 0;
+#endif
 
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
@@ -274,6 +281,10 @@ unsigned char *update_cmdline(const char * cmdline)
 		cmdline_len += strlen(auth_kernel);
 	}
 
+	if (target_use_signed_kernel() && skip_authentication) {
+		cmdline_len += strlen(unlocked_kernel);
+	}
+
 	/* Determine correct androidboot.baseband to use */
 	switch(board_baseband())
 	{
@@ -385,6 +396,12 @@ unsigned char *update_cmdline(const char * cmdline)
 
 		if(target_use_signed_kernel() && auth_kernel_img) {
 			src = auth_kernel;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		}
+
+		if (target_use_signed_kernel() && skip_authentication) {
+			src = unlocked_kernel;
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 		}
@@ -797,6 +814,11 @@ int boot_linux_from_mmc(void)
 	}
 #endif
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+	if (target_verify_unlock_code() == 1)
+		skip_authentication = 1;
+#endif
+
 	/* Authenticate Kernel */
 	dprintf(INFO, "use_signed_kernel=%d, is_tampered=%d.\n",
 		(int) target_use_signed_kernel(),
@@ -856,7 +878,18 @@ int boot_linux_from_mmc(void)
 			return -1;
 		}
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+		if (!skip_authentication)
+		{
+			verify_signed_bootimg(image_addr, imagesize_actual);
+		}
+		else
+		{
+			dprintf(INFO, "Device unlocked, skipping authentication\n");
+		}
+#else
 		verify_signed_bootimg(image_addr, imagesize_actual);
+#endif
 
 		/* Move kernel, ramdisk and device tree to correct address */
 		memmove((void*) hdr->kernel_addr, (char *)(image_addr + page_size), hdr->kernel_size);
@@ -1761,6 +1794,31 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz, bool verify)
 			return;
 		}
 	}
+	else if (!strcmp(arg, "unlock"))
+	{
+		if (target_unlock(data, sz))
+		{
+			fastboot_fail("Unlock code is NOT correct");
+			return;
+		}
+		else
+		{
+			/* Write the data into IDME */
+			char *b64 = base64_encode(data, sz);
+
+			if (idme_update_var_ex("unlock_code", b64, strlen(b64)) == -1)
+			{
+				fastboot_fail("Failed to write unlock code into IDME");
+				free(b64);
+				return;
+			}
+
+			free(b64);
+
+			fastboot_okay("Unlock code is correct");
+			return;
+		}
+	}
 	else
 	{
 		index = partition_get_index(arg);
@@ -2200,6 +2258,12 @@ int splash_screen_check_header(struct fbimage *logo)
 	return 0;
 }
 
+void cmd_oem_relock(const char *arg, void *data, unsigned sz)
+{
+	idme_update_var_ex("unlock_code", "", 0);
+	fastboot_okay("");
+}
+
 // ACOS_MOD_BEGIN
 #ifdef WITH_ENABLE_IDME
 void cmd_idme(const char *arg, void *data, unsigned sz)
@@ -2444,6 +2508,7 @@ void aboot_fastboot_register_commands(void)
 	fastboot_register("erase:", cmd_erase_mmc);
 	fastboot_register("dump:", cmd_dump);
 	fastboot_publish("production", (gpio_get(target_production_gpio())==1)?"1":"0");
+	fastboot_register("oem relock", cmd_oem_relock);
 // ACOS_MOD_END
 }
 

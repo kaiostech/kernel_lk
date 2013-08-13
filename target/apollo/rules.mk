@@ -48,7 +48,8 @@ OBJS += \
     $(LOCAL_DIR)/init.o \
     $(LOCAL_DIR)/meminfo.o \
     $(LOCAL_DIR)/target_display.o \
-    $(LOCAL_DIR)/../thor/battery_loop.o
+    $(LOCAL_DIR)/../thor/battery_loop.o \
+    $(LOCAL_DIR)/../thor/unlock.o
 
 # For WITH_FBGFX_SPLASH. Below image is RLE encoded. We now use gzipped
 #OBJS += \

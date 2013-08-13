@@ -334,7 +334,7 @@ int idme_print_var_v2p0(void *data)
 	dprintf(INFO, "idme items number:%d\n", pdata->items_num);
 	pitem = (struct item_t *)(&(pdata->item_data[0]));
 
-	for(i = 0; i < pdata->items_num;i++){
+	for (i = 0; i < pdata->items_num;i++){
 		memset(temp, 0, sizeof(temp));
 		memcpy(temp, &(pitem->data[0]), MIN(pitem->desc.size, IDME_MAX_PRINT_SIZE));
 		dprintf(INFO, "name: %s, size: %d, exportable: %d, "
@@ -345,12 +345,15 @@ int idme_print_var_v2p0(void *data)
 			idme_permission_to_string(pitem->desc.permission),
 			temp);
 
-                        /* will print name on terminal */
-			if ((strcmp(pitem->desc.name,"manufacturing") != 0) && (strcmp(pitem->desc.name,"mac_sec") != 0)){
-				len=sprintf(buf, "%s: ", pitem->desc.name);
-				idme_get_var_v2p0(pitem->desc.name, buf+len, sizeof(buf)-len, pdata);
-				fastboot_info(buf);
-			}
+		/* will print name on terminal */
+		if (    (strcmp(pitem->desc.name, "manufacturing") != 0)
+		     && (strcmp(pitem->desc.name, "mac_sec") != 0)
+		     && (strcmp(pitem->desc.name, "unlock_code") != 0))
+		{
+			len=sprintf(buf, "%s: ", pitem->desc.name);
+			idme_get_var_v2p0(pitem->desc.name, buf+len, sizeof(buf)-len, pdata);
+			fastboot_info(buf);
+		}
 		IDME_ITEM_NEXT(pitem);
 	}
 

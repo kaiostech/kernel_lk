@@ -72,5 +72,7 @@ int target_certificate_size(void);
 const unsigned char *target_production_certificate(void);
 int target_production_certificate_size(void);
 int target_production_gpio(void);
+int target_unlock(void *data, int size);
+int target_verify_unlock_code(void);
 
 #endif

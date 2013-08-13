@@ -224,3 +224,13 @@ __WEAK int target_production_gpio(void)
 {
 	return 0;
 }
+
+__WEAK int target_unlock(void *data, int size)
+{
+	return 1;
+}
+
+__WEAK int target_verify_unlock_code(void)
+{
+	return 0;
+}
