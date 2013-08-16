@@ -90,6 +90,12 @@ void write_device_info_flash(device_info *dev);
 
 #define MAX_TAGS_SIZE   1024
 
+#ifndef MEMSIZE
+#define MEMSIZE 1024*1024
+#endif
+
+#define MAX_TAGS_SIZE   1024
+
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
@@ -679,7 +685,7 @@ int boot_linux_from_mmc(void)
 		device.is_unlocked,
 		device.is_tampered);
 
-	if(target_use_signed_kernel() && (!device.is_unlocked) && (!device.is_tampered))
+	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
 		offset = 0;
 
@@ -689,7 +695,7 @@ int boot_linux_from_mmc(void)
 		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
 
-		if (check_aboot_addr_range_overlap(hdr->tags_addr, hdr->dt_size))
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_actual))
 		{
 			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
 			return -1;
@@ -702,6 +708,12 @@ int boot_linux_from_mmc(void)
 		dprintf(INFO, "Loading boot image (%d): start\n", imagesize_actual);
 		bs_set_timestamp(BS_KERNEL_LOAD_START);
 
+		if (check_aboot_addr_range_overlap(image_addr, imagesize_actual))
+		{
+			dprintf(CRITICAL, "Boot image buffer address overlaps with aboot addresses.\n");
+			return -1;
+		}
+
 		/* Read image without signature */
 		if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
 		{
@@ -713,6 +725,13 @@ int boot_linux_from_mmc(void)
 		bs_set_timestamp(BS_KERNEL_LOAD_DONE);
 
 		offset = imagesize_actual;
+
+		if (check_aboot_addr_range_overlap(image_addr + offset, page_size))
+		{
+			dprintf(CRITICAL, "Signature read buffer address overlaps with aboot addresses.\n");
+			return -1;
+		}
+
 		/* Read signature */
 		if(mmc_read(ptn + offset, (void *)(image_addr + offset), page_size))
 		{
@@ -976,7 +995,7 @@ int boot_linux_from_flash(void)
 #endif
 
 	/* Authenticate Kernel */
-	if(target_use_signed_kernel() && (!device.is_unlocked) && (!device.is_tampered))
+	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
 		image_addr = (unsigned char *)target_get_scratch_address();
 		offset = 0;
