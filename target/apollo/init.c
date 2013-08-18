@@ -178,48 +178,6 @@ crypto_engine_type board_ce_type(void)
 	return CRYPTO_ENGINE_TYPE_HW;
 }
 
-static bool fastboot_mode_boot_check()
-{
-	bool boot_into_fastboot = false;
-         bool boot_into_recovery=false;
-
-#ifdef WITH_ENABLE_IDME
-	idme_initialize();
-
-	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT) {
-		/* Boot mode 6: Switch to fastboot */
-		boot_into_fastboot = true;
-	} else if (idme_boot_mode() == IDME_BOOTMODE_RECOVERY) {
-		/* Boot mode 3: Switch to recovery */
-		boot_into_recovery = 1;
-	}
-
-#endif
-
-	if (target_volume_up() && target_volume_down())
-                   boot_into_fastboot = true;
-
-	if (!boot_into_fastboot)
-	{
-		if (keys_get_state(KEY_HOME) || target_volume_up())
-			boot_into_recovery = 1;
-		if (!boot_into_recovery &&
-			(keys_get_state(KEY_BACK) || target_volume_down()))
-			boot_into_fastboot = true;
-	}
-
-	#if NO_KEYPAD_DRIVER
-	if (fastboot_trigger())
-		boot_into_fastboot = true;
-	#endif
-
-	if(FASTBOOT_MODE == check_reboot_mode()){
-                   boot_into_fastboot = true;
-	 }
-
-        return boot_into_fastboot;
-}
-
 void target_init(void)
 {
 	uint32_t base_addr;
@@ -276,13 +234,8 @@ void target_init(void)
 #endif
 	dprintf(INFO, "Display Init: Start\n");
 
-        if(false == fastboot_mode_boot_check()){
-                if (IMAGE_NONE == get_display_image_type())
-                        show_image(IMAGE_LOGO);
-         } else {
-                display_init();
-                display_image_on_screen();
-         }
+	if (IMAGE_NONE == get_display_image_type())
+		show_image(IMAGE_LOGO);
 
 	dprintf(INFO, "Backlight Start\n");
 	lp855x_bl_on();
