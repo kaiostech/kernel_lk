@@ -102,6 +102,7 @@ struct lcdc_panel_info {
 	/* Pad height */
 	uint32_t yres_pad;
 	uint8_t dual_pipe;
+	uint8_t split_display;
 	uint8_t pipe_swap;
 };
 
@@ -161,6 +162,11 @@ struct mipi_panel_info {
 	uint8_t broadcast;
 };
 
+struct edp_panel_info {
+	int max_lane_count;
+	unsigned long max_link_clk;
+};
+
 enum lvds_mode {
 	LVDS_SINGLE_CHANNEL_MODE,
 	LVDS_DUAL_CHANNEL_MODE,
@@ -188,9 +194,11 @@ struct msm_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct hdmi_panel_info hdmi;
+	struct edp_panel_info edp;
 
 	int (*on) (void);
 	int (*off) (void);
+	int (*prepare) (void);
 	int (*early_config) (void *pdata);
 	int (*config) (void *pdata);
 	int (*rotate) (void);
@@ -208,56 +216,4 @@ struct msm_fb_panel_data {
 	int (*pll_clk_func) (int enable, struct msm_panel_info *);
 };
 
-struct display_timing_desc {
-	uint32_t pclk;
-	uint32_t h_addressable; /* addressable + boder = active */
-	uint32_t h_border;
-	uint32_t h_blank;	/* fporch + bporch + sync_pulse = blank */
-	uint32_t h_fporch;
-	uint32_t h_sync_pulse;
-	uint32_t v_addressable; /* addressable + boder = active */
-	uint32_t v_border;
-	uint32_t v_blank;	/* fporch + bporch + sync_pulse = blank */
-	uint32_t v_fporch;
-	uint32_t v_sync_pulse;
-	uint32_t width_mm;
-	uint32_t height_mm;
-	uint32_t interlaced;
-	uint32_t stereo;
-	uint32_t sync_type;
-	uint32_t sync_separate;
-	uint32_t vsync_pol;
-	uint32_t hsync_pol;
-};
-
-struct edp_edid {
-	char id_name[4];
-	short id_product;
-	char version;
-	char revision;
-	char video_digital;
-	char color_depth;	/* 6, 8, 10, 12 and 14 bits */
-	char color_format;	/* RGB 4:4:4, YCrCb 4:4:4, Ycrcb 4:2:2 */
-	char dpm;		/* display power management */
-	char sync_digital;	/* 1 = digital */
-	char sync_separate;	/* 1 = separate */
-	char vsync_pol;		/* 0 = negative, 1 = positive */
-	char hsync_pol;		/* 0 = negative, 1 = positive */
-	char ext_block_cnt;
-	struct display_timing_desc timing[4];
-};
-
-struct dpcd_cap {
-	char max_lane_count;
-	uint32_t max_link_clk;  /* 162, 270 and 540 Mb, divided by 10 */
-};
-
-struct edp_panel_data {
-	struct msm_fb_panel_data *panel_data;
-	struct edp_edid edid;
-	struct dpcd_cap dpcd;
-};
-
-
-int msm_display_init(struct msm_fb_panel_data *pdata);
 #endif
