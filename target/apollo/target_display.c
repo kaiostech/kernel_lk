@@ -58,25 +58,7 @@ extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 extern int mdss_dsi_uniphy_pll_config(void);
 
-static int msm8974_backlight_on()
-{
-	static struct pm8x41_wled_data wled_ctrl = {
-		.mod_scheme      = 0xC3,
-		.led1_brightness = (0x0F << 8) | 0xEF,
-		.led2_brightness = (0x0F << 8) | 0xEF,
-		.led3_brightness = (0x0F << 8) | 0xEF,
-		.max_duty_cycle  = 0x01,
-	};
-
-	pm8x41_wled_config(&wled_ctrl);
-	pm8x41_wled_sink_control(1);
-	pm8x41_wled_iled_sync_control(1);
-	pm8x41_wled_enable(1);
-
-	return 0;
-}
-
-static int msm8974_mdss_dsi_panel_clock(uint8_t enable)
+static int apollo_mdss_dsi_panel_clock(uint8_t enable)
 {
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
@@ -91,7 +73,7 @@ static int msm8974_mdss_dsi_panel_clock(uint8_t enable)
 }
 
 /* Pull DISP_RST_N high to get panel out of reset */
-static void msm8974_mdss_mipi_panel_reset(void)
+static void apollo_mdss_mipi_panel_reset(uint8_t enable)
 {
 	struct pm8x41_gpio gpio19_param = {
 		.direction = PM_GPIO_DIR_OUT,
@@ -111,13 +93,10 @@ static void msm8974_mdss_mipi_panel_reset(void)
 	gpio_set(58, 2);
 }
 
-
-static int msm8974_mipi_panel_power(uint8_t enable)
+static int apollo_mipi_panel_power(uint8_t enable)
 {
 	if (enable) {
-
-		/* Enable backlight */
-		msm8974_backlight_on();
+		/* backlight enable is out of this */
 
 		/* Turn on LDO8 for lcd1 mipi vdd */
 		dprintf(SPEW, " Setting LDO22\n");
@@ -136,8 +115,13 @@ static int msm8974_mipi_panel_power(uint8_t enable)
 
 		dprintf(SPEW, " Panel Reset \n");
 		/* Panel Reset */
-		msm8974_mdss_mipi_panel_reset();
+		apollo_mdss_mipi_panel_reset(enable);
 		dprintf(SPEW, " Panel Reset Done\n");
+	} else {
+		apollo_mdss_mipi_panel_reset(enable);
+		pm8x41_ldo_control("LDO2", enable);
+		pm8x41_ldo_control("LDO22", enable);
+
 	}
 
 	return 0;
@@ -153,8 +137,8 @@ void display_init(void)
         if (!display_enable)
         {
 		mipi_jdi_video_wqxga_init(&(panel.panel_info));
-		panel.clk_func = msm8974_mdss_dsi_panel_clock;
-		panel.power_func = msm8974_mipi_panel_power;
+		panel.clk_func = apollo_mdss_dsi_panel_clock;
+		panel.power_func = apollo_mipi_panel_power;
 		panel.fb.base = MIPI_FB_ADDR;
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
@@ -174,8 +158,11 @@ void display_init(void)
 void display_shutdown(void)
 {
 	if (display_enable){
+		if(!target_cont_splash_screen()) {
+			lp855x_bl_off();
+			set_display_image_type(IMAGE_NONE);
+		}
                 msm_display_off();
-                set_display_image_type(IMAGE_NONE);
        }
 }
 
