@@ -47,12 +47,11 @@
 extern struct fbgfx_image image_charge;
 extern struct fbgfx_image image_hot;
 extern struct fbgfx_image image_low;
-extern struct fbgfx_image image_apollo;
 extern struct fbgfx_image image_boot_Kindle;
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
-static int image_type;
+static int image_type = 0;
 
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
@@ -188,6 +187,7 @@ void show_image(Image_types type)
         dprintf(CRITICAL, "%s: Image_types=%d\n",__func__,type);
         display_init();
         set_display_image_type(type);
+        fbgfx_clear();
         fbgfx_init();
         switch(type)
         {
@@ -199,7 +199,7 @@ void show_image(Image_types type)
                 fbgfx_apply_image(&image_low, Y_POSITION_LOW_POWER, FBGFX_CENTERED);
                 break;
             case IMAGE_DEVICEHOT:
-                fbgfx_apply_image(&image_hot, FBGFX_CENTERED, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_hot, Y_POSITION_HOT, FBGFX_CENTERED);
                 break;
             case IMAGE_LOGO:
             default:
@@ -207,11 +207,4 @@ void show_image(Image_types type)
                 break;
         }
         fbgfx_flip();
-
-	/* Open the backlight after the image has been update to the screen.*/
-        if (!display_enable)
-	{
-		dprintf(INFO, "Backlight Start\n");
-		lp855x_bl_on();
-	}
 }
