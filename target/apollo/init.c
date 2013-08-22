@@ -57,7 +57,7 @@ extern struct fbgfx_image image_boot_Kindle;
 #define HW_PLATFORM_APOLLO     20 /* these needs to match with apollo.dts */
 #define LINUX_MACHTYPE_APOLLO  20
 
-#define MIN_BOOT_BATTERY_CAPACITY 5
+#define MIN_BOOT_BATTERY_CAPACITY 2
 
 extern struct udc_device *get_udc_device(void);
 extern  bool target_use_signed_kernel(void);
