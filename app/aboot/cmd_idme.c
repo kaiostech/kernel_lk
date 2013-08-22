@@ -361,8 +361,7 @@ int do_idme ( int flag, int argc, char *argv[])
 				len = 0;
 			} else if(strncmp(argv[1], "version", strlen("version")) == 0) {
 				for( ; i < IDME_VER_TAB_LEN; i++) {
-					if(memcmp(idme_ver_table[i].version, argv[2],
-							strlen(argv[2])) == 0) {
+					if(strcmp(idme_ver_table[i].version, argv[2]) == 0) {
 						value = argv[2];
 						ret = 1;
 						break;
