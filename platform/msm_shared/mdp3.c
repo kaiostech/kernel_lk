@@ -165,7 +165,7 @@ int mdp_dsi_video_on()
 int mdp_dma_on()
 {
 	int ret = 0;
-
+	mdelay(100);
 	writel(0x00000001, MDP_DMA_P_START);
 
 	return ret;
@@ -179,4 +179,19 @@ int mdp_dma_off()
 		writel(0x00000000, MDP_DMA_P_START);
 
 	return ret;
+}
+
+int mdp_edp_config(struct msm_panel_info *pinfo, struct fbcon_config *fb)
+{
+	return NO_ERROR;
+}
+
+int mdp_edp_on(void)
+{
+	return NO_ERROR;
+}
+
+int mdp_edp_off(void)
+{
+	return NO_ERROR;
 }

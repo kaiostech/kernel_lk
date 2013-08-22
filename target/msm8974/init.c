@@ -28,6 +28,7 @@
 
 #include <debug.h>
 #include <platform/iomap.h>
+#include <platform/irqs.h>
 #include <platform/gpio.h>
 #include <reg.h>
 #include <target.h>
@@ -79,6 +80,8 @@ struct mmc_device *dev;
 #define SSD_PARTITION_SIZE      8192
 #endif
 
+#define FASTBOOT_MODE           0x77665500
+
 #define BOARD_SOC_VERSION1(soc_rev) (soc_rev >= 0x10000 && soc_rev < 0x20000)
 
 #if MMC_SDHCI_SUPPORT
@@ -88,6 +91,9 @@ static uint32_t mmc_sdhci_base[] =
 
 static uint32_t mmc_sdc_base[] =
 	{ MSM_SDC1_BASE, MSM_SDC2_BASE, MSM_SDC3_BASE, MSM_SDC4_BASE };
+
+static uint32_t mmc_sdc_pwrctl_irq[] =
+	{ SDCC1_PWRCTL_IRQ, SDCC2_PWRCTL_IRQ, SDCC3_PWRCTL_IRQ, SDCC4_PWRCTL_IRQ };
 
 void target_early_init(void)
 {
@@ -137,6 +143,9 @@ static int target_volume_up()
 	gpio.vin_sel   = 2;
 
 	pm8x41_gpio_config(5, &gpio);
+
+	/* Wait for the pmic gpio config to take effect */
+	thread_sleep(1);
 
 	/* Get status of P_GPIO_5 */
 	pm8x41_gpio_get(5, &status);
@@ -202,13 +211,10 @@ crypto_engine_type board_ce_type(void)
 }
 
 #if MMC_SDHCI_SUPPORT
-static target_mmc_sdhci_init()
+static void target_mmc_sdhci_init()
 {
-	struct mmc_config_data config;
+	struct mmc_config_data config = {0};
 	uint32_t soc_ver = 0;
-
-	/* Enable sdhci mode */
-	sdhci_mode_enable(1);
 
 	soc_ver = board_soc_version();
 
@@ -232,12 +238,17 @@ static target_mmc_sdhci_init()
 
 	/* Trying Slot 1*/
 	config.slot = 1;
-	config.base = mmc_sdhci_base[config.slot - 1];
+	config.sdhc_base = mmc_sdhci_base[config.slot - 1];
+	config.pwrctl_base = mmc_sdc_base[config.slot - 1];
+	config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
 
 	if (!(dev = mmc_init(&config))) {
 		/* Trying Slot 2 next */
 		config.slot = 2;
-		config.base = mmc_sdhci_base[config.slot - 1];
+		config.sdhc_base = mmc_sdhci_base[config.slot - 1];
+		config.pwrctl_base = mmc_sdc_base[config.slot - 1];
+		config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
+
 		if (!(dev = mmc_init(&config))) {
 			dprintf(CRITICAL, "mmc init failed!");
 			ASSERT(0);
@@ -257,8 +268,9 @@ struct mmc_device *target_mmc_device()
 {
 	return dev;
 }
+
 #else
-static target_mmc_mci_init()
+static void target_mmc_mci_init()
 {
 	uint32_t base_addr;
 	uint8_t slot;
@@ -420,10 +432,8 @@ void target_baseband_detect(struct board_data *board)
 	 */
 	switch(platform_subtype) {
 	case HW_PLATFORM_SUBTYPE_UNKNOWN:
+	case HW_PLATFORM_SUBTYPE_8974PRO_PM8084:
 		break;
-	case HW_PLATFORM_SUBTYPE_MDM:
-		board->baseband = BASEBAND_MDM;
-		return;
 	default:
 		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n",platform_subtype);
 		ASSERT(0);
@@ -493,6 +503,7 @@ unsigned check_reboot_mode(void)
 void reboot_device(unsigned reboot_reason)
 {
 	uint32_t soc_ver = 0;
+	uint8_t reset_type = 0;
 
 	soc_ver = board_soc_version();
 
@@ -502,11 +513,16 @@ void reboot_device(unsigned reboot_reason)
 	else
 		writel(reboot_reason, RESTART_REASON_ADDR_V2);
 
+	if(reboot_reason == FASTBOOT_MODE)
+		reset_type = PON_PSHOLD_WARM_RESET;
+	else
+		reset_type = PON_PSHOLD_HARD_RESET;
+
 	/* Configure PMIC for warm reset */
 	if (target_is_8974() && (pmic_ver == PM8X41_VERSION_V2))
-		pm8x41_v2_reset_configure(PON_PSHOLD_WARM_RESET);
+		pm8x41_v2_reset_configure(reset_type);
 	else
-		pm8x41_reset_configure(PON_PSHOLD_WARM_RESET);
+		pm8x41_reset_configure(reset_type);
 
 	/* Disable Watchdog Debug.
 	 * Required becuase of a H/W bug which causes the system to
@@ -600,6 +616,7 @@ int target_cont_splash_screen()
 		case HW_PLATFORM_MTP:
 		case HW_PLATFORM_FLUID:
 		case HW_PLATFORM_DRAGON:
+		case HW_PLATFORM_LIQUID:
 			dprintf(SPEW, "Target_cont_splash=1\n");
 			return 1;
 			break;

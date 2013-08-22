@@ -46,6 +46,8 @@ unsigned target_pause_for_battery_charge(void);
 unsigned target_baseband(void);
 void target_serialno(unsigned char *buf);
 void target_fastboot_init(void);
+void target_load_ssd_keystore(void);
+bool target_is_ssd_enabled(void);
 struct mmc_device *target_mmc_device();
 
 

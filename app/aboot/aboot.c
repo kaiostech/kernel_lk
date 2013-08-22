@@ -33,7 +33,6 @@
 #include <app.h>
 #include <debug.h>
 #include <arch/arm.h>
-#include <dev/udc.h>
 #include <string.h>
 #include <stdlib.h>
 #include <kernel/thread.h>
@@ -70,8 +69,6 @@
 #include "scm.h"
 
 extern  bool target_use_signed_kernel(void);
-extern void dsb();
-extern void isb();
 extern void platform_uninit(void);
 extern void target_uninit(void);
 
@@ -102,6 +99,7 @@ static const char *androidboot_mode = " androidboot.mode=";
 static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
+static const char *secondary_gpt_enable = " gpt";
 
 static const char *baseband_apq     = " androidboot.baseband=apq";
 static const char *baseband_msm     = " androidboot.baseband=msm";
@@ -121,15 +119,7 @@ static bool boot_into_ffbm;
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
 
-static device_info device = {DEVICE_MAGIC, 0, 0};
-
-static struct udc_device surf_udc_device = {
-	.vendor_id	= 0x18d1,
-	.product_id	= 0xD00D,
-	.version_id	= 0x0100,
-	.manufacturer	= "Google",
-	.product	= "Android",
-};
+static device_info device = {DEVICE_MAGIC, 0, 0, 0};
 
 struct atag_ptbl_entry
 {
@@ -163,6 +153,7 @@ struct getvar_partition_info part_info[] =
 };
 
 char max_download_size[MAX_RSP_SIZE];
+char charger_screen_enabled[MAX_RSP_SIZE];
 char sn_buf[13];
 
 extern int emmc_recovery_init(void);
@@ -200,6 +191,7 @@ unsigned char *update_cmdline(const char * cmdline)
 	int have_cmdline = 0;
 	unsigned char *cmdline_final = NULL;
 	int pause_at_bootup = 0;
+	bool gpt_exists = partition_gpt_exists();
 
 	if (cmdline && cmdline[0]) {
 		cmdline_len = strlen(cmdline);
@@ -212,12 +204,16 @@ unsigned char *update_cmdline(const char * cmdline)
 	cmdline_len += strlen(usb_sn_cmdline);
 	cmdline_len += strlen(sn_buf);
 
+	if (boot_into_recovery && gpt_exists)
+		cmdline_len += strlen(secondary_gpt_enable);
+
 	if (boot_into_ffbm) {
 		cmdline_len += strlen(androidboot_mode);
 		cmdline_len += strlen(ffbm_mode_string);
 		/* reduce kernel console messages to speed-up boot */
 		cmdline_len += strlen(loglevel);
-	} else if (target_pause_for_battery_charge()) {
+	} else if (device.charger_screen_enabled &&
+			target_pause_for_battery_charge()) {
 		pause_at_bootup = 1;
 		cmdline_len += strlen(battchg_pause);
 	}
@@ -292,6 +288,12 @@ unsigned char *update_cmdline(const char * cmdline)
 		if (have_cmdline) --dst;
 		have_cmdline = 1;
 		while ((*dst++ = *src++));
+
+		if (boot_into_recovery && gpt_exists) {
+			src = secondary_gpt_enable;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		}
 
 		if (boot_into_ffbm) {
 			src = androidboot_mode;
@@ -685,7 +687,7 @@ int boot_linux_from_mmc(void)
 		device.is_unlocked,
 		device.is_tampered);
 
-	if(target_use_signed_kernel() && (!device.is_unlocked) && (!device.is_tampered))
+	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
 		offset = 0;
 
@@ -695,7 +697,7 @@ int boot_linux_from_mmc(void)
 		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
 
-		if (check_aboot_addr_range_overlap(hdr->tags_addr, hdr->dt_size))
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_actual))
 		{
 			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
 			return -1;
@@ -708,6 +710,12 @@ int boot_linux_from_mmc(void)
 		dprintf(INFO, "Loading boot image (%d): start\n", imagesize_actual);
 		bs_set_timestamp(BS_KERNEL_LOAD_START);
 
+		if (check_aboot_addr_range_overlap(image_addr, imagesize_actual))
+		{
+			dprintf(CRITICAL, "Boot image buffer address overlaps with aboot addresses.\n");
+			return -1;
+		}
+
 		/* Read image without signature */
 		if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
 		{
@@ -719,6 +727,13 @@ int boot_linux_from_mmc(void)
 		bs_set_timestamp(BS_KERNEL_LOAD_DONE);
 
 		offset = imagesize_actual;
+
+		if (check_aboot_addr_range_overlap(image_addr + offset, page_size))
+		{
+			dprintf(CRITICAL, "Signature read buffer address overlaps with aboot addresses.\n");
+			return -1;
+		}
+
 		/* Read signature */
 		if(mmc_read(ptn + offset, (void *)(image_addr + offset), page_size))
 		{
@@ -765,7 +780,8 @@ int boot_linux_from_mmc(void)
 			 */
 			void *dtb;
 			dtb = dev_tree_appended((void*) hdr->kernel_addr,
-						(void *)hdr->tags_addr, hdr->kernel_size);
+						hdr->kernel_size,
+						(void *)hdr->tags_addr);
 			if (!dtb) {
 				dprintf(CRITICAL, "ERROR: Appended Device Tree Blob not found\n");
 				return -1;
@@ -856,7 +872,8 @@ int boot_linux_from_mmc(void)
 			 */
 			void *dtb;
 			dtb = dev_tree_appended((void*) hdr->kernel_addr,
-						(void *)hdr->tags_addr, hdr->kernel_size);
+						kernel_actual,
+						(void *)hdr->tags_addr);
 			if (!dtb) {
 				dprintf(CRITICAL, "ERROR: Appended Device Tree Blob not found\n");
 				return -1;
@@ -864,6 +881,9 @@ int boot_linux_from_mmc(void)
 		}
 		#endif
 	}
+
+	if (boot_into_recovery && !device.is_unlocked && !device.is_tampered)
+		target_load_ssd_keystore();
 
 unified_boot:
 
@@ -973,7 +993,7 @@ int boot_linux_from_flash(void)
 #endif
 
 	/* Authenticate Kernel */
-	if(target_use_signed_kernel() && (!device.is_unlocked) && (!device.is_tampered))
+	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
 		image_addr = (unsigned char *)target_get_scratch_address();
 		offset = 0;
@@ -1174,6 +1194,7 @@ void read_device_info_mmc(device_info *dev)
 		memcpy(info->magic, DEVICE_MAGIC, DEVICE_MAGIC_SIZE);
 		info->is_unlocked = 0;
 		info->is_tampered = 0;
+		info->charger_screen_enabled = 0;
 
 		write_device_info_mmc(info);
 	}
@@ -1421,7 +1442,8 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	 */
 	if (!dtb_copied) {
 		void *dtb;
-		dtb = dev_tree_appended((void *)hdr->kernel_addr, (void *)hdr->tags_addr, hdr->kernel_size);
+		dtb = dev_tree_appended((void *)hdr->kernel_addr, hdr->kernel_size,
+					(void *)hdr->tags_addr);
 		if (!dtb) {
 			fastboot_fail("dtb not found");
 			return;
@@ -1815,6 +1837,22 @@ void cmd_reboot_bootloader(const char *arg, void *data, unsigned sz)
 	reboot_device(FASTBOOT_MODE);
 }
 
+void cmd_oem_enable_charger_screen(const char *arg, void *data, unsigned size)
+{
+	dprintf(INFO, "Enabling charger screen check\n");
+	device.charger_screen_enabled = 1;
+	write_device_info(&device);
+	fastboot_okay("");
+}
+
+void cmd_oem_disable_charger_screen(const char *arg, void *data, unsigned size)
+{
+	dprintf(INFO, "Disabling charger screen check\n");
+	device.charger_screen_enabled = 0;
+	write_device_info(&device);
+	fastboot_okay("");
+}
+
 void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
 {
 	if(!device.is_unlocked)
@@ -1828,9 +1866,11 @@ void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
 void cmd_oem_devinfo(const char *arg, void *data, unsigned sz)
 {
 	char response[64];
-	snprintf(response, 64, "\tDevice tampered: %s", (device.is_tampered ? "true" : "false"));
+	snprintf(response, sizeof(response), "\tDevice tampered: %s", (device.is_tampered ? "true" : "false"));
 	fastboot_info(response);
-	snprintf(response, 64, "\tDevice unlocked: %s", (device.is_unlocked ? "true" : "false"));
+	snprintf(response, sizeof(response), "\tDevice unlocked: %s", (device.is_unlocked ? "true" : "false"));
+	fastboot_info(response);
+	snprintf(response, sizeof(response), "\tCharger screen enabled: %s", (device.charger_screen_enabled ? "true" : "false"));
 	fastboot_info(response);
 	fastboot_okay("");
 }
@@ -1929,11 +1969,59 @@ static void publish_getvar_partition_info(struct getvar_partition_info *info, ui
 	}
 }
 
+/* register commands and variables for fastboot */
+void aboot_fastboot_register_commands(void)
+{
+	if (target_is_emmc_boot())
+	{
+		fastboot_register("flash:", cmd_flash_mmc);
+		fastboot_register("erase:", cmd_erase_mmc);
+	}
+	else
+	{
+		fastboot_register("flash:", cmd_flash);
+		fastboot_register("erase:", cmd_erase);
+	}
+
+	fastboot_register("boot",              cmd_boot);
+	fastboot_register("continue",          cmd_continue);
+	fastboot_register("reboot",            cmd_reboot);
+	fastboot_register("reboot-bootloader", cmd_reboot_bootloader);
+	fastboot_register("oem unlock",        cmd_oem_unlock);
+	fastboot_register("oem device-info",   cmd_oem_devinfo);
+	fastboot_register("preflash",          cmd_preflash);
+	fastboot_register("oem enable-charger-screen",
+			cmd_oem_enable_charger_screen);
+	fastboot_register("oem disable-charger-screen",
+			cmd_oem_disable_charger_screen);
+	/* publish variables and their values */
+	fastboot_publish("product",  TARGET(BOARD));
+	fastboot_publish("kernel",   "lk");
+	fastboot_publish("serialno", sn_buf);
+
+	/*
+	 * partition info is supported only for emmc partitions
+	 * Calling this for NAND prints some error messages which
+	 * is harmless but misleading. Avoid calling this for NAND
+	 * devices.
+	 */
+	if (target_is_emmc_boot())
+		publish_getvar_partition_info(part_info, ARRAY_SIZE(part_info));
+
+	/* Max download size supported */
+	snprintf(max_download_size, MAX_RSP_SIZE, "\t0x%x",
+			target_get_max_flash_size());
+	fastboot_publish("max-download-size", (const char *) max_download_size);
+	/* Is the charger screen check enabled */
+	snprintf(charger_screen_enabled, MAX_RSP_SIZE, "%d",
+			device.charger_screen_enabled);
+	fastboot_publish("charger-screen-enabled",
+			(const char *) charger_screen_enabled);
+}
+
 void aboot_init(const struct app_descriptor *app)
 {
 	unsigned reboot_mode = 0;
-	unsigned usb_init = 0;
-	unsigned sz = 0;
 	bool boot_into_fastboot = false;
 
 	/* Setup page size information for nand/emmc reads */
@@ -1950,15 +2038,10 @@ void aboot_init(const struct app_descriptor *app)
 
 	ASSERT((MEMBASE + MEMSIZE) > MEMBASE);
 
-	if(target_use_signed_kernel())
-	{
-		read_device_info(&device);
-
-	}
+	read_device_info(&device);
 
 	target_serialno((unsigned char *) sn_buf);
 	dprintf(SPEW,"serial number: %s\n",sn_buf);
-	surf_udc_device.serialno = sn_buf;
 
 	/* Check if we should do something other than booting up */
 	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN))
@@ -2028,49 +2111,16 @@ void aboot_init(const struct app_descriptor *app)
 			"to fastboot mode.\n");
 	}
 
-	sz = target_get_max_flash_size();
+	/* We are here means regular boot did not happen. Start fastboot. */
 
-	target_fastboot_init();
+	/* register aboot specific fastboot commands */
+	aboot_fastboot_register_commands();
 
-	if(!usb_init)
-		udc_init(&surf_udc_device);
-
-	fastboot_register("boot", cmd_boot);
-
-	if (target_is_emmc_boot())
-	{
-		fastboot_register("flash:", cmd_flash_mmc);
-		fastboot_register("erase:", cmd_erase_mmc);
-	}
-	else
-	{
-		fastboot_register("flash:", cmd_flash);
-		fastboot_register("erase:", cmd_erase);
-	}
-
-	fastboot_register("continue", cmd_continue);
-	fastboot_register("reboot", cmd_reboot);
-	fastboot_register("reboot-bootloader", cmd_reboot_bootloader);
-	fastboot_register("oem unlock", cmd_oem_unlock);
-	fastboot_register("oem device-info", cmd_oem_devinfo);
-	fastboot_register("preflash", cmd_preflash);
-	fastboot_publish("product", TARGET(BOARD));
-	fastboot_publish("kernel", "lk");
-	fastboot_publish("serialno", sn_buf);
-	/*
-	 * fastboot publish is supported only for emmc partitions
-	 * Calling this for NAND prints some error messages which
-	 * is harmless but misleading. Avoid calling this for NAND
-	 * devices.
-	 */
-	if (target_is_emmc_boot())
-		publish_getvar_partition_info(part_info, ARRAY_SIZE(part_info));
-	/* Max download size supported */
-	snprintf(max_download_size, MAX_RSP_SIZE, "\t0x%x", sz);
-	fastboot_publish("max-download-size", (const char *) max_download_size);
+	/* dump partition table for debug info */
 	partition_dump();
-	fastboot_init(target_get_scratch_address(), sz);
-	udc_start();
+
+	/* initialize and start fastboot */
+	fastboot_init(target_get_scratch_address(), target_get_max_flash_size());
 }
 
 uint32_t get_page_size()

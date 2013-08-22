@@ -136,7 +136,6 @@ static void msm8610_mdss_mipi_panel_reset(int enable)
 static int msm8610_mipi_panel_power(uint8_t enable)
 {
 	int ret;
-	struct pm8x41_ldo ldo4 = LDO(PM8x41_LDO4, NLDO_TYPE);
 	struct pm8x41_ldo ldo14 = LDO(PM8x41_LDO14, PLDO_TYPE);
 	struct pm8x41_ldo ldo19 = LDO(PM8x41_LDO19, PLDO_TYPE);
 
@@ -151,8 +150,6 @@ static int msm8610_mipi_panel_power(uint8_t enable)
 		pm8x41_ldo_control(&ldo14, enable);
 		pm8x41_ldo_set_voltage(&ldo19, 2850000);
 		pm8x41_ldo_control(&ldo19, enable);
-		pm8x41_ldo_set_voltage(&ldo4, 1200000);
-		pm8x41_ldo_control(&ldo4, enable);
 
 		/* reset */
 		msm8610_mdss_mipi_panel_reset(enable);
@@ -162,7 +159,6 @@ static int msm8610_mipi_panel_power(uint8_t enable)
 
 		pm8x41_ldo_control(&ldo19, enable);
 		pm8x41_ldo_control(&ldo14, enable);
-		pm8x41_ldo_control(&ldo4, enable);
 	}
 	return 0;
 }
@@ -170,11 +166,29 @@ static int msm8610_mipi_panel_power(uint8_t enable)
 void display_init(void)
 {
 	uint32_t hw_id = board_hardware_id();
+	uint32_t platform_subtype = board_hardware_subtype();
 
 	dprintf(SPEW, "display_init(),target_id=%d.\n", hw_id);
+	dprintf(SPEW, "display_init(),platform_subtype=%d.\n",
+		platform_subtype);
 
 	switch (hw_id) {
 	case HW_PLATFORM_QRD:
+		if ((0 == platform_subtype) || (1 == platform_subtype))
+			mipi_hx8379a_video_wvga_init(&(panel.panel_info));
+		else if (3 == platform_subtype)
+			mipi_otm8018b_video_wvga_init(&(panel.panel_info));
+
+		panel.clk_func = msm8610_mdss_dsi_panel_clock;
+		panel.power_func = msm8610_mipi_panel_power;
+		panel.fb.base = MIPI_FB_ADDR;
+		panel.fb.width =  panel.panel_info.xres;
+		panel.fb.height =  panel.panel_info.yres;
+		panel.fb.stride =  panel.panel_info.xres;
+		panel.fb.bpp =  panel.panel_info.bpp;
+		panel.fb.format = FB_FORMAT_RGB888;
+		panel.mdp_rev = MDP_REV_304;
+		break;
 	case HW_PLATFORM_MTP:
 	case HW_PLATFORM_SURF:
 		mipi_truly_video_wvga_init(&(panel.panel_info));

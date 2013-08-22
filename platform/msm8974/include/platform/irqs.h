@@ -45,6 +45,7 @@
 
 #define INT_QTMR_FRM_0_PHYSICAL_TIMER_EXP      (GIC_SPI_START + 8)
 
+#define USB30_EE1_IRQ                          (GIC_SPI_START + 131)
 #define USB1_HS_BAM_IRQ                        (GIC_SPI_START + 135)
 #define USB1_HS_IRQ                            (GIC_SPI_START + 134)
 #define USB2_IRQ                               (GIC_SPI_START + 141)
@@ -66,5 +67,8 @@
                                                ((GIC_SPI_START + 95) + qup_id):\
                                                ((GIC_SPI_START + 101) + qup_id))
 
-#define SDCC_PWRCTRL_IRQ                       (GIC_SPI_START + 138)
+#define SDCC1_PWRCTL_IRQ                       (GIC_SPI_START + 138)
+#define SDCC2_PWRCTL_IRQ                       (GIC_SPI_START + 221)
+#define SDCC3_PWRCTL_IRQ                       (GIC_SPI_START + 224)
+#define SDCC4_PWRCTL_IRQ                       (GIC_SPI_START + 227)
 #endif	/* __IRQS_COPPER_H */
