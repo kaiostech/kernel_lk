@@ -44,6 +44,8 @@
 #define mmpll1_mm_source_val 2
 #define mmpll3_mm_source_val 3
 #define gpll0_mm_source_val 5
+#define edppll_270_mm_source_val 4
+#define edppll_350_mm_source_val 4
 
 struct clk_freq_tbl rcg_dummy_freq = F_END;
 
@@ -162,6 +164,46 @@ static struct branch_clk gcc_sdcc1_ahb_clk =
 
 	.c = {
 		.dbg_name = "gcc_sdcc1_ahb_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct rcg_clk sdcc2_apps_clk_src =
+{
+	.cmd_reg      = (uint32_t *) SDCC2_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) SDCC2_CFG_RCGR,
+	.m_reg        = (uint32_t *) SDCC2_M,
+	.n_reg        = (uint32_t *) SDCC2_N,
+	.d_reg        = (uint32_t *) SDCC2_D,
+
+	.set_rate     = clock_lib2_rcg_set_rate_mnd,
+	.freq_tbl     = ftbl_gcc_sdcc1_2_apps_clk,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "sdc2_clk",
+		.ops      = &clk_ops_rcg_mnd,
+	},
+};
+
+static struct branch_clk gcc_sdcc2_apps_clk =
+{
+	.cbcr_reg     = (uint32_t *) SDCC2_APPS_CBCR,
+	.parent       = &sdcc2_apps_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_sdcc2_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_sdcc2_ahb_clk =
+{
+	.cbcr_reg     = (uint32_t *) SDCC2_AHB_CBCR,
+	.has_sibling  = 1,
+
+	.c = {
+		.dbg_name = "gcc_sdcc2_ahb_clk",
 		.ops      = &clk_ops_branch,
 	},
 };
@@ -584,11 +626,143 @@ static struct branch_clk mdss_vsync_clk = {
 	},
 };
 
+static struct clk_freq_tbl ftbl_mdss_edpaux_clk[] = {
+	F_MM(19200000,    cxo,   1,   0,   0),
+	F_END
+};
+
+static struct rcg_clk edpaux_clk_src = {
+	.cmd_reg  = (uint32_t *) EDPAUX_CMD_RCGR,
+	.set_rate = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl = ftbl_mdss_edpaux_clk,
+
+	.c        = {
+		.dbg_name = "edpaux_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
+static struct branch_clk mdss_edpaux_clk = {
+	.cbcr_reg    = MDSS_EDPAUX_CBCR,
+	.parent      = &edpaux_clk_src.c,
+	.has_sibling = 0,
+
+	.c           = {
+		.dbg_name = "mdss_edpaux_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct clk_freq_tbl ftbl_mdss_edplink_clk[] = {
+	F_MDSS(162000000, edppll_270,   2,   0,   0),
+	F_MDSS(270000000, edppll_270,  11,   0,   0),
+	F_END
+};
+
+static struct rcg_clk edplink_clk_src = {
+	.cmd_reg = (uint32_t *)EDPLINK_CMD_RCGR,
+	.set_rate = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl = ftbl_mdss_edplink_clk,
+	.current_freq = &rcg_dummy_freq,
+	.c = {
+		.dbg_name = "edplink_clk_src",
+		.ops = &clk_ops_rcg,
+	},
+};
+
+static struct clk_freq_tbl ftbl_mdss_edppixel_clk[] = {
+	F_MDSS(138500000, edppll_350,   2,   0,   0),
+	F_MDSS(350000000, edppll_350,  11,   0,   0),
+	F_END
+};
+
+static struct rcg_clk edppixel_clk_src = {
+	.cmd_reg = (uint32_t *)EDPPIXEL_CMD_RCGR,
+	.set_rate = clock_lib2_rcg_set_rate_mnd,
+	.freq_tbl = ftbl_mdss_edppixel_clk,
+	.current_freq = &rcg_dummy_freq,
+	.c = {
+		.dbg_name = "edppixel_clk_src",
+		.ops = &clk_ops_rcg_mnd,
+	},
+};
+
+static struct branch_clk mdss_edplink_clk = {
+	.cbcr_reg = (uint32_t *)MDSS_EDPLINK_CBCR,
+	.has_sibling = 0,
+	.parent = &edplink_clk_src.c,
+	.c = {
+		.dbg_name = "mdss_edplink_clk",
+		.ops = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk mdss_edppixel_clk = {
+	.cbcr_reg = (uint32_t *)MDSS_EDPPIXEL_CBCR,
+	.has_sibling = 0,
+	.parent = &edppixel_clk_src.c,
+	.c = {
+		.dbg_name = "mdss_edppixel_clk",
+		.ops = &clk_ops_branch,
+	},
+};
+
+/* USB 3.0 Clocks */
+static struct clk_freq_tbl ftbl_gcc_usb30_master_clk[] =
+{
+	F(125000000, gpll0, 1, 5, 24),
+	F_END
+};
+
+static struct rcg_clk usb30_master_clk_src =
+{
+	.cmd_reg      = (uint32_t *) GCC_USB30_MASTER_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) GCC_USB30_MASTER_CFG_RCGR,
+	.m_reg        = (uint32_t *) GCC_USB30_MASTER_M,
+	.n_reg        = (uint32_t *) GCC_USB30_MASTER_N,
+	.d_reg        = (uint32_t *) GCC_USB30_MASTER_D,
+
+	.set_rate     = clock_lib2_rcg_set_rate_mnd,
+	.freq_tbl     = ftbl_gcc_usb30_master_clk,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "usb30_master_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
+
+static struct branch_clk gcc_usb30_master_clk =
+{
+	.cbcr_reg     = (uint32_t *) GCC_USB30_MASTER_CBCR,
+	.parent       = &usb30_master_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_usb30_master_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_sys_noc_usb30_axi_clk =
+{
+	.cbcr_reg     = (uint32_t *) SYS_NOC_USB3_AXI_CBCR,
+	.has_sibling  = 1,
+
+	.c = {
+		.dbg_name = "gcc_sys_noc_usb3_axi_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
 /* Clock lookup table */
 static struct clk_lookup msm_clocks_8974[] =
 {
 	CLK_LOOKUP("sdc1_iface_clk", gcc_sdcc1_ahb_clk.c),
 	CLK_LOOKUP("sdc1_core_clk",  gcc_sdcc1_apps_clk.c),
+
+	CLK_LOOKUP("sdc2_iface_clk", gcc_sdcc2_ahb_clk.c),
+	CLK_LOOKUP("sdc2_core_clk",  gcc_sdcc2_apps_clk.c),
 
 	CLK_LOOKUP("uart2_iface_clk", gcc_blsp1_ahb_clk.c),
 	CLK_LOOKUP("uart2_core_clk",  gcc_blsp1_uart2_apps_clk.c),
@@ -620,6 +794,14 @@ static struct clk_lookup msm_clocks_8974[] =
 	CLK_LOOKUP("mdss_mdp_clk_src",     mdss_mdp_clk_src.c),
 	CLK_LOOKUP("mdss_mdp_clk",         mdss_mdp_clk.c),
 	CLK_LOOKUP("mdss_mdp_lut_clk",     mdss_mdp_lut_clk.c),
+
+	CLK_LOOKUP("edp_pixel_clk",        mdss_edppixel_clk.c),
+	CLK_LOOKUP("edp_link_clk",         mdss_edplink_clk.c),
+	CLK_LOOKUP("edp_aux_clk",          mdss_edpaux_clk.c),
+
+	/* USB 3.0 */
+	CLK_LOOKUP("usb30_iface_clk",  gcc_sys_noc_usb30_axi_clk.c),
+	CLK_LOOKUP("usb30_master_clk", gcc_usb30_master_clk.c),
 };
 
 

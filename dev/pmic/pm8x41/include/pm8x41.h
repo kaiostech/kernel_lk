@@ -61,6 +61,7 @@
 
 #define PON_PSHOLD_WARM_RESET   0x1
 #define PON_PSHOLD_SHUTDOWN     0x4
+#define PON_PSHOLD_HARD_RESET   0x7
 
 enum PM8X41_VERSIONS
 {
@@ -70,6 +71,7 @@ enum PM8X41_VERSIONS
 
 
 /*Target power on reasons*/
+#define HARD_RST                1
 #define DC_CHG                  8
 #define USB_CHG                 16
 #define PON1                    32
@@ -200,5 +202,5 @@ uint8_t pm8x41_get_pon_reason();
 void pm8x41_config_output_mpp(struct pm8x41_mpp *mpp);
 void pm8x41_enable_mpp(struct pm8x41_mpp *mpp, enum mpp_en_ctl enable);
 uint8_t pm8x41_get_is_cold_boot();
-
+void pm8x41_diff_clock_ctrl(uint8_t enable);
 #endif
