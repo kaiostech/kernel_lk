@@ -1560,6 +1560,17 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	int ret = 0;
 	uint8_t dtb_copied = 0;
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+        if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0))
+        {
+                fastboot_fail("boot not allowed for locked hw");
+                return;
+        }
+    #endif
+#endif
+
 	if (sz < sizeof(hdr)) {
 		fastboot_fail("invalid bootimage header");
 		return;
@@ -1776,6 +1787,18 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz, bool verify)
 	int retry;
 	int ret;
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+        if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0)
+		&& (strcmp(arg, "unlock")))
+	{
+		fastboot_fail("flashing not allowed for locked hw");
+		return;
+	}
+    #endif
+#endif
+
 	if (!strcmp(arg, "partition"))
 	{
 		dprintf(INFO, "Attempt to write partition image.\n");
@@ -1868,6 +1891,17 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz, bool ver
 	int index = INVALID_PTN;
 	int i;
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+        if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0)
+		&& (strcmp(arg, "unlock")))
+        {
+                fastboot_fail("flashing not allowed for locked hw");
+                return;
+        }
+    #endif
+#endif
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
 	if(ptn == 0) {
@@ -2270,6 +2304,16 @@ void cmd_idme(const char *arg, void *data, unsigned sz)
 {
 	char response[64] = "idme done";
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+        if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0))
+        {
+                fastboot_fail("oem idme not allowed for locked hw");
+                return;
+        }
+    #endif
+#endif
 	if( 0 == fastboot_idme( arg )) {
 		fastboot_info(response);
 		fastboot_okay("");

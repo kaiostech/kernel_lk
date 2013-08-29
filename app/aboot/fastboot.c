@@ -475,6 +475,18 @@ void cmd_dump(const char *arg, void *data, unsigned sz)
 	unsigned long long i;
 	char msg[1024];
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+	if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0))
+	{
+		fastboot_fail("oem idme not allowed for locked hw");
+		return;
+	}
+    #endif
+#endif
+
+
 	/* Response to "dump:partition_name" command. */
 	ptn_name = strtok((char*)arg, " ");
 
