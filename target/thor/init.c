@@ -125,7 +125,17 @@ int target_volume_up()
 /* Return 1 if vol_down pressed */
 int target_volume_down()
 {
+#if defined(BUILD_USER_VARIANT)
+	/* Allow volume down if engineering device or unlock code is correct */
+	if ((gpio_get(target_production_gpio()) != 1)
+			|| target_verify_unlock_code()) {
+		return target_pmic_gpio_button_pressed(VOL_DN_PMIC_GPIO);
+	} else {
+		return 0;
+	}
+#else
 	return target_pmic_gpio_button_pressed(VOL_DN_PMIC_GPIO);
+#endif
 }
 
 static void target_keystatus()
