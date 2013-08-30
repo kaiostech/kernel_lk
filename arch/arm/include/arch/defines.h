@@ -41,5 +41,13 @@
 #endif
 
 #define IS_CACHE_LINE_ALIGNED(addr)  !((uint32_t) (addr) & (CACHE_LINE - 1))
+
+#if ARM_ISA_ARMV7
+#define dsb() __asm__ volatile ("dsb" : : : "memory");
+#elif ARM_ISA_ARMV6
+#define dsb() __asm__ volatile ("mcr p15, 0, %0, c7, c10, 4" : : "r" (0): "memory");
 #endif
 
+#define GET_CAHE_LINE_START_ADDR(addr) ROUNDDOWN(addr, CACHE_LINE)
+
+#endif

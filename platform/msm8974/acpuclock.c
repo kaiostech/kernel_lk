@@ -142,14 +142,14 @@ void clock_config_mmc(uint32_t interface, uint32_t freq)
 	}
 	else
 	{
-		dprintf(CRITICAL, "sdc frequency (%d) is not supported\n", freq);
+		dprintf(CRITICAL, "sdc frequency (%u) is not supported\n", freq);
 		ASSERT(0);
 	}
 
 
 	if(ret)
 	{
-		dprintf(CRITICAL, "failed to set sdc1_core_clk ret = %d\n", ret);
+		dprintf(CRITICAL, "failed to set sdc%u_core_clk ret = %d\n", interface, ret);
 		ASSERT(0);
 	}
 
@@ -501,4 +501,84 @@ void mmss_clock_disable(uint32_t dual_dsi)
 	/* Disable MMSSNOC AXI clock */
 	clk_disable(clk_get("mmss_mmssnoc_axi_clk"));
 
+}
+
+/* enables usb30 interface and master clocks */
+void clock_usb30_init(void)
+{
+	int ret;
+
+	/* interface clock */
+	ret = clk_get_set_enable("usb30_iface_clk", 0, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set usb30_iface_clk. ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	/* master clock */
+	ret = clk_get_set_enable("usb30_master_clk", 125000000, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set usb30_master_clk. ret = %d\n", ret);
+		ASSERT(0);
+	}
+}
+
+void edp_clk_enable(void)
+{
+	int ret;
+
+	/* Configure MMSSNOC AXI clock */
+	ret = clk_get_set_enable("mmss_mmssnoc_axi_clk", 100000000, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set mmssnoc_axi_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	/* Configure MMSSNOC AXI clock */
+	ret = clk_get_set_enable("mmss_s0_axi_clk", 100000000, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set mmss_s0_axi_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	/* Configure AXI clock */
+	ret = clk_get_set_enable("mdss_axi_clk", 100000000, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set mdss_axi_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	ret = clk_get_set_enable("edp_pixel_clk", 138500000, 1);
+	if (ret) {
+		dprintf(CRITICAL, "failed to set edp_pixel_clk ret = %d\n",
+				ret);
+		ASSERT(0);
+	}
+
+	ret = clk_get_set_enable("edp_link_clk", 270000000, 1);
+	if (ret) {
+		dprintf(CRITICAL, "failed to set edp_link_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	ret = clk_get_set_enable("edp_aux_clk", 19200000, 1);
+	if (ret) {
+		dprintf(CRITICAL, "failed to set edp_aux_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+}
+
+void edp_clk_disable(void)
+{
+
+	writel(0x0, MDSS_EDPPIXEL_CBCR);
+	writel(0x0, MDSS_EDPLINK_CBCR);
+	clk_disable(clk_get("edp_pixel_clk"));
+	clk_disable(clk_get("edp_link_clk"));
+	clk_disable(clk_get("edp_aux_clk"));
 }

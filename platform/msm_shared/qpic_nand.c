@@ -64,6 +64,7 @@ static struct flash_id supported_flash[] = {
 	/* Flash ID    ID Mask      Density(MB)    Wid Pgsz    Blksz              oobsz   8-bit ECCf */
 	{0x1590AC2C,   0xFFFFFFFF,  0x20000000,    0,  2048,   0x00020000,        0x40,   0},
 	{0x2690AC2C,   0xFFFFFFFF,  0x20000000,    0,  4096,   0x00040000,        0xE0,   1},
+	{0x1590ACAD,   0xFFFFFFFF,  0x20000000,    0,  2048,   0x00020000,        0x80,   0},
 	/* Note: Width flag is 0 for 8 bit Flash and 1 for 16 bit flash   */
 };
 
@@ -1519,6 +1520,7 @@ flash_read_ext(struct ptentry *ptn,
 	uint32_t start_block = ptn->start;
 	uint32_t start_block_count = 0;
 	uint32_t isbad = 0;
+	uint32_t current_page;
 
 	/* Verify first byte is at page boundary. */
 	if (offset & (flash.page_size - 1))
@@ -1528,6 +1530,7 @@ flash_read_ext(struct ptentry *ptn,
 		return NANDC_RESULT_PARAM_INVALID;
 	}
 
+	current_page = start_block * flash.num_pages_per_blk;
 	/* Adjust page offset based on number of bad blocks from start to current page */
 	if (start_block < current_block)
 	{
@@ -1535,12 +1538,13 @@ flash_read_ext(struct ptentry *ptn,
 		while (start_block_count
 			   && (start_block < (ptn->start + ptn->length)))
 		{
-			isbad = qpic_nand_block_isbad(page);
+			isbad = qpic_nand_block_isbad(current_page);
 			if (isbad)
 				page += flash.num_pages_per_blk;
 			else
 				start_block_count--;
 			start_block++;
+			current_page += flash.num_pages_per_blk;
 		}
 	}
 

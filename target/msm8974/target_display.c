@@ -46,9 +46,10 @@ extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 extern int mdss_dsi_uniphy_pll_config(uint32_t ctl_base);
 extern int mdss_sharp_dsi_uniphy_pll_config(uint32_t ctl_base);
+extern void edp_auo_1080p_init(struct edp_panel_data *edp_panel);
 
 static struct pm8x41_wled_data wled_ctrl = {
-	.mod_scheme      = 0xC3,
+	.mod_scheme      = 0x00,
 	.led1_brightness = (0x0F << 8) | 0xEF,
 	.led2_brightness = (0x0F << 8) | 0xEF,
 	.led3_brightness = (0x0F << 8) | 0xEF,
@@ -59,6 +60,18 @@ static struct pm8x41_wled_data wled_ctrl = {
 
 static int msm8974_backlight_on()
 {
+	uint32_t platform_id = board_platform_id();
+	uint32_t hardware_id = board_hardware_id();
+	uint8_t slave_id = 1, i;
+	struct board_pmic_data *pmic_info;
+
+	if (platform_id == MSM8974AC)
+		if ((hardware_id == HW_PLATFORM_SURF)
+		    || (hardware_id == HW_PLATFORM_MTP)
+		    || (hardware_id == HW_PLATFORM_LIQUID))
+			slave_id = 3;
+
+	pm8x41_wled_config_slave_id(slave_id);
 	pm8x41_wled_config(&wled_ctrl);
 	pm8x41_wled_sink_control(1);
 	pm8x41_wled_iled_sync_control(1);
@@ -108,27 +121,40 @@ static int msm8974_mdss_sharp_dsi_panel_clock(uint8_t enable)
 /* Pull DISP_RST_N high to get panel out of reset */
 static void msm8974_mdss_mipi_panel_reset(uint8_t enable)
 {
-	struct pm8x41_gpio gpio19_param = {
+	uint32_t rst_gpio = 19;
+	uint32_t platform_id = board_platform_id();
+	uint32_t hardware_id = board_hardware_id();
+
+	struct pm8x41_gpio gpio_param = {
 		.direction = PM_GPIO_DIR_OUT,
 		.output_buffer = PM_GPIO_OUT_CMOS,
 		.out_strength = PM_GPIO_OUT_DRIVE_MED,
 	};
 
-	pm8x41_gpio_config(19, &gpio19_param);
+	if (platform_id == MSM8974AC)
+		if ((hardware_id == HW_PLATFORM_SURF)
+		    || (hardware_id == HW_PLATFORM_MTP)
+		    || (hardware_id == HW_PLATFORM_LIQUID))
+			rst_gpio = 20;
+
+	dprintf(SPEW, "platform_id: %u, rst_gpio: %u\n",
+				platform_id, rst_gpio);
+
+	pm8x41_gpio_config(rst_gpio, &gpio_param);
 	if (enable) {
 		gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
 
-		pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
+		pm8x41_gpio_set(rst_gpio, PM_GPIO_FUNC_HIGH);
 		mdelay(2);
-		pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
+		pm8x41_gpio_set(rst_gpio, PM_GPIO_FUNC_LOW);
 		mdelay(5);
-		pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
+		pm8x41_gpio_set(rst_gpio, PM_GPIO_FUNC_HIGH);
 		mdelay(2);
 		gpio_set(58, 2);
 	} else {
-		gpio19_param.out_strength = PM_GPIO_OUT_DRIVE_LOW;
-		pm8x41_gpio_config(19, &gpio19_param);
-		pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
+		gpio_param.out_strength = PM_GPIO_OUT_DRIVE_LOW;
+		pm8x41_gpio_config(rst_gpio, &gpio_param);
+		pm8x41_gpio_set(rst_gpio, PM_GPIO_FUNC_LOW);
 		gpio_set(58, 2);
 	}
 }
@@ -175,6 +201,60 @@ static int msm8974_mipi_panel_power(uint8_t enable)
 	return 0;
 }
 
+static int msm8974_mdss_edp_panel_clock(int enable)
+{
+	if (enable) {
+		mdp_gdsc_ctrl(enable);
+		mdp_clock_init();
+		edp_clk_enable();
+	} else if (!target_cont_splash_screen()) {
+		/* Add here for continuous splash */
+		edp_clk_disable();
+		mdp_clock_disable();
+		mdp_gdsc_ctrl(enable);
+	}
+
+	return 0;
+}
+
+static int msm8974_edp_panel_power(int enable)
+{
+	struct pm8x41_gpio gpio36_param = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = PM_GPIO_OUT_CMOS,
+		.out_strength = PM_GPIO_OUT_DRIVE_MED,
+	};
+
+	struct pm8x41_ldo ldo12 = LDO(PM8x41_LDO12, PLDO_TYPE);
+
+	if (enable) {
+		/* Enable backlight */
+		dprintf(SPEW, "Enable Backlight\n");
+		pm8x41_gpio_config(36, &gpio36_param);
+		pm8x41_gpio_set(36, PM_GPIO_FUNC_HIGH);
+		dprintf(SPEW, "Enable Backlight Done\n");
+
+		/* Turn on LDO12 for edp vdda */
+		dprintf(SPEW, "Setting LDO12 n");
+		pm8x41_ldo_set_voltage(&ldo12, 1800000);
+		pm8x41_ldo_control(&ldo12, enable);
+		dprintf(SPEW, "Setting LDO12 Done\n");
+
+		/* Panel Enable */
+		dprintf(SPEW, "Panel Enable\n");
+		gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA,
+				GPIO_DISABLE);
+		gpio_set(58, 2);
+		dprintf(SPEW, "Panel Enable Done\n");
+	} else {
+		/* Keep LDO12 on, otherwise kernel will not boot */
+		gpio_set(58, 0);
+		pm8x41_gpio_set(36, PM_GPIO_FUNC_LOW);
+	}
+
+	return 0;
+}
+
 void display_init(void)
 {
 	uint32_t hw_id = board_hardware_id();
@@ -199,8 +279,9 @@ void display_init(void)
 		break;
 	case HW_PLATFORM_DRAGON:
 		mipi_sharp_video_qhd_init(&(panel.panel_info));
-		wled_ctrl.ovp = 0x1; /* 32V */
+		wled_ctrl.ovp = 0x0; /* 35V */
 		wled_ctrl.full_current_scale = 0x14; /* 20mA */
+		wled_ctrl.max_duty_cycle = 0; /* 26ns */
 		panel.clk_func = msm8974_mdss_sharp_dsi_panel_clock;
 		panel.power_func = msm8974_mipi_panel_power;
 		panel.fb.base = MIPI_FB_ADDR;
@@ -208,6 +289,14 @@ void display_init(void)
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
 		panel.fb.bpp =  panel.panel_info.bpp;
+		panel.fb.format = FB_FORMAT_RGB888;
+		panel.mdp_rev = MDP_REV_50;
+		break;
+	case HW_PLATFORM_LIQUID:
+		edp_panel_init(&(panel.panel_info));
+		panel.clk_func = msm8974_mdss_edp_panel_clock;
+		panel.power_func = msm8974_edp_panel_power;
+		panel.fb.base = (void *)EDP_FB_ADDR;
 		panel.fb.format = FB_FORMAT_RGB888;
 		panel.mdp_rev = MDP_REV_50;
 		break;

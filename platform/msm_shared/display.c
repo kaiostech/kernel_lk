@@ -112,8 +112,8 @@ int msm_display_config()
 		break;
 	case MIPI_CMD_PANEL:
 		dprintf(INFO, "Config MIPI_CMD_PANEL.\n");
-
-		if (mdp_get_revision() == MDP_REV_50)
+		mdp_rev = mdp_get_revision();
+		if (mdp_rev == MDP_REV_50 || mdp_rev == MDP_REV_304)
 			ret = mdss_dsi_config(panel);
 		else
 			ret = mipi_config(panel);
@@ -136,6 +136,12 @@ int msm_display_config()
 		if (ret)
 			goto msm_display_config_out;
 		break;
+	case EDP_PANEL:
+		dprintf(INFO, "Config EDP PANEL.\n");
+		ret = mdp_edp_config(pinfo, &(panel->fb));
+		if (ret)
+			goto msm_display_config_out;
+		break;
 	default:
 		return ERR_INVALID_ARGS;
 	};
@@ -150,6 +156,7 @@ msm_display_config_out:
 int msm_display_on()
 {
 	int ret = NO_ERROR;
+	int mdp_rev;
 	struct msm_panel_info *pinfo;
 
 	if (!panel)
@@ -183,7 +190,8 @@ int msm_display_on()
 		ret = mdp_dma_on();
 		if (ret)
 			goto msm_display_on_out;
-		if (mdp_get_revision() != MDP_REV_50) {
+		mdp_rev = mdp_get_revision();
+		if (mdp_rev != MDP_REV_50 && mdp_rev != MDP_REV_304) {
 			ret = mipi_cmd_trigger();
 			if (ret)
 				goto msm_display_on_out;
@@ -205,7 +213,12 @@ int msm_display_on()
 		if (ret)
 			goto msm_display_on_out;
 		break;
-
+	case EDP_PANEL:
+		dprintf(INFO, "Turn on EDP PANEL.\n");
+		ret = mdp_edp_on();
+		if (ret)
+			goto msm_display_on_out;
+		break;
 	default:
 		return ERR_INVALID_ARGS;
 	};
@@ -241,6 +254,19 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 	/* Only enabled for auto PLL calculation */
 	if (pdata->pll_clk_func)
 		ret = pdata->pll_clk_func(1, &(panel->panel_info));
+
+	if (ret)
+		goto msm_display_init_out;
+
+	/* pinfo prepare  */
+	if (pdata->panel_info.prepare) {
+		/* this is for edp which pinfo derived from edid */
+		ret = pdata->panel_info.prepare();
+		panel->fb.width =  panel->panel_info.xres;
+		panel->fb.height =  panel->panel_info.yres;
+		panel->fb.stride =  panel->panel_info.xres;
+		panel->fb.bpp =  panel->panel_info.bpp;
+	}
 
 	if (ret)
 		goto msm_display_init_out;
@@ -283,7 +309,7 @@ int msm_display_off()
 		ret = mdp_dsi_video_off();
 		if (ret)
 			goto msm_display_off_out;
-		ret = mipi_dsi_off();
+		ret = mipi_dsi_off(pinfo);
 		if (ret)
 			goto msm_display_off_out;
 		break;
@@ -292,13 +318,19 @@ int msm_display_off()
 		ret = mdp_dsi_cmd_off();
 		if (ret)
 			goto msm_display_off_out;
-		ret = mipi_dsi_off();
+		ret = mipi_dsi_off(pinfo);
 		if (ret)
 			goto msm_display_off_out;
 		break;
 	case LCDC_PANEL:
 		dprintf(INFO, "Turn off LCDC PANEL.\n");
 		mdp_lcdc_off();
+		break;
+	case EDP_PANEL:
+		dprintf(INFO, "Turn off EDP PANEL.\n");
+		ret = mdp_edp_off();
+		if (ret)
+			goto msm_display_off_out;
 		break;
 	default:
 		return ERR_INVALID_ARGS;

@@ -19,6 +19,7 @@ OBJS += \
 ifeq ($(ENABLE_SDHCI_SUPPORT),1)
 OBJS += \
 	$(LOCAL_DIR)/sdhci.o \
+	$(LOCAL_DIR)/sdhci_msm.o \
 	$(LOCAL_DIR)/mmc_sdhci.o \
 	$(LOCAL_DIR)/mmc_wrapper.o
 else
@@ -97,7 +98,11 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 			$(LOCAL_DIR)/crypto5_wrapper.o \
 			$(LOCAL_DIR)/i2c_qup.o \
 			$(LOCAL_DIR)/gpio.o \
-			$(LOCAL_DIR)/dload_util.o
+			$(LOCAL_DIR)/dload_util.o \
+			$(LOCAL_DIR)/edp.o \
+			$(LOCAL_DIR)/edp_util.o \
+			$(LOCAL_DIR)/edp_aux.o \
+			$(LOCAL_DIR)/edp_phy.o
 endif
 
 ifeq ($(PLATFORM),msm8226)
@@ -164,7 +169,26 @@ DEFINES += DISPLAY_TYPE_MDSS=1
             $(LOCAL_DIR)/spmi.o \
             $(LOCAL_DIR)/bam.o \
             $(LOCAL_DIR)/qpic_nand.o \
-            $(LOCAL_DIR)/dev_tree.o
+            $(LOCAL_DIR)/dev_tree.o \
+            $(LOCAL_DIR)/scm.o \
+            $(LOCAL_DIR)/gpio.o
+endif
+
+ifeq ($(PLATFORM),apq8084)
+    OBJS += $(LOCAL_DIR)/qgic.o \
+            $(LOCAL_DIR)/qtimer.o \
+            $(LOCAL_DIR)/qtimer_mmap.o \
+            $(LOCAL_DIR)/interrupts.o \
+            $(LOCAL_DIR)/clock.o \
+            $(LOCAL_DIR)/clock_pll.o \
+            $(LOCAL_DIR)/clock_lib2.o \
+            $(LOCAL_DIR)/uart_dm.o \
+            $(LOCAL_DIR)/board.o \
+            $(LOCAL_DIR)/spmi.o \
+            $(LOCAL_DIR)/bam.o \
+            $(LOCAL_DIR)/qpic_nand.o \
+            $(LOCAL_DIR)/dev_tree.o \
+			$(LOCAL_DIR)/gpio.o
 endif
 
 ifeq ($(PLATFORM),msm7x27a)
@@ -230,4 +254,29 @@ ifeq ($(PLATFORM),mdm9x25)
 			$(LOCAL_DIR)/clock.o \
 			$(LOCAL_DIR)/clock_pll.o \
 			$(LOCAL_DIR)/clock_lib2.o
+endif
+
+ifeq ($(PLATFORM),fsm9900)
+	OBJS += $(LOCAL_DIR)/qgic.o \
+			$(LOCAL_DIR)/qtimer.o \
+			$(LOCAL_DIR)/qtimer_mmap.o \
+			$(LOCAL_DIR)/interrupts.o \
+			$(LOCAL_DIR)/clock.o \
+			$(LOCAL_DIR)/clock_pll.o \
+			$(LOCAL_DIR)/clock_lib2.o \
+			$(LOCAL_DIR)/uart_dm.o \
+			$(LOCAL_DIR)/board.o \
+			$(LOCAL_DIR)/scm.o \
+			$(LOCAL_DIR)/spmi.o \
+			$(LOCAL_DIR)/bam.o \
+			$(LOCAL_DIR)/qpic_nand.o \
+			$(LOCAL_DIR)/dev_tree.o \
+			$(LOCAL_DIR)/certificate.o \
+			$(LOCAL_DIR)/image_verify.o \
+			$(LOCAL_DIR)/crypto_hash.o \
+			$(LOCAL_DIR)/crypto5_eng.o \
+			$(LOCAL_DIR)/crypto5_wrapper.o \
+			$(LOCAL_DIR)/i2c_qup.o \
+			$(LOCAL_DIR)/gpio.o \
+			$(LOCAL_DIR)/dload_util.o
 endif

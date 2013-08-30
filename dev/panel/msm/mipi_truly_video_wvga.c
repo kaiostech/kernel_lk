@@ -74,7 +74,7 @@ static char disp_on5[20] = {
 };
 static char disp_on6[12] = {
 	0x07, 0x00, 0x29, 0xC0,
-	0xC2, 0x10, 0x06, 0x06,
+	0xC2, 0x00, 0x06, 0x06,
 	0x01, 0x03, 0x00, 0xFF
 };
 static char disp_on7[32] = {
@@ -129,7 +129,7 @@ static char disp_on13[8] = {
 };
 static char disp_on14[8] = {
 	0x03, 0x00, 0x29, 0xC0,
-	0xDE, 0x01, 0x41, 0xFF
+	0xDE, 0x01, 0x51, 0xFF
 };
 static char disp_on15[4] = {
 	0xE6, 0x51, 0x23, 0x80
@@ -225,9 +225,9 @@ int mipi_truly_video_wvga_config(void *pdata)
 			(pinfo->xres),
 			(pinfo->yres),
 			(lcdc->h_front_porch),
-			(lcdc->h_back_porch),
+			(lcdc->h_back_porch + lcdc->h_pulse_width),
 			(lcdc->v_front_porch),
-			(lcdc->v_back_porch),
+			(lcdc->v_back_porch + lcdc->v_pulse_width),
 			(lcdc->h_pulse_width),
 			(lcdc->v_pulse_width),
 			pinfo->mipi.dst_format,
@@ -254,7 +254,7 @@ int mipi_truly_video_wvga_off()
 
 static struct mdss_dsi_phy_ctrl dsi_video_mode_phy_db = {
 	/* regulator */
-	{0x09, 0x08, 0x05, 0x00, 0x20, 0x03},
+	{0x02, 0x08, 0x05, 0x00, 0x20, 0x03},
 	/* timing   */
 	{0x5d, 0x12, 0x0c, 0x00, 0x33, 0x38,
 		0x10, 0x16, 0x1e, 0x03, 0x04, 0x00},

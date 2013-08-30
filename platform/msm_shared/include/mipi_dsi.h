@@ -659,6 +659,7 @@ typedef struct mdss_dsi_pll_config {
 struct mipi_dsi_cmd {
 	int size;
 	char *payload;
+	int wait;
 };
 
 struct mipi_dsi_panel_config {
@@ -1000,7 +1001,7 @@ int mipi_dsi_video_mode_config(unsigned short disp_width,
 		unsigned char eof_bllp_pwr,
 		unsigned char interleav);
 int mipi_dsi_on();
-int mipi_dsi_off();
+int mipi_dsi_off(struct msm_panel_info *pinfo);
 int mipi_dsi_cmds_tx(struct mipi_dsi_cmd *cmds, int count);
 int mipi_dsi_cmds_rx(char **rp, int len);
 #endif
