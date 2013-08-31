@@ -46,7 +46,6 @@ extern int mipi_dsi_cmd_config(struct fbcon_config mipi_fb_cfg,
 			       unsigned short num_of_lanes);
 extern void mdp_shutdown(void);
 extern void mdp_start_dma(void);
-extern void dsb(void);
 
 #if (DISPLAY_TYPE_MDSS == 0)
 #define MIPI_DSI0_BASE MIPI_DSI_BASE
@@ -229,7 +228,11 @@ int mipi_dsi_cmds_tx(struct mipi_dsi_cmd *cmds, int count)
 		writel(cm->size, DSI_DMA_CMD_LENGTH);	// reg 0x48 for this build
 		dsb();
 		ret += dsi_cmd_dma_trigger_for_panel();
-		udelay(80);
+		dsb();
+		if (cm->wait)
+			mdelay(cm->wait);
+		else
+			udelay(80);
 		cm++;
 	}
 	return ret;
@@ -852,7 +855,8 @@ int mdss_dsi_video_mode_config(uint16_t disp_width,
 	writel(((disp_height + vsync_porch0_bp) << 16) | (vsync_porch0_bp),
 			ctl_base + VIDEO_MODE_ACTIVE_V);
 
-	if (mdp_get_revision() >= MDP_REV_41) {
+	if (mdp_get_revision() >= MDP_REV_41 ||
+				mdp_get_revision() == MDP_REV_304) {
 		writel(((disp_height + vsync_porch0_fp
 			+ vsync_porch0_bp - 1) << 16)
 			| (disp_width + hsync_porch0_fp
@@ -951,7 +955,6 @@ int mipi_dsi_video_mode_config(unsigned short disp_width,
 	unsigned char eof_bllp_pwr,
 	unsigned char interleav)
 {
-
 	int status = 0;
 
 	/* disable mdp first */
@@ -1033,16 +1036,27 @@ int mdss_dsi_cmd_mode_config(uint16_t disp_width,
 	uint16_t img_width,
 	uint16_t img_height,
 	uint16_t dst_format,
-	uint16_t traffic_mode)
+	uint8_t ystride,
+	uint8_t lane_en,
+	uint8_t interleav)
 {
-	uint8_t DST_FORMAT;
-	uint8_t TRAFIC_MODE;
-	uint8_t DLNx_EN;
-	// video mode data ctrl
-	int status = 0;
-	uint8_t interleav = 0;
-	uint8_t ystride = 0x03;
-	// disable mdp first
+	uint16_t dst_fmt = 0;
+
+	switch (dst_format) {
+	case DSI_VIDEO_DST_FORMAT_RGB565:
+		dst_fmt = DSI_CMD_DST_FORMAT_RGB565;
+		break;
+	case DSI_VIDEO_DST_FORMAT_RGB666:
+	case DSI_VIDEO_DST_FORMAT_RGB666_LOOSE:
+		dst_fmt = DSI_CMD_DST_FORMAT_RGB666;
+		break;
+	case DSI_VIDEO_DST_FORMAT_RGB888:
+		dst_fmt = DSI_CMD_DST_FORMAT_RGB888;
+		break;
+	default:
+		dprintf(CRITICAL, "unsupported dst format\n");
+		return ERROR;
+	}
 
 #if (DISPLAY_TYPE_MDSS == 1)
 	writel(0x00000000, DSI_CLK_CTRL);
@@ -1061,16 +1075,7 @@ int mdss_dsi_cmd_mode_config(uint16_t disp_width,
 
 	writel(0x02020202, DSI_INT_CTRL);
 
-	DST_FORMAT = 8;		// RGB888
-	dprintf(SPEW, "DSI_Cmd_Mode - Dst Format: RGB888\n");
-
-	DLNx_EN = 0xf;		// 4 lane with clk programming
-	dprintf(SPEW, "Data Lane: 4 lane\n");
-
-	TRAFIC_MODE = 0;	// non burst mode with sync pulses
-	dprintf(SPEW, "Traffic mode: non burst mode with sync pulses\n");
-
-	writel(DST_FORMAT, DSI_COMMAND_MODE_MDP_CTRL);
+	writel(dst_fmt, DSI_COMMAND_MODE_MDP_CTRL);
 	writel((img_width * ystride + 1) << 16 | 0x0039,
 	       DSI_COMMAND_MODE_MDP_STREAM0_CTRL);
 	writel((img_width * ystride + 1) << 16 | 0x0039,
@@ -1080,13 +1085,13 @@ int mdss_dsi_cmd_mode_config(uint16_t disp_width,
 	writel(img_height << 16 | img_width,
 	       DSI_COMMAND_MODE_MDP_STREAM1_TOTAL);
 	writel(0x13c2c, DSI_COMMAND_MODE_MDP_DCS_CMD_CTRL);
-	writel(interleav << 30 | 0 << 24 | 0 << 20 | DLNx_EN << 4 | 0x105,
+	writel(interleav << 30 | 0 << 24 | 0 << 20 | lane_en << 4 | 0x105,
 	       DSI_CTRL);
 	writel(0x10000000, DSI_COMMAND_MODE_DMA_CTRL);
 	writel(0x10000000, DSI_MISR_CMD_CTRL);
 #endif
 
-	return NO_ERROR;
+	return 0;
 }
 
 int mipi_dsi_cmd_mode_config(unsigned short disp_width,
@@ -1175,7 +1180,7 @@ int mipi_dsi_on()
 	return ret;
 }
 
-int mipi_dsi_off()
+int mipi_dsi_off(struct msm_panel_info *pinfo)
 {
 	if(!target_cont_splash_screen())
 	{
@@ -1189,6 +1194,8 @@ int mipi_dsi_off()
 	}
 
 	writel(0x1115501, DSI_INT_CTRL);
+	if (pinfo->mipi.broadcast)
+		writel(0x1115501, DSI_INT_CTRL + 0x600);
 
 	return NO_ERROR;
 }

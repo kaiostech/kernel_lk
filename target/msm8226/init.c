@@ -28,12 +28,14 @@
 
 #include <debug.h>
 #include <platform/iomap.h>
+#include <platform/irqs.h>
 #include <reg.h>
 #include <target.h>
 #include <platform.h>
 #include <dload_util.h>
 #include <uart_dm.h>
 #include <mmc_sdhci.h>
+#include <platform/clock.h>
 #include <platform/gpio.h>
 #include <spmi.h>
 #include <board.h>
@@ -43,6 +45,9 @@
 #include <pm8x41.h>
 #include <crypto5_wrapper.h>
 #include <hsusb.h>
+#include <scm.h>
+#include <stdlib.h>
+#include <partition_parser.h>
 
 extern  bool target_use_signed_kernel(void);
 static void set_sdc_power_ctrl(void);
@@ -61,16 +66,67 @@ static void set_sdc_power_ctrl(void);
 
 #define TLMM_VOL_UP_BTN_GPIO    106
 
+#define SSD_CE_INSTANCE         1
+
 enum target_subtype {
 	HW_PLATFORM_SUBTYPE_SKUAA = 1,
 	HW_PLATFORM_SUBTYPE_SKUF = 2,
 	HW_PLATFORM_SUBTYPE_SKUAB = 3,
+	HW_PLATFORM_SUBTYPE_SKUG = 5,
 };
+
+static uint32_t mmc_pwrctl_base[] =
+	{ MSM_SDC1_BASE, MSM_SDC2_BASE, MSM_SDC3_BASE };
 
 static uint32_t mmc_sdhci_base[] =
 	{ MSM_SDC1_SDHCI_BASE, MSM_SDC2_SDHCI_BASE, MSM_SDC3_SDHCI_BASE };
 
+static uint32_t mmc_sdc_pwrctl_irq[] =
+	{ SDCC1_PWRCTL_IRQ, SDCC2_PWRCTL_IRQ, SDCC3_PWRCTL_IRQ };
+
 struct mmc_device *dev;
+
+void target_load_ssd_keystore(void)
+{
+	uint64_t ptn;
+	int      index;
+	uint64_t size;
+	uint32_t *buffer;
+
+	if (!target_is_ssd_enabled())
+		return;
+
+	index = partition_get_index("ssd");
+
+	ptn = partition_get_offset(index);
+	if (ptn == 0){
+		dprintf(CRITICAL, "Error: ssd partition not found\n");
+		return;
+	}
+
+	size = partition_get_size(index);
+	if (size == 0) {
+		dprintf(CRITICAL, "Error: invalid ssd partition size\n");
+		return;
+	}
+
+	buffer = memalign(CACHE_LINE, ROUNDUP(size, CACHE_LINE));
+	if (!buffer) {
+		dprintf(CRITICAL, "Error: allocating memory for ssd buffer\n");
+		return;
+	}
+
+	if (mmc_read(ptn, buffer, size)) {
+		dprintf(CRITICAL, "Error: cannot read data\n");
+		free(buffer);
+		return;
+	}
+
+	clock_ce_enable(SSD_CE_INSTANCE);
+	scm_protect_keystore(buffer, size);
+	clock_ce_disable(SSD_CE_INSTANCE);
+	free(buffer);
+}
 
 void target_early_init(void)
 {
@@ -135,32 +191,37 @@ void target_crypto_init_params()
 	ce_params.read_fifo_size   = CRYPTO_ENGINE_FIFO_SIZE;
 	ce_params.write_fifo_size  = CRYPTO_ENGINE_FIFO_SIZE;
 
+	ce_params.do_bam_init = 0;
+
 	crypto_init_params(&ce_params);
 }
 
 void target_sdc_init()
 {
-	struct mmc_config_data config;
+	struct mmc_config_data config = {0};
 
 	/*
 	 * Set drive strength & pull ctrl for emmc
 	 */
 	set_sdc_power_ctrl();
 
-	/* Enable sdhci mode */
-	sdhci_mode_enable(1);
-
 	config.bus_width = DATA_BUS_WIDTH_8BIT;
 	config.max_clk_rate = MMC_CLK_200MHZ;
 
 	/* Trying Slot 1*/
 	config.slot = 1;
-	config.base = mmc_sdhci_base[config.slot - 1];
+	config.sdhc_base = mmc_sdhci_base[config.slot - 1];
+	config.pwrctl_base = mmc_pwrctl_base[config.slot - 1];
+	config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
+
 	if (!(dev = mmc_init(&config)))
 	{
 		/* Trying Slot 2 next */
 		config.slot = 2;
-		config.base = mmc_sdhci_base[config.slot - 1];
+		config.sdhc_base = mmc_sdhci_base[config.slot - 1];
+		config.pwrctl_base = mmc_pwrctl_base[config.slot - 1];
+		config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
+
 		if (!(dev = mmc_init(&config))) {
 			dprintf(CRITICAL, "mmc init failed!");
 			ASSERT(0);
@@ -202,6 +263,11 @@ void target_fastboot_init(void)
 {
 	/* Set the BOOT_DONE flag in PM8026 */
 	pm8x41_set_boot_done();
+
+	if (target_is_ssd_enabled()) {
+		clock_ce_enable(SSD_CE_INSTANCE);
+		target_load_ssd_keystore();
+	}
 }
 
 /* Detect the target type */
@@ -235,6 +301,8 @@ void target_baseband_detect(struct board_data *board)
 	case HW_PLATFORM_SUBTYPE_SKUF:
 		break;
 	case HW_PLATFORM_SUBTYPE_SKUAB:
+		break;
+	case HW_PLATFORM_SUBTYPE_SKUG:
 		break;
 	default:
 		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n", platform_subtype);
@@ -314,6 +382,9 @@ void target_usb_stop(void)
 void target_uninit(void)
 {
 	mmc_put_card_to_sleep(dev);
+
+	if (target_is_ssd_enabled())
+		clock_ce_disable(SSD_CE_INSTANCE);
 }
 
 void target_usb_init(void)
@@ -354,9 +425,20 @@ unsigned target_pause_for_battery_charge(void)
 {
 	uint8_t pon_reason = pm8x41_get_pon_reason();
 	uint8_t is_cold_boot = pm8x41_get_is_cold_boot();
-	if (is_cold_boot && ((pon_reason == USB_CHG) || (pon_reason == DC_CHG)))
-		 return 1;
-	return 0;
+	dprintf(INFO, "%s : pon_reason is %d cold_boot:%d\n", __func__,
+			pon_reason, is_cold_boot);
+	/* In case of fastboot reboot,adb reboot or if we see the power key
+	 * pressed we do not want go into charger mode.
+	 * fastboot reboot is warm boot with PON hard reset bit not set
+	 * adb reboot is a cold boot with PON hard reset bit set
+	 */
+	if (is_cold_boot &&
+			(!(pon_reason & HARD_RST)) &&
+			(!(pon_reason & KPDPWR_N)) &&
+			((pon_reason & USB_CHG) || (pon_reason & DC_CHG)))
+		return 1;
+	else
+		return 0;
 }
 
 unsigned target_baseband()

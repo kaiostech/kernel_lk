@@ -166,6 +166,48 @@ static struct branch_clk gcc_sdcc1_ahb_clk =
 	},
 };
 
+/* SDCC2 clocks */
+
+static struct rcg_clk sdcc2_apps_clk_src =
+{
+	.cmd_reg      = (uint32_t *) SDCC2_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) SDCC2_CFG_RCGR,
+	.m_reg        = (uint32_t *) SDCC2_M,
+	.n_reg        = (uint32_t *) SDCC2_N,
+	.d_reg        = (uint32_t *) SDCC2_D,
+
+	.set_rate     = clock_lib2_rcg_set_rate_mnd,
+	.freq_tbl     = ftbl_gcc_sdcc1_2_apps_clk,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "sdc2_clk",
+		.ops      = &clk_ops_rcg_mnd,
+	},
+};
+
+static struct branch_clk gcc_sdcc2_apps_clk =
+{
+	.cbcr_reg     = (uint32_t *) SDCC2_APPS_CBCR,
+	.parent       = &sdcc2_apps_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_sdcc2_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_sdcc2_ahb_clk =
+{
+	.cbcr_reg     = (uint32_t *) SDCC2_AHB_CBCR,
+	.has_sibling  = 1,
+
+	.c = {
+		.dbg_name = "gcc_sdcc2_ahb_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
 /* UART Clocks */
 static struct clk_freq_tbl ftbl_gcc_blsp1_2_uart1_6_apps_clk[] =
 {
@@ -407,11 +449,66 @@ static struct branch_clk dsi_pclk_clk = {
 	},
 };
 
+static struct clk_freq_tbl ftbl_gcc_ce1_clk[] = {
+	F( 50000000,  gpll0,  12,   0,   0),
+	F(100000000,  gpll0,   6,   0,   0),
+	F_END
+};
+
+static struct rcg_clk ce1_clk_src = {
+	.cmd_reg      = (uint32_t *) GCC_CE1_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) GCC_CE1_CFG_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl     = ftbl_gcc_ce1_clk,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "ce1_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
+static struct vote_clk gcc_ce1_clk = {
+	.cbcr_reg      = (uint32_t *) GCC_CE1_CBCR,
+	.vote_reg      = (uint32_t *) APCS_CLOCK_BRANCH_ENA_VOTE,
+	.en_mask       = BIT(5),
+
+	.c = {
+		.dbg_name  = "gcc_ce1_clk",
+		.ops       = &clk_ops_vote,
+	},
+};
+
+static struct vote_clk gcc_ce1_ahb_clk = {
+	.cbcr_reg     = (uint32_t *) GCC_CE1_AHB_CBCR,
+	.vote_reg     = (uint32_t *) APCS_CLOCK_BRANCH_ENA_VOTE,
+	.en_mask      = BIT(3),
+
+	.c = {
+		.dbg_name = "gcc_ce1_ahb_clk",
+		.ops      = &clk_ops_vote,
+	},
+};
+
+static struct vote_clk gcc_ce1_axi_clk = {
+	.cbcr_reg     = (uint32_t *) GCC_CE1_AXI_CBCR,
+	.vote_reg     = (uint32_t *) APCS_CLOCK_BRANCH_ENA_VOTE,
+	.en_mask      = BIT(4),
+
+	.c = {
+		.dbg_name = "gcc_ce1_axi_clk",
+		.ops      = &clk_ops_vote,
+	},
+};
+
 /* Clock lookup table */
 static struct clk_lookup msm_clocks_8610[] =
 {
 	CLK_LOOKUP("sdc1_iface_clk", gcc_sdcc1_ahb_clk.c),
 	CLK_LOOKUP("sdc1_core_clk",  gcc_sdcc1_apps_clk.c),
+
+	CLK_LOOKUP("sdc2_iface_clk", gcc_sdcc2_ahb_clk.c),
+	CLK_LOOKUP("sdc2_core_clk",  gcc_sdcc2_apps_clk.c),
 
 	CLK_LOOKUP("uart2_iface_clk", gcc_blsp1_ahb_clk.c),
 	CLK_LOOKUP("uart2_core_clk",  gcc_blsp1_uart2_apps_clk.c),
@@ -433,6 +530,11 @@ static struct clk_lookup msm_clocks_8610[] =
 	CLK_LOOKUP("dsi_byte_clk",         dsi_byte_clk.c),
 	CLK_LOOKUP("dsi_esc_clk",          dsi_esc_clk.c),
 	CLK_LOOKUP("dsi_pclk_clk",         dsi_pclk_clk.c),
+
+	CLK_LOOKUP("ce1_ahb_clk",  gcc_ce1_ahb_clk.c),
+	CLK_LOOKUP("ce1_axi_clk",  gcc_ce1_axi_clk.c),
+	CLK_LOOKUP("ce1_core_clk", gcc_ce1_clk.c),
+	CLK_LOOKUP("ce1_src_clk",  ce1_clk_src.c),
 };
 
 void platform_clock_init(void)

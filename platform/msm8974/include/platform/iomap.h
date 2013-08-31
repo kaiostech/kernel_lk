@@ -85,9 +85,31 @@
 #define BLSP1_UART5_BASE            (PERIPH_SS_BASE + 0x00122000)
 #define MSM_USB_BASE                (PERIPH_SS_BASE + 0x00255000)
 
+#define MSM_USB30_BASE               0xF9200000
+#define MSM_USB30_QSCRATCH_BASE      0xF92F8800
+
 #define CLK_CTL_BASE                0xFC400000
 
 #define GCC_WDOG_DEBUG              (CLK_CTL_BASE +  0x00001780)
+
+/* USB 3.0 clocks */
+#define SYS_NOC_USB3_AXI_CBCR       (CLK_CTL_BASE + 0x0108)
+
+#define GCC_USB_30_BCR               0xFC4003C0
+#define GCC_USB_30_MISC              0xFC4003C4
+
+#define GCC_USB30_MASTER_CBCR        0xFC4003C8
+#define GCC_USB30_SLEEP_CBCR         0xFC4003CC
+#define GCC_USB30_MOCK_UTMI_CBCR     0xFC4003D0
+
+#define GCC_USB30_MASTER_CMD_RCGR    0xFC4003D4
+#define GCC_USB30_MASTER_CFG_RCGR    0xFC4003D8
+#define GCC_USB30_MASTER_M           0xFC4003DC
+#define GCC_USB30_MASTER_N           0xFC4003E0
+#define GCC_USB30_MASTER_D           0xFC4003E4
+
+#define GCC_USB3_PHY_BCR             0xFC4003FC
+
 
 #define USB_HS_BCR                  (CLK_CTL_BASE + 0x480)
 
@@ -139,6 +161,28 @@
 #define SDCC1_N                     (CLK_CTL_BASE + 0x4DC) /* n */
 #define SDCC1_D                     (CLK_CTL_BASE + 0x4E0) /* d */
 
+/* SDCC2 */
+#define SDCC2_BCR                   (CLK_CTL_BASE + 0x500) /* block reset */
+#define SDCC2_APPS_CBCR             (CLK_CTL_BASE + 0x504) /* branch control */
+#define SDCC2_AHB_CBCR              (CLK_CTL_BASE + 0x508)
+#define SDCC2_INACTIVITY_TIMER_CBCR (CLK_CTL_BASE + 0x50C)
+#define SDCC2_CMD_RCGR              (CLK_CTL_BASE + 0x510) /* cmd */
+#define SDCC2_CFG_RCGR              (CLK_CTL_BASE + 0x514) /* cfg */
+#define SDCC2_M                     (CLK_CTL_BASE + 0x518) /* m */
+#define SDCC2_N                     (CLK_CTL_BASE + 0x51C) /* n */
+#define SDCC2_D                     (CLK_CTL_BASE + 0x520) /* d */
+
+/* SDCC3 */
+#define SDCC3_BCR                   (CLK_CTL_BASE + 0x540) /* block reset */
+#define SDCC3_APPS_CBCR             (CLK_CTL_BASE + 0x544) /* branch control */
+#define SDCC3_AHB_CBCR              (CLK_CTL_BASE + 0x548)
+#define SDCC3_INACTIVITY_TIMER_CBCR (CLK_CTL_BASE + 0x54C)
+#define SDCC3_CMD_RCGR              (CLK_CTL_BASE + 0x550) /* cmd */
+#define SDCC3_CFG_RCGR              (CLK_CTL_BASE + 0x554) /* cfg */
+#define SDCC3_M                     (CLK_CTL_BASE + 0x558) /* m */
+#define SDCC3_N                     (CLK_CTL_BASE + 0x55C) /* n */
+#define SDCC3_D                     (CLK_CTL_BASE + 0x560) /* d */
+
 /* UART */
 #define BLSP1_AHB_CBCR              (CLK_CTL_BASE + 0x5C4)
 #define BLSP2_AHB_CBCR              (CLK_CTL_BASE + 0x944)
@@ -170,6 +214,8 @@
 #define MIPI_DSI0_BASE              (MIPI_DSI_BASE)
 #define MIPI_DSI1_BASE              (0xFD922E00)
 #define REG_DSI(off)                (MIPI_DSI_BASE + 0x04 + (off))
+
+#define EDP_BASE                    (0xFD923400)
 
 #define MDP_BASE                    (0xfd900000)
 #define REG_MDP(off)                (MDP_BASE + (off))
@@ -206,7 +252,9 @@
 #define SDC1_HDRV_PULL_CTL           (TLMM_BASE_ADDR + 0x00002044)
 
 /* SDHCI */
-#define SDCC_MCI_HC_MODE            (PERIPH_SS_BASE + 0x00024078)
-#define SDCC_HC_PWRCTL_MASK_REG     (PERIPH_SS_BASE + 0x000240E0)
-#define SDCC_HC_PWRCTL_CTL_REG      (PERIPH_SS_BASE + 0x000240E8)
+#define SDCC_MCI_HC_MODE            (0x00000078)
+#define SDCC_HC_PWRCTL_STATUS_REG   (0x000000DC)
+#define SDCC_HC_PWRCTL_MASK_REG     (0x000000E0)
+#define SDCC_HC_PWRCTL_CLEAR_REG    (0x000000E4)
+#define SDCC_HC_PWRCTL_CTL_REG      (0x000000E8)
 #endif

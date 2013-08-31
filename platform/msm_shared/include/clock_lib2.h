@@ -29,10 +29,10 @@
 #ifndef __CLOCK_LIB2_H
 #define __CLOCK_LIB2_H
 
+#include <bits.h>
 /*
  * Bit manipulation macros
  */
-#define BIT(n)              (1 << (n))
 #define BM(msb, lsb)        (((((uint32_t)-1) << (31-msb)) >> (31-msb+lsb)) << lsb)
 #define BVAL(msb, lsb, val) (((val) << lsb) & BM(msb, lsb))
 
@@ -63,6 +63,16 @@
 	{ \
 		.freq_hz = (f), \
 		.src_clk = &s##_clk_src.c, \
+		.m_val = (m), \
+		.n_val = ~((n)-(m)) * !!(n), \
+		.d_val = ~(n),\
+		.div_src_val = BVAL(4, 0, (int)(2*(div) - 1)) \
+			| BVAL(10, 8, s##_mm_source_val), \
+	}
+
+#define F_MDSS(f, s, div, m, n) \
+	{ \
+		.freq_hz = (f), \
 		.m_val = (m), \
 		.n_val = ~((n)-(m)) * !!(n), \
 		.d_val = ~(n),\
