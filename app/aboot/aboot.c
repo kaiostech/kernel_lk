@@ -474,7 +474,6 @@ void boot_linux(void *kernel, unsigned *tags,
 
 unsigned page_size = 0;
 unsigned page_mask = 0;
-
 /* Function to check if the memory address range falls within the aboot
  * boundaries.
  * start: Start of the memory region
@@ -625,23 +624,27 @@ int boot_linux_from_mmc(void)
 #endif
 
 	/* Authenticate Kernel */
+	dprintf(INFO, "use_signed_kernel=%d, is_unlocked=%d, is_tampered=%d.\n",
+		(int) target_use_signed_kernel(),
+		device.is_unlocked,
+		device.is_tampered);
 	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
 		offset = 0;
 
 		image_addr = (unsigned char *)target_get_scratch_address();
+
 #if DEVICE_TREE
 		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
 
-		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_actual))
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, hdr->dt_size))
 		{
 			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
 			return -1;
 		}
 #else
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
-
 #endif
 
 		dprintf(INFO, "Loading boot image (%d): start\n", imagesize_actual);
@@ -1349,7 +1352,6 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		if (!dtb) {
 			fastboot_fail("dtb not found");
 			return;
-		}
 	}
 #endif
 
