@@ -33,6 +33,7 @@
 #include <msm_panel.h>
 #include <board.h>
 #include <mipi_dsi.h>
+#include <pm8x41.h>
 
 #include "include/panel.h"
 #include "panel_display.h"
@@ -214,6 +215,33 @@ static void init_panel_data(struct panel_struct *panelstruct,
 	}
 }
 
+#define TIANMA	0
+#define TRULY 	1
+
+static int skuf_adc_test()
+{
+	uint32_t vadc_chan;
+	uint16_t chan = 39;
+	uint16_t mpp_chan = 7; //0~7
+
+	struct pm8x41_ldo ldo_entry = LDO((0x13F00 + 0x100 * 15), 0);
+	pm8x41_ldo_set_voltage(&ldo_entry, 2800000);
+	pm8x41_ldo_control(&ldo_entry, 1);
+
+	pm8x41_enable_mpp_as_adc(mpp_chan);
+	vadc_chan = pm8x41_adc_channel_read(chan);
+	dprintf(CRITICAL, "The channel [%u] voltage is :%u\n",chan, vadc_chan);
+
+	if(vadc_chan >= 0 && vadc_chan < 100000) {
+		return TIANMA;
+	}
+	if(vadc_chan >= 450000 && vadc_chan <= 550000) {
+		return TRULY;
+	}
+
+	pm8x41_ldo_control(&ldo_entry, 0);
+}
+
 bool oem_panel_select(struct panel_struct *panelstruct,
 			struct msm_panel_info *pinfo,
 			struct mdss_dsi_phy_ctrl *phy_db)
@@ -251,7 +279,11 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 		switch (hw_id) {
 		case HW_PLATFORM_QRD:
 			if (board_hardware_subtype() == 2) {
-				panel_id = NT35521_720P_VIDEO_PANEL;
+				if (skuf_adc_test()) {
+					panel_id = NT35521_720P_VIDEO_PANEL;
+				} else {
+					panel_id = HX8394A_720P_VIDEO_PANEL;
+				}
 			} else {
 				if (((target_id >> 16) & 0xFF) == 0x1) //EVT
 					panel_id = nt35590_panel_id;
