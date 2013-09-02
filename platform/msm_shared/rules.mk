@@ -71,6 +71,7 @@ ifeq ($(PLATFORM),msm8960)
 endif
 
 ifeq ($(PLATFORM),msm8974)
+DEFINES += DISPLAY_TYPE_MDSS=1
 	OBJS += $(LOCAL_DIR)/qgic.o \
 			$(LOCAL_DIR)/qtimer.o \
 			$(LOCAL_DIR)/qtimer_mmap.o \
@@ -96,10 +97,15 @@ ifeq ($(PLATFORM),msm8974)
 			$(LOCAL_DIR)/crypto5_wrapper.o \
 			$(LOCAL_DIR)/i2c_qup.o \
 			$(LOCAL_DIR)/gpio.o \
-			$(LOCAL_DIR)/dload_util.o
+			$(LOCAL_DIR)/dload_util.o \
+			$(LOCAL_DIR)/edp.o \
+			$(LOCAL_DIR)/edp_util.o \
+			$(LOCAL_DIR)/edp_aux.o \
+			$(LOCAL_DIR)/edp_phy.o
 endif
 
 ifeq ($(PLATFORM),msm8226)
+DEFINES += DISPLAY_TYPE_MDSS=1
 	OBJS += $(LOCAL_DIR)/qgic.o \
 			$(LOCAL_DIR)/qtimer.o \
 			$(LOCAL_DIR)/qtimer_mmap.o \

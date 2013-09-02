@@ -47,6 +47,11 @@ extern int mipi_dsi_cmd_config(struct fbcon_config mipi_fb_cfg,
 extern void mdp_shutdown(void);
 extern void mdp_start_dma(void);
 
+#if (DISPLAY_TYPE_MDSS == 0)
+#define MIPI_DSI0_BASE MIPI_DSI_BASE
+#define MIPI_DSI1_BASE MIPI_DSI_BASE
+#endif
+
 #if DISPLAY_MIPI_PANEL_TOSHIBA
 static struct fbcon_config mipi_fb_cfg = {
 	.height = TSH_MIPI_FB_HEIGHT,
@@ -109,6 +114,38 @@ struct mipi_dsi_panel_config *get_panel_info(void)
 	return NULL;
 }
 
+int mdss_dual_dsi_cmd_dma_trigger_for_panel()
+{
+	uint32_t ReadValue;
+	uint32_t count = 0;
+	int status = 0;
+
+	writel(0x03030303, MIPI_DSI0_BASE + INT_CTRL);
+	writel(0x1, MIPI_DSI0_BASE + CMD_MODE_DMA_SW_TRIGGER);
+	dsb();
+
+	writel(0x03030303, MIPI_DSI1_BASE + INT_CTRL);
+	writel(0x1, MIPI_DSI1_BASE + CMD_MODE_DMA_SW_TRIGGER);
+	dsb();
+
+	ReadValue = readl(MIPI_DSI1_BASE + INT_CTRL) & 0x00000001;
+	while (ReadValue != 0x00000001) {
+		ReadValue = readl(MIPI_DSI1_BASE + INT_CTRL) & 0x00000001;
+		count++;
+		if (count > 0xffff) {
+			status = FAIL;
+			dprintf(CRITICAL,
+				"Panel CMD: command mode dma test failed\n");
+			return status;
+		}
+	}
+
+	writel((readl(MIPI_DSI1_BASE + INT_CTRL) | 0x01000001),
+			MIPI_DSI1_BASE + INT_CTRL);
+	dprintf(SPEW, "Panel CMD: command mode dma tested successfully\n");
+	return status;
+}
+
 int dsi_cmd_dma_trigger_for_panel()
 {
 	unsigned long ReadValue;
@@ -133,6 +170,36 @@ int dsi_cmd_dma_trigger_for_panel()
 	writel((readl(DSI_INT_CTRL) | 0x01000001), DSI_INT_CTRL);
 	dprintf(SPEW, "Panel CMD: command mode dma tested successfully\n");
 	return status;
+}
+
+int mdss_dual_dsi_cmds_tx(struct mipi_dsi_cmd *cmds, int count)
+{
+	int ret = 0;
+	struct mipi_dsi_cmd *cm;
+	int i = 0;
+	char pload[256];
+	uint32_t off;
+
+	/* Align pload at 8 byte boundry */
+	off = pload;
+	off &= 0x07;
+	if (off)
+		off = 8 - off;
+	off += pload;
+
+	cm = cmds;
+	for (i = 0; i < count; i++) {
+		memcpy((void *)off, (cm->payload), cm->size);
+		writel(off, MIPI_DSI0_BASE + DMA_CMD_OFFSET);
+		writel(cm->size, MIPI_DSI0_BASE + DMA_CMD_LENGTH);	// reg 0x48 for this build
+		writel(off, MIPI_DSI1_BASE + DMA_CMD_OFFSET);
+		writel(cm->size, MIPI_DSI1_BASE + DMA_CMD_LENGTH);	// reg 0x48 for this build
+		dsb();
+		ret += mdss_dual_dsi_cmd_dma_trigger_for_panel();
+		udelay(80);
+		cm++;
+	}
+	return ret;
 }
 
 int mipi_dsi_cmds_tx(struct mipi_dsi_cmd *cmds, int count)
@@ -252,6 +319,90 @@ static uint32_t mipi_novatek_manufacture_id(void)
 	data = data >> 8;
 	return data;
 }
+
+int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
+		broadcast)
+{
+	uint8_t DMA_STREAM1 = 0;	// for mdp display processor path
+	uint8_t EMBED_MODE1 = 1;	// from frame buffer
+	uint8_t POWER_MODE2 = 1;	// from frame buffer
+	uint8_t PACK_TYPE1;		// long packet
+	uint8_t VC1 = 0;
+	uint8_t DT1 = 0;	// non embedded mode
+	uint8_t WC1 = 0;	// for non embedded mode only
+	int status = 0;
+	uint8_t DLNx_EN;
+	uint8_t lane_swap = 0;
+	uint32_t timing_ctl = 0;
+
+	switch (pinfo->num_of_lanes) {
+	default:
+	case 1:
+		DLNx_EN = 1;	// 1 lane
+		break;
+	case 2:
+		DLNx_EN = 3;	// 2 lane
+		break;
+	case 3:
+		DLNx_EN = 7;	// 3 lane
+		break;
+	case 4:
+		DLNx_EN = 0x0F;	/* 4 lanes */
+		break;
+	}
+
+	PACK_TYPE1 = pinfo->pack;
+	lane_swap = pinfo->lane_swap;
+	timing_ctl = ((pinfo->t_clk_post << 8) | pinfo->t_clk_pre);
+
+	if (broadcast) {
+		writel(0x0001, MIPI_DSI1_BASE + SOFT_RESET);
+		writel(0x0000, MIPI_DSI1_BASE + SOFT_RESET);
+
+		writel((0 << 16) | 0x3f, MIPI_DSI1_BASE + CLK_CTRL);	/* Turn on all DSI Clks */
+		writel(DMA_STREAM1 << 8 | 0x04, MIPI_DSI1_BASE + TRIG_CTRL);	// reg 0x80 dma trigger: sw
+		// trigger 0x4; dma stream1
+
+		writel(0 << 30 | DLNx_EN << 4 | 0x105, MIPI_DSI1_BASE + CTRL);	// reg 0x00 for this
+		// build
+		writel(broadcast << 31 | EMBED_MODE1 << 28 | POWER_MODE2 << 26
+				| PACK_TYPE1 << 24 | VC1 << 22 | DT1 << 16 | WC1,
+				MIPI_DSI1_BASE + COMMAND_MODE_DMA_CTRL);
+
+		writel(lane_swap, MIPI_DSI1_BASE + LANE_SWAP_CTL);
+		writel(timing_ctl, MIPI_DSI1_BASE + TIMING_CTL);
+	}
+
+	writel(0x0001, MIPI_DSI0_BASE + SOFT_RESET);
+	writel(0x0000, MIPI_DSI0_BASE + SOFT_RESET);
+
+	writel((0 << 16) | 0x3f, MIPI_DSI0_BASE + CLK_CTRL);	/* Turn on all DSI Clks */
+	writel(DMA_STREAM1 << 8 | 0x04, MIPI_DSI0_BASE + TRIG_CTRL);	// reg 0x80 dma trigger: sw
+	// trigger 0x4; dma stream1
+
+	writel(0 << 30 | DLNx_EN << 4 | 0x105, MIPI_DSI0_BASE + CTRL);	// reg 0x00 for this
+	// build
+	writel(broadcast << 31 | EMBED_MODE1 << 28 | POWER_MODE2 << 26
+	       | PACK_TYPE1 << 24 | VC1 << 22 | DT1 << 16 | WC1,
+	       MIPI_DSI0_BASE + COMMAND_MODE_DMA_CTRL);
+
+	writel(lane_swap, MIPI_DSI0_BASE + LANE_SWAP_CTL);
+	writel(timing_ctl, MIPI_DSI0_BASE + TIMING_CTL);
+
+	if (pinfo->panel_cmds) {
+
+		if (broadcast) {
+			status = mdss_dual_dsi_cmds_tx(pinfo->panel_cmds,
+					pinfo->num_of_panel_cmds);
+
+		} else {
+			status = mipi_dsi_cmds_tx(pinfo->panel_cmds,
+					pinfo->num_of_panel_cmds);
+		}
+	}
+	return status;
+}
+
 
 int mipi_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo)
 {
@@ -652,6 +803,96 @@ int mipi_config(struct msm_fb_panel_data *panel)
 	return ret;
 }
 
+int mdss_dsi_video_mode_config(uint16_t disp_width,
+	uint16_t disp_height,
+	uint16_t img_width,
+	uint16_t img_height,
+	uint16_t hsync_porch0_fp,
+	uint16_t hsync_porch0_bp,
+	uint16_t vsync_porch0_fp,
+	uint16_t vsync_porch0_bp,
+	uint16_t hsync_width,
+	uint16_t vsync_width,
+	uint16_t dst_format,
+	uint16_t traffic_mode,
+	uint8_t lane_en,
+	uint16_t low_pwr_stop_mode,
+	uint8_t eof_bllp_pwr,
+	uint8_t interleav,
+	uint32_t ctl_base)
+{
+
+	int status = 0;
+
+	/* disable mdp first */
+	mdp_disable();
+
+	writel(0x00000000, ctl_base + CLK_CTRL);
+	writel(0x00000002, ctl_base + CLK_CTRL);
+	writel(0x00000006, ctl_base + CLK_CTRL);
+	writel(0x0000000e, ctl_base + CLK_CTRL);
+	writel(0x0000001e, ctl_base + CLK_CTRL);
+	writel(0x0000023f, ctl_base + CLK_CTRL);
+
+	writel(0, ctl_base + CTRL);
+
+	writel(0, ctl_base + DSI_ERR_INT_MASK0);
+
+	writel(0x02020202, ctl_base + INT_CTRL);
+
+	writel(((disp_width + hsync_porch0_bp) << 16) | hsync_porch0_bp,
+			ctl_base + VIDEO_MODE_ACTIVE_H);
+
+	writel(((disp_height + vsync_porch0_bp) << 16) | (vsync_porch0_bp),
+			ctl_base + VIDEO_MODE_ACTIVE_V);
+
+	if (mdp_get_revision() >= MDP_REV_41) {
+		writel(((disp_height + vsync_porch0_fp
+			+ vsync_porch0_bp - 1) << 16)
+			| (disp_width + hsync_porch0_fp
+			+ hsync_porch0_bp - 1),
+			ctl_base + VIDEO_MODE_TOTAL);
+	} else {
+		writel(((disp_height + vsync_porch0_fp
+			+ vsync_porch0_bp) << 16)
+			| (disp_width + hsync_porch0_fp
+			+ hsync_porch0_bp),
+			ctl_base + VIDEO_MODE_TOTAL);
+	}
+
+	writel((hsync_width << 16) | 0, ctl_base + VIDEO_MODE_HSYNC);
+
+	writel(0 << 16 | 0, ctl_base + VIDEO_MODE_VSYNC);
+
+	writel(vsync_width << 16 | 0, ctl_base + VIDEO_MODE_VSYNC_VPOS);
+
+	writel(0x0, ctl_base + EOT_PACKET_CTRL);
+
+	writel(0x00000100, ctl_base + MISR_VIDEO_CTRL);
+
+	if (mdp_get_revision() >= MDP_REV_41) {
+		writel(low_pwr_stop_mode << 16 |
+				eof_bllp_pwr << 12 | traffic_mode << 8
+				| dst_format << 4 | 0x0, ctl_base + VIDEO_MODE_CTRL);
+	} else {
+		writel(1 << 28 | 1 << 24 | 1 << 20 | low_pwr_stop_mode << 16 |
+				eof_bllp_pwr << 12 | traffic_mode << 8
+				| dst_format << 4 | 0x0, ctl_base + VIDEO_MODE_CTRL);
+	}
+
+	writel(0x3fd08, ctl_base + HS_TIMER_CTRL);
+	writel(0x00010100, ctl_base + MISR_VIDEO_CTRL);
+
+	writel(0x00010100, ctl_base + INT_CTRL);
+	writel(0x02010202, ctl_base + INT_CTRL);
+	writel(0x02030303, ctl_base + INT_CTRL);
+
+	writel(interleav << 30 | 0 << 24 | 0 << 20 | lane_en << 4
+			| 0x103, ctl_base + CTRL);
+
+	return status;
+}
+
 int mdss_dsi_config(struct msm_fb_panel_data *panel)
 {
 	int ret = NO_ERROR;
@@ -669,10 +910,14 @@ int mdss_dsi_config(struct msm_fb_panel_data *panel)
 	mipi_pinfo.num_of_panel_cmds = pinfo->mipi.num_of_panel_cmds;
 	mipi_pinfo.lane_swap = pinfo->mipi.lane_swap;
 	mipi_pinfo.pack = 0;
+	mipi_pinfo.t_clk_pre = pinfo->mipi.t_clk_pre;
+	mipi_pinfo.t_clk_post = pinfo->mipi.t_clk_post;
 
-	mdss_dsi_phy_init(&mipi_pinfo);
+	mdss_dsi_phy_init(&mipi_pinfo, MIPI_DSI0_BASE);
+	if (pinfo->mipi.dual_dsi)
+		mdss_dsi_phy_init(&mipi_pinfo, MIPI_DSI1_BASE);
 
-	ret += mipi_dsi_panel_initialize(&mipi_pinfo);
+	ret += mdss_dsi_panel_initialize(&mipi_pinfo, pinfo->mipi.broadcast);
 
 	if (pinfo->rotate && panel->rotate)
 		pinfo->rotate();

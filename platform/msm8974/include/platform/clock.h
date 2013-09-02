@@ -71,6 +71,29 @@
 #define DSI0_PHY_PLL_OUT                BIT(8)
 #define PIXEL_SRC_DIV_1_5               BIT(1)
 
+#define DSI_BYTE1_CMD_RCGR              REG_MM(0x2140)
+#define DSI_BYTE1_CFG_RCGR              REG_MM(0x2144)
+#define DSI_BYTE1_CBCR                  REG_MM(0x2340)
+#define DSI_ESC1_CMD_RCGR               REG_MM(0x2180)
+#define DSI_ESC1_CFG_RCGR               REG_MM(0x2184)
+#define DSI_ESC1_CBCR                   REG_MM(0x2348)
+#define DSI_PIXEL1_CMD_RCGR             REG_MM(0x2020)
+#define DSI_PIXEL1_CFG_RCGR             REG_MM(0x2024)
+#define DSI_PIXEL1_CBCR                 REG_MM(0x2318)
+
+#define MDSS_EDPPIXEL_CBCR              REG_MM(0x232C)
+#define MDSS_EDPLINK_CBCR               REG_MM(0x2330)
+#define MDSS_EDPAUX_CBCR               	REG_MM(0x2334)
+#define EDPPIXEL_M                      REG_MM(0x20A8)
+#define EDPPIXEL_N                      REG_MM(0x20AC)
+#define EDPPIXEL_D                      REG_MM(0x20B0)
+#define EDPPIXEL_CFG_RCGR               REG_MM(0x20A4)
+#define EDPPIXEL_CMD_RCGR               REG_MM(0x20A0)
+#define EDPLINK_CFG_RCGR                REG_MM(0x20C4)
+#define EDPLINK_CMD_RCGR                REG_MM(0x20C0)
+#define EDPAUX_CFG_RCGR                	REG_MM(0x20E4)
+#define EDPAUX_CMD_RCGR                	REG_MM(0x20E0)
+
 void platform_clock_init(void);
 
 void clock_init_mmc(uint32_t interface);
@@ -80,6 +103,7 @@ void hsusb_clock_init(void);
 void clock_config_ce(uint8_t instance);
 void mdp_clock_init(void);
 void mdp_gdsc_ctrl(uint8_t enable);
+void edp_clk_enable(void);
 void clock_ce_enable(uint8_t instance);
 void clock_ce_disable(uint8_t instance);
 

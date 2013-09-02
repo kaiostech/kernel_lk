@@ -40,6 +40,38 @@
 
 
 /*
+ * Function: sdhci reset
+ * Arg     : Host structure & mask to write to reset register
+ * Return  : None
+ * Flow:   : Reset the host controller
+ */
+static void sdhci_reset(struct sdhci_host *host, uint8_t mask)
+{
+	uint32_t reg;
+	uint32_t timeout = SDHCI_RESET_MAX_TIMEOUT;
+
+	REG_WRITE8(host, mask, SDHCI_RESET_REG);
+
+	/* Wait for the reset to complete */
+	do {
+		reg = REG_READ8(host, SDHCI_RESET_REG);
+		reg &= mask;
+
+		if (!reg)
+			break;
+		if (!timeout)
+		{
+			dprintf(CRITICAL, "Error: sdhci reset failed for: %x\n", mask);
+			break;
+		}
+
+		timeout--;
+		mdelay(1);
+
+	} while(1);
+}
+
+/*
  * Function: sdhci error status enable
  * Arg     : Host structure
  * Return  : None
@@ -424,14 +456,14 @@ err:
 		if (sdhci_cmd_err_status(host)) {
 			dprintf(CRITICAL, "Error: Command completed with errors\n");
 			/* Reset the command & Data line */
-			REG_WRITE8(host, (SOFT_RESET_CMD | SOFT_RESET_DATA), SDHCI_RESET_REG);
+			sdhci_reset(host, (SOFT_RESET_CMD | SOFT_RESET_DATA));
 			return 1;
 		}
 	}
 
 	/* Reset data & command line */
 	if (cmd->data_present)
-		REG_WRITE8(host, (SOFT_RESET_CMD | SOFT_RESET_DATA), SDHCI_RESET_REG);
+		sdhci_reset(host, (SOFT_RESET_CMD | SOFT_RESET_DATA));
 
 	return 0;
 }
@@ -460,7 +492,7 @@ static struct desc_entry *sdhci_prep_desc_table(void *data, uint32_t len)
 		}
 
 		sg_list[0].addr = (uint32_t)data;
-		sg_list[0].len = len;
+		sg_list[0].len = (len < SDHCI_ADMA_DESC_LINE_SZ) ? len : (SDHCI_ADMA_DESC_LINE_SZ & 0xffff);
 		sg_list[0].tran_att = SDHCI_ADMA_TRANS_VALID | SDHCI_ADMA_TRANS_DATA
 							  | SDHCI_ADMA_TRANS_END;
 
@@ -494,7 +526,13 @@ static struct desc_entry *sdhci_prep_desc_table(void *data, uint32_t len)
 		 */
 		for (i = 0; i < (sg_len - 1); i++) {
 				sg_list[i].addr = (uint32_t)data;
-				sg_list[i].len = SDHCI_ADMA_DESC_LINE_SZ;
+				/*
+				 * Length attribute is 16 bit value & max transfer size for one
+				 * descriptor line is 65536 bytes, As per SD Spec3.0 'len = 0'
+				 * implies 65536 bytes. Truncate the length to limit to 16 bit
+				 * range.
+				 */
+				sg_list[i].len = (SDHCI_ADMA_DESC_LINE_SZ & 0xffff);
 				sg_list[i].tran_att = SDHCI_ADMA_TRANS_VALID | SDHCI_ADMA_TRANS_DATA;
 				data += SDHCI_ADMA_DESC_LINE_SZ;
 				len -= SDHCI_ADMA_DESC_LINE_SZ;
@@ -504,7 +542,7 @@ static struct desc_entry *sdhci_prep_desc_table(void *data, uint32_t len)
 			 * attributes
 			 */
 			sg_list[sg_len - 1].addr = (uint32_t)data;
-			sg_list[sg_len - 1].len = len;
+			sg_list[sg_len - 1].len = (len < SDHCI_ADMA_DESC_LINE_SZ) ? len : (SDHCI_ADMA_DESC_LINE_SZ & 0xffff);
 			sg_list[sg_len - 1].tran_att = SDHCI_ADMA_TRANS_VALID | SDHCI_ADMA_TRANS_DATA |
 										   SDHCI_ADMA_TRANS_END;
 		}
@@ -708,28 +746,6 @@ uint32_t sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 }
 
 /*
- * Function: sdhci reset
- * Arg     : Host structure
- * Return  : None
- * Flow:   : Reset the host controller
- */
-static void sdhci_reset(struct sdhci_host *host)
-{
-	uint32_t reg;
-
-	REG_WRITE8(host, SDHCI_SOFT_RESET, SDHCI_RESET_REG);
-
-	/* Wait for the reset to complete */
-	do {
-		reg = REG_READ8(host, SDHCI_RESET_REG);
-		reg &= SDHCI_SOFT_RESET_MASK;
-
-		if (!reg)
-			break;
-	} while(1);
-}
-
-/*
  * Function: sdhci init
  * Arg     : Host structure
  * Return  : None
@@ -748,7 +764,7 @@ void sdhci_init(struct sdhci_host *host)
 	/*
 	 * Reset the controller
 	 */
-	sdhci_reset(host);
+	sdhci_reset(host, SDHCI_SOFT_RESET);
 
 	/* Read the capabilities register & store the info */
 	caps[0] = REG_READ32(host, SDHCI_CAPS_REG1);
