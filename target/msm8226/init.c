@@ -158,6 +158,20 @@ uint32_t target_volume_down()
 	return pm8x41_resin_status();
 }
 
+/* Return 1 if power_on pressed */
+uint32_t target_power_on()
+{
+	/* power on button tied in with PMIC KPDPWR. */
+	return pm8x41_kpdpwr_status();
+}
+
+uint32_t check_kpdpwr_boot()
+{
+	uint8_t pon_reason = pm8x41_get_pon_reason();
+
+	return (pon_reason == KPDPWR_N);
+}
+
 static void target_keystatus()
 {
 	keys_init();
@@ -244,6 +258,9 @@ void target_init(void)
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
 
 	target_keystatus();
+
+	if (check_kpdpwr_boot() && (!(target_power_on())))
+		shutdown_device();
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
@@ -361,6 +378,21 @@ void reboot_device(unsigned reboot_reason)
 	mdelay(5000);
 
 	dprintf(CRITICAL, "Rebooting failed\n");
+}
+
+void shutdown_device()
+{
+	dprintf(CRITICAL, "Going down for shutdown.\n");
+
+	/* Configure PMIC for shutdown */
+	pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "shutdown failed\n");
 }
 
 crypto_engine_type board_ce_type(void)

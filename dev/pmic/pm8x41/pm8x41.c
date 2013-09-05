@@ -219,6 +219,16 @@ uint32_t pm8x41_resin_status()
 	return (rt_sts & BIT(RESIN_ON_INT_BIT));
 }
 
+/* Kpdpwr pin status */
+uint32_t pm8x41_kpdpwr_status()
+{
+	uint8_t pwr_sts = 0;
+
+	pwr_sts = REG_READ(PON_INT_RT_STS);
+
+	return (pwr_sts & BIT(KPDPWR_ON_INT_BIT));
+}
+
 void pm8x41_v2_reset_configure(uint8_t reset_type)
 {
 	uint8_t val;
