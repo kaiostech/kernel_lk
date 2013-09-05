@@ -36,6 +36,7 @@
 #include <mdp5.h>
 #include <platform/gpio.h>
 #include <platform/clock.h>
+#include <platform/iomap.h>
 #include <target/display.h>
 
 static struct msm_fb_panel_data panel;
@@ -43,8 +44,9 @@ static uint8_t display_enable;
 
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
-extern int mdss_dsi_uniphy_pll_config(void);
-extern int mdss_sharp_dsi_uniphy_pll_config(void);
+extern int mdss_dsi_uniphy_pll_config(uint32_t ctl_base);
+extern int mdss_sharp_dsi_uniphy_pll_config(uint32_t ctl_base);
+extern void edp_auo_1080p_init(struct edp_panel_data *edp_panel);
 
 static int msm8974_backlight_on()
 {
@@ -66,15 +68,19 @@ static int msm8974_backlight_on()
 
 static int msm8974_mdss_dsi_panel_clock(uint8_t enable)
 {
+	uint32_t dual_dsi = panel.panel_info.mipi.dual_dsi;
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
 		mdp_clock_init();
-		mdss_dsi_uniphy_pll_config();
-		mmss_clock_init(DSI0_PHY_PLL_OUT);
+		mdss_dsi_uniphy_pll_config(MIPI_DSI0_BASE);
+		if (panel.panel_info.mipi.dual_dsi &&
+				!(panel.panel_info.mipi.broadcast))
+			mdss_dsi_uniphy_pll_config(MIPI_DSI1_BASE);
+		mmss_clock_init(DSI0_PHY_PLL_OUT, dual_dsi);
 	} else if(!target_cont_splash_screen()) {
 		// * Add here for continuous splash  *
-		mmss_clock_disable();
-		mdp_clock_disable();
+		mmss_clock_disable(dual_dsi);
+		mdp_clock_disable(dual_dsi);
 		mdp_gdsc_ctrl(enable);
 	}
 
@@ -86,7 +92,7 @@ static int msm8974_mdss_sharp_dsi_panel_clock(uint8_t enable)
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
 		mdp_clock_init();
-		mdss_sharp_dsi_uniphy_pll_config();
+		mdss_sharp_dsi_uniphy_pll_config(MIPI_DSI0_BASE);
 		mmss_clock_init(DSI0_PHY_PLL_OUT);
 	} else if (!target_cont_splash_screen()) {
 		/* Add here for continuous splash  */
@@ -163,6 +169,60 @@ static int msm8974_mipi_panel_power(uint8_t enable)
 	return 0;
 }
 
+static int msm8974_mdss_edp_panel_clock(int enable)
+{
+	if (enable) {
+		mdp_gdsc_ctrl(enable);
+		mdp_clock_init();
+		edp_clk_enable();
+	} else if (!target_cont_splash_screen()) {
+		/* Add here for continuous splash */
+		edp_clk_disable();
+		mdp_clock_disable();
+		mdp_gdsc_ctrl(enable);
+	}
+
+	return 0;
+}
+
+static int msm8974_edp_panel_power(int enable)
+{
+	struct pm8x41_gpio gpio36_param = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = PM_GPIO_OUT_CMOS,
+		.out_strength = PM_GPIO_OUT_DRIVE_MED,
+	};
+
+	struct pm8x41_ldo ldo12 = LDO(PM8x41_LDO12, PLDO_TYPE);
+
+	if (enable) {
+		/* Enable backlight */
+		dprintf(SPEW, "Enable Backlight\n");
+		pm8x41_gpio_config(36, &gpio36_param);
+		pm8x41_gpio_set(36, PM_GPIO_FUNC_HIGH);
+		dprintf(SPEW, "Enable Backlight Done\n");
+
+		/* Turn on LDO12 for edp vdda */
+		dprintf(SPEW, "Setting LDO12 n");
+		pm8x41_ldo_set_voltage(&ldo12, 1800000);
+		pm8x41_ldo_control(&ldo12, enable);
+		dprintf(SPEW, "Setting LDO12 Done\n");
+
+		/* Panel Enable */
+		dprintf(SPEW, "Panel Enable\n");
+		gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA,
+				GPIO_DISABLE);
+		gpio_set(58, 2);
+		dprintf(SPEW, "Panel Enable Done\n");
+	} else {
+		/* Keep LDO12 on, otherwise kernel will not boot */
+		gpio_set(58, 0);
+		pm8x41_gpio_set(36, PM_GPIO_FUNC_LOW);
+	}
+
+	return 0;
+}
+
 void display_init(void)
 {
 	uint32_t hw_id = board_hardware_id();
@@ -194,6 +254,14 @@ void display_init(void)
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
 		panel.fb.bpp =  panel.panel_info.bpp;
+		panel.fb.format = FB_FORMAT_RGB888;
+		panel.mdp_rev = MDP_REV_50;
+		break;
+	case HW_PLATFORM_LIQUID:
+		edp_panel_init(&(panel.panel_info));
+		panel.clk_func = msm8974_mdss_edp_panel_clock;
+		panel.power_func = msm8974_edp_panel_power;
+		panel.fb.base = (void *)EDP_FB_ADDR;
 		panel.fb.format = FB_FORMAT_RGB888;
 		panel.mdp_rev = MDP_REV_50;
 		break;

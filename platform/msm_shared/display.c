@@ -134,6 +134,12 @@ int msm_display_config()
 		if (ret)
 			goto msm_display_config_out;
 		break;
+	case EDP_PANEL:
+		dprintf(INFO, "Config EDP PANEL.\n");
+		ret = mdp_edp_config(pinfo, &(panel->fb));
+		if (ret)
+			goto msm_display_config_out;
+		break;
 	default:
 		return ERR_INVALID_ARGS;
 	};
@@ -203,7 +209,12 @@ int msm_display_on()
 		if (ret)
 			goto msm_display_on_out;
 		break;
-
+	case EDP_PANEL:
+		dprintf(INFO, "Turn on EDP PANEL.\n");
+		ret = mdp_edp_on();
+		if (ret)
+			goto msm_display_on_out;
+		break;
 	default:
 		return ERR_INVALID_ARGS;
 	};
@@ -235,6 +246,19 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 	/* Enable clock */
 	if (pdata->clk_func)
 		ret = pdata->clk_func(1);
+
+	if (ret)
+		goto msm_display_init_out;
+
+	/* pinfo prepare  */
+	if (pdata->panel_info.prepare) {
+		/* this is for edp which pinfo derived from edid */
+		ret = pdata->panel_info.prepare();
+		panel->fb.width =  panel->panel_info.xres;
+		panel->fb.height =  panel->panel_info.yres;
+		panel->fb.stride =  panel->panel_info.xres;
+		panel->fb.bpp =  panel->panel_info.bpp;
+	}
 
 	if (ret)
 		goto msm_display_init_out;
@@ -293,6 +317,12 @@ int msm_display_off()
 	case LCDC_PANEL:
 		dprintf(INFO, "Turn off LCDC PANEL.\n");
 		mdp_lcdc_off();
+		break;
+	case EDP_PANEL:
+		dprintf(INFO, "Turn off EDP PANEL.\n");
+		ret = mdp_edp_off();
+		if (ret)
+			goto msm_display_off_out;
 		break;
 	default:
 		return ERR_INVALID_ARGS;

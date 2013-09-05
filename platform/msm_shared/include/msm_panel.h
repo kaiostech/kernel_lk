@@ -49,6 +49,7 @@
 #define MIPI_CMD_PANEL		9	/* MIPI */
 #define WRITEBACK_PANEL		10	/* Wifi display */
 #define LVDS_PANEL		11	/* LVDS */
+#define EDP_PANEL		12	/* EDP */
 
 enum msm_mdp_hw_revision {
 	MDP_REV_20 = 1,
@@ -99,6 +100,9 @@ struct lcdc_panel_info {
 	uint32_t xres_pad;
 	/* Pad height */
 	uint32_t yres_pad;
+	uint8_t dual_pipe;
+	uint8_t split_display;
+	uint8_t pipe_swap;
 };
 
 struct mipi_panel_info {
@@ -150,6 +154,13 @@ struct mipi_panel_info {
 	/* Clock required during LP commands */
 	char force_clk_lane_hs;
 	char lane_swap;
+	uint8_t dual_dsi;
+	uint8_t broadcast;
+};
+
+struct edp_panel_info {
+	int max_lane_count;
+	unsigned long max_link_clk;
 };
 
 enum lvds_mode {
@@ -176,9 +187,11 @@ struct msm_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct hdmi_panel_info hdmi;
+	struct edp_panel_info edp;
 
 	int (*on) (void);
 	int (*off) (void);
+	int (*prepare) (void);
 	int (*early_config) (void *pdata);
 	int (*config) (void *pdata);
 	int (*rotate) (void);
@@ -195,6 +208,4 @@ struct msm_fb_panel_data {
 	int (*clk_func) (int enable);
 };
 
-
-int msm_display_init(struct msm_fb_panel_data *pdata);
 #endif

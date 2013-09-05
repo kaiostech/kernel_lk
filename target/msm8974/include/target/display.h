@@ -30,6 +30,7 @@
 #define _TARGET_COPPER_DISPLAY_H
 
 #define MIPI_FB_ADDR  0x0D200000
+#define EDP_FB_ADDR   0x7EF00000
 
 #define MIPI_HSYNC_PULSE_WIDTH       12
 #define MIPI_HSYNC_BACK_PORCH_DCLK   32
@@ -39,7 +40,7 @@
 #define MIPI_VSYNC_BACK_PORCH_LINES  3
 #define MIPI_VSYNC_FRONT_PORCH_LINES 9
 
-extern int mdss_dsi_phy_init(struct mipi_dsi_panel_config *);
-extern int mdss_dsi_uniphy_pll_config(void);
+extern int mdss_dsi_phy_init(struct mipi_dsi_panel_config *, uint32_t ctl_base);
+extern int mdss_dsi_uniphy_pll_config(uint32_t ctl_base);
 
 #endif
