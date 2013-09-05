@@ -219,7 +219,7 @@ uint32_t pm8x41_resin_status()
 	return (rt_sts & BIT(RESIN_ON_INT_BIT));
 }
 
-/* Kpdpwr pin status */
+/* Return 1 if power_on pressed */
 uint32_t pm8x41_kpdpwr_status()
 {
 	uint8_t pwr_sts = 0;

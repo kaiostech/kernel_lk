@@ -2188,6 +2188,10 @@ void aboot_init(const struct app_descriptor *app)
 
 	memset(display_panel_buf, '\0', MAX_PANEL_BUF_SIZE);
 
+#ifdef FEATURE_BOOT_PON_VIBRATION
+	boot_pm_vib_turn_off();
+#endif
+
 	/* Check if we should do something other than booting up */
 	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN))
 	{

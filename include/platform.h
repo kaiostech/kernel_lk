@@ -53,5 +53,8 @@ unsigned check_reboot_mode(void);
 void platform_uninit_timer(void);
 void reboot_device(unsigned);
 int set_download_mode(enum dload_mode mode);
+void pm_vib_enable(int);
+void boot_pm_vib_turn_on(void);
+void boot_pm_vib_turn_off(void);
 
 #endif
