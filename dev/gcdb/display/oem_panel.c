@@ -45,6 +45,7 @@
 #include "include/panel_nt35590_720p_video.h"
 #include "include/panel_nt35590_720p_cmd.h"
 #include "include/panel_hx8394a_720p_video.h"
+#include "include/panel_hx8394_a_720p_video.h"
 #include "include/panel_nt35596_1080p_video.h"
 #include "include/panel_nt35521_720p_video.h"
 
@@ -57,6 +58,7 @@ NT35590_720P_CMD_PANEL,
 NT35590_720P_VIDEO_PANEL,
 NT35596_1080P_VIDEO_PANEL,
 HX8394A_720P_VIDEO_PANEL,
+HX8394_A_720P_VIDEO_PANEL,
 NT35521_720P_VIDEO_PANEL
 };
 
@@ -175,6 +177,24 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		memcpy(phy_db->timing,
 				hx8394a_720p_video_timings, TIMING_SIZE);
 		break;
+	case HX8394_A_720P_VIDEO_PANEL:
+		panelstruct->paneldata    = &hx8394_a_720p_video_panel_data;
+		panelstruct->panelres     = &hx8394_a_720p_video_panel_res;
+		panelstruct->color        = &hx8394_a_720p_video_color;
+		panelstruct->videopanel   = &hx8394_a_720p_video_video_panel;
+		panelstruct->commandpanel = &hx8394_a_720p_video_command_panel;
+		panelstruct->state        = &hx8394_a_720p_video_state;
+		panelstruct->laneconfig   = &hx8394_a_720p_video_lane_config;
+		panelstruct->paneltiminginfo
+					 = &hx8394_a_720p_video_timing_info;
+		panelstruct->backlightinfo = &hx8394_a_720p_video_backlight;
+		pinfo->mipi.panel_cmds
+					= hx8394_a_720p_video_on_command;
+		pinfo->mipi.num_of_panel_cmds
+					= HX8394_A_720P_VIDEO_ON_COMMAND;
+		memcpy(phy_db->timing,
+				hx8394_a_720p_video_timings, TIMING_SIZE);
+		break;
 
 	case NT35590_720P_CMD_PANEL:
 		panelstruct->paneldata    = &nt35590_720p_cmd_panel_data;
@@ -279,11 +299,10 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 		switch (hw_id) {
 		case HW_PLATFORM_QRD:
 			if (board_hardware_subtype() == 2) {
-				if (skuf_adc_test()) {
+				if (skuf_adc_test())
 					panel_id = NT35521_720P_VIDEO_PANEL;
-				} else {
-					panel_id = HX8394A_720P_VIDEO_PANEL;
-				}
+				else
+					panel_id = HX8394_A_720P_VIDEO_PANEL;
 			} else {
 				if (((target_id >> 16) & 0xFF) == 0x1) //EVT
 					panel_id = nt35590_panel_id;
