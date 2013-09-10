@@ -58,9 +58,7 @@ nandwrite_clean:
 	$(hide) rm -f $(TARGET_NANDWRITE)
 	$(hide) rm -rf $(NANDWRITE_OUT)
 
-$(NANDWRITE_OUT):
-	mkdir -p $(NANDWRITE_OUT)
-
-$(TARGET_NANDWRITE): nandwrite_clean | $(NANDWRITE_OUT)
+$(TARGET_NANDWRITE): nandwrite_clean
 	@echo $(TARGET_PRODUCT)_nandwrite
+	mkdir -p $(NANDWRITE_OUT)
 	$(MAKE) -C bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_TOOL) BOOTLOADER_OUT=../../../$(NANDWRITE_OUT) $(TARGET_PRODUCT)_nandwrite BUILD_NANDWRITE=1
