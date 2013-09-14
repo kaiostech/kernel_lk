@@ -28,6 +28,7 @@
 
 #include <debug.h>
 #include <platform/iomap.h>
+#include <platform/irqs.h>
 #include <platform/gpio.h>
 #include <reg.h>
 #include <target.h>
@@ -48,10 +49,28 @@
 #include <scm.h>
 #include <platform/clock.h>
 #include <platform/gpio.h>
+#include <platform/timer.h>
 #include <stdlib.h>
 
-static uint32_t mmc_sdc_base[] =
-	{ MSM_SDC1_BASE, MSM_SDC2_BASE, MSM_SDC3_BASE, MSM_SDC4_BASE };
+#define PMIC_ARB_CHANNEL_NUM    0
+#define PMIC_ARB_OWNER_ID       0
+
+#define FASTBOOT_MODE           0x77665500
+
+static void set_sdc_power_ctrl(void);
+
+static uint32_t mmc_pwrctl_base[] =
+	{ MSM_SDC1_BASE, MSM_SDC2_BASE };
+
+static uint32_t mmc_sdhci_base[] =
+	{ MSM_SDC1_SDHCI_BASE, MSM_SDC2_SDHCI_BASE };
+
+static uint32_t  mmc_sdc_pwrctl_irq[] =
+	{ SDCC1_PWRCTL_IRQ, SDCC2_PWRCTL_IRQ };
+
+struct mmc_device *dev;
+
+extern void ulpi_write(unsigned val, unsigned reg);
 
 void target_early_init(void)
 {
@@ -63,13 +82,27 @@ void target_early_init(void)
 /* Return 1 if vol_up pressed */
 static int target_volume_up()
 {
-	return 0;
+	uint8_t status = 0;
+	struct pm8x41_gpio gpio;
+
+	/* Configure the GPIO */
+	gpio.direction = PM_GPIO_DIR_IN;
+	gpio.function  = 0;
+	gpio.pull      = PM_GPIO_PULL_UP_30;
+	gpio.vin_sel   = 2;
+
+	pm8x41_gpio_config(2, &gpio);
+
+	/* Get status of P_GPIO_2 */
+	pm8x41_gpio_get(2, &status);
+
+	return !status; /* active low */
 }
 
 /* Return 1 if vol_down pressed */
 uint32_t target_volume_down()
 {
-	return 0;
+	return pm8x41_resin_status();
 }
 
 static void target_keystatus()
@@ -83,30 +116,28 @@ static void target_keystatus()
 		keys_post_event(KEY_VOLUMEUP, 1);
 }
 
-static void target_mmc_mci_init()
+/* Do target specific usb initialization */
+void target_usb_init(void)
 {
-	uint32_t base_addr;
-	uint8_t slot;
+	uint32_t val;
 
-	slot = MMC_SLOT;
-	base_addr = mmc_sdc_base[slot - 1];
+	/* Select and enable external configuration with USB PHY */
+	ulpi_write(ULPI_MISC_A_VBUSVLDEXTSEL | ULPI_MISC_A_VBUSVLDEXT, ULPI_MISC_A_SET);
 
-	if (mmc_boot_main(slot, base_addr))
-	{
-		dprintf(CRITICAL, "mmc init failed!");
-		ASSERT(0);
-	}
+	/* Enable sess_vld */
+	val = readl(USB_GENCONFIG_2) | GEN2_SESS_VLD_CTRL_EN;
+	writel(val, USB_GENCONFIG_2);
+
+	/* Enable external vbus configuration in the LINK */
+	val = readl(USB_USBCMD);
+	val |= SESS_VLD_CTRL;
+	writel(val, USB_USBCMD);
 }
 
-/*
- * Function to set the capabilities for the host
- */
-void target_mmc_caps(struct mmc_host *host)
+void target_usb_stop(void)
 {
-	host->caps.bus_width = MMC_BOOT_BUS_WIDTH_8_BIT;
-	host->caps.ddr_mode = 1;
-	host->caps.hs200_mode = 1;
-	host->caps.hs_clk_rate = MMC_CLK_96MHZ;
+	/* Disable VBUS mimicing in the controller. */
+	ulpi_write(ULPI_MISC_A_VBUSVLDEXTSEL | ULPI_MISC_A_VBUSVLDEXT, ULPI_MISC_A_CLEAR);
 }
 
 static void set_sdc_power_ctrl()
@@ -132,24 +163,38 @@ static void set_sdc_power_ctrl()
 	tlmm_set_pull_ctrl(sdc1_pull_cfg, ARRAY_SIZE(sdc1_pull_cfg));
 }
 
-void target_init(void)
+void target_sdc_init()
 {
-	dprintf(INFO, "target_init()\n");
+	struct mmc_config_data config;
 
-	target_keystatus();
+	/* Set drive strength & pull ctrl values */
+	set_sdc_power_ctrl();
 
-	/*
-	 * Set drive strength & pull ctrl for
-	 * emmc
-	 */
-	/*Uncomment during bringup after the pull up values are finalized*/
-	//set_sdc_power_ctrl();
+	config.bus_width = DATA_BUS_WIDTH_8BIT;
+	config.max_clk_rate = MMC_CLK_200MHZ;
 
-	target_mmc_mci_init();
+	/* Try slot 1*/
+	config.slot = 1;
+	config.sdhc_base = mmc_sdhci_base[config.slot - 1];
+	config.pwrctl_base = mmc_pwrctl_base[config.slot - 1];
+	config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
 
-	/*
-	 * MMC initialization is complete, read the partition table info
-	 */
+	if (!(dev = mmc_init(&config)))
+	{
+		/* Try slot 2 */
+		config.slot = 2;
+		config.sdhc_base = mmc_sdhci_base[config.slot - 1];
+		config.pwrctl_base = mmc_pwrctl_base[config.slot - 1];
+		config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
+
+		if (!(dev = mmc_init(&config)))
+		{
+			dprintf(CRITICAL, "mmc init failed!");
+			ASSERT(0);
+		}
+	}
+
+	/* MMC initialization is complete, read the partition table info */
 	if (partition_read_table())
 	{
 		dprintf(CRITICAL, "Error reading the partition table info\n");
@@ -157,14 +202,25 @@ void target_init(void)
 	}
 }
 
+struct mmc_device *target_mmc_device()
+{
+	return dev;
+}
+
+void target_init(void)
+{
+	dprintf(INFO, "target_init()\n");
+
+	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
+
+	target_keystatus();
+
+	target_sdc_init();
+}
+
 unsigned board_machtype(void)
 {
 	return LINUX_MACHTYPE_UNKNOWN;
-}
-
-void target_fastboot_init(void)
-{
-	/* Set the BOOT_DONE flag in PM8921 */
 }
 
 /* Detect the target type */
@@ -222,8 +278,36 @@ void target_serialno(unsigned char *buf)
 
 unsigned check_reboot_mode(void)
 {
+	uint32_t restart_reason = 0;
+	uint32_t restart_reason_addr;
+
+	restart_reason_addr = RESTART_REASON_ADDR;
+
+	/* Read reboot reason and scrub it */
+	restart_reason = readl(restart_reason_addr);
+	writel(0x00, restart_reason_addr);
+
+	return restart_reason;
 }
 
 void reboot_device(unsigned reboot_reason)
 {
+	uint8_t reset_type = 0;
+
+	/* Write the reboot reason */
+	writel(reboot_reason, RESTART_REASON_ADDR);
+
+	if(reboot_reason == FASTBOOT_MODE)
+		reset_type = PON_PSHOLD_WARM_RESET;
+	else
+		reset_type = PON_PSHOLD_HARD_RESET;
+
+	pm8x41_reset_configure(reset_type);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "Rebooting failed\n");
 }
