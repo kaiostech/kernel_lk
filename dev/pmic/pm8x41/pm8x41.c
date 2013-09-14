@@ -461,3 +461,8 @@ int pm8xxx_is_battery_broken()
 
 	return batt_is_broken;
 }
+
+void pm8x41_clear_pmic_watchdog(void)
+{
+	pm8x41_reg_write(PMIC_WD_RESET_S2_CTL2, 0x0);
+}
