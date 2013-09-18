@@ -42,12 +42,14 @@
 #define Y_POSITION_LOW_POWER  1269 /* for  y */
 #define Y_POSITION_CHARGER  (Y_POSITION_LOW_POWER -  HEIGHT_IMAGE_CHARGE - 78)  /* for  y */
 #define Y_POSITION_LOGO  1343 /* for  y */
-#define Y_POSITION_HOT  1162 /* for  y */
+#define Y_POSITION_THERMOMETER  1200 /* for  y */
+#define Y_POSITION_EXCLAMATION  966 /* for  y */
 
 extern struct fbgfx_image image_charge;
-extern struct fbgfx_image image_hot;
 extern struct fbgfx_image image_low;
 extern struct fbgfx_image image_boot_Kindle;
+extern struct fbgfx_image image_thermometer;
+extern struct fbgfx_image image_exclamation;
 
 static struct msm_fb_panel_data panel;
 static uint8_t display_enable;
@@ -199,7 +201,8 @@ void show_image(Image_types type)
                 fbgfx_apply_image(&image_low, Y_POSITION_LOW_POWER, FBGFX_CENTERED);
                 break;
             case IMAGE_DEVICEHOT:
-                fbgfx_apply_image(&image_hot, Y_POSITION_HOT, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_thermometer, Y_POSITION_THERMOMETER, FBGFX_CENTERED);
+                fbgfx_apply_image(&image_exclamation, Y_POSITION_EXCLAMATION, FBGFX_CENTERED);
                 break;
             case IMAGE_LOGO:
             default:
