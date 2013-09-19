@@ -108,6 +108,23 @@
 #define SDCC1_D                     (CLK_CTL_BASE + 0x4E0) /* d */
 #define SDCC1_CDCCAL_SLEEP_CBCR     (CLK_CTL_BASE + 0x4E4)
 
+/* UFS */
+#define SYS_NOC_UFS_AXI_CBCR        (CLK_CTL_BASE + 0x013C)
+
+#define UFS_BCR                     (CLK_CTL_BASE + 0x1D40)
+#define UFS_AXI_CBCR                (CLK_CTL_BASE + 0x1D44)
+#define UFS_AHB_CBCR                (CLK_CTL_BASE + 0x1D48)
+#define UFS_TX_CFG_CBCR             (CLK_CTL_BASE + 0x1D4C)
+#define UFS_RX_CFG_CBCR             (CLK_CTL_BASE + 0x1D50)
+#define UFS_TX_SYMBOL_0_CBCR        (CLK_CTL_BASE + 0x1D54)
+#define UFS_TX_SYMBOL_1_CBCR        (CLK_CTL_BASE + 0x1D58)
+#define UFS_RX_SYMBOL_0_CBCR        (CLK_CTL_BASE + 0x1D5C)
+#define UFS_RX_SYMBOL_1_CBCR        (CLK_CTL_BASE + 0x1D60)
+#define UFS_AXI_CMD_RCGR            (CLK_CTL_BASE + 0x1D64)
+#define UFS_AXI_CFG_RCGR            (CLK_CTL_BASE + 0x1D68)
+#define UFS_AXI_M                   (CLK_CTL_BASE + 0x1D6C)
+#define UFS_AXI_N                   (CLK_CTL_BASE + 0x1D70)
+
 /* Addresses below this point needs to be verified.
  * Included only for compilation purposes.
  */

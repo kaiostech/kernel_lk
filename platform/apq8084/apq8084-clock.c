@@ -281,6 +281,128 @@ static struct branch_clk gcc_sdcc1_ahb_clk =
 	},
 };
 
+static struct branch_clk gcc_sys_noc_ufs_axi_clk = {
+	.cbcr_reg    = SYS_NOC_UFS_AXI_CBCR,
+	.has_sibling = 1,
+
+	.c = {
+		.dbg_name = "gcc_sys_noc_ufs_axi_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+
+static struct clk_freq_tbl ftbl_gcc_ufs_axi_clk[] =
+{
+	F(100000000,      gpll0,    6, 0, 0),
+	F(200000000,      gpll0,    3, 0, 0),
+	F(240000000,      gpll0,  2.5, 0, 0),
+	F_END
+};
+
+static struct rcg_clk ufs_axi_clk_src = 
+{
+	.cmd_reg      = (uint32_t *) UFS_AXI_CMD_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_mnd,
+	.freq_tbl     = ftbl_gcc_ufs_axi_clk,
+
+	.c = {
+		.dbg_name = "ufs_axi_clk_src",
+		.ops      = &clk_ops_rcg_mnd,
+	},
+};
+
+static struct branch_clk gcc_ufs_ahb_clk =
+{
+	.cbcr_reg    = (uint32_t *) UFS_AHB_CBCR,
+	.has_sibling = 1,
+
+	.c = {
+		.dbg_name = "gcc_ufs_ahb_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_ufs_axi_clk =
+{
+	.cbcr_reg    = (uint32_t *) UFS_AXI_CBCR,
+	.has_sibling = 1,
+	.parent      = &ufs_axi_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_ufs_axi_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_ufs_rx_cfg_clk =
+{
+	.cbcr_reg    = (uint32_t *) UFS_RX_CFG_CBCR,
+	.has_sibling = 1,
+	.max_div     = 16,
+	.parent      = &ufs_axi_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_ufs_rx_cfg_clk",
+		.ops      = &clk_ops_branch,
+		.rate     = 2,
+	},
+};
+
+static struct branch_clk gcc_ufs_rx_symbol_0_clk =
+{
+	.cbcr_reg = (uint32_t *) UFS_RX_SYMBOL_0_CBCR,
+
+	.c = {
+		.dbg_name = "gcc_ufs_rx_symbol_0_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_ufs_rx_symbol_1_clk = 
+{
+	.cbcr_reg = (uint32_t *) UFS_RX_SYMBOL_1_CBCR,
+
+	.c = {
+		.dbg_name = "gcc_ufs_rx_symbol_1_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_ufs_tx_cfg_clk =
+{
+	.cbcr_reg    = (uint32_t *) UFS_TX_CFG_CBCR,
+	.has_sibling = 1,
+	.max_div     = 16,
+	.parent      = &ufs_axi_clk_src.c,
+
+	.c = {
+	.dbg_name = "gcc_ufs_tx_cfg_clk",
+	.ops      = &clk_ops_branch,
+	.rate     = 2,
+	},
+};
+
+static struct branch_clk gcc_ufs_tx_symbol_0_clk =
+{
+	.cbcr_reg = (uint32_t *) UFS_TX_SYMBOL_0_CBCR,
+
+	.c = {
+		.dbg_name = "gcc_ufs_tx_symbol_0_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_ufs_tx_symbol_1_clk =
+{
+	.cbcr_reg = (uint32_t *) UFS_TX_SYMBOL_1_CBCR,
+
+	.c = {
+		.dbg_name = "gcc_ufs_tx_symbol_1_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
 /* Clock lookup table */
 static struct clk_lookup msm_clocks_8084[] =
 {
@@ -292,6 +414,15 @@ static struct clk_lookup msm_clocks_8084[] =
 
 	CLK_LOOKUP("usb_iface_clk",  gcc_usb_hs_ahb_clk.c),
 	CLK_LOOKUP("usb_core_clk",   gcc_usb_hs_system_clk.c),
+
+	CLK_LOOKUP("cc_ufs_hclk",            gcc_ufs_ahb_clk.c),
+	CLK_LOOKUP("cc_ufs_sys_clk",         gcc_ufs_axi_clk.c),
+	CLK_LOOKUP("cc_ufs_tx_cfg_clk",	     gcc_ufs_tx_cfg_clk),
+	CLK_LOOKUP("cc_ufs_rx_cfg_clk",      gcc_ufs_rx_cfg_clk),
+	CLK_LOOKUP("cc_ufs_tx_symbol_clk_0", gcc_ufs_tx_symbol_0_clk),
+	CLK_LOOKUP("cc_ufs_tx_symbol_clk_1", gcc_ufs_tx_symbol_1_clk),
+	CLK_LOOKUP("cc_ufs_rx_symbol_clk_0", gcc_ufs_rx_symbol_0_clk),
+	CLK_LOOKUP("cc_ufs_rx_symbol_clk_1", gcc_ufs_rx_symbol_1_clk),
 };
 
 void platform_clock_init(void)

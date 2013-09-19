@@ -206,3 +206,22 @@ void clock_config_ce(uint8_t instance)
 	clock_ce_enable(instance);
 
 }
+
+void clock_config_ufs_phy()
+{
+	int ret;
+
+	ret = clk_get_set_enable("cc_ufs_tx_cfg_clk", 0, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set cc_ufs_tx_cfg_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	ret = clk_get_set_enable("cc_ufs_rx_cfg_clk", 0, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set cc_ufs_rx_cfg_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+}
