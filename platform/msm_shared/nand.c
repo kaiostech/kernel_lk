@@ -158,13 +158,8 @@ static struct flash_identification supported_flash[] = {
 
 static void set_nand_configuration(char type)
 {
-	if (type == TYPE_MODEM_PARTITION) {
-		CFG0 = CFG0_M;
-		CFG1 = CFG1_M;
-	} else {
 		CFG0 = CFG0_A;
 		CFG1 = CFG1_A;
-	}
 }
 
 static void flash_nand_read_id(dmov_s * cmdlist, unsigned *ptrlist)
