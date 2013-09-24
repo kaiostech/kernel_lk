@@ -261,7 +261,13 @@ static uint32_t dsi_pll_enable_seq(void)
 		 platformid == MSM8926 ||
 		 platformid == MSM8126 ||
 		 platformid == MSM8326 ||
-		 platformid == APQ8026) {
+		 platformid == APQ8026 ||
+		 platformid == APQ8028 ||
+		 platformid == MSM8128 ||
+		 platformid == MSM8228 ||
+		 platformid == MSM8528 ||
+		 platformid == MSM8628 ||
+		 platformid == MSM8928) {
 		if (dsi_pll_enable_seq_m()) {
 		} else if (dsi_pll_enable_seq_d()) {
 		} else if (dsi_pll_enable_seq_d()) {
