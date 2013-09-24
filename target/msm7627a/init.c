@@ -134,7 +134,7 @@ static struct ptentry board_part_list_sku3[] = {
 	 },
 	{
 	 .start = DIFF_START_ADDR,
-	 .length = 80 /* In MB */ ,
+	 .length = 40 /* In MB */ ,
 	 .name = "cache",
 	 },
 	{
