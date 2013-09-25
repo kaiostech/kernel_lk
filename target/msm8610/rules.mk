@@ -1,7 +1,6 @@
 LOCAL_DIR := $(GET_LOCAL_DIR)
 
 INCLUDES += -I$(LOCAL_DIR)/include -I$(LK_TOP_DIR)/platform/msm_shared
-INCLUDES += -I$(LK_TOP_DIR)/dev/gcdb/display -I$(LK_TOP_DIR)/dev/gcdb/display/include
 
 PLATFORM := msm8610
 
@@ -24,7 +23,6 @@ MODULES += \
 	lib/ptable \
 	dev/pmic/pm8x41 \
 	dev/panel/msm \
-	dev/gcdb/display \
 	lib/libfdt
 
 DEFINES += \
@@ -40,5 +38,4 @@ DEFINES += \
 OBJS += \
     $(LOCAL_DIR)/init.o \
     $(LOCAL_DIR)/meminfo.o \
-    $(LOCAL_DIR)/target_display.o \
-    $(LOCAL_DIR)/oem_panel.o
+    $(LOCAL_DIR)/target_display.o
