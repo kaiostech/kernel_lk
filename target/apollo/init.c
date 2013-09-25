@@ -104,7 +104,7 @@ static char emmc_mid[8];
 /* Return 1 if the specified GPIO is pressed (low) */
 static int target_pmic_gpio_button_pressed(int gpio_number)
 {
-	uint8_t status = 0;
+	uint8_t status1 = 0, status2 = 0;
 	struct pm8x41_gpio gpio;
 
 	/* Configure the GPIO */
@@ -116,9 +116,11 @@ static int target_pmic_gpio_button_pressed(int gpio_number)
 	pm8x41_gpio_config(gpio_number, &gpio);
 
 	/* Get status of the GPIO */
-	pm8x41_gpio_get(gpio_number, &status);
+	pm8x41_gpio_get(gpio_number, &status1);
+	mdelay(100);
+	pm8x41_gpio_get(gpio_number, &status2);
 
-	return !status; /* active low */
+	return !status1 && !status2; /* active low */
 }
 
 /* Return 1 if vol_up pressed */
