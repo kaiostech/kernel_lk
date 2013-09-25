@@ -160,7 +160,6 @@ struct mipi_panel_info {
 	char lane_swap;
 	uint8_t dual_dsi;
 	uint8_t broadcast;
-	uint8_t mode_gpio_state;
 };
 
 struct edp_panel_info {
