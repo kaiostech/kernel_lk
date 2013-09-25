@@ -1572,12 +1572,16 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 {
 	unsigned int chunk;
 	unsigned int chunk_data_sz;
+	uint32_t *fill_buf = NULL;
+	uint32_t fill_val;
+	uint32_t chunk_blk_cnt = 0;
 	sparse_header_t *sparse_header;
 	chunk_header_t *chunk_header;
 	uint32_t total_blocks = 0;
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
 	int index = INVALID_PTN;
+	int i;
 
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
@@ -1660,6 +1664,47 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 			data += chunk_data_sz;
 			break;
 
+			case CHUNK_TYPE_FILL:
+			if(chunk_header->total_sz != (sparse_header->chunk_hdr_sz +
+											sizeof(uint32_t)))
+			{
+				fastboot_fail("Bogus chunk size for chunk type FILL");
+				return;
+			}
+
+			fill_buf = (uint32_t *)memalign(CACHE_LINE, ROUNDUP(sparse_header->blk_sz, CACHE_LINE));
+			if (!fill_buf)
+			{
+				fastboot_fail("Malloc failed for: CHUNK_TYPE_FILL");
+				return;
+			}
+
+			fill_val = *(uint32_t *)data;
+			data = (char *) data + sizeof(uint32_t);
+			chunk_blk_cnt = chunk_data_sz / sparse_header->blk_sz;
+
+			for (i = 0; i < (sparse_header->blk_sz / sizeof(fill_val)); i++)
+			{
+				fill_buf[i] = fill_val;
+			}
+
+			for (i = 0; i < chunk_blk_cnt; i++)
+			{
+				if(mmc_write(ptn + ((uint64_t)total_blocks*sparse_header->blk_sz),
+							sparse_header->blk_sz,
+							fill_buf))
+				{
+					fastboot_fail("flash write failure");
+					free(fill_buf);
+					return;
+				}
+
+				total_blocks++;
+			}
+
+			free(fill_buf);
+			break;
+
 			case CHUNK_TYPE_DONT_CARE:
 			total_blocks += chunk_header->chunk_sz;
 			break;
@@ -1675,6 +1720,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 			break;
 
 			default:
+			dprintf(CRITICAL, "Unkown chunk type: %x\n",chunk_header->chunk_type);
 			fastboot_fail("Unknown chunk type");
 			return;
 		}
