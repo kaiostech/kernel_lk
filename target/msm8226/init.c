@@ -245,14 +245,14 @@ void target_init(void)
 
 	target_keystatus();
 
+	target_sdc_init();
+
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
 	dprintf(SPEW, "Display Init: Start\n");
 	display_init();
 	dprintf(SPEW, "Display Init: Done\n");
 #endif
-
-	target_sdc_init();
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
@@ -317,9 +317,15 @@ void target_baseband_detect(struct board_data *board)
 	case MSM8926:
 	case MSM8126:
 	case MSM8326:
+	case MSM8528:
+	case MSM8628:
+	case MSM8228:
+	case MSM8928:
+	case MSM8128:
 		board->baseband = BASEBAND_MSM;
 		break;
 	case APQ8026:
+	case APQ8028:
 		board->baseband = BASEBAND_APQ;
 		break;
 	default:

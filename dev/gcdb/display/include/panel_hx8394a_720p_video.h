@@ -46,7 +46,7 @@
 /*---------------------------------------------------------------------------*/
 
 static struct panel_config hx8394a_720p_video_panel_data = {
-  "hx8394a 720p video mode dsi panel", "mdss_dsi0", "qcom,mdss-dsi-panel",
+  "qcom,mdss_dsi_hx8394a_720p_video", "dsi:0:", "qcom,mdss-dsi-panel",
   10, 0, "DISPLAY_1", 0, 424000000, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
@@ -263,6 +263,10 @@ static struct mipi_dsi_cmd hx8394a_720p_video_rotation[] = {
 
 static struct panel_timing hx8394a_720p_video_timing_info = {
   0, 4, 0x1f, 0x2d
+};
+
+static struct panel_reset_sequence hx8394a_720p_video_panel_reset_seq = {
+{ 1, 0, 1, }, { 20, 20, 20, }, 2
 };
 
 /*---------------------------------------------------------------------------*/

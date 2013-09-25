@@ -43,6 +43,12 @@
 #include <pm8x41.h>
 #include <hsusb.h>
 #include <kernel/thread.h>
+#include <arch/defines.h>
+#include <stdlib.h>
+#include <scm.h>
+#include <partition_parser.h>
+#include <platform/clock.h>
+#include <platform/timer.h>
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
@@ -116,12 +122,6 @@ void target_sdc_init()
 	/* Set drive strength & pull ctrl values */
 	set_sdc_power_ctrl();
 
-	/* Display splash screen if enabled */
-	dprintf(SPEW, "Display Init: Start\n");
-	display_init();
-	dprintf(SPEW, "Display Init: Done\n");
-
-
 	config.bus_width = DATA_BUS_WIDTH_8BIT;
 	config.max_clk_rate = MMC_CLK_200MHZ;
 
@@ -163,17 +163,73 @@ void target_init(void)
 	target_keystatus();
 
 	target_sdc_init();
+
+	/* Display splash screen if enabled */
+	dprintf(SPEW, "Display Init: Start\n");
+	display_init();
+	dprintf(SPEW, "Display Init: Done\n");
 }
 
 void target_uninit(void)
 {
         mmc_put_card_to_sleep(dev);
 }
+
+#define SSD_CE_INSTANCE         1
+
+void target_load_ssd_keystore(void)
+{
+	uint64_t ptn;
+	int      index;
+	uint64_t size;
+	uint32_t *buffer;
+
+	if (!target_is_ssd_enabled())
+		return;
+
+	index = partition_get_index("ssd");
+
+	ptn = partition_get_offset(index);
+	if (ptn == 0){
+		dprintf(CRITICAL, "Error: ssd partition not found\n");
+		return;
+	}
+
+	size = partition_get_size(index);
+	if (size == 0) {
+		dprintf(CRITICAL, "Error: invalid ssd partition size\n");
+		return;
+	}
+
+	buffer = memalign(CACHE_LINE, ROUNDUP(size, CACHE_LINE));
+	if (!buffer) {
+		dprintf(CRITICAL, "Error: allocating memory for ssd buffer\n");
+		return;
+	}
+
+	if (mmc_read(ptn, buffer, size)) {
+		dprintf(CRITICAL, "Error: cannot read data\n");
+		free(buffer);
+		return;
+	}
+
+	clock_ce_enable(SSD_CE_INSTANCE);
+	scm_protect_keystore(buffer, size);
+	clock_ce_disable(SSD_CE_INSTANCE);
+	free(buffer);
+}
+
 /* Do any target specific intialization needed before entering fastboot mode */
 void target_fastboot_init(void)
 {
 	/* Set the BOOT_DONE flag in PM8110 */
 	pm8x41_set_boot_done();
+
+	if (target_is_ssd_enabled()) {
+		clock_ce_enable(SSD_CE_INSTANCE);
+		target_load_ssd_keystore();
+	}
+
 }
 
 /* Detect the target type */

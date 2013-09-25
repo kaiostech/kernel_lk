@@ -46,7 +46,7 @@
 /*---------------------------------------------------------------------------*/
 
 static struct panel_config toshiba_720p_video_panel_data = {
-  "toshiba 720p video mode dsi panel", "mdss_dsi0", "qcom,mdss-dsi-panel",
+  "qcom,mdss_dsi_toshiba_720p_video", "dsi:0:", "qcom,mdss-dsi-panel",
   10, 0, "DISPLAY_1", 0, 424000000, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
 };
 
@@ -330,6 +330,10 @@ static struct mipi_dsi_cmd toshiba_720p_video_rotation[] = {
 
 static struct panel_timing toshiba_720p_video_timing_info = {
   0x0, 0x04, 0x04, 0x1b
+};
+
+static struct panel_reset_sequence toshiba_720p_video_panel_reset_seq = {
+{ 1, 0, 1, }, { 20, 200, 20, }, 2
 };
 
 /*---------------------------------------------------------------------------*/
