@@ -29,9 +29,7 @@
 
 #include <debug.h>
 #include <smem.h>
-#include <err.h>
 #include <msm_panel.h>
-#include <mipi_dsi.h>
 #include <pm8x41.h>
 #include <pm8x41_wled.h>
 #include <board.h>
@@ -39,20 +37,21 @@
 #include <platform/iomap.h>
 #include <target/display.h>
 
-#include "include/panel.h"
-#include "include/display_resource.h"
+static struct msm_fb_panel_data panel;
+static uint8_t display_enable;
 
-#define MODE_GPIO_STATE_ENABLE 1
+extern int msm_display_init(struct msm_fb_panel_data *pdata);
+extern int msm_display_off();
+extern void dsi_phy_init(struct msm_panel_info *pinfo);
 
-#define MODE_GPIO_STATE_DISABLE 2
-
-int target_backlight_ctrl(uint8_t enable)
+static int msm8610_backlight(uint8_t enable)
 {
 	struct pm8x41_mpp mpp;
 	mpp.base = PM8x41_MMP3_BASE;
 	mpp.mode = MPP_HIGH;
 	mpp.vin = MPP_VIN3;
-	if (enable) {
+	if (enable)
+ {
 		pm8x41_config_output_mpp(&mpp);
 		pm8x41_enable_mpp(&mpp, MPP_ENABLE);
 	} else {
@@ -63,18 +62,41 @@ int target_backlight_ctrl(uint8_t enable)
 	return 0;
 }
 
-int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
+void dsi_calc_clk_rate(uint32_t *dsiclk_rate, uint32_t *byteclk_rate)
 {
-	struct mdss_dsi_pll_config *pll_data;
-	dprintf(SPEW, "target_panel_clock\n");
+	uint32_t hbp, hfp, vbp, vfp, hspw, vspw, width, height;
+	uint32_t bitclk_rate;
+	int frame_rate, lanes;
 
-	pll_data = pinfo->mipi.dsi_pll_config;
+	width = panel.panel_info.xres;
+	height = panel.panel_info.yres;
+	hbp = panel.panel_info.lcdc.h_back_porch;
+	hfp = panel.panel_info.lcdc.h_front_porch;
+	hspw = panel.panel_info.lcdc.h_pulse_width;
+	vbp = panel.panel_info.lcdc.v_back_porch;
+	vfp = panel.panel_info.lcdc.v_front_porch;
+	vspw = panel.panel_info.lcdc.v_pulse_width;
+	lanes = panel.panel_info.mipi.num_of_lanes;
+	frame_rate = panel.panel_info.mipi.frame_rate;
 
-	if (enable) {
+	bitclk_rate = (width + hbp + hfp + hspw) * (height + vbp + vfp + vspw);
+	bitclk_rate *= frame_rate;
+	bitclk_rate *= panel.panel_info.bpp;
+	bitclk_rate /= lanes;
+
+	*byteclk_rate = bitclk_rate / 8;
+	*dsiclk_rate = *byteclk_rate * lanes;
+}
+
+static int msm8610_mdss_dsi_panel_clock(uint8_t enable)
+{
+	uint32_t dsiclk_rate, byteclk_rate;
+
+	if (enable)
+	{
 		mdp_clock_enable();
-		dsi_clock_enable(
-			pll_data->byte_clock * pinfo->mipi.num_of_lanes,
-			pll_data->byte_clock);
+		dsi_calc_clk_rate(&dsiclk_rate, &byteclk_rate);
+		dsi_clock_enable(dsiclk_rate, byteclk_rate);
 	} else if(!target_cont_splash_screen()) {
 		dsi_clock_disable();
 		mdp_clock_disable();
@@ -83,72 +105,115 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 	return 0;
 }
 
-int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
-						struct msm_panel_info *pinfo)
+static void msm8610_mdss_mipi_panel_reset(int enable)
 {
 	dprintf(SPEW, "msm8610_mdss_mipi_panel_reset, enable = %d\n", enable);
 
-	if (enable) {
-		gpio_tlmm_config(reset_gpio.pin_id, 0,
-				reset_gpio.pin_direction, reset_gpio.pin_pull,
-				reset_gpio.pin_strength, reset_gpio.pin_state);
-
-		gpio_tlmm_config(mode_gpio.pin_id, 0,
-				mode_gpio.pin_direction, mode_gpio.pin_pull,
-				mode_gpio.pin_strength, mode_gpio.pin_state);
+	if (enable)
+	{
+		gpio_tlmm_config(41, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
+		gpio_tlmm_config(7, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
 
 		/* reset */
-		gpio_set(reset_gpio.pin_id, resetseq->pin_state[0]);
-		mdelay(resetseq->sleep[0]);
-		gpio_set(reset_gpio.pin_id, resetseq->pin_state[1]);
-		mdelay(resetseq->sleep[1]);
-		gpio_set(reset_gpio.pin_id, resetseq->pin_state[2]);
-		mdelay(resetseq->sleep[2]);
+		gpio_set(41, 2);
+		mdelay(20);
+		gpio_set(41, 0);
+		udelay(20);
+		gpio_set(41, 2);
+		mdelay(20);
 
-		if (pinfo->mipi.mode_gpio_state == MODE_GPIO_STATE_ENABLE)
-			gpio_set(mode_gpio.pin_id, 2);
-		else if (pinfo->mipi.mode_gpio_state == MODE_GPIO_STATE_DISABLE)
-			gpio_set(mode_gpio.pin_id, 0);
+		if (panel.panel_info.type == MIPI_VIDEO_PANEL)
+			gpio_set(7, 2);
+		else if (panel.panel_info.type == MIPI_CMD_PANEL)
+			gpio_set(7, 0);
 	} else if(!target_cont_splash_screen()) {
-		gpio_set(reset_gpio.pin_id, 0);
-		gpio_set(mode_gpio.pin_id, 0);
+		gpio_set(7, 0);
+		gpio_set(41, 0);
 	}
-	return 0;
+	return;
 }
 
-int target_ldo_ctrl(uint8_t enable)
+static int msm8610_mipi_panel_power(uint8_t enable)
 {
-	uint32_t ldocounter = 0;
-	uint32_t pm8x41_ldo_base = 0x13F00;
+	int ret;
+	struct pm8x41_ldo ldo14 = LDO(PM8x41_LDO14, PLDO_TYPE);
+	struct pm8x41_ldo ldo19 = LDO(PM8x41_LDO19, PLDO_TYPE);
 
-	while (ldocounter < TOTAL_LDO_DEFINED) {
-		struct pm8x41_ldo ldo_entry = LDO((pm8x41_ldo_base +
-			0x100 * ldo_entry_array[ldocounter].ldo_id),
-			ldo_entry_array[ldocounter].ldo_type);
+	dprintf(SPEW, "msm8610_mipi_panel_power, enable = %d\n", enable);
+	if (enable)
+	{
+		/* backlight */
+		msm8610_backlight(enable);
 
-		dprintf(SPEW, "Setting %s\n",
-				ldo_entry_array[ldocounter].ldo_id);
+		/* regulators */
+		pm8x41_ldo_set_voltage(&ldo14, 1800000);
+		pm8x41_ldo_control(&ldo14, enable);
+		pm8x41_ldo_set_voltage(&ldo19, 2850000);
+		pm8x41_ldo_control(&ldo19, enable);
 
-		/* Set voltage during power on */
-		if (enable) {
-			pm8x41_ldo_set_voltage(&ldo_entry,
-					ldo_entry_array[ldocounter].ldo_voltage);
-			pm8x41_ldo_control(&ldo_entry, enable);
-		} else if(!target_cont_splash_screen()) {
-			pm8x41_ldo_control(&ldo_entry, enable);
-		}
-		ldocounter++;
+		/* reset */
+		msm8610_mdss_mipi_panel_reset(enable);
+	} else if(!target_cont_splash_screen()) {
+		msm8610_backlight(0);
+		msm8610_mdss_mipi_panel_reset(enable);
+
+		pm8x41_ldo_control(&ldo19, enable);
+		pm8x41_ldo_control(&ldo14, enable);
 	}
-
 	return 0;
 }
 
 void display_init(void)
 {
-	gcdb_display_init(MDP_REV_304, MIPI_FB_ADDR);
+	uint32_t hw_id = board_hardware_id();
+	uint32_t platform_subtype = board_hardware_subtype();
+
+	dprintf(SPEW, "display_init(),target_id=%d.\n", hw_id);
+	dprintf(SPEW, "display_init(),platform_subtype=%d.\n",
+		platform_subtype);
+
+	switch (hw_id) {
+	case HW_PLATFORM_QRD:
+		if ((0 == platform_subtype) || (1 == platform_subtype))
+			mipi_hx8379a_video_wvga_init(&(panel.panel_info));
+		else if (3 == platform_subtype)
+			mipi_otm8018b_video_wvga_init(&(panel.panel_info));
+
+		break;
+	case HW_PLATFORM_MTP:
+		if (0 == platform_subtype)
+			mipi_truly_video_wvga_init(&(panel.panel_info));
+		else
+			mipi_nt35590_video_720p_init(&(panel.panel_info));
+		break;
+	case HW_PLATFORM_SURF:
+		mipi_truly_video_wvga_init(&(panel.panel_info));
+		break;
+	default:
+		return;
+	};
+
+	panel.clk_func = msm8610_mdss_dsi_panel_clock;
+	panel.power_func = msm8610_mipi_panel_power;
+	panel.fb.base = MIPI_FB_ADDR;
+	panel.fb.width =  panel.panel_info.xres;
+	panel.fb.height =  panel.panel_info.yres;
+	panel.fb.stride =  panel.panel_info.xres;
+	panel.fb.bpp =	panel.panel_info.bpp;
+	panel.fb.format = FB_FORMAT_RGB888;
+	panel.mdp_rev = MDP_REV_304;
+
+	if (msm_display_init(&panel))
+	{
+		dprintf(CRITICAL, "Display init failed!\n");
+		return;
+	}
+
+	display_enable = 1;
 }
 
 void display_shutdown(void)
 {
-	gcdb_display_shutdown();
+	if (display_enable)
+		msm_display_off();
 }
