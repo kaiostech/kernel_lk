@@ -296,6 +296,12 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 	case MSM8126:
 	case MSM8326:
 	case APQ8026:
+	case APQ8028:
+	case MSM8128:
+	case MSM8228:
+	case MSM8528:
+	case MSM8628:
+	case MSM8928:
 		switch (hw_id) {
 		case HW_PLATFORM_QRD:
 			if (board_hardware_subtype() == 2) {
