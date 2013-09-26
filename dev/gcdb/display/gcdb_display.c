@@ -31,6 +31,8 @@
 #include <err.h>
 #include <smem.h>
 #include <msm_panel.h>
+#include <string.h>
+#include <stdlib.h>
 #include <board.h>
 #include <mdp5.h>
 #include <platform/gpio.h>
@@ -50,7 +52,6 @@ static struct msm_fb_panel_data panel;
 struct panel_struct panelstruct;
 static uint8_t display_enable;
 static struct mdss_dsi_phy_ctrl dsi_video_mode_phy_db;
-
 
 /*---------------------------------------------------------------------------*/
 /* Extern                                                                    */
@@ -75,8 +76,8 @@ static uint32_t mdss_dsi_panel_reset(uint8_t enable)
 {
 	uint32_t ret = NO_ERROR;
 
-	ret = target_panel_reset(enable, &reset_gpio,
-			 &enable_gpio, &reset_sequence);
+	ret = target_panel_reset(enable, panelstruct.panelresetseq,
+						&panel.panel_info);
 
 	return ret;
 }
@@ -109,8 +110,7 @@ static int mdss_dsi_panel_power(uint8_t enable)
 			dprintf(CRITICAL, "Backlight enable failed \n");
 			return ret;
 		}
-		ret = target_ldo_ctrl(enable, ldo_entry_array,
-						 TOTAL_LDO_DEFINED);
+		ret = target_ldo_ctrl(enable);
 		if (ret) {
 			dprintf(CRITICAL, "LDO control enable failed \n");
 			return ret;
@@ -137,8 +137,7 @@ static int mdss_dsi_panel_power(uint8_t enable)
 			return ret;
 		}
 
-		ret = target_ldo_ctrl(enable, ldo_entry_array,
-						TOTAL_LDO_DEFINED);
+		ret = target_ldo_ctrl(enable);
 		if (ret) {
 			dprintf(CRITICAL, "ldo control disable failed \n");
 			return ret;
@@ -148,6 +147,36 @@ static int mdss_dsi_panel_power(uint8_t enable)
 
 	return ret;
 }
+
+bool target_display_panel_node(char *pbuf, uint16_t buf_size)
+{
+	char *dsi_id = panelstruct.paneldata->panel_controller;
+	char *panel_node = panelstruct.paneldata->panel_node_id;
+	bool ret = true;
+
+	if (buf_size < (strlen(panel_node) + MAX_DSI_STREAM_LEN +
+			MAX_PANEL_FORMAT_STRING + 1) ||
+		!strlen(panel_node) ||
+		!strlen(dsi_id))
+	{
+		ret = false;
+	}
+	else
+	{
+		pbuf[0] = '1'; // 1 indicates that LK is overriding the panel
+		pbuf[1] = ':'; // seperator
+		pbuf += MAX_PANEL_FORMAT_STRING;
+		buf_size -= MAX_PANEL_FORMAT_STRING;
+
+		strlcpy(pbuf, dsi_id, buf_size);
+		pbuf += MAX_DSI_STREAM_LEN;
+		buf_size -= MAX_DSI_STREAM_LEN;
+
+		strlcpy(pbuf, panel_node, buf_size);
+	}
+	return ret;
+}
+
 
 static void init_platform_data()
 {

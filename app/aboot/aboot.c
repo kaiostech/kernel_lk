@@ -93,9 +93,14 @@ void write_device_info_flash(device_info *dev);
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
+/* make 4096 as default size to ensure EFS,EXT4's erasing */
+#define DEFAULT_ERASE_SIZE  4096
+#define MAX_PANEL_BUF_SIZE 64
+
 static const char *emmc_cmdline = " androidboot.emmc=true";
 static const char *usb_sn_cmdline = " androidboot.serialno=";
 static const char *androidboot_mode = " androidboot.mode=";
+static const char *display_cmdline = " mdss_mdp.panel=";
 static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
@@ -155,6 +160,7 @@ struct getvar_partition_info part_info[] =
 char max_download_size[MAX_RSP_SIZE];
 char charger_screen_enabled[MAX_RSP_SIZE];
 char sn_buf[13];
+char display_panel_buf[MAX_PANEL_BUF_SIZE];
 
 extern int emmc_recovery_init(void);
 
@@ -260,6 +266,13 @@ unsigned char *update_cmdline(const char * cmdline)
 		case BASEBAND_DSDA2:
 			cmdline_len += strlen(baseband_dsda2);
 			break;
+	}
+
+	if (target_display_panel_node(display_panel_buf, MAX_PANEL_BUF_SIZE) &&
+	    strlen(display_panel_buf))
+	{
+		cmdline_len += strlen(display_cmdline);
+		cmdline_len += strlen(display_panel_buf);
 	}
 
 	if (cmdline_len > 0) {
@@ -373,7 +386,18 @@ unsigned char *update_cmdline(const char * cmdline)
 				while ((*dst++ = *src++));
 				break;
 		}
+
+		if (strlen(display_panel_buf)) {
+			src = display_cmdline;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+			src = display_panel_buf;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		}
 	}
+
+
 	dprintf(INFO, "cmdline: %s\n", cmdline_final);
 	return cmdline_final;
 }
@@ -600,6 +624,7 @@ int boot_linux_from_mmc(void)
 	struct dt_entry dt_entry;
 	unsigned dt_table_offset;
 	uint32_t dt_actual;
+	uint32_t dt_hdr_size;
 #endif
 	if (!boot_into_recovery) {
 		memset(ffbm_mode_string, '\0', sizeof(ffbm_mode_string));
@@ -749,15 +774,14 @@ int boot_linux_from_mmc(void)
 
 		#if DEVICE_TREE
 		if(hdr->dt_size) {
-			table = (struct dt_table*) dt_buf;
 			dt_table_offset = ((uint32_t)image_addr + page_size + kernel_actual + ramdisk_actual + second_actual);
+			table = (struct dt_table*) dt_table_offset;
 
-			memmove((void *) dt_buf, (char *)dt_table_offset, page_size);
-
-			if (dev_tree_validate(table, hdr->page_size) != 0) {
+			if (dev_tree_validate(table, hdr->page_size, &dt_hdr_size) != 0) {
 				dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
 				return -1;
 			}
+
 			/* Find index of device tree within device tree table */
 			if(dev_tree_get_entry_info(table, &dt_entry) != 0){
 				dprintf(CRITICAL, "ERROR: Device Tree Blob cannot be found\n");
@@ -828,15 +852,25 @@ int boot_linux_from_mmc(void)
 
 		#if DEVICE_TREE
 		if(hdr->dt_size != 0) {
-			/* Read the device tree table into buffer */
+			/* Read the first page of device tree table into buffer */
 			if(mmc_read(ptn + offset,(unsigned int *) dt_buf, page_size)) {
 				dprintf(CRITICAL, "ERROR: Cannot read the Device Tree Table\n");
 				return -1;
 			}
 			table = (struct dt_table*) dt_buf;
 
-			if (dev_tree_validate(table, hdr->page_size) != 0) {
+			if (dev_tree_validate(table, hdr->page_size, &dt_hdr_size) != 0) {
 				dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
+				return -1;
+			}
+
+			table = (struct dt_table*) memalign(CACHE_LINE, dt_hdr_size);
+			if (!table)
+				return -1;
+
+			/* Read the entire device tree table into buffer */
+			if(mmc_read(ptn + offset,(unsigned int *) table, dt_hdr_size)) {
+				dprintf(CRITICAL, "ERROR: Cannot read the Device Tree Table\n");
 				return -1;
 			}
 
@@ -911,6 +945,7 @@ int boot_linux_from_flash(void)
 	struct dt_table *table;
 	struct dt_entry dt_entry;
 	uint32_t dt_actual;
+	uint32_t dt_hdr_size;
 #endif
 
 	if (target_is_emmc_boot()) {
@@ -1102,10 +1137,21 @@ int boot_linux_from_flash(void)
 
 			table = (struct dt_table*) dt_buf;
 
-			if (dev_tree_validate(table, hdr->page_size) != 0) {
+			if (dev_tree_validate(table, hdr->page_size, &dt_hdr_size) != 0) {
 				dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
 				return -1;
 			}
+
+			table = (struct dt_table*) memalign(CACHE_LINE, dt_hdr_size);
+			if (!table)
+				return -1;
+
+			/* Read the entire device tree table into buffer */
+			if(flash_read(ptn, offset, (void *)table, dt_hdr_size)) {
+				dprintf(CRITICAL, "ERROR: Cannot read the Device Tree Table\n");
+				return -1;
+			}
+
 
 			/* Find index of device tree within device tree table */
 			if(dev_tree_get_entry_info(table, &dt_entry) != 0){
@@ -1311,6 +1357,7 @@ int copy_dtb(uint8_t *boot_image_start)
 	uint32_t n;
 	struct dt_table *table;
 	struct dt_entry dt_entry;
+	uint32_t dt_hdr_size;
 
 	struct boot_img_hdr *hdr = (struct boot_img_hdr *) (boot_image_start);
 
@@ -1334,7 +1381,7 @@ int copy_dtb(uint8_t *boot_image_start)
 		/* offset now point to start of dt.img */
 		table = (struct dt_table*)(boot_image_start + dt_image_offset);
 
-		if (dev_tree_validate(table, hdr->page_size) != 0) {
+		if (dev_tree_validate(table, hdr->page_size, &dt_hdr_size) != 0) {
 			dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
 			return -1;
 		}
@@ -1494,8 +1541,9 @@ void cmd_erase(const char *arg, void *data, unsigned sz)
 
 void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 {
-	BUF_DMA_ALIGN(out, 512);
+	BUF_DMA_ALIGN(out, DEFAULT_ERASE_SIZE);
 	unsigned long long ptn = 0;
+	unsigned long long size;
 	int index = INVALID_PTN;
 
 	index = partition_get_index(arg);
@@ -1505,9 +1553,14 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 		fastboot_fail("Partition table doesn't exist\n");
 		return;
 	}
+
+	size = partition_get_size(index);
+	if (size > DEFAULT_ERASE_SIZE)
+		size = DEFAULT_ERASE_SIZE;
+
 	/* Simple inefficient version of erase. Just writing
-       0 in first block */
-	if (mmc_write(ptn , 512, (unsigned int *)out)) {
+       0 in first several blocks */
+	if (mmc_write(ptn , size, (unsigned int *)out)) {
 		fastboot_fail("failed to erase partition");
 		return;
 	}
@@ -1880,33 +1933,123 @@ void cmd_preflash(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
-void splash_screen ()
+static struct fbimage logo_header = {0};
+struct fbimage* splash_screen_flash();
+
+int splash_screen_check_header(struct fbimage *logo)
+{
+	if (memcmp(logo->header.magic, LOGO_IMG_MAGIC, 8))
+		return -1;
+	if (logo->header.width == 0 || logo->header.height == 0)
+		return -1;
+	return 0;
+}
+
+struct fbimage* splash_screen_flash()
 {
 	struct ptentry *ptn;
 	struct ptable *ptable;
 	struct fbcon_config *fb_display = NULL;
+	struct fbimage *logo = &logo_header;
 
-	if (!target_is_emmc_boot())
-	{
-		ptable = flash_get_ptable();
-		if (ptable == NULL) {
-			dprintf(CRITICAL, "ERROR: Partition table not found\n");
-			return;
+
+	ptable = flash_get_ptable();
+	if (ptable == NULL) {
+	dprintf(CRITICAL, "ERROR: Partition table not found\n");
+	return NULL;
+	}
+	ptn = ptable_find(ptable, "splash");
+	if (ptn == NULL) {
+		dprintf(CRITICAL, "ERROR: splash Partition not found\n");
+		return NULL;
+	}
+
+	if (flash_read(ptn, 0,(unsigned int *) logo, sizeof(logo->header))) {
+		dprintf(CRITICAL, "ERROR: Cannot read boot image header\n");
+		return NULL;
+	}
+
+	if (splash_screen_check_header(logo)) {
+		dprintf(CRITICAL, "ERROR: Boot image header invalid\n");
+		return NULL;
+	}
+
+	fb_display = fbcon_display();
+	if (fb_display) {
+		uint8_t *base = (uint8_t *) fb_display->base;
+		if (logo->header.width != fb_display->width || logo->header.height != fb_display->height) {
+				base += LOGO_IMG_OFFSET;
 		}
 
-		ptn = ptable_find(ptable, "splash");
-		if (ptn == NULL) {
-			dprintf(CRITICAL, "ERROR: No splash partition found\n");
-		} else {
-			fb_display = fbcon_display();
-			if (fb_display) {
-				if (flash_read(ptn, 0, fb_display->base,
-					(fb_display->width * fb_display->height * fb_display->bpp/8))) {
-					fbcon_clear();
-					dprintf(CRITICAL, "ERROR: Cannot read splash image\n");
-				}
-			}
+		if (flash_read(ptn + sizeof(logo->header), 0,
+			base,
+			((((logo->header.width * logo->header.height * fb_display->bpp/8) + 511) >> 9) << 9))) {
+			fbcon_clear();
+			dprintf(CRITICAL, "ERROR: Cannot read splash image\n");
+			return NULL;
 		}
+		logo->image = base;
+	}
+
+	return logo;
+}
+
+struct fbimage* splash_screen_mmc()
+{
+	int index = INVALID_PTN;
+	unsigned long long ptn = 0;
+	struct fbcon_config *fb_display = NULL;
+	struct fbimage *logo = &logo_header;
+
+	index = partition_get_index("splash");
+	if (index == 0) {
+		dprintf(CRITICAL, "ERROR: splash Partition table not found\n");
+		return NULL;
+	}
+
+	ptn = partition_get_offset(index);
+	if (ptn == 0) {
+		dprintf(CRITICAL, "ERROR: splash Partition invalid\n");
+		return NULL;
+	}
+
+	if (mmc_read(ptn, (unsigned int *) logo, sizeof(logo->header))) {
+		dprintf(CRITICAL, "ERROR: Cannot read splash image header\n");
+		return NULL;
+	}
+
+	if (splash_screen_check_header(logo)) {
+		dprintf(CRITICAL, "ERROR: Splash image header invalid\n");
+		return NULL;
+	}
+
+	fb_display = fbcon_display();
+	if (fb_display) {
+		uint8_t *base = (uint8_t *) fb_display->base;
+		if (logo->header.width != fb_display->width || logo->header.height != fb_display->height)
+				base += LOGO_IMG_OFFSET;
+
+		if (mmc_read(ptn + sizeof(logo->header),
+			base,
+			((((logo->header.width * logo->header.height * fb_display->bpp/8) + 511) >> 9) << 9))) {
+			fbcon_clear();
+			dprintf(CRITICAL, "ERROR: Cannot read splash image\n");
+			return NULL;
+		}
+
+		logo->image = base;
+	}
+
+	return logo;
+}
+
+
+struct fbimage* fetch_image_from_partition()
+{
+	if (target_is_emmc_boot()) {
+		return splash_screen_mmc();
+	} else {
+		return splash_screen_flash();
 	}
 }
 
@@ -2042,6 +2185,8 @@ void aboot_init(const struct app_descriptor *app)
 
 	target_serialno((unsigned char *) sn_buf);
 	dprintf(SPEW,"serial number: %s\n",sn_buf);
+
+	memset(display_panel_buf, '\0', MAX_PANEL_BUF_SIZE);
 
 	/* Check if we should do something other than booting up */
 	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN))

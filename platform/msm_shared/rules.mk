@@ -10,7 +10,6 @@ OBJS += \
 	$(LOCAL_DIR)/debug.o \
 	$(LOCAL_DIR)/smem.o \
 	$(LOCAL_DIR)/smem_ptable.o \
-	$(LOCAL_DIR)/hsusb.o \
 	$(LOCAL_DIR)/jtag_hook.o \
 	$(LOCAL_DIR)/jtag.o \
 	$(LOCAL_DIR)/partition_parser.o \
@@ -87,6 +86,7 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 			$(LOCAL_DIR)/display.o \
 			$(LOCAL_DIR)/mipi_dsi.o \
 			$(LOCAL_DIR)/mipi_dsi_phy.o \
+			$(LOCAL_DIR)/mipi_dsi_autopll.o \
 			$(LOCAL_DIR)/spmi.o \
 			$(LOCAL_DIR)/bam.o \
 			$(LOCAL_DIR)/qpic_nand.o \
@@ -170,6 +170,7 @@ DEFINES += DISPLAY_TYPE_MDSS=1
             $(LOCAL_DIR)/bam.o \
             $(LOCAL_DIR)/qpic_nand.o \
             $(LOCAL_DIR)/dev_tree.o \
+            $(LOCAL_DIR)/scm.o \
             $(LOCAL_DIR)/gpio.o
 endif
 
@@ -187,7 +188,8 @@ ifeq ($(PLATFORM),apq8084)
             $(LOCAL_DIR)/bam.o \
             $(LOCAL_DIR)/qpic_nand.o \
             $(LOCAL_DIR)/dev_tree.o \
-			$(LOCAL_DIR)/gpio.o
+            $(LOCAL_DIR)/gpio.o \
+            $(LOCAL_DIR)/scm.o
 endif
 
 ifeq ($(PLATFORM),msm7x27a)
@@ -278,4 +280,15 @@ ifeq ($(PLATFORM),fsm9900)
 			$(LOCAL_DIR)/i2c_qup.o \
 			$(LOCAL_DIR)/gpio.o \
 			$(LOCAL_DIR)/dload_util.o
+endif
+
+ifeq ($(ENABLE_USB30_SUPPORT),1)
+	OBJS += \
+		$(LOCAL_DIR)/usb30_dwc.o \
+		$(LOCAL_DIR)/usb30_dwc_hw.o \
+		$(LOCAL_DIR)/usb30_udc.o \
+		$(LOCAL_DIR)/usb30_wrapper.o
+else
+	OBJS += \
+		$(LOCAL_DIR)/hsusb.o
 endif
