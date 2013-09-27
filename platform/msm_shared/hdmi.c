@@ -763,6 +763,11 @@ int hdmi_msm_turn_on(void)
 
 	// Enable USEC REF timer
 	writel(0x0001001B, HDMI_USEC_REFTIMER);
+
+	// GC packet enable (every frame)
+	writel(0x0, MSM_HDMI_BASE + 0x0040);
+	writel(3 << 4, MSM_HDMI_BASE + 0x0028);
+
 	//play audio
 	hdmi_audio_playback();
 
