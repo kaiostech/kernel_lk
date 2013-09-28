@@ -68,6 +68,10 @@ static void set_sdc_power_ctrl(void);
 
 #define SSD_CE_INSTANCE         1
 
+/* sleep clock is 32.768 khz, 0x8000 count per second */
+#define MPM_SLEEP_TIMETICK_COUNT	0x8000
+#define PWRKEY_LONG_PRESS_COUNT		0xC000
+
 enum target_subtype {
 	HW_PLATFORM_SUBTYPE_SKUAA = 1,
 	HW_PLATFORM_SUBTYPE_SKUF = 2,
@@ -162,14 +166,33 @@ uint32_t target_volume_down()
 uint32_t target_power_on()
 {
 	/* power on button tied in with PMIC KPDPWR. */
-	return pm8x41_kpdpwr_status();
+	uint32_t sclk_count = platform_get_sclk_count();
+
+	/* Here check if the long press power-key lasts for 1.5s */
+	if (sclk_count < PWRKEY_LONG_PRESS_COUNT) {
+		if (!pm8x41_kpdpwr_status())
+			return 0;
+		else {
+			thread_sleep(1000 * (PWRKEY_LONG_PRESS_COUNT -
+			sclk_count) / MPM_SLEEP_TIMETICK_COUNT);
+			return pm8x41_kpdpwr_status();
+		}
+	}
+	return 1;
 }
 
-uint32_t check_kpdpwr_boot()
+static uint32_t read_reboot_mode(void)
+{
+	return readl(RESTART_REASON_ADDR);
+}
+
+static uint32_t check_kpdpwr_boot()
 {
 	uint8_t pon_reason = pm8x41_get_pon_reason();
 
-	return (pon_reason == KPDPWR_N);
+	dprintf(INFO, "pon_reason: 0x%x\n", pon_reason);
+
+	return ((!read_reboot_mode()) && (pon_reason == KPDPWR_N));
 }
 
 static void target_keystatus()
