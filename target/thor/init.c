@@ -471,6 +471,12 @@ void target_enter_emergency_download(void)
 
 	thread_sleep(10);
 	dmb();
+        
+        dprintf(CRITICAL, "setting boot done bit.\n");   
+        pm8x41_set_boot_done();
+
+        dprintf(CRITICAL, "disable pmic wdog.\n");
+        pm8x41_reg_write(0x857, 0x00);        
 
 	while (1)
 		reboot_device(0);
