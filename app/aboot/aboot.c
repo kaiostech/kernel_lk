@@ -118,6 +118,8 @@ static const char *battchg_pause = " androidboot.mode=charger";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
 static const char *secondary_gpt_enable = " gpt";
 static const char *unlocked_kernel = " androidboot.unlocked_kernel=true";
+static const char *engineering_device_type = " androidboot.prod=0";
+static const char *production_device_type = " androidboot.prod=1";
 
 static const char *baseband_apq     = " androidboot.baseband=apq";
 static const char *baseband_msm     = " androidboot.baseband=msm";
@@ -285,6 +287,12 @@ unsigned char *update_cmdline(const char * cmdline)
 		cmdline_len += strlen(unlocked_kernel);
 	}
 
+	if (gpio_get(target_production_gpio()) == 1) {
+		cmdline_len += strlen(production_device_type);
+	} else {
+		cmdline_len += strlen(engineering_device_type);
+	}
+
 	/* Determine correct androidboot.baseband to use */
 	switch(board_baseband())
 	{
@@ -402,6 +410,16 @@ unsigned char *update_cmdline(const char * cmdline)
 
 		if (target_use_signed_kernel() && skip_authentication) {
 			src = unlocked_kernel;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		}
+
+		if (gpio_get(target_production_gpio()) == 1) {
+			src = production_device_type;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		} else {
+			src = engineering_device_type;
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 		}
