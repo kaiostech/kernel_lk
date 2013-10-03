@@ -584,7 +584,12 @@ int boot_linux_from_mmc(void)
 #endif
 
 	/* Authenticate Kernel */
-	if(target_use_signed_kernel() && (!device.is_unlocked) && (!device.is_tampered))
+	dprintf(INFO, "use_signed_kernel=%d, is_unlocked=%d, is_tampered=%d.\n",
+		(int) target_use_signed_kernel(),
+		device.is_unlocked,
+		device.is_tampered);
+
+	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
 		offset = 0;
 
@@ -836,7 +841,7 @@ int boot_linux_from_flash(void)
 #endif
 
 	/* Authenticate Kernel */
-	if(target_use_signed_kernel() && (!device.is_unlocked) && (!device.is_tampered))
+	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
 		image_addr = (unsigned char *)target_get_scratch_address();
 		offset = 0;
