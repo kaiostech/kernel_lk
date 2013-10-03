@@ -74,6 +74,12 @@
 #define EMMC_BOOT_IMG_HEADER_ADDR 0xFF000
 #endif
 
+#ifndef MEMSIZE
+#define MEMSIZE 1024*1024
+#endif
+
+#define MAX_TAGS_SIZE   1024
+
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
@@ -422,13 +428,74 @@ void boot_linux(void *kernel, unsigned *tags,
 	entry(0, machtype, tags);
 }
 
+
 unsigned page_size = 0;
 unsigned page_mask = 0;
+
+/* Function to check if the memory address range falls within the aboot
+ * boundaries.
+ * start: Start of the memory region
+ * size: Size of the memory region
+ */
+int check_aboot_addr_range_overlap(uint32_t start, uint32_t size)
+{
+	/* Check for boundary conditions. */
+	if ((start + size) < start)
+		return -1;
+
+	/* Check for memory overlap. */
+	if ((start < MEMBASE) && ((start + size) <= MEMBASE))
+		return 0;
+	else if (start > (MEMBASE + MEMSIZE))
+		return 0;
+	else
+		return -1;
+}
+
 
 #define ROUND_TO_PAGE(x,y) (((x) + (y)) & (~(y)))
 
 static unsigned char buf[4096]; //Equal to max-supported pagesize
 static unsigned char dt_buf[4096];
+
+static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
+{
+	int ret;
+
+	/* Assume device is rooted at this time. */
+	device.is_tampered = 1;
+
+	dprintf(INFO, "Authenticating boot image (%d): start\n", bootimg_size);
+
+	ret = image_verify((unsigned char *)bootimg_addr,
+					   (unsigned char *)(bootimg_addr + bootimg_size),
+					   bootimg_size,
+					   CRYPTO_AUTH_ALG_SHA256);
+
+	dprintf(INFO, "Authenticating boot image: done return value = %d\n", ret);
+
+	if (ret)
+	{
+		/* Authorized kernel */
+		device.is_tampered = 0;
+	}
+
+#if USE_PCOM_SECBOOT
+	set_tamper_flag(device.is_tampered);
+#endif
+
+	if(device.is_tampered)
+	{
+		write_device_info_mmc(&device);
+	#ifdef TZ_TAMPER_FUSE
+		set_tamper_fuse_cmd();
+	#endif
+	#ifdef ASSERT_ON_TAMPER
+		dprintf(CRITICAL, "Device is tampered. Asserting..\n");
+		ASSERT(0);
+	#endif
+	}
+}
 
 int boot_linux_from_mmc(void)
 {
@@ -491,23 +558,52 @@ int boot_linux_from_mmc(void)
 		page_mask = page_size - 1;
 	}
 
+
+	/* Get virtual addresses since the hdr saves physical addresses. */
+	hdr->kernel_addr = VA((addr_t)(hdr->kernel_addr));
+	hdr->ramdisk_addr = VA((addr_t)(hdr->ramdisk_addr));
+	hdr->tags_addr = VA((addr_t)(hdr->tags_addr));
+
+	kernel_actual  = ROUND_TO_PAGE(hdr->kernel_size,  page_mask);
+	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
+
+	/* Check if the addresses in the header are valid. */
+	if (check_aboot_addr_range_overlap(hdr->kernel_addr, kernel_actual) ||
+		check_aboot_addr_range_overlap(hdr->ramdisk_addr, ramdisk_actual))
+	{
+		dprintf(CRITICAL, "kernel/ramdisk addresses overlap with aboot addresses.\n");
+		return -1;
+	}
+
+#ifndef DEVICE_TREE
+	if (check_aboot_addr_range_overlap(hdr->tags_addr, MAX_TAGS_SIZE))
+	{
+		dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
+		return -1;
+	}
+#endif
+
 	/* Authenticate Kernel */
 	if(target_use_signed_kernel() && (!device.is_unlocked) && (!device.is_tampered))
 	{
+		offset = 0;
+
 		image_addr = (unsigned char *)target_get_scratch_address();
-		kernel_actual = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
-		ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
-		#if DEVICE_TREE
+#if DEVICE_TREE
 		second_actual = ROUND_TO_PAGE(hdr->second_size, page_mask);
 		dt_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
-		#endif
+
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + second_actual +
 							dt_actual);
 
-		offset = 0;
-
-		/* Assuming device rooted at this time */
-		device.is_tampered = 1;
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, hdr->dt_size))
+		{
+			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
+			return -1;
+		}
+#else
+		imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
+#endif
 
 		/* Read image without signature */
 		if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
@@ -521,20 +617,11 @@ int boot_linux_from_mmc(void)
 		if(mmc_read(ptn + offset, (void *)(image_addr + offset), page_size))
 		{
 			dprintf(CRITICAL, "ERROR: Cannot read boot image signature\n");
+			return -1;
 		}
-		else
-		{
-			auth_kernel_img = image_verify((unsigned char *)image_addr,
-					(unsigned char *)(image_addr + imagesize_actual),
-					imagesize_actual,
-					CRYPTO_AUTH_ALG_SHA256);
 
-			if(auth_kernel_img)
-			{
-				/* Authorized kernel */
-				device.is_tampered = 0;
-			}
-		}
+		verify_signed_bootimg(image_addr, imagesize_actual);
+
 
 		/* Move kernel, ramdisk and device tree to correct address */
 		memmove((void*) hdr->kernel_addr, (char *)(image_addr + page_size), hdr->kernel_size);
@@ -562,21 +649,16 @@ int boot_linux_from_mmc(void)
 				return -1;
 			}
 
-			/* Read device device tree in the "tags_add */
+			/* Validate and Read device device tree in the "tags_add */
+			if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_entry_ptr->size))
+			{
+				dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
+				return -1;
+			}
+
 			memmove((void *)hdr->tags_addr, (char *)dt_table_offset + dt_entry_ptr->offset, dt_entry_ptr->size);
 		}
 		#endif
-		/* Make sure everything from scratch address is read before next step!*/
-		if(device.is_tampered)
-		{
-			write_device_info_mmc(&device);
-		#ifdef TZ_TAMPER_FUSE
-			set_tamper_fuse_cmd();
-		#endif
-		}
-	#if USE_PCOM_SECBOOT
-		set_tamper_flag(device.is_tampered);
-	#endif
 	}
 	else
 	{
@@ -626,6 +708,13 @@ int boot_linux_from_mmc(void)
 			/* Calculate the offset of device tree within device tree table */
 			if((dt_entry_ptr = get_device_tree_ptr(table)) == NULL){
 				dprintf(CRITICAL, "ERROR: Getting device tree address failed\n");
+				return -1;
+			}
+
+			/* Validate and Read device device tree in the "tags_add */
+			if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_entry_ptr->size))
+			{
+				dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
 				return -1;
 			}
 
@@ -722,18 +811,48 @@ int boot_linux_from_flash(void)
 		return -1;
 	}
 
+	/* Get virtual addresses since the hdr saves physical addresses. */
+	hdr->kernel_addr = VA((addr_t)(hdr->kernel_addr));
+	hdr->ramdisk_addr = VA((addr_t)(hdr->ramdisk_addr));
+	hdr->tags_addr = VA((addr_t)(hdr->tags_addr));
+
+	kernel_actual  = ROUND_TO_PAGE(hdr->kernel_size,  page_mask);
+	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
+
+	/* Check if the addresses in the header are valid. */
+	if (check_aboot_addr_range_overlap(hdr->kernel_addr, kernel_actual) ||
+		check_aboot_addr_range_overlap(hdr->ramdisk_addr, ramdisk_actual))
+	{
+		dprintf(CRITICAL, "kernel/ramdisk addresses overlap with aboot addresses.\n");
+		return -1;
+	}
+
+#ifndef DEVICE_TREE
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, MAX_TAGS_SIZE))
+		{
+			dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
+			return -1;
+		}
+#endif
+
 	/* Authenticate Kernel */
 	if(target_use_signed_kernel() && (!device.is_unlocked) && (!device.is_tampered))
 	{
 		image_addr = (unsigned char *)target_get_scratch_address();
-		kernel_actual = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
-		ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
-		imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
-
 		offset = 0;
 
-		/* Assuming device rooted at this time */
-		device.is_tampered = 1;
+#if DEVICE_TREE
+		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
+
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, hdr->dt_size))
+		{
+			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
+			return -1;
+		}
+#else
+		imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
+#endif
 
 		/* Read image without signature */
 		if (flash_read(ptn, offset, (void *)image_addr, imagesize_actual))
@@ -747,26 +866,25 @@ int boot_linux_from_flash(void)
 		if (flash_read(ptn, offset, (void *)(image_addr + offset), page_size))
 		{
 			dprintf(CRITICAL, "ERROR: Cannot read boot image signature\n");
+			return -1;
 		}
-		else
-		{
 
-			/* Verify signature */
-			auth_kernel_img = image_verify((unsigned char *)image_addr,
-						(unsigned char *)(image_addr + imagesize_actual),
-						imagesize_actual,
-						CRYPTO_AUTH_ALG_SHA256);
-
-			if(auth_kernel_img)
-			{
-				/* Authorized kernel */
-				device.is_tampered = 0;
-			}
-		}
+		verify_signed_bootimg(image_addr, imagesize_actual);
 
 		/* Move kernel and ramdisk to correct address */
 		memmove((void*) hdr->kernel_addr, (char *)(image_addr + page_size), hdr->kernel_size);
 		memmove((void*) hdr->ramdisk_addr, (char *)(image_addr + page_size + kernel_actual), hdr->ramdisk_size);
+
+#if DEVICE_TREE
+		/* Validate and Read device device tree in the "tags_add */
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_entry_ptr->size))
+		{
+			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
+			return -1;
+		}
+
+		memmove((void*) hdr->tags_addr, (char *)(image_addr + page_size + kernel_actual + ramdisk_actual), hdr->dt_size);
+#endif
 
 		/* Make sure everything from scratch address is read before next step!*/
 		if(device.is_tampered)
@@ -793,6 +911,7 @@ int boot_linux_from_flash(void)
 			dprintf(CRITICAL, "ERROR: Cannot read ramdisk image\n");
 			return -1;
 		}
+
 		offset += n;
 	}
 continue_boot:
@@ -1005,6 +1124,19 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	kernel_actual = ROUND_TO_PAGE(hdr.kernel_size, page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr.ramdisk_size, page_mask);
 
+	/* Get virtual addresses since the hdr saves physical addresses. */
+	hdr.kernel_addr = VA(hdr.kernel_addr);
+	hdr.ramdisk_addr = VA(hdr.ramdisk_addr);
+	hdr.tags_addr = VA(hdr.tags_addr);
+
+	/* Check if the addresses in the header are valid. */
+	if (check_aboot_addr_range_overlap(hdr.kernel_addr, kernel_actual) ||
+		check_aboot_addr_range_overlap(hdr.ramdisk_addr, ramdisk_actual))
+	{
+		dprintf(CRITICAL, "kernel/ramdisk addresses overlap with aboot addresses.\n");
+		return -1;
+	}
+
 	/* sz should have atleast raw boot image */
 	if (page_size + kernel_actual + ramdisk_actual > sz) {
 		fastboot_fail("incomplete bootimage");
@@ -1013,6 +1145,14 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 
 	memmove((void*) hdr.kernel_addr, ptr + page_size, hdr.kernel_size);
 	memmove((void*) hdr.ramdisk_addr, ptr + page_size + kernel_actual, hdr.ramdisk_size);
+
+#ifndef DEVICE_TREE
+	if (check_aboot_addr_range_overlap(hdr.tags_addr, MAX_TAGS_SIZE))
+	{
+		dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
+		return -1;
+	}
+#endif
 
 	fastboot_okay("");
 	udc_stop();
@@ -1412,6 +1552,8 @@ void aboot_init(const struct app_descriptor *app)
 		page_size = flash_page_size();
 		page_mask = page_size - 1;
 	}
+
+	ASSERT((MEMBASE + MEMSIZE) > MEMBASE);
 
 	if(target_use_signed_kernel())
 	{
