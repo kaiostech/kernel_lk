@@ -112,6 +112,8 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		panelstruct->laneconfig   = &toshiba_720p_video_lane_config;
 		panelstruct->paneltiminginfo
 					 = &toshiba_720p_video_timing_info;
+		panelstruct->panelresetseq
+					 = &toshiba_720p_video_panel_reset_seq;
 		panelstruct->backlightinfo = &toshiba_720p_video_backlight;
 		pinfo->mipi.panel_cmds
 					= toshiba_720p_video_on_command;
@@ -130,6 +132,8 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		panelstruct->laneconfig   = &nt35590_720p_video_lane_config;
 		panelstruct->paneltiminginfo
 					 = &nt35590_720p_video_timing_info;
+		panelstruct->panelresetseq
+					 = &nt35590_720p_video_panel_reset_seq;
 		panelstruct->backlightinfo = &nt35590_720p_video_backlight;
 		pinfo->mipi.panel_cmds
 					= nt35590_720p_video_on_command;
@@ -148,6 +152,8 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		panelstruct->laneconfig   = &nt35521_720p_video_lane_config;
 		panelstruct->paneltiminginfo
 					 = &nt35521_720p_video_timing_info;
+		panelstruct->panelresetseq
+					 = &nt35521_720p_video_panel_reset_seq;
 		panelstruct->backlightinfo = &nt35521_720p_video_backlight;
 		pinfo->mipi.panel_cmds
 					= nt35521_720p_video_on_command;
@@ -166,6 +172,8 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		panelstruct->laneconfig   = &hx8394a_720p_video_lane_config;
 		panelstruct->paneltiminginfo
 					 = &hx8394a_720p_video_timing_info;
+		panelstruct->panelresetseq
+					 = &hx8394a_720p_video_panel_reset_seq;
 		panelstruct->backlightinfo = &hx8394a_720p_video_backlight;
 		pinfo->mipi.panel_cmds
 					= hx8394a_720p_video_on_command;
@@ -184,6 +192,8 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		panelstruct->state        = &nt35590_720p_cmd_state;
 		panelstruct->laneconfig   = &nt35590_720p_cmd_lane_config;
 		panelstruct->paneltiminginfo = &nt35590_720p_cmd_timing_info;
+		panelstruct->panelresetseq
+					= &nt35590_720p_cmd_panel_reset_seq;
 		panelstruct->backlightinfo = &nt35590_720p_cmd_backlight;
 		pinfo->mipi.panel_cmds
 					= nt35590_720p_cmd_on_command;
@@ -202,6 +212,8 @@ static void init_panel_data(struct panel_struct *panelstruct,
 		panelstruct->laneconfig   = &nt35596_1080p_video_lane_config;
 		panelstruct->paneltiminginfo
 					= &nt35596_1080p_video_timing_info;
+		panelstruct->panelresetseq
+					= &nt35596_1080p_video_panel_reset_seq;
 		panelstruct->backlightinfo
 					= &nt35596_1080p_video_backlight;
 		pinfo->mipi.panel_cmds
@@ -219,7 +231,6 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 			struct mdss_dsi_phy_ctrl *phy_db)
 {
 	uint32_t hw_id = board_hardware_id();
-	uint32_t platformid = board_platform_id();
 	uint32_t target_id = board_target_id();
 	uint32_t nt35590_panel_id = NT35590_720P_VIDEO_PANEL;
 
@@ -227,56 +238,29 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 	nt35590_panel_id = NT35590_720P_CMD_PANEL;
 #endif
 
-	switch (platformid) {
-	case MSM8974:
-		switch (hw_id) {
-		case HW_PLATFORM_FLUID:
-		case HW_PLATFORM_MTP:
-		case HW_PLATFORM_SURF:
-			panel_id = TOSHIBA_720P_VIDEO_PANEL;
-			break;
-		default:
-			dprintf(CRITICAL, "Display not enabled for %d HW type\n"
-						, hw_id);
-			return false;
+	switch (hw_id) {
+	case HW_PLATFORM_QRD:
+		if (board_hardware_subtype() == 2) {
+			panel_id = NT35521_720P_VIDEO_PANEL;
+		} else {
+			if (((target_id >> 16) & 0xFF) == 0x1) //EVT
+				panel_id = nt35590_panel_id;
+			else if (((target_id >> 16) & 0xFF) == 0x2) //DVT
+				panel_id = HX8394A_720P_VIDEO_PANEL;
+			else {
+				dprintf(CRITICAL, "Not supported device, target_id=%x\n"
+									, target_id);
+				return false;
+			}
 		}
 		break;
-	case MSM8826:
-	case MSM8626:
-	case MSM8226:
-	case MSM8926:
-	case MSM8126:
-	case MSM8326:
-	case APQ8026:
-		switch (hw_id) {
-		case HW_PLATFORM_QRD:
-			if (board_hardware_subtype() == 2) {
-				panel_id = NT35521_720P_VIDEO_PANEL;
-			} else {
-				if (((target_id >> 16) & 0xFF) == 0x1) //EVT
-					panel_id = nt35590_panel_id;
-				else if (((target_id >> 16) & 0xFF) == 0x2) //DVT
-					panel_id = HX8394A_720P_VIDEO_PANEL;
-				else {
-					dprintf(CRITICAL, "Not supported device, target_id=%x\n"
-							, target_id);
-					return false;
-				}
-			}
-			break;
-		case HW_PLATFORM_MTP:
-		case HW_PLATFORM_SURF:
-			panel_id = nt35590_panel_id;
-			break;
-		default:
-			dprintf(CRITICAL, "Display not enabled for %d HW type\n"
-						, hw_id);
-			return false;
-		}
+	case HW_PLATFORM_MTP:
+	case HW_PLATFORM_SURF:
+		panel_id = nt35590_panel_id;
 		break;
 	default:
-		dprintf(CRITICAL, "GCDB:Display: Platform id:%d not supported\n"
-					, platformid);
+		dprintf(CRITICAL, "Display not enabled for %d HW type\n"
+								, hw_id);
 		return false;
 	}
 
