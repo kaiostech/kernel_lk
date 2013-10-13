@@ -181,18 +181,13 @@ uint32_t target_power_on()
 	return 1;
 }
 
-static uint32_t read_reboot_mode(void)
-{
-	return readl(RESTART_REASON_ADDR);
-}
-
 static uint32_t check_kpdpwr_boot()
 {
 	uint8_t pon_reason = pm8x41_get_pon_reason();
 
 	dprintf(INFO, "pon_reason: 0x%x\n", pon_reason);
 
-	return ((!read_reboot_mode()) && (pon_reason == KPDPWR_N));
+	return ((!check_reboot_reason()) && (pon_reason == KPDPWR_N));
 }
 
 static void target_keystatus()

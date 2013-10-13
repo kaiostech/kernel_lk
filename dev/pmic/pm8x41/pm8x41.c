@@ -362,6 +362,19 @@ uint8_t pm8x41_get_pmic_rev()
 	return REG_READ(REVID_REVISION4);
 }
 
+uint8_t check_reboot_reason(void)
+{
+	uint8_t warm_boot_reason1;
+	uint8_t warm_boot_reason2;
+
+	warm_boot_reason1 = REG_READ(PON_WARMBOOT_STATUS1);
+	warm_boot_reason2 = REG_READ(PON_WARMBOOT_STATUS2);
+	if (warm_boot_reason1 || warm_boot_reason2)
+		return 1;
+	else
+		return 0;
+}
+
 uint8_t pm8x41_get_pon_reason()
 {
 	return REG_READ(PON_PON_REASON1);
