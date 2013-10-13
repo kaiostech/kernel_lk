@@ -43,6 +43,7 @@
 #include <baseband.h>
 #include <dev/keys.h>
 #include <pm8x41.h>
+#include <pm8x41_hw.h>
 #include <crypto5_wrapper.h>
 #include <hsusb.h>
 #include <scm.h>
@@ -71,6 +72,16 @@ static void set_sdc_power_ctrl(void);
 /* sleep clock is 32.768 khz, 0x8000 count per second */
 #define MPM_SLEEP_TIMETICK_COUNT	0x8000
 #define PWRKEY_LONG_PRESS_COUNT		0xC000
+
+#ifdef FEATURE_BOOT_PON_VIBRATION
+#define QPNP_VIB_EN_CTL		0x1c046
+#define QPNP_VIB_VTG_CTL	0x1c041
+#define QPNP_VIB_DEFAULT_TIMEOUT	15000
+#define QPNP_VIB_DEFAULT_VTG_LVL	30
+
+#define QPNP_VIB_EN		BIT(7)
+#define QPNP_VIB_VTG_SET_MASK	0x1F
+#endif
 
 enum target_subtype {
 	HW_PLATFORM_SUBTYPE_SKUAA = 1,
@@ -269,6 +280,41 @@ void target_sdc_init()
 	}
 }
 
+#ifdef FEATURE_BOOT_PON_VIBRATION
+void pm_vib_enable(int on)
+{
+	uint8_t val;
+
+	if (on)
+	{
+		val = pm8x41_reg_read(QPNP_VIB_VTG_CTL);
+		val &= ~QPNP_VIB_VTG_SET_MASK;
+		val |= (QPNP_VIB_DEFAULT_VTG_LVL & QPNP_VIB_VTG_SET_MASK);
+		pm8x41_reg_write(QPNP_VIB_VTG_CTL, val);
+
+		val = pm8x41_reg_read(QPNP_VIB_EN_CTL);
+		val |= QPNP_VIB_EN;
+		pm8x41_reg_write(QPNP_VIB_EN_CTL, val);
+	}
+	else
+	{
+		val = pm8x41_reg_read(QPNP_VIB_EN_CTL);
+		val &= ~QPNP_VIB_EN;
+		pm8x41_reg_write(QPNP_VIB_EN_CTL, val);
+	}
+}
+
+void boot_pm_vib_turn_on(void)
+{
+	pm_vib_enable(1);
+}
+
+void boot_pm_vib_turn_off(void)
+{
+	pm_vib_enable(0);
+}
+#endif
+
 void target_init(void)
 {
 	dprintf(INFO, "target_init()\n");
@@ -277,10 +323,14 @@ void target_init(void)
 
 	target_keystatus();
 
+	target_sdc_init();
+
 	if (check_kpdpwr_boot() && (!(target_power_on())))
 		shutdown_device();
 
-	target_sdc_init();
+#ifdef FEATURE_BOOT_PON_VIBRATION
+	boot_pm_vib_turn_on();
+#endif
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN

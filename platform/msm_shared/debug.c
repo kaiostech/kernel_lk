@@ -134,6 +134,9 @@ int dgetc(char *c, bool wait)
 
 void platform_halt(void)
 {
+#ifdef FEATURE_BOOT_PON_VIBRATION
+	boot_pm_vib_turn_off();
+#endif
 	if (set_download_mode(NORMAL_DLOAD) == 0)
 	{
 		dprintf(CRITICAL, "HALT: reboot into dload mode...\n");
