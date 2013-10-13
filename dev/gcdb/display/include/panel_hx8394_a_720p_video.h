@@ -300,7 +300,7 @@ static struct panel_timing hx8394_a_720p_video_timing_info = {
 /*---------------------------------------------------------------------------*/
 
 static struct backlight hx8394_a_720p_video_backlight = {
-  1, 1, 255, 100, 1, "PMIC_8941"
+  1, 1, 255, 100, 2, "PMIC_8941"
 };
 
 
