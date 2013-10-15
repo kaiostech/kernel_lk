@@ -94,8 +94,8 @@ static struct mdss_dsi_phy_ctrl dsi_video_mode_phy_db = {
 	/* regulator */
 	{0x07, 0x09, 0x03, 0x00, 0x20, 0x00, 0x01},
 	/* timing */
-	{0xda, 0x46, 0x39, 0x00, 0x5f, 0x53, 0x3C, 0x48,
-		0x5d, 0x03, 0x04, 0x00},
+	{0xef, 0x38, 0x25, 0x00, 0x67, 0x70, 0x29, 0x3c,
+		0x2c, 0x03, 0x04, 0x00},
 	/* phy ctrl */
 	{0x5f, 0x00, 0x00, 0x10},
 	/* strength */
@@ -153,8 +153,8 @@ void mipi_novatek_video_1080p_init(struct msm_panel_info *pinfo)
 	pinfo->mipi.data_lane1 = TRUE;
 	pinfo->mipi.data_lane2 = TRUE;
 	pinfo->mipi.data_lane3 = TRUE;
-	pinfo->mipi.t_clk_post = 0x1e;
-	pinfo->mipi.t_clk_pre = 0x37;
+	pinfo->mipi.t_clk_post = 0x3;
+	pinfo->mipi.t_clk_pre = 0x2c;
 	pinfo->mipi.stream = 0; /* dma_p */
 	pinfo->mipi.mdp_trigger = 0;
 	pinfo->mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
