@@ -98,7 +98,7 @@ static const uint32_t panel_physical_ctrl[] = {
 
 #define msm8226_DSI_FEATURE_ENABLE 0
 
-#define MIPI_FB_ADDR  0x0F100000
+#define MIPI_FB_ADDR  0x03200000
 
 #define MIPI_HSYNC_PULSE_WIDTH       12
 #define MIPI_HSYNC_BACK_PORCH_DCLK   32
@@ -110,5 +110,4 @@ static const uint32_t panel_physical_ctrl[] = {
 
 extern int mdss_dsi_phy_init(struct mipi_dsi_panel_config *, uint32_t ctl_base);
 extern int mdss_dsi_uniphy_pll_config(uint32_t ctl_base);
-int mdss_dsi_auto_pll_config(struct mipi_dsi_panel_config *);
 #endif
