@@ -163,7 +163,7 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 	{
 		if (target_is_edp())
 		{
-			default_str = "0:edp:";
+			default_str = "1:edp:";
 		}
 		else
 		{
