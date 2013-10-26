@@ -161,6 +161,7 @@ struct mipi_panel_info {
 	uint8_t dual_dsi;
 	uint8_t broadcast;
 	uint8_t mode_gpio_state;
+	uint32_t signature;
 };
 
 struct edp_panel_info {
@@ -214,6 +215,7 @@ struct msm_fb_panel_data {
 	/* function entry chain */
 	int (*power_func) (int enable);
 	int (*clk_func) (int enable);
+	int (*bl_func) (int enable);
 	int (*pll_clk_func) (int enable, struct msm_panel_info *);
 };
 

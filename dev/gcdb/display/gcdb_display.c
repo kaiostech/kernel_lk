@@ -103,13 +103,6 @@ static int mdss_dsi_panel_power(uint8_t enable)
 	int ret = NO_ERROR;
 
 	if (enable) {
-
-		/* Enable backlight */
-		ret = panel_backlight_ctrl(enable);
-		if (ret) {
-			dprintf(CRITICAL, "Backlight enable failed \n");
-			return ret;
-		}
 		ret = target_ldo_ctrl(enable);
 		if (ret) {
 			dprintf(CRITICAL, "LDO control enable failed \n");
@@ -124,16 +117,10 @@ static int mdss_dsi_panel_power(uint8_t enable)
 		}
 		dprintf(SPEW, "Panel power on done\n");
 	} else {
-		/* Disable panel, backlight and ldo */
+		/* Disable panel and ldo */
 		ret = mdss_dsi_panel_reset(enable);
 		if (ret) {
 			dprintf(CRITICAL, "panel reset disable failed \n");
-			return ret;
-		}
-
-		ret = panel_backlight_ctrl(enable);
-		if (ret) {
-			dprintf(CRITICAL, "Backlight disable failed \n");
 			return ret;
 		}
 
@@ -145,6 +132,17 @@ static int mdss_dsi_panel_power(uint8_t enable)
 		dprintf(SPEW, "Panel power off done\n");
 	}
 
+	return ret;
+}
+
+static int mdss_dsi_bl_enable(uint8_t enable)
+{
+	int ret = NO_ERROR;
+
+	ret = panel_backlight_ctrl(enable);
+	if (ret)
+		dprintf(CRITICAL, "Backlight %s failed\n", enable ? "enable" :
+							"disable");
 	return ret;
 }
 
@@ -192,26 +190,29 @@ static void init_platform_data()
 	memcpy(dsi_video_mode_phy_db.laneCfg, panel_lane_config, LANE_SIZE);
 }
 
-void gcdb_display_init(uint32_t rev, void *base)
+int gcdb_display_init(uint32_t rev, void *base)
 {
+	int ret = NO_ERROR;
 
 	if (!oem_panel_select(&panelstruct, &(panel.panel_info),
 				 &dsi_video_mode_phy_db)) {
 		dprintf(CRITICAL, "Target panel init not found!\n");
-		return;
+		ret = ERR_NOT_SUPPORTED;
+		goto error_gcdb_display_init;
 	}
-
 	init_platform_data();
 
 	if (dsi_panel_init(&(panel.panel_info), &panelstruct)) {
 		dprintf(CRITICAL, "DSI panel init failed!\n");
-		return;
+		ret = ERROR;
+		goto error_gcdb_display_init;
 	}
 
 	panel.panel_info.mipi.mdss_dsi_phy_db = &dsi_video_mode_phy_db;
 
 	panel.pll_clk_func = mdss_dsi_panel_clock;
 	panel.power_func = mdss_dsi_panel_power;
+	panel.bl_func = mdss_dsi_bl_enable;
 	panel.fb.base = base;
 	panel.fb.width =  panel.panel_info.xres;
 	panel.fb.height =  panel.panel_info.yres;
@@ -220,12 +221,11 @@ void gcdb_display_init(uint32_t rev, void *base)
 	panel.fb.format = panel.panel_info.mipi.dst_format;
 	panel.mdp_rev = rev;
 
-	if (msm_display_init(&panel)) {
-		dprintf(CRITICAL, "Display init failed!\n");
-		return;
-	}
+	ret = msm_display_init(&panel);
 
-	display_enable = 1;
+error_gcdb_display_init:
+	display_enable = ret ? 0 : 1;
+	return ret;
 }
 
 void gcdb_display_shutdown(void)
