@@ -54,6 +54,8 @@
 #define MMC_BOOT_DATA_READ     0
 #define MMC_BOOT_DATA_WRITE    1
 
+#define DEFAULT_ERASE_SIZE     4096
+
 static unsigned int mmc_boot_data_transfer(unsigned int *data_ptr,
 						unsigned int data_len,
 						unsigned char direction);
@@ -3449,4 +3451,19 @@ void mmc_put_card_to_sleep(void)
 	mmc_ret = mmc_boot_send_command(&cmd);
 	if (mmc_ret != MMC_BOOT_E_SUCCESS)
 		dprintf(CRITICAL, "card sleep error: %d\n", mmc_ret);
+}
+
+uint32_t mmc_erase(uint64_t addr, uint64_t len)
+{
+	BUF_DMA_ALIGN(out, DEFAULT_ERASE_SIZE);
+
+	/* For emmc we erase only one block */
+	if (len > DEFAULT_ERASE_SIZE)
+		len = DEFAULT_ERASE_SIZE;
+
+	if (mmc_write(addr , (unsigned int)len, (unsigned int *)out))
+	{
+		dprintf(CRITICAL,"mmc_erase: failed to erase partition\n");
+		return 1;
+	}
 }
