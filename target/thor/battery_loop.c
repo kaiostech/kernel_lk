@@ -81,7 +81,7 @@ extern int smb349_check_usb_vbus_connection(int *wall_charger);
 #define BATTERY_CHRG_ON 0x01
 #define BATTERY_CHRG_OFF 0x00
 
-#define DEVICE_TEMP_BOOT_LIMIT 64 /* in degres C */
+#define DEVICE_TEMP_BOOT_LIMIT 60 /* in degres C */
 #define MAX_CHARGING_TIME_TOO_LONG (30*60*5*2) /* in seconds */
 #define DISCHARGING_COUNT 10
 #define POWER_BUTTON_SCAN_LOOP_COUNT 20   /* # of for loop for 1 milliscecond */
