@@ -36,6 +36,7 @@
 #include <pm8x41_wled.h>
 #include <board.h>
 #include <mdp5.h>
+#include <endian.h>
 #include <platform/gpio.h>
 #include <platform/clock.h>
 #include <platform/iomap.h>
@@ -126,11 +127,11 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
 		mdp_clock_init();
-		mdss_dsi_uniphy_pll_config(MIPI_DSI0_BASE);
+		mdss_dsi_auto_pll_config(MIPI_DSI0_BASE, pll_data);
 		dsi_pll_enable_seq(MIPI_DSI0_BASE);
 		if (panel.panel_info.mipi.dual_dsi &&
 				!(panel.panel_info.mipi.broadcast)) {
-			mdss_dsi_uniphy_pll_config(MIPI_DSI1_BASE);
+			mdss_dsi_auto_pll_config(MIPI_DSI1_BASE, pll_data);
 			dsi_pll_enable_seq(MIPI_DSI1_BASE);
 		}
 		mmss_clock_auto_pll_init(DSI0_PHY_PLL_OUT, dual_dsi,
@@ -141,7 +142,6 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 		// * Add here for continuous splash  *
 		mmss_clock_disable(dual_dsi);
 		mdp_clock_disable(dual_dsi);
-		mdp_gdsc_ctrl(enable);
 	}
 
 	return NO_ERROR;
@@ -218,6 +218,33 @@ int target_ldo_ctrl(uint8_t enable)
 	return NO_ERROR;
 }
 
+static uint32_t response_value = 0;
+
+uint32_t target_read_panel_signature(uint32_t panel_signature)
+{
+	uint32_t rec_buf[1];
+	uint32_t *lp = rec_buf, data;
+	int ret = response_value;
+
+	if (ret && ret != panel_signature)
+		goto exit_read_signature;
+
+	ret = mipi_dsi_cmds_tx(&read_ddb_start_cmd, 1);
+	if (ret)
+		goto exit_read_signature;
+	if (!mdss_dsi_cmds_rx(&lp, 1, 1))
+		goto exit_read_signature;
+
+	data = ntohl(*lp);
+	data = data >> 8;
+	response_value = data;
+	if (response_value != panel_signature)
+		ret = response_value;
+
+exit_read_signature:
+	return ret;
+}
+
 static int msm8974_mdss_edp_panel_clock(int enable)
 {
 	if (enable) {
@@ -234,12 +261,31 @@ static int msm8974_mdss_edp_panel_clock(int enable)
 	return 0;
 }
 
+static void msm8974_lpg_backlight_enable(void)
+{
+	/* lpg channel 8 */
+	pm8x41_lpg_write(8, 0x41, 0x33); /* LPG_PWM_SIZE_CLK, */
+	pm8x41_lpg_write(8, 0x42, 0x01); /* LPG_PWM_FREQ_PREDIV */
+	pm8x41_lpg_write(8, 0x43, 0x20); /* LPG_PWM_TYPE_CONFIG */
+	pm8x41_lpg_write(8, 0x44, 0xb2); /* LPG_VALUE_LSB */
+	pm8x41_lpg_write(8, 0x45, 0x01);  /* LPG_VALUE_MSB */
+	pm8x41_lpg_write(8, 0x46, 0xe4); /* LPG_ENABLE_CONTROL */
+}
+
+static void msm8974_lpg_backlight_disable(void)
+{
+	pm8x41_lpg_write(8, 0x46, 0x00); /* LPG_ENABLE_CONTROL */
+}
+
 static int msm8974_edp_panel_power(int enable)
 {
 	struct pm8x41_gpio gpio36_param = {
 		.direction = PM_GPIO_DIR_OUT,
+		.function = PM_GPIO_FUNC_2,
+		.vin_sel = 2,	/* VIN_2 */
+		.pull = PM_GPIO_PULL_UP_1_5 | PM_GPIO_PULLDOWN_10,
 		.output_buffer = PM_GPIO_OUT_CMOS,
-		.out_strength = PM_GPIO_OUT_DRIVE_MED,
+		.out_strength = PM_GPIO_OUT_DRIVE_HIGH,
 	};
 
 	struct pm8x41_ldo ldo12 = LDO(PM8x41_LDO12, PLDO_TYPE);
@@ -248,7 +294,7 @@ static int msm8974_edp_panel_power(int enable)
 		/* Enable backlight */
 		dprintf(SPEW, "Enable Backlight\n");
 		pm8x41_gpio_config(36, &gpio36_param);
-		pm8x41_gpio_set(36, PM_GPIO_FUNC_HIGH);
+		msm8974_lpg_backlight_enable();
 		dprintf(SPEW, "Enable Backlight Done\n");
 
 		/* Turn on LDO12 for edp vdda */
@@ -266,7 +312,7 @@ static int msm8974_edp_panel_power(int enable)
 	} else {
 		/* Keep LDO12 on, otherwise kernel will not boot */
 		gpio_set(58, 0);
-		pm8x41_gpio_set(36, PM_GPIO_FUNC_LOW);
+		msm8974_lpg_backlight_disable();
 	}
 
 	return 0;
@@ -275,6 +321,8 @@ static int msm8974_edp_panel_power(int enable)
 void display_init(void)
 {
 	uint32_t hw_id = board_hardware_id();
+	uint32_t panel_loop = 0;
+	uint32_t ret = 0;
 	switch (hw_id) {
 	case HW_PLATFORM_LIQUID:
 		edp_panel_init(&(panel.panel_info));
@@ -292,7 +340,16 @@ void display_init(void)
 		edp_enable = 1;
 		break;
 	default:
-		gcdb_display_init(MDP_REV_50, MIPI_FB_ADDR);
+		do {
+			ret = gcdb_display_init(MDP_REV_50, MIPI_FB_ADDR);
+			if (!ret || ret == ERR_NOT_SUPPORTED) {
+				break;
+			} else {
+				target_force_cont_splash_disable(true);
+				msm_display_off();
+				target_force_cont_splash_disable(false);
+			}
+		} while (++panel_loop <= oem_panel_max_auto_detect_panels());
 		break;
 	}
 }
