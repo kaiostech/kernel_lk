@@ -321,12 +321,22 @@ crypto_init_err:
 
 static uint32_t crypto5_get_sha_cfg(void *ctx_ptr, crypto_auth_alg_type auth_alg)
 {
-   crypto_SHA256_ctx *sha256_ctx = (crypto_SHA256_ctx *) ctx_ptr;
-   uint32_t seg_cfg_val;
+	crypto_SHA256_ctx *sha256_ctx = (crypto_SHA256_ctx *) ctx_ptr;
+	crypto_SHA1_ctx *sha1_ctx = (crypto_SHA1_ctx *) ctx_ptr;
+	uint32_t seg_cfg_val;
 
-   seg_cfg_val = SEG_CFG_AUTH_ALG_SHA;
+	seg_cfg_val = SEG_CFG_AUTH_ALG_SHA;
 
-	if (auth_alg == CRYPTO_AUTH_ALG_SHA256)
+	if (auth_alg == CRYPTO_AUTH_ALG_SHA1)
+	{
+		seg_cfg_val |= SEG_CFG_AUTH_SIZE_SHA1;
+
+		if (sha1_ctx->flags & CRYPTO_LAST_CHUNK)
+		{
+			seg_cfg_val |= SEG_CFG_LAST;
+		}
+	}
+	else if (auth_alg == CRYPTO_AUTH_ALG_SHA256)
 	{
 		seg_cfg_val |= SEG_CFG_AUTH_SIZE_SHA256;
 
@@ -364,13 +374,13 @@ void crypto5_set_ctx(struct crypto_dev *dev,
 		iv_len = SHA256_INIT_VECTOR_SIZE;
 	}
 
-    seg_cfg_val = crypto5_get_sha_cfg(ctx_ptr, auth_alg);
+	seg_cfg_val = crypto5_get_sha_cfg(ctx_ptr, auth_alg);
 
-    if (!seg_cfg_val)
-    {
+	if (!seg_cfg_val)
+	{
 		dprintf(CRITICAL, "Authentication alg config failed.\n");
 		return;
-    }
+	}
 
 	/* Initialize CE pointers. */
 	REG_WRITE_QUEUE_INIT(dev);
@@ -379,13 +389,13 @@ void crypto5_set_ctx(struct crypto_dev *dev,
 	REG_WRITE_QUEUE(dev, CRYPTO_ENCR_SEG_CFG(dev->base), 0);
 	REG_WRITE_QUEUE(dev, CRYPTO_AUTH_SEG_CFG(dev->base), seg_cfg_val);
 
-    for (i = 0; i < iv_len; i++)
-    {
+	for (i = 0; i < iv_len; i++)
+	{
 		if (sha256_ctx->flags & CRYPTO_FIRST_CHUNK)
 			REG_WRITE_QUEUE(dev, CRYPTO_AUTH_IVn(dev->base, i), BE32(*(auth_iv + i)));
 		else
 			REG_WRITE_QUEUE(dev, CRYPTO_AUTH_IVn(dev->base, i), (*(auth_iv + i)));
-    }
+	}
 
 	/* Typecast with crypto_SHA1_ctx because offset of auth_bytecnt
 	 * in both crypto_SHA1_ctx and crypto_SHA256_ctx are same.
@@ -393,7 +403,6 @@ void crypto5_set_ctx(struct crypto_dev *dev,
 	REG_WRITE_QUEUE(dev, CRYPTO_AUTH_BYTECNTn(dev->base, 0), ((crypto_SHA1_ctx *) ctx_ptr)->auth_bytecnt[0]);
 	REG_WRITE_QUEUE(dev, CRYPTO_AUTH_BYTECNTn(dev->base, 1), ((crypto_SHA1_ctx *) ctx_ptr)->auth_bytecnt[1]);
 }
-
 /* Function: crypto5_set_auth_cfg
  * Arg     : dev, ptr to data buffer, buffer_size, burst_mask for alignment
  * Return  : aligned buffer incase of unaligned data_ptr and total no. of bytes
