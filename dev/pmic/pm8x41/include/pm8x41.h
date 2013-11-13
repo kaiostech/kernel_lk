@@ -194,6 +194,7 @@ int pm8x41_gpio_config(uint8_t gpio, struct pm8x41_gpio *config);
 void pm8x41_set_boot_done();
 uint32_t pm8x41_v2_resin_status();
 uint32_t pm8x41_resin_status();
+uint32_t pm8x41_rtc_status();
 void pm8x41_reset_configure(uint8_t);
 void pm8x41_v2_reset_configure(uint8_t);
 int pm8x41_ldo_set_voltage(struct pm8x41_ldo *ldo, uint32_t voltage);
