@@ -84,6 +84,7 @@
 #define RESIN_ON_INT_BIT                      1
 #define RESIN_BARK_INT_BIT                    4
 #define S2_RESET_EN_BIT                       7
+#define PON_PON_RTC                           2
 
 #define S2_RESET_TYPE_WARM                    0x1
 #define PON_RESIN_N_RESET_S2_TIMER_MAX_VALUE  0x7

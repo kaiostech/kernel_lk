@@ -219,6 +219,17 @@ uint32_t pm8x41_resin_status()
 	return (rt_sts & BIT(RESIN_ON_INT_BIT));
 }
 
+/* rtc pin status */
+uint32_t pm8x41_rtc_status()
+{
+	uint8_t rt_sts = 0;
+	uint8_t val = 0;
+
+	rt_sts = REG_READ(PON_PON_REASON1);
+
+	return (rt_sts & BIT(PON_PON_RTC));
+}
+
 void pm8x41_v2_reset_configure(uint8_t reset_type)
 {
 	uint8_t val;
