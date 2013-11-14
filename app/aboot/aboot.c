@@ -103,6 +103,7 @@ static const char *androidboot_mode = " androidboot.mode=";
 static const char *display_cmdline = " mdss_mdp.panel=";
 static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
+static const char *alarmboot_mode = " androidboot.mode=alarm";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
 static const char *secondary_gpt_enable = " gpt";
 
@@ -218,6 +219,8 @@ unsigned char *update_cmdline(const char * cmdline)
 		cmdline_len += strlen(ffbm_mode_string);
 		/* reduce kernel console messages to speed-up boot */
 		cmdline_len += strlen(loglevel);
+	} else if (target_rtc_status_detect()) {
+		cmdline_len += strlen(alarmboot_mode);
 	} else if (device.charger_screen_enabled &&
 			target_pause_for_battery_charge()) {
 		pause_at_bootup = 1;
@@ -316,6 +319,10 @@ unsigned char *update_cmdline(const char * cmdline)
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 			src = loglevel;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		} else if (target_rtc_status_detect()) {
+			src = alarmboot_mode;
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 		} else if (pause_at_bootup) {

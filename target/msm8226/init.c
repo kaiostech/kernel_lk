@@ -169,6 +169,14 @@ static void target_keystatus()
 		keys_post_event(KEY_VOLUMEUP, 1);
 }
 
+#ifdef ANDROID_BOOT_RTC_ALARM
+/* Return 1 if power reason is RTC */
+uint32_t target_rtc_status_detect(void)
+{
+	return (!!pm8x41_rtc_status());
+}
+#endif
+
 /* Set up params for h/w CRYPTO_ENGINE. */
 void target_crypto_init_params()
 {
