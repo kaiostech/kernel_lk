@@ -66,7 +66,8 @@ enum cdp_subtype
 	CDP_SUBTYPE_9x25_SMB349,
 	CDP_SUBTYPE_9x25_SMB1357,
 	CDP_SUBTYPE_9x35,
-	CDP_SUBTYPE_SMB1357
+	CDP_SUBTYPE_SMB1357,
+	CDP_SUBTYPE_SMB350
 };
 
 enum mtp_subtype
@@ -84,6 +85,7 @@ enum rcm_subtype
 	RCM_SUBTYPE_9x25_SMB1357,
 	RCM_SUBTYPE_9x35,
 	RCM_SUBTYPE_SMB1357,
+	RCM_SUBTYPE_SMB350
 };
 
 static void set_sdc_power_ctrl(void);
@@ -147,7 +149,8 @@ static void target_keystatus()
 
 void target_uninit(void)
 {
-	mmc_put_card_to_sleep(dev);
+	if(target_boot_device_emmc())
+		mmc_put_card_to_sleep(dev);
 }
 
 /* Do target specific usb initialization */
@@ -206,21 +209,22 @@ void target_sdc_init()
 	set_sdc_power_ctrl();
 
 	config.bus_width = DATA_BUS_WIDTH_8BIT;
-	config.max_clk_rate = MMC_CLK_200MHZ;
 
 	/* Try slot 1*/
 	config.slot = 1;
-	config.sdhc_base = mmc_sdhci_base[config.slot - 1];
-	config.pwrctl_base = mmc_pwrctl_base[config.slot - 1];
-	config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
+	config.max_clk_rate = MMC_CLK_192MHZ;
+	config.sdhc_base    = mmc_sdhci_base[config.slot - 1];
+	config.pwrctl_base  = mmc_pwrctl_base[config.slot - 1];
+	config.pwr_irq      = mmc_sdc_pwrctl_irq[config.slot - 1];
 
 	if (!(dev = mmc_init(&config)))
 	{
 		/* Try slot 2 */
 		config.slot = 2;
-		config.sdhc_base = mmc_sdhci_base[config.slot - 1];
-		config.pwrctl_base = mmc_pwrctl_base[config.slot - 1];
-		config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
+		config.max_clk_rate = MMC_CLK_200MHZ;
+		config.sdhc_base    = mmc_sdhci_base[config.slot - 1];
+		config.pwrctl_base  = mmc_pwrctl_base[config.slot - 1];
+		config.pwr_irq      = mmc_sdc_pwrctl_irq[config.slot - 1];
 
 		if (!(dev = mmc_init(&config)))
 		{
@@ -330,6 +334,7 @@ void set_cdp_baseband(struct board_data *board)
 		break;
 	case CDP_SUBTYPE_SMB349:
 	case CDP_SUBTYPE_SMB1357:
+	case CDP_SUBTYPE_SMB350:
 		board->baseband = BASEBAND_APQ;
 		break;
 	default:
@@ -375,6 +380,7 @@ void set_rcm_baseband(struct board_data *board)
 		break;
 	case RCM_SUBTYPE_SMB349:
 	case RCM_SUBTYPE_SMB1357:
+	case RCM_SUBTYPE_SMB350:
 		board->baseband = BASEBAND_APQ;
 		break;
 	default:
