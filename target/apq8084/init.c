@@ -301,7 +301,7 @@ void target_init(void)
 	}
 
 	/* Storage initialization is complete, read the partition table info */
-	if (partition_read_table())
+	if (mmc_read_partition_table())
 	{
 		dprintf(CRITICAL, "Error reading the partition table info\n");
 		ASSERT(0);
