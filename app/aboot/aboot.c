@@ -1420,7 +1420,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		check_aboot_addr_range_overlap(hdr->ramdisk_addr, ramdisk_actual))
 	{
 		dprintf(CRITICAL, "kernel/ramdisk addresses overlap with aboot addresses.\n");
-		return -1;
+		return;
 	}
 
 	/* sz should have atleast raw boot image */
@@ -1438,7 +1438,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	if (check_aboot_addr_range_overlap(hdr->tags_addr, MAX_TAGS_SIZE))
 	{
 		dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
-		return -1;
+		return;
 	}
 #endif
 
@@ -1467,7 +1467,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	if (check_aboot_addr_range_overlap(hdr->tags_addr, MAX_TAGS_SIZE))
 	{
 		dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
-		return -1;
+		return;
 	}
 #endif
 
