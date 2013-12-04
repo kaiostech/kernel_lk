@@ -148,19 +148,30 @@ static int mdss_dsi_bl_enable(uint8_t enable)
 
 bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 {
-	char *dsi_id = NULL, *panel_node = NULL;
-	bool ret = false;
+	char *dsi_id = NULL;
+	char *panel_node = NULL;
+	uint16_t dsi_id_len = 0;
+	bool ret = true;
 
-	if(!panelstruct.paneldata) {
-		return ret;
+	if(panelstruct.paneldata)
+	{
+		dsi_id = panelstruct.paneldata->panel_controller;
+		panel_node = panelstruct.paneldata->panel_node_id;
 	}
 
-	dsi_id = panelstruct.paneldata->panel_controller;
-	panel_node = panelstruct.paneldata->panel_node_id;
+	if (dsi_id == NULL || panel_node == NULL)
+		return false;
 
-	if (buf_size >= (strlen(panel_node) + MAX_DSI_STREAM_LEN +
-			MAX_PANEL_FORMAT_STRING + 1) &&
-		strlen(panel_node) && strlen(dsi_id))
+	dsi_id_len = strlen(dsi_id);
+
+	if (buf_size < (strlen(panel_node) + dsi_id_len +
+			MAX_PANEL_FORMAT_STRING + 1) ||
+		strlen(panel_node) ||
+		strlen(dsi_id))
+	{
+		ret = false;
+	}
+	else
 	{
 		pbuf[0] = '1'; // 1 indicates that LK is overriding the panel
 		pbuf[1] = ':'; // seperator
@@ -168,8 +179,8 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 		buf_size -= MAX_PANEL_FORMAT_STRING;
 
 		strlcpy(pbuf, dsi_id, buf_size);
-		pbuf += MAX_DSI_STREAM_LEN;
-		buf_size -= MAX_DSI_STREAM_LEN;
+		pbuf += dsi_id_len;
+		buf_size -= dsi_id_len;
 
 		strlcpy(pbuf, panel_node, buf_size);
 		ret = true;
