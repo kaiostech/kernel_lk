@@ -33,7 +33,7 @@
 
 static crypto_SHA256_ctx g_sha256_ctx;
 static crypto_SHA1_ctx g_sha1_ctx;
-static unsigned char crypto_init_done = FALSE;
+static bool crypto_init_done = FALSE;
 
 extern void ce_clock_init(void);
 
@@ -93,6 +93,15 @@ static void crypto_init(void)
 		crypto_init_done = TRUE;
 	}
 	crypto_eng_init();
+}
+
+/*
+ * Function to return if crypto is initialized
+ */
+
+bool crypto_initialized()
+{
+	return crypto_init_done;
 }
 
 /*
