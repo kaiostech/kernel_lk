@@ -142,6 +142,10 @@ DEFINES += \
 	DEBUG=$(DEBUG)
 endif
 
+ifeq ($(AUTOPLAT_001),1)
+DEFINES += AUTOPLAT_001=1
+endif
+
 ALLOBJS := $(addprefix $(BUILDDIR)/,$(ALLOBJS))
 
 DEPS := $(ALLOBJS:%o=%d)
