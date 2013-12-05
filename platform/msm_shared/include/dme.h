@@ -31,6 +31,7 @@
 
 #include <sys/types.h>
 #include <upiu.h>
+#include <ufs.h>
 
 /* Bit field of UFSHCI_UICCMDR register */
 #define UICCMDR_DME_GET                                  0x01
@@ -147,27 +148,6 @@ struct ufs_dev_desc
 	uint8_t  dev_rtt_cap;
 }__PACKED;
 
-struct ufs_unit_desc
-{
-	uint8_t   desc_len;
-	uint8_t   desc_type;
-	uint8_t   unit_index;
-	uint8_t   lu_enable;
-	uint8_t   boot_lun_id;
-	uint8_t   lu_wp;
-	uint8_t   lu_queue_depth;
-	uint8_t   resv;
-	uint8_t   mem_type;
-	uint8_t   data_reliability;
-	uint8_t   logical_blk_size;
-	uint64_t  logical_blk_cnt;
-	uint32_t  erase_blk_size;
-	uint8_t   provisioning_type;
-	uint8_t   phy_mem_resource_cnt[8];
-	uint16_t  ctx_capabilities;
-	uint8_t   large_unit_size_m1;
-}__PACKED;
-
 struct ufs_geometry_desc
 {
 	uint8_t  desc_len;
@@ -243,5 +223,4 @@ int utp_build_query_req_upiu(struct upiu_trans_mgmt_query_hdr *req_upiu,
 int dme_send_nop_query(struct ufs_dev *dev);
 int dme_set_fdeviceinit(struct ufs_dev *dev);
 int dme_read_unit_desc(struct ufs_dev *dev, uint8_t index);
-
 #endif
