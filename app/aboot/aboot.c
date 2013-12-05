@@ -1258,6 +1258,7 @@ void write_device_info_mmc(device_info *dev)
 	unsigned long long size;
 	int index = INVALID_PTN;
 	uint32_t blocksize;
+	uint8_t lun = 0;
 
 	index = partition_get_index("aboot");
 	ptn = partition_get_offset(index);
@@ -1265,6 +1266,9 @@ void write_device_info_mmc(device_info *dev)
 	{
 		return;
 	}
+
+	lun = partition_get_lun(index);
+	mmc_set_lun(lun);
 
 	size = partition_get_size(index);
 
@@ -1614,6 +1618,7 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
 	int index = INVALID_PTN;
+	uint8_t lun = 0;
 
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
@@ -1623,6 +1628,9 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 		fastboot_fail("Partition table doesn't exist\n");
 		return;
 	}
+
+	lun = partition_get_lun(index);
+	mmc_set_lun(lun);
 
 #if MMC_SDHCI_SUPPORT
 	if (mmc_erase_card(ptn, size)) {
@@ -1650,6 +1658,9 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
 	int index = INVALID_PTN;
+	char *token;
+	char *pname;
+	uint8_t lun = 0;
 
 	if (!strcmp(arg, "partition"))
 	{
@@ -1657,6 +1668,34 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 		if (write_partition(sz, (unsigned char *) data)) {
 			fastboot_fail("failed to write partition");
 			return;
+		}
+	}
+	else if(strstr(arg,"partition"))
+	{
+		pname = arg;
+		token = strtok(pname, ":");
+		if(token)
+		{
+			pname = token;
+			token = strtok(NULL, ":");
+		}
+
+		if(token)
+		{
+			lun = atoi(token);
+			dprintf(CRITICAL,"LUN no: %d\n", lun);
+
+			mmc_set_lun(lun);
+
+			if (write_partition(sz, (unsigned char *) data))
+			{
+				fastboot_fail("failed to write partition");
+				return;
+			}
+		}
+		else
+		{
+			fastboot_fail("ERROR: Format - Use partition:lunnum");
 		}
 	}
 	else
@@ -1674,6 +1713,10 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 		}
+
+		lun = partition_get_lun(index);
+
+		mmc_set_lun(lun);
 
 		size = partition_get_size(index);
 		if (ROUND_TO_PAGE(sz,511) > size) {
@@ -1703,6 +1746,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	unsigned long long size = 0;
 	int index = INVALID_PTN;
 	int i;
+	uint8_t lun = 0;
 
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
@@ -1716,6 +1760,9 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		fastboot_fail("size too large");
 		return;
 	}
+
+	lun = partition_get_lun(index);
+	mmc_set_lun(lun);
 
 	/* Read and skip over sparse image header */
 	sparse_header = (sparse_header_t *) data;
