@@ -105,31 +105,56 @@ static int mdss_dsi_panel_power(uint8_t enable)
 	if (enable) {
 		ret = target_ldo_ctrl(enable);
 		if (ret) {
-			dprintf(CRITICAL, "LDO control enable failed \n");
+			dprintf(CRITICAL, "LDO control enable failed\n");
 			return ret;
 		}
 
 		/* Panel Reset */
-		ret = mdss_dsi_panel_reset(enable);
-		if (ret) {
-			dprintf(CRITICAL, "panel reset failed \n");
-			return ret;
+		if (!panelstruct.paneldata->panel_lp11_init) {
+			ret = mdss_dsi_panel_reset(enable);
+			if (ret) {
+				dprintf(CRITICAL, "panel reset failed\n");
+				return ret;
+			}
 		}
 		dprintf(SPEW, "Panel power on done\n");
 	} else {
 		/* Disable panel and ldo */
 		ret = mdss_dsi_panel_reset(enable);
 		if (ret) {
-			dprintf(CRITICAL, "panel reset disable failed \n");
+			dprintf(CRITICAL, "panel reset disable failed\n");
 			return ret;
 		}
 
 		ret = target_ldo_ctrl(enable);
 		if (ret) {
-			dprintf(CRITICAL, "ldo control disable failed \n");
+			dprintf(CRITICAL, "ldo control disable failed\n");
 			return ret;
 		}
 		dprintf(SPEW, "Panel power off done\n");
+	}
+
+	return ret;
+}
+
+static int mdss_dsi_panel_post_power(uint8_t enable)
+{
+	int ret = NO_ERROR;
+
+	if (enable) {
+		/* Panel Reset */
+		if (panelstruct.paneldata->panel_lp11_init) {
+			ret = mdss_dsi_panel_reset(enable);
+			if (ret) {
+				dprintf(CRITICAL, "panel reset failed\n");
+				return ret;
+			}
+		}
+
+		if(panelstruct.paneldata->panel_init_delay)
+			udelay(panelstruct.paneldata->panel_init_delay);
+
+		dprintf(SPEW, "Panel post power on done\n");
 	}
 
 	return ret;
@@ -152,11 +177,25 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 	char *panel_node = NULL;
 	uint16_t dsi_id_len = 0;
 	bool ret = true;
+	char *default_str;
 
 	if (panelstruct.paneldata)
 	{
 		dsi_id = panelstruct.paneldata->panel_controller;
 		panel_node = panelstruct.paneldata->panel_node_id;
+	}
+	else
+	{
+		if (target_is_edp())
+		{
+			default_str = "0:edp:";
+		}
+		else
+		{
+			default_str = "0:dsi:0:";
+		}
+		strlcpy(pbuf, default_str, buf_size);
+		return true;
 	}
 
 	if (dsi_id == NULL || panel_node == NULL)
@@ -222,6 +261,7 @@ int gcdb_display_init(uint32_t rev, void *base)
 
 	panel.pll_clk_func = mdss_dsi_panel_clock;
 	panel.power_func = mdss_dsi_panel_power;
+	panel.post_power_func = mdss_dsi_panel_post_power;
 	panel.bl_func = mdss_dsi_bl_enable;
 	panel.fb.base = base;
 	panel.fb.width =  panel.panel_info.xres;
