@@ -60,7 +60,7 @@ unsigned int vfat_count = 0;
 
 struct partition_entry partition_entries[NUM_PARTITIONS];
 static unsigned gpt_partitions_exist = 0;
-unsigned partition_count = 0;
+static unsigned partition_count = 0;
 
 unsigned int partition_read_table()
 {
@@ -126,7 +126,6 @@ static unsigned int mmc_boot_read_mbr(uint32_t block_size)
 	 * Process each of the four partitions in the MBR by reading the table
 	 * information into our mbr table.
 	 */
-	partition_count = 0;
 	idx = TABLE_ENTRY_0;
 	for (i = 0; i < 4; i++) {
 		/* Type 0xEE indicates end of MBR and GPT partitions exist */
@@ -235,8 +234,6 @@ static unsigned int mmc_boot_read_gpt(uint32_t block_size)
 	uint8_t *data = NULL;
 	uint32_t part_entry_cnt = block_size / ENTRY_SIZE;
 
-	partition_count = 0;
-
 	/* Get the density of the mmc device */
 
 	device_density = mmc_get_device_capacity();
@@ -339,6 +336,8 @@ static unsigned int mmc_boot_read_gpt(uint32_t block_size)
 			memcpy(UTF16_name, &data[(j * partition_entry_size) +
 						 PARTITION_NAME_OFFSET],
 			       MAX_GPT_NAME_SIZE);
+			partition_entries[partition_count].lun = mmc_get_lun();
+
 			/*
 			 * Currently partition names in *.xml are UTF-8 and lowercase
 			 * Only supporting english for now so removing 2nd byte of UTF-16
@@ -715,7 +714,8 @@ static unsigned int write_gpt(uint32_t size, uint8_t *gptImage, uint32_t block_s
 
 	/* Re-read the GPT partition table */
 	dprintf(INFO, "Re-reading the GPT Partition Table\n");
-	ret = mmc_boot_read_gpt(block_size);
+	partition_count = 0;
+	ret = mmc_read_partition_table();
 	if (ret) {
 		dprintf(CRITICAL,
 			"GPT: Failure to re- read the GPT Partition table\n");
@@ -888,6 +888,11 @@ unsigned long long partition_get_offset(int index)
 	else {
 		return partition_entries[index].first_lba * block_size;
 	}
+}
+
+uint8_t partition_get_lun(int index)
+{
+	return partition_entries[index].lun;
 }
 
 /* Debug: Print all parsed partitions */

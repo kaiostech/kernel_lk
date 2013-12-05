@@ -155,11 +155,13 @@ struct partition_entry {
 	unsigned long long size;
 	unsigned long long attribute_flag;
 	unsigned char name[MAX_GPT_NAME_SIZE];
+	uint8_t lun;
 };
 
 int partition_get_index(const char *name);
 unsigned long long partition_get_size(int index);
 unsigned long long partition_get_offset(int index);
+uint8_t partition_get_lun(int index);
 unsigned int partition_read_table();
 unsigned int write_partition(unsigned size, unsigned char *partition);
 bool partition_gpt_exists();
