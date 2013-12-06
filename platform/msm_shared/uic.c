@@ -33,6 +33,7 @@
 #include <ufs_hw.h>
 #include <ufs_hci.h>
 #include <uic.h>
+#include <ufs.h>
 #include <dme.h>
 #include <platform/iomap.h>
 #include <platform/interrupts.h>
