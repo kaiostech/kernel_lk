@@ -45,4 +45,7 @@ uint32_t mmc_erase_card(uint64_t addr, uint64_t len);
 uint32_t mmc_get_device_blocksize();
 uint32_t mmc_page_size();
 void mmc_device_sleep();
+void mmc_set_lun(uint8_t lun);
+uint8_t mmc_get_lun(void);
+uint32_t mmc_read_partition_table();
 #endif
