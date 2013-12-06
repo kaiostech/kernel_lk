@@ -35,6 +35,8 @@
 #define MDP4_OVERLAYPROC1_BASE  0x18000
 #define MDP4_RGB_BASE           0x40000
 #define MDP4_RGB_OFF            0x10000
+#define LINUX_MACHTYPE_8064_CDP     3948
+#define LINUX_MACHTYPE_8064_LIQUID  3951
 
 struct hdmi_disp_mode_timing_type hdmi_timing_default = {
 	.height         = 1080,
@@ -339,7 +341,10 @@ int hdmi_dtv_init()
 	uint32_t intf, stage, snum, mask, data;
 	unsigned char *rgb_base;
 	unsigned char *overlay_base;
-	uint32_t val;
+	uint32_t val = 0;
+	uint32_t intf_sel = 0;
+	uint32_t intf_mask = 3;
+	uint32_t target_id = board_target_id();
 
 	struct hdmi_disp_mode_timing_type *timing =
 			hdmi_common_init_panel_info();
@@ -386,7 +391,15 @@ int hdmi_dtv_init()
 	// Overlay cfg
 	overlay_base = MDP_BASE + MDP4_OVERLAYPROC1_BASE;
 
-	writel(0x0, MDP_BASE + 0x0038);	//EXternal interface select
+	if(target_id == LINUX_MACHTYPE_8064_CDP ||
+		target_id == LINUX_MACHTYPE_8064_LIQUID) {
+		intf_sel = readl(MDP_BASE + 0x0038);
+		intf_mask <<= 4;
+		intf_sel = intf_sel & (~intf_mask);
+		writel(intf_sel, MDP_BASE + 0x0038);
+	} else {
+		writel(0x0, MDP_BASE + 0x0038); //External interface select
+	}
 
 	data = ((timing->height << 16) | timing->width);
 	writel(data, overlay_base + 0x0008);
@@ -441,6 +454,12 @@ int hdmi_dtv_init()
 	/* Flush mixer/pipes configurations */
 	val = BIT(1);
 	val |= BIT(5);
+
+	if(target_id == LINUX_MACHTYPE_8064_CDP ||
+		target_id == LINUX_MACHTYPE_8064_LIQUID) {
+		val |= BIT(0);
+		val |= BIT(4);
+	}
 	writel(val, MDP_BASE + 0x18000);
 
 	return 0;
