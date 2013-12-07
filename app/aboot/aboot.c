@@ -1614,6 +1614,7 @@ void cmd_erase(const char *arg, void *data, unsigned sz)
 
 void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 {
+	BUF_DMA_ALIGN(out, DEFAULT_ERASE_SIZE);
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
 	int index = INVALID_PTN;
@@ -1638,8 +1639,12 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 	}
 #else
 	size = partition_get_size(index);
+	if (size > DEFAULT_ERASE_SIZE)
+		size = DEFAULT_ERASE_SIZE;
 
-	if (mmc_erase(ptn , size)) {
+	/* Simple inefficient version of erase. Just writing
+       0 in first several blocks */
+	if (mmc_write(ptn , size, (unsigned int *)out)) {
 		fastboot_fail("failed to erase partition");
 		return;
 	}
