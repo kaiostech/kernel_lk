@@ -35,8 +35,6 @@
 #include <target.h>
 #include <string.h>
 
-#define DEFAULT_ERASE_SIZE  4096
-
 /*
  * Weak function for UFS.
  * These are needed to avoid link errors for platforms which
@@ -68,15 +66,6 @@ __WEAK uint64_t ufs_get_dev_capacity(struct ufs_dev *dev)
 	return 0;
 }
 
-__WEAK uint32_t ufs_get_erase_blk_size(struct ufs_dev *dev)
-{
-	return 0;
-}
-
-__WEAK int ufs_erase(struct ufs_dev* dev, uint64_t start_lba, uint32_t num_blocks)
-{
-	return 0;
-}
 /*
  * Function: get mmc card
  * Arg     : None
@@ -219,41 +208,6 @@ uint32_t mmc_read(uint64_t data_addr, uint32_t *out, uint32_t data_len)
 	return ret;
 }
 
-uint32_t mmc_erase(uint64_t addr, uint64_t len)
-{
-	void *dev;
-	uint32_t block_size;
-	BUF_DMA_ALIGN(out, DEFAULT_ERASE_SIZE);
-
-	block_size = mmc_get_device_blocksize();
-
-	dev = target_mmc_device();
-
-	ASSERT(!(addr % block_size));
-	ASSERT(!(len % block_size));
-
-	if (target_boot_device_emmc())
-	{
-		/* For emmc we erase only one block */
-		if (len > DEFAULT_ERASE_SIZE)
-			len = DEFAULT_ERASE_SIZE;
-
-		if (mmc_write(addr ,len, (unsigned int *)out))
-		{
-			dprintf(CRITICAL,"mmc_erase: failed to erase partition\n");
-			return 1;
-		}
-	}
-	else
-	{
-		if(ufs_erase((struct ufs_dev *)dev, addr, (len / block_size)))
-		{
-			dprintf(CRITICAL, "mmc_erase_card: UFS erase failed\n");
-			return 1;
-		}
-	}
-}
-
 /*
  * Function: mmc get erase unit size
  * Arg     : None
@@ -352,20 +306,19 @@ uint32_t mmc_erase_card(uint64_t addr, uint64_t len)
 	uint32_t blk_count;
 	uint64_t blks_to_erase;
 
-	block_size = mmc_get_device_blocksize();
-
-	dev = target_mmc_device();
-
-	ASSERT(!(addr % block_size));
-	ASSERT(!(len % block_size));
-
 	if (target_boot_device_emmc())
 	{
+		block_size = mmc_get_device_blocksize();
 		erase_unit_sz = mmc_get_eraseunit_size();
 		dprintf(SPEW, "erase_unit_sz:0x%x\n", erase_unit_sz);
 
+		ASSERT(!(addr % block_size));
+		ASSERT(!(len % block_size));
+
 		blk_addr = addr / block_size;
 		blk_count = len / block_size;
+
+		dev = target_mmc_device();
 
 		dprintf(INFO, "Erasing card: 0x%x:0x%x\n", blk_addr, blk_count);
 
@@ -409,14 +362,6 @@ uint32_t mmc_erase_card(uint64_t addr, uint64_t len)
 				return 1;
 		}
 
-	}
-	else
-	{
-		if(ufs_erase((struct ufs_dev *)dev, addr, (len / block_size)))
-		{
-			dprintf(CRITICAL, "mmc_erase_card: UFS erase failed\n");
-			return 1;
-		}
 	}
 
 	return 0;
