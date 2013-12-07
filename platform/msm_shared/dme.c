@@ -268,7 +268,7 @@ int dme_read_device_desc(struct ufs_dev *dev)
 	return UFS_SUCCESS;
 }
 
-int dme_read_unit_desc(struct ufs_dev *dev, uint8_t index)
+int dme_read_unit_desc(struct ufs_dev *dev, uint8_t index, uint64_t *capacity)
 {
 	STACKBUF_DMA_ALIGN(unit_desc, sizeof(struct ufs_unit_desc));
 	struct ufs_unit_desc           *desc = unit_desc;
@@ -285,9 +285,7 @@ int dme_read_unit_desc(struct ufs_dev *dev, uint8_t index)
 	/* Flush buffer. */
 	arch_invalidate_cache_range((addr_t) desc, sizeof(struct ufs_unit_desc));
 
-	dev->capacity = BE64(desc->logical_blk_cnt) * dev->block_size;
-
-	dev->erase_blk_size = BE32(desc->erase_blk_size) * dev->block_size;
+	*capacity = BE64(desc->logical_blk_cnt) * dev->block_size;
 
 	return UFS_SUCCESS;
 }
