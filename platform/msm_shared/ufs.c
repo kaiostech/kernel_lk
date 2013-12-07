@@ -91,7 +91,7 @@ int ufs_read(struct ufs_dev* dev, uint64_t start_lba, addr_t buffer, uint32_t nu
 	int                  ret;
 
 	req.data_buffer_base = buffer;
-	req.lun              = dev->current_lun;
+	req.lun              = 0;
 	req.num_blocks       = num_blocks;
 	req.start_lba        = start_lba / dev->block_size;
 
@@ -111,7 +111,7 @@ int ufs_write(struct ufs_dev* dev, uint64_t start_lba, addr_t buffer, uint32_t n
 	int                  ret;
 
 	req.data_buffer_base = buffer;
-	req.lun              = dev->current_lun;
+	req.lun              = 0;
 	req.num_blocks       = num_blocks;
 	req.start_lba        = start_lba / dev->block_size;
 
@@ -145,22 +145,12 @@ int ufs_erase(struct ufs_dev* dev, uint64_t start_lba, uint32_t num_blocks)
 
 uint64_t ufs_get_dev_capacity(struct ufs_dev* dev)
 {
-	uint64_t capacity;
-	uint8_t lun = dev->current_lun;
-
-	capacity = dev->lun_cfg[lun].logical_blk_cnt * dev->block_size;
-
-	return capacity;
+	return dev->capacity;
 }
 
 uint32_t ufs_get_erase_blk_size(struct ufs_dev* dev)
 {
-	uint32_t erase_blk_size;
-	uint8_t lun = dev->current_lun;
-
-	erase_blk_size = dev->lun_cfg[lun].erase_blk_size;
-
-	return erase_blk_size;
+	return dev->erase_blk_size;
 }
 
 uint32_t ufs_get_serial_num(struct ufs_dev* dev)
@@ -182,16 +172,10 @@ uint32_t ufs_get_page_size(struct ufs_dev* dev)
 	return dev->block_size;
 }
 
-uint8_t ufs_get_num_of_luns(struct ufs_dev* dev)
-{
-	return dev->num_lus;
-}
-
 int ufs_init(struct ufs_dev *dev)
 {
 	uint32_t ret = UFS_SUCCESS;
 	uint64_t cap;
-	uint8_t lun = 0;
 
 	dev->block_size = 4096;
 
@@ -236,24 +220,14 @@ int ufs_init(struct ufs_dev *dev)
 		goto ufs_init_err;
 	}
 
-	for(lun=0; lun < 8; lun++)
+	ret = dme_read_unit_desc(dev, 0);
+	if (ret != UFS_SUCCESS)
 	{
-		ret = dme_read_unit_desc(dev, lun);
-		if (ret != UFS_SUCCESS)
-		{
-			dprintf(CRITICAL, "UFS dme_read_unit_desc failed\n");
-			goto ufs_init_err;
-		}
+		dprintf(CRITICAL, "UFS dme_read_unit_desc failed\n");
+		goto ufs_init_err;
 	}
 
 	dprintf(CRITICAL,"UFS init success\n");
-
-	ret = dme_read_device_desc(dev);
-	if (ret != UFS_SUCCESS)
-	{
-		dprintf(CRITICAL, "dme_read_dev_desc read failed\n");
-		goto ufs_init_err;
-	}
 
 ufs_init_err:
 
