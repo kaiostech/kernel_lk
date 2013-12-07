@@ -627,6 +627,5 @@ uint8_t card_supports_ddr_mode();
 uint8_t card_supports_hs200_mode();
 uint64_t mmc_get_device_capacity();
 void mmc_put_card_to_sleep(void);
-uint32_t mmc_erase(uint64_t addr, uint64_t len);
 #endif
 #endif
