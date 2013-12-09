@@ -88,6 +88,12 @@ enum rcm_subtype
 	RCM_SUBTYPE_SMB350
 };
 
+enum liquid_subtype
+{
+	LIQUID_SUBTYPE_STANDALONE = 0,
+	LIQUID_SUBTYPE_9x25,
+};
+
 static void set_sdc_power_ctrl(void);
 static uint32_t mmc_pwrctl_base[] =
 	{ MSM_SDC1_BASE, MSM_SDC2_BASE };
@@ -329,8 +335,10 @@ void set_cdp_baseband(struct board_data *board)
 	switch(platform_subtype) {
 	case CDP_SUBTYPE_9x25_SMB349:
 	case CDP_SUBTYPE_9x25_SMB1357:
-	case CDP_SUBTYPE_9x35:
 		board->baseband = BASEBAND_MDM;
+		break;
+	case CDP_SUBTYPE_9x35:
+		board->baseband = BASEBAND_MDM2;
 		break;
 	case CDP_SUBTYPE_SMB349:
 	case CDP_SUBTYPE_SMB1357:
@@ -354,8 +362,10 @@ void set_mtp_baseband(struct board_data *board)
 	switch(platform_subtype) {
 	case MTP_SUBTYPE_9x25_SMB349:
 	case MTP_SUBTYPE_9x25_SMB1357:
-	case MTP_SUBTYPE_9x35:
 		board->baseband = BASEBAND_MDM;
+		break;
+	case MTP_SUBTYPE_9x35:
+		board->baseband = BASEBAND_MDM2;
 		break;
 	case MTP_SUBTYPE_SMB349:
 		board->baseband = BASEBAND_APQ;
@@ -375,8 +385,10 @@ void set_rcm_baseband(struct board_data *board)
 	switch(platform_subtype) {
 	case RCM_SUBTYPE_9x25_SMB349:
 	case RCM_SUBTYPE_9x25_SMB1357:
-	case RCM_SUBTYPE_9x35:
 		board->baseband = BASEBAND_MDM;
+		break;
+	case RCM_SUBTYPE_9x35:
+		board->baseband = BASEBAND_MDM2;
 		break;
 	case RCM_SUBTYPE_SMB349:
 	case RCM_SUBTYPE_SMB1357:
@@ -388,6 +400,26 @@ void set_rcm_baseband(struct board_data *board)
 				platform_subtype);
 		ASSERT(0);
 	};
+}
+
+void set_liquid_baseband(struct board_data *board)
+{
+	uint32_t platform_subtype;
+
+	platform_subtype = board->platform_subtype;
+
+	switch(platform_subtype)
+	{
+		case LIQUID_SUBTYPE_STANDALONE:
+			board->baseband = BASEBAND_APQ;
+			break;
+		case LIQUID_SUBTYPE_9x25:
+			board->baseband = BASEBAND_MDM;
+			break;
+		default:
+			dprintf(CRITICAL, "Liquid platform subtype :%u is not supported\n",platform_subtype);
+			ASSERT(0);
+	}
 }
 
 /* Returns 1 if target supports continuous splash screen. */
@@ -429,7 +461,7 @@ void target_baseband_detect(struct board_data *board)
 		set_rcm_baseband(board);
 		break;
 	case HW_PLATFORM_LIQUID:
-		board->baseband = BASEBAND_APQ;
+		set_liquid_baseband(board);
 		break;
 	default:
 		dprintf(CRITICAL, "Platform :%u is not supported\n",

@@ -98,6 +98,9 @@ void write_device_info_flash(device_info *dev);
 #define DEFAULT_ERASE_SIZE  4096
 #define MAX_PANEL_BUF_SIZE 64
 
+#define UBI_MAGIC      "UBI#"
+#define UBI_MAGIC_SIZE 0x04
+
 #if UFS_SUPPORT
 static const char *emmc_cmdline = " androidboot.bootdevice=msm_sdcc.1";
 static const char *ufs_cmdline = " androidboot.bootdevice=msm_ufs.1";
@@ -117,6 +120,7 @@ static const char *baseband_msm     = " androidboot.baseband=msm";
 static const char *baseband_csfb    = " androidboot.baseband=csfb";
 static const char *baseband_svlte2a = " androidboot.baseband=svlte2a";
 static const char *baseband_mdm     = " androidboot.baseband=mdm";
+static const char *baseband_mdm2    = " androidboot.baseband=mdm2";
 static const char *baseband_sglte   = " androidboot.baseband=sglte";
 static const char *baseband_dsda    = " androidboot.baseband=dsda";
 static const char *baseband_dsda2   = " androidboot.baseband=dsda2";
@@ -290,6 +294,10 @@ unsigned char *update_cmdline(const char * cmdline)
 			cmdline_len += strlen(baseband_mdm);
 			break;
 
+		case BASEBAND_MDM2:
+			cmdline_len += strlen(baseband_mdm2);
+			break;
+
 		case BASEBAND_SGLTE:
 			cmdline_len += strlen(baseband_sglte);
 			break;
@@ -401,6 +409,12 @@ unsigned char *update_cmdline(const char * cmdline)
 
 			case BASEBAND_MDM:
 				src = baseband_mdm;
+				if (have_cmdline) --dst;
+				while ((*dst++ = *src++));
+				break;
+
+			case BASEBAND_MDM2:
+				src = baseband_mdm2;
 				if (have_cmdline) --dst;
 				while ((*dst++ = *src++));
 				break;
@@ -611,6 +625,11 @@ BUF_DMA_ALIGN(dt_buf, 4096);
 static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 {
 	int ret;
+#if IMAGE_VERIF_ALGO_SHA1
+	uint32_t auth_algo = CRYPTO_AUTH_ALG_SHA1;
+#else
+	uint32_t auth_algo = CRYPTO_AUTH_ALG_SHA256;
+#endif
 
 	/* Assume device is rooted at this time. */
 	device.is_tampered = 1;
@@ -620,7 +639,7 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 	ret = image_verify((unsigned char *)bootimg_addr,
 					   (unsigned char *)(bootimg_addr + bootimg_size),
 					   bootimg_size,
-					   CRYPTO_AUTH_ALG_SHA256);
+					   auth_algo);
 
 	dprintf(INFO, "Authenticating boot image: done return value = %d\n", ret);
 
@@ -1949,9 +1968,14 @@ void cmd_flash(const char *arg, void *data, unsigned sz)
 		|| !strcmp(ptn->name, "userdata")
 		|| !strcmp(ptn->name, "persist")
 		|| !strcmp(ptn->name, "recoveryfs")
-		|| !strcmp(ptn->name, "modem")) {
+		|| !strcmp(ptn->name, "modem"))
+	{
+		if (memcmp((void *)data, UBI_MAGIC, UBI_MAGIC_SIZE))
 			extra = 1;
-	} else
+		else
+			extra = 0;
+	}
+	else
 		sz = ROUND_TO_PAGE(sz, page_mask);
 
 	dprintf(INFO, "writing %d bytes to '%s'\n", sz, ptn->name);
