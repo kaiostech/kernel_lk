@@ -180,8 +180,8 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 
 	if (buf_size < (strlen(panel_node) + dsi_id_len +
 			MAX_PANEL_FORMAT_STRING + 1) ||
-		strlen(panel_node) ||
-		strlen(dsi_id))
+		!strlen(panel_node) ||
+		!strlen(dsi_id))
 	{
 		ret = false;
 	}
