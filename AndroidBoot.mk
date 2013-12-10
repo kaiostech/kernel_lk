@@ -1,5 +1,11 @@
 #Android makefile to build lk bootloader as a part of Android Build
 
+ifeq ($(AUTOPLAT_001),true)
+  AUTOFLAG := AUTOPLAT_001=1
+else
+  AUTOFLAG := AUTOPLAT_001=0
+endif
+
 # Set flags if we need to include security libs
 ifeq ($(TARGET_BOOTIMG_SIGNED),true)
   SIGNED_KERNEL := SIGNED_KERNEL=1
@@ -39,11 +45,11 @@ $(EMMC_BOOTLOADER_OUT):
 
 # Top level for NAND variant targets
 $(TARGET_NAND_BOOTLOADER): appsbootldr_clean | $(NAND_BOOTLOADER_OUT)
-	$(MAKE) -C bootable/bootloader/lk BOOTLOADER_OUT=../../../$(NAND_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) $(SIGNED_KERNEL)
+	$(MAKE) -C bootable/bootloader/lk BOOTLOADER_OUT=../../../$(NAND_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) $(SIGNED_KERNEL) $(AUTOFLAG)
 
 # Top level for eMMC variant targets
 $(TARGET_EMMC_BOOTLOADER): emmc_appsbootldr_clean | $(EMMC_BOOTLOADER_OUT)
-	$(MAKE) -C bootable/bootloader/lk BOOTLOADER_OUT=../../../$(EMMC_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) EMMC_BOOT=1 $(SIGNED_KERNEL)
+	$(MAKE) -C bootable/bootloader/lk BOOTLOADER_OUT=../../../$(EMMC_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) EMMC_BOOT=1 $(SIGNED_KERNEL) $(AUTOFLAG)
 
 # Keep build NAND & eMMC as default for targets still using TARGET_BOOTLOADER
 TARGET_BOOTLOADER := $(PRODUCT_OUT)/EMMCBOOT.MBN
@@ -64,4 +70,4 @@ $(NANDWRITE_OUT):
 
 $(TARGET_NANDWRITE): nandwrite_clean | $(NANDWRITE_OUT)
 	@echo $(BOOTLOADER_PLATFORM)_nandwrite
-	$(MAKE) -C bootable/bootloader/lk BOOTLOADER_OUT=../../../$(NANDWRITE_OUT) $(BOOTLOADER_PLATFORM)_nandwrite BUILD_NANDWRITE=1
+	$(MAKE) -C bootable/bootloader/lk BOOTLOADER_OUT=../../../$(NANDWRITE_OUT) $(BOOTLOADER_PLATFORM)_nandwrite BUILD_NANDWRITE=1 $(AUTOFLAG)
