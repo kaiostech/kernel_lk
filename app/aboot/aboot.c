@@ -1620,6 +1620,11 @@ void aboot_init(const struct app_descriptor *app)
 			goto fastboot;
 		if (keys_get_state(KEY_VOLUMEDOWN) != 0)
 			goto fastboot;
+#if defined(AUTOPLAT_001)
+		// check back key , this key on the debug board
+		if (!gpio_get(56))
+			goto fastboot;
+#endif // AUTOPLAT_001
 	}
 
 	#if NO_KEYPAD_DRIVER

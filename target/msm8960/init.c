@@ -76,6 +76,13 @@ void target_early_init(void)
 #if WITH_DEBUG_UART
 	target_uart_init();
 #endif
+
+#if defined(AUTOPLAT_001)
+	// request GPIO_84 for debug boot up time
+	gpio_tlmm_config(84, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_ENABLE);
+	// set GPIO_84 to HIGH when enter LK
+	gpio_set(84, 2);
+#endif // AUTOPLAT_001
 }
 
 void shutdown_device(void)
@@ -136,6 +143,11 @@ void target_init(void)
 	case MPQ8064:
 	case APQ8064AA:
 	case APQ8064AB:
+#if defined(AUTOPLAT_001)
+		// Debug for AutoPlatform 001
+		gpio_tlmm_config(56, 2, GPIO_INPUT, GPIO_NO_PULL,
+				GPIO_8MA, GPIO_DISABLE);
+#endif // AUTOPLAT_001
 		apq8064_keypad_init();
 		break;
 	default:
@@ -299,6 +311,9 @@ void target_uart_init(void)
 		break;
 
 	case LINUX_MACHTYPE_8064_CDP:
+		uart_dm_init(1, 0x12440000, 0x12450000);
+		break;
+
 	case LINUX_MACHTYPE_8064_MTP:
 	case LINUX_MACHTYPE_8064_LIQUID:
 		uart_dm_init(7, 0x16600000, 0x16640000);
