@@ -104,6 +104,12 @@ void platform_uninit(void)
 	display_shutdown();
 #endif
 
+#if defined(AUTOPLAT_001)
+	/* set GPIO_84 to LOW when leave LK */
+	gpio_set(84, 1);
+#endif /* AUTOPLAT_001 */
+
+
 	platform_uninit_timer();
 }
 

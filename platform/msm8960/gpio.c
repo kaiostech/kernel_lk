@@ -56,6 +56,20 @@ void gpio_set(uint32_t gpio, uint32_t dir)
 	return;
 }
 
+#if defined(AUTOPLAT_001)
+// Now, just for GPIO_56 to fastboot check
+// will add other fucn when demo done
+uint32_t gpio_get(uint32_t gpio)
+{
+	uint32_t val;
+
+	unsigned int *addr = (unsigned int *)GPIO_IN_OUT_ADDR(gpio);
+	val = readl(addr);
+
+	return val;
+}
+#endif //AUTOPLAT_001
+
 /* TODO: this and other code below in this file should ideally by in target dir.
  * keeping it here for this brigup.
  */
