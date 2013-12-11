@@ -34,7 +34,7 @@
 #define BOARD_KERNEL_PAGESIZE                2048
 /* Wrapper APIs */
 
-struct mmc_device *get_mmc_device();
+struct mmc_device *get_mmc_device(void);
 uint32_t mmc_get_psn(void);
 
 uint32_t mmc_read(uint64_t data_addr, uint32_t *out, uint32_t data_len);

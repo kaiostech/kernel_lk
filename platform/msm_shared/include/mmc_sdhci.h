@@ -86,6 +86,8 @@
 
 /* EXT_CSD */
 /* Offsets in the ext csd */
+#define MMC_EXT_BOOT_WP              		  	  173 // ACOS_MOD_ONELINE
+#define MMC_EXT_PARTITION_CONFIG			      179 // ACOS_MOD_ONELINE
 #define MMC_EXT_MMC_BUS_WIDTH                     183
 #define MMC_EXT_MMC_HS_TIMING                     185
 #define MMC_DEVICE_TYPE                           196
@@ -98,6 +100,19 @@
 #define MMC_ERASE_GRP_DEF                         175
 #define MMC_USR_WP                                171
 #define MMC_HC_ERASE_GRP_SIZE                     224
+
+// ACOS_MOD_BEGIN
+//#define MMC_BOOT_B_PERM_WP_EN            not used
+#define MMC_BOOT_B_PWR_WP_DIS             (1<<6)
+
+#define MMC_BOOT_B_PERM_WP_DIS            (1<<4)
+#define MMC_BOOT_B_PWR_WP_EN              1
+
+/* Partition Access */
+#define MMC_US_PARTITION             0x00
+#define MMC_B_PARTITION_1            0x01
+#define MMC_B_PARTITION_2            0x02
+// ACOS_MOD_END
 
 /* Values for ext csd fields */
 #define MMC_HS_TIMING                             0x1
@@ -333,4 +348,11 @@ uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uin
 uint32_t mmc_get_wp_status(struct mmc_device *dev, uint32_t addr, uint8_t *wp_status);
 /* API: Put the mmc card in sleep mode */
 void mmc_put_card_to_sleep(struct mmc_device *dev);
+
+
+// ACOS_MOD_BEGIN
+unsigned int switch_to_boot_partition(void);
+unsigned int switch_to_user_partition(void);
+// ACOS_MOD_END
+
 #endif

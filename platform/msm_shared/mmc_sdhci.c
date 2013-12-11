@@ -743,6 +743,58 @@ static uint32_t mmc_switch_cmd(struct sdhci_host *host, struct mmc_card *card,
 	return mmc_ret;
 }
 
+// ACOS_MOD_BEGIN
+static unsigned int
+wait_for_ready(struct sdhci_host *host, struct mmc_card *card)
+{
+	unsigned int mmc_ret = 0;
+	unsigned int status;
+
+	/* Wait for card to be in the transfer state */
+	do {
+		mmc_ret = mmc_get_card_status(host, card, &status);
+		if (MMC_CARD_STATUS(status) == MMC_TRAN_STATE)
+			break;
+	}
+	while ((!mmc_ret) &&
+	       (MMC_CARD_STATUS(status) == MMC_PROG_STATE));
+
+	return mmc_ret;
+}
+
+/* Switch to a different partition, e.g. MMC_BOOT_B_PARTITION_1 */
+static unsigned int
+switch_to_partition(int partition_type)
+{
+	unsigned int mmc_ret = 0;
+	struct mmc_device *dev = get_mmc_device();
+	struct sdhci_host *host = &dev->host;
+	struct mmc_card *card = &dev->card;
+
+	mmc_ret = mmc_switch_cmd(host, card, MMC_ACCESS_WRITE,
+					    MMC_EXT_PARTITION_CONFIG,
+					    partition_type);
+	if (mmc_ret) {
+		return mmc_ret;
+	}
+
+	return wait_for_ready(host, card);
+}
+
+unsigned int
+switch_to_boot_partition(void)
+{
+	return switch_to_partition(MMC_B_PARTITION_1);
+}
+
+unsigned int
+switch_to_user_partition(void)
+{
+	return switch_to_partition(MMC_US_PARTITION);
+}
+// ACOS_MOD_END
+
+
 /*
  * Function: mmc set bus width
  * Arg     : Host, card structure & width

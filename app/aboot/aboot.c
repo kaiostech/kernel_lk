@@ -599,6 +599,15 @@ void boot_linux(void *kernel, unsigned *tags,
 #if DEVICE_TREE
 	dprintf(INFO, "Updating device tree: start\n");
 
+#ifdef WITH_ENABLE_IDME
+	ret = update_IDME_device_tree((void *)tags, final_cmdline, ramdisk, ramdisk_size);
+	if(ret)
+	{
+		dprintf(CRITICAL, "ERROR: Updating IDME Device Tree Failed \n");
+		ASSERT(0);
+	}
+#endif
+
 	/* Update the Device Tree */
 	ret = update_device_tree((void *)tags, final_cmdline, ramdisk, ramdisk_size);
 	if(ret)

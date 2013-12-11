@@ -446,6 +446,15 @@ unsigned target_baseband()
 void target_serialno(unsigned char *buf)
 {
 	unsigned int serialno;
+	// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	int rc = idme_get_var_external("serial", (char *)buf, 16);
+	buf[16] = '\0';
+
+	dprintf(INFO, "Serial %s, %u, %u, rc=%d\n", buf, buf[0], buf[1], rc);
+	if(!rc && buf[0] != '0' && buf[1] != '\0')
+		return;
+#endif
 	if (target_is_emmc_boot()) {
 		serialno = mmc_get_psn();
 		snprintf((char *)buf, 13, "%x", serialno);

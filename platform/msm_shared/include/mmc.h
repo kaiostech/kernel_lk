@@ -640,6 +640,8 @@ unsigned int mmc_erase_card(unsigned long long data_addr,
 // ACOS_MOD_BEGIN
 unsigned int switch_to_boot_partition(void);
 unsigned int switch_to_user_partition(void);
+struct mmc_boot_host *get_mmc_host(void);
+struct mmc_boot_card *get_mmc_card(void);
 // ACOS_MOD_END
 
 void mmc_mclk_reg_wr_delay();
