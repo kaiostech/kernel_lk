@@ -189,7 +189,6 @@ struct msm_panel_info {
 	uint32_t wait_cycle;
 	uint32_t clk_rate;
 	uint32_t rotation;
-	uint32_t broadcastmode;
 	char     lowpowerstop;
 
 	struct lcd_panel_info lcd;
@@ -201,6 +200,8 @@ struct msm_panel_info {
 
 	int (*on) (void);
 	int (*off) (void);
+	int (*pre_on) (void);
+	int (*pre_off) (void);
 	int (*prepare) (void);
 	int (*early_config) (void *pdata);
 	int (*config) (void *pdata);

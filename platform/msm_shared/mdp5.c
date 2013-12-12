@@ -177,14 +177,14 @@ void mdss_smp_setup(struct msm_panel_info *pinfo)
 		ASSERT(0); /* Max 4 SMPs can be allocated per client */
 	}
 
-	writel(smp_cnt * 0x40, RGB0_REQPRIORITY_FIFO_WATERMARK0);
-	writel(smp_cnt * 0x80, RGB0_REQPRIORITY_FIFO_WATERMARK1);
-	writel(smp_cnt * 0xc0, RGB0_REQPRIORITY_FIFO_WATERMARK2);
+	writel(smp_cnt * 0x40, MDP_VP_0_RGB_0_BASE + REQPRIORITY_FIFO_WATERMARK0);
+	writel(smp_cnt * 0x80, MDP_VP_0_RGB_0_BASE + REQPRIORITY_FIFO_WATERMARK1);
+	writel(smp_cnt * 0xc0, MDP_VP_0_RGB_0_BASE + REQPRIORITY_FIFO_WATERMARK2);
 
 	if (pinfo->lcdc.dual_pipe) {
-		writel(smp_cnt * 0x40, RGB1_REQPRIORITY_FIFO_WATERMARK0);
-		writel(smp_cnt * 0x80, RGB1_REQPRIORITY_FIFO_WATERMARK1);
-		writel(smp_cnt * 0xc0, RGB1_REQPRIORITY_FIFO_WATERMARK2);
+		writel(smp_cnt * 0x40, MDP_VP_0_RGB_1_BASE + REQPRIORITY_FIFO_WATERMARK0);
+		writel(smp_cnt * 0x80, MDP_VP_0_RGB_1_BASE + REQPRIORITY_FIFO_WATERMARK1);
+		writel(smp_cnt * 0xc0, MDP_VP_0_RGB_1_BASE + REQPRIORITY_FIFO_WATERMARK2);
 	}
 
 	while((smp_cnt > 0) && !(shift > 16)) {
@@ -294,7 +294,7 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 {
 	uint32_t mdp_rgb_size, height, width;
 
-	height = (fb->height << 16);
+	height = fb->height;
 	width = fb->width;
 
 	if (pinfo->lcdc.dual_pipe)
@@ -331,7 +331,7 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 
 		/* Baselayer for layer mixer 1 */
 		if (pinfo->lcdc.split_display)
-			writel(0x04000, MDP_CTL_1_BASE + CTL_LAYER_1);
+			writel(0x1000, MDP_CTL_1_BASE + CTL_LAYER_1);
 		else
 			writel(0x01000, MDP_CTL_0_BASE + CTL_LAYER_1);
 	}

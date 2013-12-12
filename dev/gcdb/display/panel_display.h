@@ -39,6 +39,11 @@
 #define BPP_24 24
 
 #define TIMING_SIZE 48
+
+#define DUAL_DSI_FLAG 0x1
+#define DUAL_PIPE_FLAG 0x2
+#define PIPE_SWAP_FLAG 0x4
+#define SPLIT_DISPLAY_FLAG 0x8
 /*---------------------------------------------------------------------------*/
 /* struct definition                                                         */
 /*---------------------------------------------------------------------------*/
@@ -62,8 +67,10 @@ typedef struct panel_struct{
 int dsi_panel_init(struct msm_panel_info *pinfo,
 		struct panel_struct *pstruct);
 
-int dsi_panel_on();
-int dsi_panel_off();
+int dsi_panel_pre_on();
+int dsi_panel_post_on();
+int dsi_panel_pre_off();
+int dsi_panel_post_off();
 int dsi_panel_rotation();
 int dsi_panel_config(void *);
 

@@ -45,6 +45,9 @@
 #define PIPE_SSPP_SRC_FORMAT                    0x30
 #define PIPE_SSPP_SRC_UNPACK_PATTERN            0x34
 #define PIPE_SSPP_SRC_OP_MODE                   0x38
+#define REQPRIORITY_FIFO_WATERMARK0        	0x50
+#define REQPRIORITY_FIFO_WATERMARK1        	0x54
+#define REQPRIORITY_FIFO_WATERMARK2        	0x58
 
 #define MDP_VP_0_MIXER_0_BASE                   REG_MDP(0x3200)
 #define MDP_VP_0_MIXER_1_BASE                   REG_MDP(0x3600)
@@ -120,6 +123,8 @@
 #define MDP_CLK_CTRL3                           REG_MDP(0x04A8)
 #define MDP_CLK_CTRL4                           REG_MDP(0x04B0)
 #define MDP_CLK_CTRL5                           REG_MDP(0x04B8)
+#define MDP_CLK_CTRL6                           REG_MDP(0x03C4)
+#define MDP_CLK_CTRL7                           REG_MDP(0x04D0)
 
 #define MMSS_MDP_CLIENT_ID_UNUSED               0x00000000
 #define MMSS_MDP_1_1_CLIENT_ID_RGB0             0x00000007
@@ -132,15 +137,8 @@
 #define MMSS_MDP_SMP_ALLOC_R_0                  REG_MDP(0x0230)
 #define MMSS_MDP_SMP_ALLOC_R_1                  REG_MDP(0x0234)
 
-#define RGB0_REQPRIORITY_FIFO_WATERMARK0        REG_MDP(0x1E50)
-#define RGB0_REQPRIORITY_FIFO_WATERMARK1        REG_MDP(0x1E54)
-#define RGB0_REQPRIORITY_FIFO_WATERMARK2        REG_MDP(0x1E58)
-
-#define RGB1_REQPRIORITY_FIFO_WATERMARK0        REG_MDP(0x2250)
-#define RGB1_REQPRIORITY_FIFO_WATERMARK1        REG_MDP(0x2254)
-#define RGB1_REQPRIORITY_FIFO_WATERMARK2        REG_MDP(0x2258)
-
 #define MDP_QOS_REMAPPER_CLASS_0                REG_MDP(0x02E0)
+#define MDP_QOS_REMAPPER_CLASS_1                REG_MDP(0x02E4)
 
 #define VBIF_VBIF_DDR_FORCE_CLK_ON              REG_MDP(0x24004)
 #define VBIF_VBIF_DDR_OUT_MAX_BURST             REG_MDP(0x240D8)
@@ -150,6 +148,17 @@
 #define VBIF_VBIF_DDR_AXI_AMEMTYPE_CONF1        REG_MDP(0x24164)
 #define VBIF_VBIF_DDR_OUT_AOOO_AXI_EN           REG_MDP(0x24178)
 #define VBIF_VBIF_DDR_OUT_AX_AOOO               REG_MDP(0x2417C)
+#define VBIF_VBIF_IN_RD_LIM_CONF0               REG_MDP(0x240B0)
+#define VBIF_VBIF_IN_RD_LIM_CONF1               REG_MDP(0x240B4)
+#define VBIF_VBIF_IN_RD_LIM_CONF2               REG_MDP(0x240B8)
+#define VBIF_VBIF_IN_RD_LIM_CONF3               REG_MDP(0x240BC)
+#define VBIF_VBIF_IN_WR_LIM_CONF0               REG_MDP(0x240C0)
+#define VBIF_VBIF_IN_WR_LIM_CONF1               REG_MDP(0x240C4)
+#define VBIF_VBIF_IN_WR_LIM_CONF2               REG_MDP(0x240C8)
+#define VBIF_VBIF_IN_WR_LIM_CONF3               REG_MDP(0x240CC)
+#define VBIF_VBIF_ABIT_SHORT                    REG_MDP(0x24070)
+#define VBIF_VBIF_ABIT_SHORT_CONF               REG_MDP(0x24074)
+#define VBIF_VBIF_GATE_OFF_WRREQ_EN             REG_MDP(0x240A8)
 
 void mdp_set_revision(int rev);
 int mdp_get_revision();
