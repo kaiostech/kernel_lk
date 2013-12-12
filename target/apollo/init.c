@@ -166,7 +166,7 @@ void target_init(void)
 
 	/* Workaround for S2 bite bug (PMIC V2 10sec reset instead of shutdown) */
 	if ((pm8x41_reg_read(0x80c) & (1 << 7)) &&
-			(pmic_ver <= PMIC_VERSION_V2)) {
+			(pmic_ver <= PM8X41_VERSION_V2)) {
 		dprintf(INFO, "Shutting off device due to S2 bite bug...\n");
 		for (i = 0; i < 50; i++)
 			mdelay(100);
@@ -322,7 +322,7 @@ void reboot_device(unsigned reboot_reason)
 		writel(reboot_reason, RESTART_REASON_ADDR);
 
 	/* Configure PMIC for warm reset */
-	if (pmic_ver == PMIC_VERSION_V2)
+	if (pmic_ver == PM8X41_VERSION_V2)
 		pm8x41_v2_reset_configure(PON_PSHOLD_WARM_RESET);
 	else
 		pm8x41_reset_configure(PON_PSHOLD_WARM_RESET);
@@ -395,7 +395,7 @@ void shutdown_device()
 	dprintf(CRITICAL, "Going down for shutdown.\n");
 
 	/* Configure PMIC for shutdown. */
-	if (pmic_ver == PMIC_VERSION_V2)
+	if (pmic_ver == PM8X41_VERSION_V2)
 		pm8x41_v2_reset_configure(PON_PSHOLD_SHUTDOWN);
 	else
 		pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
