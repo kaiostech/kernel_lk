@@ -67,10 +67,12 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->lcdc.yres_pad = pstruct->panelres->vtop_border +
 				 pstruct->panelres->vbottom_border;
 
-	pinfo->lcdc.dual_pipe = (pstruct->paneldata->panel_operating_mode
-								 & 0x2);
-	pinfo->lcdc.pipe_swap = (pstruct->paneldata->panel_operating_mode
-								 & 0x4);
+	if (pstruct->paneldata->panel_operating_mode & DUAL_PIPE_FLAG)
+		pinfo->lcdc.dual_pipe = 1;
+	if (pstruct->paneldata->panel_operating_mode & PIPE_SWAP_FLAG)
+		pinfo->lcdc.pipe_swap = 1;
+	if (pstruct->paneldata->panel_operating_mode & SPLIT_DISPLAY_FLAG)
+		pinfo->lcdc.split_display = 1;
 
 	/* Color setting*/
 	pinfo->lcdc.border_clr = pstruct->color->border_color;
@@ -105,13 +107,13 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->clk_rate = pstruct->paneldata->panel_clockrate;
 	pinfo->rotation = pstruct->paneldata->panel_orientation;
 	pinfo->mipi.interleave_mode = pstruct->paneldata->interleave_mode;
-	pinfo->broadcastmode = pstruct->paneldata->panel_broadcast_mode;
+	pinfo->mipi.broadcast = pstruct->paneldata->panel_broadcast_mode;
 	pinfo->lowpowerstop = pstruct->paneldata->dsi_lp11_atinit;
 	pinfo->mipi.vc = pstruct->paneldata->dsi_virtualchannel_id;
 	pinfo->mipi.frame_rate = pstruct->paneldata->panel_framerate;
 	pinfo->mipi.stream = pstruct->paneldata->dsi_stream;
-	pinfo->mipi.dual_dsi = (pstruct->paneldata->panel_operating_mode
-								 & 0x1);
+	if (pstruct->paneldata->panel_operating_mode & DUAL_DSI_FLAG)
+		pinfo->mipi.dual_dsi = 1;
 	pinfo->mipi.mode_gpio_state = pstruct->paneldata->mode_gpio_state;
 	pinfo->mipi.bitclock = pstruct->paneldata->panel_bitclock_freq;
 	pinfo->mipi.use_enable_gpio =
@@ -149,8 +151,10 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->mipi.mdp_trigger = pstruct->paneltiminginfo->dsi_mdp_trigger;
 	pinfo->mipi.dma_trigger = pstruct->paneltiminginfo->dsi_dma_trigger;
 
-	pinfo->on = dsi_panel_on;
-	pinfo->off = dsi_panel_off;
+	pinfo->pre_on = dsi_panel_pre_on;
+	pinfo->pre_off = dsi_panel_pre_off;
+	pinfo->on = dsi_panel_post_on;
+	pinfo->off = dsi_panel_post_off;
 	pinfo->rotate = dsi_panel_rotation;
 	pinfo->config = dsi_panel_config;
 
@@ -161,13 +165,35 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 /* Panel Callbacks                                                           */
 /*---------------------------------------------------------------------------*/
 
-int dsi_panel_on()
+int dsi_panel_pre_on()
 {
+	return target_display_pre_on();
+}
+
+int dsi_panel_pre_off()
+{
+	return target_display_pre_off();
+}
+
+int dsi_panel_post_on()
+{
+	int ret = NO_ERROR;
+
+	ret = target_display_post_on();
+	if (ret)
+		return ret;
+
 	return oem_panel_on();
 }
 
-int dsi_panel_off()
+int dsi_panel_post_off()
 {
+	int ret = NO_ERROR;
+
+	ret = target_display_post_off();
+	if (ret)
+		return ret;
+
 	return oem_panel_off();
 }
 

@@ -1,6 +1,7 @@
 LOCAL_DIR := $(GET_LOCAL_DIR)
 
 INCLUDES += -I$(LOCAL_DIR)/include -I$(LK_TOP_DIR)/platform/msm_shared
+INCLUDES += -I$(LK_TOP_DIR)/dev/gcdb/display -I$(LK_TOP_DIR)/dev/gcdb/display/include
 
 PLATFORM := apq8084
 
@@ -11,7 +12,7 @@ BASE_ADDR    := 0x0000000
 
 SCRATCH_ADDR := 0xFF00000
 
-DEFINES += DISPLAY_SPLASH_SCREEN=0
+DEFINES += DISPLAY_SPLASH_SCREEN=1
 DEFINES += DISPLAY_TYPE_MIPI=1
 DEFINES += DISPLAY_TYPE_DSI6G=1
 
@@ -19,6 +20,7 @@ MODULES += \
 	dev/keys \
 	dev/pmic/pm8x41 \
     lib/ptable \
+	dev/gcdb/display \
     lib/libfdt
 
 DEFINES += \
@@ -34,3 +36,5 @@ DEFINES += \
 OBJS += \
     $(LOCAL_DIR)/init.o \
     $(LOCAL_DIR)/meminfo.o \
+    $(LOCAL_DIR)/target_display.o \
+    $(LOCAL_DIR)/oem_panel.o
