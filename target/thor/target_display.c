@@ -34,6 +34,7 @@
 #include <board.h>
 #include <mdp5.h>
 #include <platform/gpio.h>
+#include <platform/iomap.h>
 #include <target/display.h>
 
 static struct msm_fb_panel_data panel;
@@ -41,14 +42,14 @@ static uint8_t display_enable;
 
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
-extern int mdss_dsi_uniphy_pll_config(void);
+extern int thor_dsi_uniphy_pll_config(uint32_t ctl_base);
 
 static int thor_mdss_dsi_panel_clock(uint8_t enable)
 {
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
 		mdp_clock_init();
-		mdss_dsi_uniphy_pll_config();
+		thor_dsi_uniphy_pll_config(MIPI_DSI0_BASE);
 		mmss_clock_init();
 	} else if(!target_cont_splash_screen()) {
 		// * Add here for continuous splash  *
@@ -83,18 +84,21 @@ static int thor_mipi_panel_power(uint8_t enable)
 {
 	if (enable) {
 		/* backlight enable is out of this */
+		struct pm8x41_ldo ldo22 = LDO(PM8x41_LDO22, PLDO_TYPE);
+		struct pm8x41_ldo ldo12 = LDO(PM8x41_LDO12, PLDO_TYPE);
+		struct pm8x41_ldo ldo2 = LDO(PM8x41_LDO2, NLDO_TYPE);
 
 		/* Turn on LDO8 for lcd1 mipi vdd */
-		pm8x41_ldo_set_voltage("LDO22", 3000000);
-		pm8x41_ldo_control("LDO22", enable);
+		pm8x41_ldo_set_voltage(&ldo22, 3000000);
+		pm8x41_ldo_control(&ldo22, enable);
 
 		/* Turn on LDO23 for lcd1 mipi vddio */
-		pm8x41_ldo_set_voltage("LDO12", 1800000);
-		pm8x41_ldo_control("LDO12", enable);
+		pm8x41_ldo_set_voltage(&ldo12, 1800000);
+		pm8x41_ldo_control(&ldo12, enable);
 
 		/* Turn on LDO2 for vdda_mipi_dsi */
-		pm8x41_ldo_set_voltage("LDO2", 1200000);
-		pm8x41_ldo_control("LDO2", enable);
+		pm8x41_ldo_set_voltage(&ldo2, 1200000);
+		pm8x41_ldo_control(&ldo2, enable);
 
 		dprintf(INFO, " Panel Reset \n");
 		/* Panel Reset */
