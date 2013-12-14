@@ -35,6 +35,9 @@
 #include <target/board.h>
 
 static struct msm_fb_panel_data panel;
+#if defined(AUTOPLAT_001)
+static struct msm_fb_panel_data hdmi_panel;
+#endif // AUTOPLAT_001
 static uint8_t display_enable;
 
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
@@ -53,8 +56,11 @@ static int apq8064_lvds_panel_power(int enable)
 		 * GPIO enable was not happening.
 		 */
 		apq8064_ext_3p3V_enable();
+#if defined(AUTOPLAT_001)
+                //AutoPlatform001 use external power to cortrol backlight
+                apq8064_display_gpio_init();
+#endif // AUTOPLAT_001
 
-		apq8064_display_gpio_init();
 
 		/* Configure PMM MPP  3*/
 		pm8921_mpp_set_digital_output(mpp_3);
@@ -148,15 +154,31 @@ static int msm8960_mipi_panel_clock(int enable)
 	return 0;
 }
 
+#if defined(AUTOPLAT_001)
 static int mpq8064_hdmi_panel_clock(int enable)
 {
-	if (enable)
-		mdp_clock_init();
-
-	hdmi_app_clk_init(enable);
+	int target_id = board_target_id();
+	if (enable) {
+		if (target_id != LINUX_MACHTYPE_8064_LIQUID ||
+			target_id != LINUX_MACHTYPE_8064_CDP) {
+			mdp_clock_init();
+		}
+		hdmi_app_clk_init(enable);
+	}
 
 	return 0;
 }
+#else
+static int mpq8064_hdmi_panel_clock(int enable)
+{
+	if (enable)
+	    mdp_clock_init();
+
+        hdmi_app_clk_init(enable);
+
+	return 0;
+}
+#endif // AUTOPLAT_001
 
 static int mpq8064_hdmi_panel_power(int enable)
 {
@@ -279,16 +301,37 @@ void display_init(void)
 		panel.mdp_rev = MDP_REV_44;
 		break;
 	case LINUX_MACHTYPE_8064_CDP:
+	case LINUX_MACHTYPE_8064_LIQUID:
 		lvds_chimei_wxga_init(&(panel.panel_info));
 		panel.clk_func = apq8064_lvds_clock;
 		panel.power_func = apq8064_lvds_panel_power;
-		panel.fb.base = 0x80B00000;
+#if defined(AUTOPLAT_001)
+		panel.fb.base = 0x89800000;
+#else
+                /* Need to verify with LIQUID device */
+		panel.fb.base = 0x8B000000;
+#endif // AUTOPLAT_001
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
 		panel.fb.bpp =  panel.panel_info.bpp;
 		panel.fb.format = FB_FORMAT_RGB888;
 		panel.mdp_rev = MDP_REV_44;
+
+#if defined(AUTOPLAT_001)
+		hdmi_msm_panel_init(&(hdmi_panel.panel_info));
+		hdmi_panel.clk_func = mpq8064_hdmi_panel_clock;
+		hdmi_panel.power_func = mpq8064_hdmi_panel_power;
+		hdmi_panel.fb.base = 0x89000000;
+		hdmi_panel.fb.width = hdmi_panel.panel_info.xres;
+		hdmi_panel.fb.height = hdmi_panel.panel_info.yres;
+		hdmi_panel.fb.stride = hdmi_panel.panel_info.xres;
+		hdmi_panel.fb.bpp = hdmi_panel.panel_info.bpp;
+		hdmi_panel.fb.format = FB_FORMAT_RGB888;
+		hdmi_panel.mdp_rev = MDP_REV_44;
+		hdmi_set_fb_addr(hdmi_panel.fb.base);
+#endif // AUTOPLAT_001
+
 		break;
 	case LINUX_MACHTYPE_8064_MTP:
 		mipi_toshiba_video_wsvga_init(&(panel.panel_info));
@@ -342,7 +385,18 @@ void display_init(void)
 		return;
 	}
 
+#if defined(AUTOPLAT_001)
+	if (msm_display_init(&hdmi_panel)) {
+		dprintf(CRITICAL, "HDMI init failed!\n");
+		return;
+	}
+#endif // AUTOPLAT_001
+
+#if defined(AUTOPLAT_001)
+//	display_enable = 1;
+#else
 	display_enable = 1;
+#endif // AUTOPLAT_001
 }
 
 void display_shutdown(void)

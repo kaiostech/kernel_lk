@@ -46,6 +46,36 @@ int lvds_chimei_wxga_off()
 	return NO_ERROR;
 }
 
+#if defined(AUTOPLAT_001)
+void lvds_chimei_wxga_init(struct msm_panel_info *pinfo)
+{
+	pinfo->xres = 800;
+	pinfo->yres = 480;
+	pinfo->type = LVDS_PANEL;
+	pinfo->wait_cycle = 0;
+	pinfo->bpp = 24;
+	pinfo->clk_rate = 74250000;
+
+	pinfo->lcdc.h_back_porch = 25;
+	pinfo->lcdc.h_front_porch = 20;
+	pinfo->lcdc.h_pulse_width = 128;
+	pinfo->lcdc.v_back_porch = 10;
+	pinfo->lcdc.v_front_porch = 4;
+	pinfo->lcdc.v_pulse_width = 2;
+	pinfo->lcdc.underflow_clr = 0xff;
+	pinfo->lcdc.hsync_skew = 0;
+	pinfo->lvds.channel_mode = LVDS_SINGLE_CHANNEL_MODE;
+
+	/* Set border color, padding only for reducing active display region */
+	pinfo->lcdc.border_clr = 0x0;
+	pinfo->lcdc.xres_pad = 0;
+	pinfo->lcdc.yres_pad = 0;
+
+	pinfo->on = lvds_chimei_wxga_on;
+	pinfo->off = lvds_chimei_wxga_off;
+	pinfo->config = lvds_chimei_wxga_config;
+}
+#else
 void lvds_chimei_wxga_init(struct msm_panel_info *pinfo)
 {
 	pinfo->xres = 1364;
@@ -74,3 +104,4 @@ void lvds_chimei_wxga_init(struct msm_panel_info *pinfo)
 	pinfo->off = lvds_chimei_wxga_off;
 	pinfo->config = lvds_chimei_wxga_config;
 }
+#endif //AUTOPLAT_001
