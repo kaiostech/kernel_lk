@@ -24,8 +24,7 @@ endif
 ifeq ($(PLATFORM),msm8974)
 OBJS += \
 	$(LOCAL_DIR)/mipi_toshiba_video_720p.o \
-	$(LOCAL_DIR)/mipi_sharp_video_qhd.o \
-	$(LOCAL_DIR)/mipi_novatek_video_1080p.o
+	$(LOCAL_DIR)/mipi_sharp_video_qhd.o
 endif
 
 ifeq ($(PLATFORM),msm8226)
@@ -41,4 +40,9 @@ OBJS += \
 	$(LOCAL_DIR)/mipi_hx8379a_video_wvga.o \
 	$(LOCAL_DIR)/mipi_otm8018b_video_fwvga.o \
 	$(LOCAL_DIR)/mipi_nt35590_video_720p.o
+endif
+
+ifeq ($(TARGET),thor)
+OBJS += \
+	$(LOCAL_DIR)/mipi_novatek_video_1080p.o
 endif

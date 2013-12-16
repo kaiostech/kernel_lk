@@ -136,9 +136,7 @@ static unsigned page_mask = 0;
 static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
 static bool boot_into_ffbm;
 
-#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 int skip_authentication = 0;
-#endif
 
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
@@ -294,18 +292,14 @@ unsigned char *update_cmdline(const char * cmdline)
 	}
 
 	/* Determine correct androidboot.baseband to use */
-	switch(board_baseband())
+	switch(target_baseband())
 	{
 		case BASEBAND_APQ:
 			cmdline_len += strlen(baseband_apq);
 			break;
 
 		case BASEBAND_MSM:
-#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
-			cmdline_len += strlen(baseband_apq);
-#else
 			cmdline_len += strlen(baseband_msm);
-#endif
 			break;
 
 		case BASEBAND_CSFB:
@@ -424,7 +418,7 @@ unsigned char *update_cmdline(const char * cmdline)
 			while ((*dst++ = *src++));
 		}
 
-		switch(board_baseband())
+		switch(target_baseband())
 		{
 			case BASEBAND_APQ:
 				src = baseband_apq;
@@ -433,11 +427,7 @@ unsigned char *update_cmdline(const char * cmdline)
 				break;
 
 			case BASEBAND_MSM:
-#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 				src = baseband_apq;
-#else
-				src = baseband_msm;
-#endif
 				if (have_cmdline) --dst;
 				while ((*dst++ = *src++));
 				break;
@@ -832,10 +822,8 @@ int boot_linux_from_mmc(void)
 	}
 #endif
 
-#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 	if (target_verify_unlock_code() == 1)
 		skip_authentication = 1;
-#endif
 
 	/* Authenticate Kernel */
 	dprintf(INFO, "use_signed_kernel=%d, is_tampered=%d.\n",
@@ -896,7 +884,6 @@ int boot_linux_from_mmc(void)
 			return -1;
 		}
 
-#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 		if (!skip_authentication)
 		{
 			verify_signed_bootimg(image_addr, imagesize_actual);
@@ -905,9 +892,6 @@ int boot_linux_from_mmc(void)
 		{
 			dprintf(INFO, "Device unlocked, skipping authentication\n");
 		}
-#else
-		verify_signed_bootimg(image_addr, imagesize_actual);
-#endif
 
 		/* Move kernel, ramdisk and device tree to correct address */
 		memmove((void*) hdr->kernel_addr, (char *)(image_addr + page_size), hdr->kernel_size);
@@ -1580,12 +1564,12 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 
 #if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
     #if defined(BUILD_USER_VARIANT)
-        if ((gpio_get(target_production_gpio()) == 1)
+	if ((gpio_get(target_production_gpio()) == 1)
 		&& (target_verify_unlock_code() == 0))
-        {
-                fastboot_fail("boot not allowed for locked hw");
-                return;
-        }
+	{
+		fastboot_fail("boot not allowed for locked hw");
+		return;
+	}
     #endif
 #endif
 
@@ -1807,7 +1791,7 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz, bool verify)
 
 #if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
     #if defined(BUILD_USER_VARIANT)
-        if ((gpio_get(target_production_gpio()) == 1)
+	if ((gpio_get(target_production_gpio()) == 1)
 		&& (target_verify_unlock_code() == 0)
 		&& (strcmp(arg, "unlock")))
 	{
@@ -1835,6 +1819,7 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz, bool verify)
 			return;
 		}
 	}
+#ifdef WITH_ENABLE_IDME
 	else if (!strcmp(arg, "unlock"))
 	{
 		if (target_unlock(data, sz))
@@ -1860,6 +1845,7 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz, bool verify)
 			return;
 		}
 	}
+#endif
 	else
 	{
 		index = partition_get_index(arg);
@@ -1911,13 +1897,13 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz, bool ver
 
 #if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
     #if defined(BUILD_USER_VARIANT)
-        if ((gpio_get(target_production_gpio()) == 1)
+	if ((gpio_get(target_production_gpio()) == 1)
 		&& (target_verify_unlock_code() == 0)
 		&& (strcmp(arg, "unlock")))
-        {
-                fastboot_fail("flashing not allowed for locked hw");
-                return;
-        }
+	{
+		fastboot_fail("flashing not allowed for locked hw");
+		return;
+	}
     #endif
 #endif
 	index = partition_get_index(arg);
@@ -2310,26 +2296,26 @@ int splash_screen_check_header(struct fbimage *logo)
 	return 0;
 }
 
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
 void cmd_oem_relock(const char *arg, void *data, unsigned sz)
 {
 	idme_update_var_ex("unlock_code", "", 0);
 	fastboot_okay("");
 }
 
-// ACOS_MOD_BEGIN
-#ifdef WITH_ENABLE_IDME
 void cmd_idme(const char *arg, void *data, unsigned sz)
 {
 	char response[64] = "idme done";
 
 #if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
     #if defined(BUILD_USER_VARIANT)
-        if ((gpio_get(target_production_gpio()) == 1)
+	if ((gpio_get(target_production_gpio()) == 1)
 		&& (target_verify_unlock_code() == 0))
-        {
-                fastboot_fail("oem idme not allowed for locked hw");
-                return;
-        }
+	{
+		fastboot_fail("oem idme not allowed for locked hw");
+		return;
+	}
     #endif
 #endif
 	if( 0 == fastboot_idme( arg )) {
@@ -2510,8 +2496,6 @@ static void publish_getvar_partition_info(struct getvar_partition_info *info, ui
 }
 
 /* register commands and variables for fastboot */
-extern void cmd_dump(const char *arg, void *data, unsigned sz);
-
 void aboot_fastboot_register_commands(void)
 {
 	if (target_is_emmc_boot())
@@ -2563,14 +2547,11 @@ void aboot_fastboot_register_commands(void)
 // ACOS_MOD_BEGIN
 #ifdef WITH_ENABLE_IDME
 	fastboot_register("oem idme", cmd_idme);
+	fastboot_register("oem relock", cmd_oem_relock);
 #endif
-
-	fastboot_register("flash:", cmd_flash_mmc);
 	fastboot_register("verify:", cmd_verify_mmc);
-	fastboot_register("erase:", cmd_erase_mmc);
 	fastboot_register("dump:", cmd_dump);
 	fastboot_publish("production", (gpio_get(target_production_gpio())==1)?"1":"0");
-	fastboot_register("oem relock", cmd_oem_relock);
 // ACOS_MOD_END
 }
 

@@ -223,9 +223,9 @@ void display_image_on_screen()
 {
 // ACOS_MOD_BEGIN
 #if WITH_FBGFX_SPLASH
-    fbgfx_init();
-    fbgfx_apply_image(&splash, FBGFX_CENTERED, FBGFX_CENTERED);
-    fbgfx_flip();
+	fbgfx_init();
+	fbgfx_apply_image(&splash, FBGFX_CENTERED, FBGFX_CENTERED);
+	fbgfx_flip();
 #else
 // ACOS_MOD_END
 	struct fbimage default_fbimg, *fbimg;

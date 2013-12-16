@@ -65,7 +65,7 @@ static int apollo_mdss_dsi_panel_clock(uint8_t enable)
 		mdp_gdsc_ctrl(enable);
 		mdp_clock_init();
 		mdss_dsi_uniphy_pll_config();
-		mmss_clock_init();
+		mmss_clock_init(0x100, 1);
 	} else if(!target_cont_splash_screen()) {
 		// * Add here for continuous splash  *
 	}

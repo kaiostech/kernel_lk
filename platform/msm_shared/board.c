@@ -90,8 +90,6 @@ static void platform_detect()
 		board.platform_hw_version = board_info_v7.platform_version;
 		board.pmic_info[0].pmic_type = board_info_v7.pmic_type;
 		board.pmic_info[0].pmic_version = board_info_v7.pmic_version;
-
-		board.platform_hw_version = board_info_v7.platform_version;
 	}
 	else if (format == 8)
 	{

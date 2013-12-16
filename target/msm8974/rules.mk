@@ -15,9 +15,6 @@ KERNEL_ADDR      := BASE_ADDR+0x00008000
 RAMDISK_ADDR     := BASE_ADDR+0x01000000
 SCRATCH_ADDR     := 0x11000000
 
-SIGNING_TOOL_PATH := $(LK_TOP_DIR)/signing/gensecimage/
-
-DEFINES += CONFIG_MACH_MSM8974=1
 DEFINES += DISPLAY_SPLASH_SCREEN=1
 DEFINES += DISPLAY_TYPE_MIPI=1
 DEFINES += DISPLAY_TYPE_DSI6G=1
@@ -28,9 +25,7 @@ MODULES += \
 	dev/panel/msm \
 	dev/gcdb/display \
     lib/ptable \
-    lib/libfdt \
-    lib/zlib \
-    dev/fbgfx
+    lib/libfdt
 
 DEFINES += \
 	MEMSIZE=$(MEMSIZE) \
@@ -47,4 +42,3 @@ OBJS += \
     $(LOCAL_DIR)/meminfo.o \
     $(LOCAL_DIR)/target_display.o \
     $(LOCAL_DIR)/oem_panel.o \
-    $(LOCAL_DIR)/splash.o

@@ -409,11 +409,7 @@ void mdp_clock_init(void)
 		ASSERT(0);
 	}
 
-#ifdef CONFIG_ARCH_MSM8974_THOR
 	ret = clk_get_set_enable("mdss_mdp_clk_src", 240000000, 1);
-#else
-	ret = clk_get_set_enable("mdss_mdp_clk_src", 75000000, 1);
-#endif
 	if(ret)
 	{
 		dprintf(CRITICAL, "failed to set mdp_clk_src ret = %d\n", ret);
@@ -504,7 +500,7 @@ void mmss_clock_init(uint32_t dsi_pixel0_cfg_rcgr, uint32_t dual_dsi)
 	}
 
 	/* Configure Pixel clock */
-	writel(0x100, DSI_PIXEL0_CFG_RCGR);
+	writel(dsi_pixel0_cfg_rcgr, DSI_PIXEL0_CFG_RCGR);
 	writel(0x1, DSI_PIXEL0_CMD_RCGR);
 	writel(0x1, DSI_PIXEL0_CBCR);
 

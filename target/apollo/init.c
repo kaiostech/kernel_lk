@@ -27,6 +27,7 @@
  */
 
 #include <debug.h>
+#include <arch/defines.h>
 #include <platform/iomap.h>
 #include <reg.h>
 #include <target.h>
@@ -256,6 +257,14 @@ void target_init(void)
 
 }
 
+void target_mmc_caps(struct mmc_host *host)
+{
+	host->caps.ddr_mode = 0;
+	host->caps.hs200_mode = 0;
+	host->caps.bus_width = MMC_BOOT_BUS_WIDTH_4_BIT;
+	host->caps.hs_clk_rate = MMC_CLK_50MHZ;
+}
+
 unsigned board_machtype(void)
 {
 	return target_id;
@@ -317,6 +326,11 @@ void target_baseband_detect(struct board_data *board)
 		dprintf(CRITICAL, "Platform type: %u is not supported\n",platform);
 		ASSERT(0);
 	};
+}
+
+unsigned target_baseband()
+{
+	return board_baseband();
 }
 
 void target_serialno(unsigned char *buf)

@@ -270,16 +270,6 @@ FUNCTION(dmb)
 #endif
 	bx		lr
 
-/*void dsb(void) */
-FUNCTION(dsb)
-#if ARM_CPU_CORTEX_A8
-	dsb             sy
-#elif ARM_CPU_ARM1136
-	mov             r0, #0
-	mcr             p15, 0, r0, c7, c10, 4
-#endif
-	bx              lr
-
 /* uint32_t arm_read_cycle_count(void); */
 FUNCTION(arm_read_cycle_count)
 

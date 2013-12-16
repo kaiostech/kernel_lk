@@ -33,7 +33,6 @@
 
 #define MAX_RSP_SIZE            64
 #define MAX_GET_VAR_NAME_SIZE   256
-#define MIN(x,y) ((x) > (y)? (y):(x))
 
 int fastboot_init(void *xfer_buffer, unsigned max);
 void fastboot_stop(void);
@@ -53,5 +52,7 @@ void fastboot_publish(const char *name, const char *value);
 void fastboot_okay(const char *result);
 void fastboot_fail(const char *reason);
 void fastboot_info(const char *reason);
+
+void cmd_dump(const char *arg, void *data, unsigned sz);
 
 #endif
