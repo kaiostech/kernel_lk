@@ -73,6 +73,7 @@
 
 #define MSM_USB_BASE                (PERIPH_SS_BASE + 0x00255000)
 
+#define USB2_PHY_SEL                0xFD4AB000
 #define CLK_CTL_BASE                0xFC400000
 
 #define BLSP1_AHB_CBCR              (CLK_CTL_BASE + 0x5C4)
@@ -140,6 +141,8 @@
 #define SDCC1_M                     (CLK_CTL_BASE + 0x4D8) /* m */
 #define SDCC1_N                     (CLK_CTL_BASE + 0x4DC) /* n */
 #define SDCC1_D                     (CLK_CTL_BASE + 0x4E0) /* d */
+
+#define SDC1_HDRV_PULL_CTL          (TLMM_BASE_ADDR + 0x00002044)
 
 /* UART */
 #define BLSP1_UART2_APPS_CBCR       (CLK_CTL_BASE + 0x704)

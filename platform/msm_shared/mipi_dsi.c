@@ -114,6 +114,38 @@ struct mipi_dsi_panel_config *get_panel_info(void)
 	return NULL;
 }
 
+static uint32_t response_value = 0;
+
+uint32_t mdss_dsi_read_panel_signature(uint32_t panel_signature)
+{
+	uint32_t rec_buf[1];
+	uint32_t *lp = rec_buf, data;
+	int ret = response_value;
+
+#if (DISPLAY_TYPE_MDSS == 1)
+	if (ret && ret != panel_signature)
+		goto exit_read_signature;
+
+	ret = mipi_dsi_cmds_tx(&read_ddb_start_cmd, 1);
+	if (ret)
+		goto exit_read_signature;
+	if (!mdss_dsi_cmds_rx(&lp, 1, 1))
+		goto exit_read_signature;
+
+	data = ntohl(*lp);
+	data = data >> 8;
+	response_value = data;
+	if (response_value != panel_signature)
+		ret = response_value;
+
+exit_read_signature:
+	/* Keep the non detectable panel at the end and set panel signature 0xFFFF */
+	if (panel_signature == 0xFFFF)
+		ret = 0;
+#endif
+	return ret;
+}
+
 int mdss_dual_dsi_cmd_dma_trigger_for_panel()
 {
 	uint32_t ReadValue;
@@ -383,7 +415,7 @@ static uint32_t mipi_novatek_manufacture_id(void)
 	return data;
 }
 
-int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
+int mdss_dsi_host_init(struct mipi_dsi_panel_config *pinfo, uint32_t
 		broadcast)
 {
 	uint8_t DMA_STREAM1 = 0;	// for mdp display processor path
@@ -393,7 +425,6 @@ int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
 	uint8_t VC1 = 0;
 	uint8_t DT1 = 0;	// non embedded mode
 	uint8_t WC1 = 0;	// for non embedded mode only
-	int status = 0;
 	uint8_t DLNx_EN;
 	uint8_t lane_swap = 0;
 	uint32_t timing_ctl = 0;
@@ -452,7 +483,17 @@ int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
 
 	writel(lane_swap, MIPI_DSI0_BASE + LANE_SWAP_CTL);
 	writel(timing_ctl, MIPI_DSI0_BASE + TIMING_CTL);
+#endif
 
+	return 0;
+}
+
+int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
+		broadcast)
+{
+	int status = 0;
+
+#if (DISPLAY_TYPE_MDSS == 1)
 	if (pinfo->panel_cmds) {
 
 		if (broadcast) {
@@ -464,7 +505,7 @@ int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
 					pinfo->num_of_panel_cmds);
 			if (!status && target_panel_auto_detect_enabled())
 				status =
-					target_read_panel_signature(pinfo->signature);
+					mdss_dsi_read_panel_signature(pinfo->signature);
 		}
 	}
 #endif
@@ -988,12 +1029,31 @@ int mdss_dsi_config(struct msm_fb_panel_data *panel)
 	if (pinfo->mipi.dual_dsi)
 		mdss_dsi_phy_init(&mipi_pinfo, MIPI_DSI1_BASE);
 
-	ret += mdss_dsi_panel_initialize(&mipi_pinfo, pinfo->mipi.broadcast);
+	ret = mdss_dsi_host_init(&mipi_pinfo, pinfo->mipi.broadcast);
+	if (ret) {
+		dprintf(CRITICAL, "dsi host init error\n");
+		goto error;
+	}
+
+	if (panel->pre_init_func) {
+		ret = panel->pre_init_func();
+		if (ret) {
+			dprintf(CRITICAL, "pre_init_func error\n");
+			goto error;
+		}
+	}
+
+	ret = mdss_dsi_panel_initialize(&mipi_pinfo, pinfo->mipi.broadcast);
+	if (ret) {
+		dprintf(CRITICAL, "dsi panel init error\n");
+		goto error;
+	}
 
 	if (pinfo->rotate && panel->rotate)
 		pinfo->rotate();
 #endif
 
+error:
 	return ret;
 }
 
