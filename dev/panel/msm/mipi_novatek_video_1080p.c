@@ -35,6 +35,7 @@
 #include <err.h>
 #include <reg.h>
 #include <mdp4.h>
+#include <platform/iomap.h>
 
 int mipi_novatek_video_1080p_config(void *pdata)
 {
@@ -73,7 +74,8 @@ int mipi_novatek_video_1080p_config(void *pdata)
 			lane_en,
 			low_pwr_stop_mode,
 			eof_bllp_pwr,
-			interleav);
+			interleav,
+			MIPI_DSI0_BASE);
 	return ret;
 }
 

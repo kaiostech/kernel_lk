@@ -38,14 +38,20 @@
 #define DSI_CLKOUT_TIMING_CTRL                REG_DSI(0x0C0)
 #define DSI_SOFT_RESET                        REG_DSI(0x114)
 #define DSI_CAL_CTRL                          REG_DSI(0x0F4)
+#define DSI0_CAL_CTRL                         REG_DSI(MIPI_DSI0_BASE,0x0F4)
+#define DSI1_CAL_CTRL                         REG_DSI(MIPI_DSI1_BASE,0x0F4)
 
 #define DSIPHY_SW_RESET                       REG_DSI(0x128)
 #define DSIPHY_PLL_RDY                        REG_DSI(0x280)
 #define DSIPHY_REGULATOR_CAL_PWR_CFG          REG_DSI(0x518)
 
 #define DSI_CLK_CTRL                          REG_DSI(0x118)
+#define DSI0_CLK_CTRL                         REG_DSI(MIPI_DSI0_BASE,0x118)
+#define DSI1_CLK_CTRL                         REG_DSI(MIPI_DSI1_BASE,0x118)
 #define DSI_TRIG_CTRL                         REG_DSI(0x080)
 #define DSI_CTRL                              REG_DSI(0x000)
+#define DSI0_CTRL                             REG_DSI(MIPI_DSI0_BASE,0x000)
+#define DSI1_CTRL                             REG_DSI(MIPI_DSI1_BASE,0x000)
 #define DSI_COMMAND_MODE_DMA_CTRL             REG_DSI(0x038)
 #define DSI_COMMAND_MODE_MDP_CTRL             REG_DSI(0x03C)
 #define DSI_COMMAND_MODE_MDP_DCS_CMD_CTRL     REG_DSI(0x040)
@@ -56,23 +62,49 @@
 #define DSI_COMMAND_MODE_MDP_STREAM1_CTRL     REG_DSI(0x05C)
 #define DSI_COMMAND_MODE_MDP_STREAM1_TOTAL    REG_DSI(0x060)
 #define DSI_ERR_INT_MASK0                     REG_DSI(0x108)
+#define DSI0_ERR_INT_MASK0                    REG_DSI(MIPI_DSI0_BASE,0x108)
+#define DSI1_ERR_INT_MASK0                    REG_DSI(MIPI_DSI1_BASE,0x108)
 #define DSI_INT_CTRL                          REG_DSI(0x10C)
+#define DSI0_INT_CTRL                         REG_DSI(MIPI_DSI0_BASE,0x10C)
+#define DSI1_INT_CTRL                         REG_DSI(MIPI_DSI1_BASE,0x10C)
 
 #define DSI_VIDEO_MODE_ACTIVE_H               REG_DSI(0x020)
+#define DSI0_VIDEO_MODE_ACTIVE_H              REG_DSI(MIPI_DSI0_BASE,0x020)
+#define DSI1_VIDEO_MODE_ACTIVE_H              REG_DSI(MIPI_DSI1_BASE,0x020)
 #define DSI_VIDEO_MODE_ACTIVE_V               REG_DSI(0x024)
+#define DSI0_VIDEO_MODE_ACTIVE_V              REG_DSI(MIPI_DSI0_BASE,0x024)
+#define DSI1_VIDEO_MODE_ACTIVE_V              REG_DSI(MIPI_DSI1_BASE,0x024)
 #define DSI_VIDEO_MODE_TOTAL                  REG_DSI(0x028)
+#define DSI0_VIDEO_MODE_TOTAL                 REG_DSI(MIPI_DSI0_BASE,0x028)
+#define DSI1_VIDEO_MODE_TOTAL                 REG_DSI(MIPI_DSI1_BASE,0x028)
 #define DSI_VIDEO_MODE_HSYNC                  REG_DSI(0x02C)
+#define DSI0_VIDEO_MODE_HSYNC                 REG_DSI(MIPI_DSI0_BASE,0x02C)
+#define DSI1_VIDEO_MODE_HSYNC                 REG_DSI(MIPI_DSI1_BASE,0x02C)
 #define DSI_VIDEO_MODE_VSYNC                  REG_DSI(0x030)
+#define DSI0_VIDEO_MODE_VSYNC                 REG_DSI(MIPI_DSI0_BASE,0x030)
+#define DSI1_VIDEO_MODE_VSYNC                 REG_DSI(MIPI_DSI1_BASE,0x030)
 #define DSI_VIDEO_MODE_VSYNC_VPOS             REG_DSI(0x034)
+#define DSI0_VIDEO_MODE_VSYNC_VPOS            REG_DSI(MIPI_DSI0_BASE,0x034)
+#define DSI1_VIDEO_MODE_VSYNC_VPOS            REG_DSI(0x034)
 
 #define DSI_MISR_CMD_CTRL                     REG_DSI(0x09C)
 #define DSI_MISR_VIDEO_CTRL                   REG_DSI(0x0A0)
+#define DSI0_MISR_VIDEO_CTRL                  REG_DSI(MIPI_DSI0_BASE,0x0A0)
+#define DSI1_MISR_VIDEO_CTRL                  REG_DSI(MIPI_DSI1_BASE,0x0A0)
 #define DSI_EOT_PACKET_CTRL                   REG_DSI(0x0C8)
+#define DSI0_EOT_PACKET_CTRL                  REG_DSI(MIPI_DSI0_BASE,0x0C8)
+#define DSI1_EOT_PACKET_CTRL                  REG_DSI(MIPI_DSI1_BASE,0x0C8)
 #define DSI_VIDEO_MODE_CTRL                   REG_DSI(0x00C)
+#define DSI0_VIDEO_MODE_CTRL                  REG_DSI(MIPI_DSI0_BASE,0x00C)
+#define DSI1_VIDEO_MODE_CTRL                  REG_DSI(MIPI_DSI1_BASE,0x00C)
 #define DSI_CAL_STRENGTH_CTRL                 REG_DSI(0x100)
+#define DSI0_CAL_STRENGTH_CTRL                REG_DSI(MIPI_DSI0_BASE,0x100)
+#define DSI1_CAL_STRENGTH_CTRL                REG_DSI(MIPI_DSI1_BASE,0x100)
 #define DSI_CMD_MODE_DMA_SW_TRIGGER           REG_DSI(0x08C)
 #define DSI_CMD_MODE_MDP_SW_TRIGGER           REG_DSI(0x090)
 #define DSI_HS_TIMER_CTRL                     REG_DSI(0x0B8)
+#define DSI0_HS_TIMER_CTRL                     REG_DSI(MIPI_DSI0_BASE,0x0B8)
+#define DSI1_HS_TIMER_CTRL                     REG_DSI(MIPI_DSI1_BASE,0x0B8)
 
 #define DSI_LANE_CTRL                         REG_DSI(0x0A8)
 
@@ -1223,7 +1255,9 @@ int mipi_dsi_video_mode_config(unsigned short disp_width,
 		unsigned char lane_en,
 		unsigned low_pwr_stop_mode,
 		unsigned char eof_bllp_pwr,
-		unsigned char interleav);
+		unsigned char interleav,
+		uint32_t ctl_base);
+
 int mipi_dsi_on();
 int mipi_dsi_off(struct msm_panel_info *pinfo);
 int mipi_dsi_cmds_tx(struct mipi_dsi_cmd *cmds, int count);

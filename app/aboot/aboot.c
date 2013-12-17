@@ -258,7 +258,9 @@ unsigned char *update_cmdline(const char * cmdline)
 #endif
 	}
 
+#ifndef UFS_SUPPORT
 	cmdline_len += strlen(bootloader_cmdline);
+#endif
 
 	cmdline_len += strlen(usb_sn_cmdline);
 	cmdline_len += strlen(sn_buf);
@@ -285,11 +287,13 @@ unsigned char *update_cmdline(const char * cmdline)
 		cmdline_len += strlen(unlocked_kernel);
 	}
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 	if (gpio_get(target_production_gpio()) == 1) {
 		cmdline_len += strlen(production_device_type);
 	} else {
 		cmdline_len += strlen(engineering_device_type);
 	}
+#endif
 
 	/* Determine correct androidboot.baseband to use */
 	switch(target_baseband())
@@ -360,10 +364,12 @@ unsigned char *update_cmdline(const char * cmdline)
 			while ((*dst++ = *src++));
 		}
 
+#ifndef UFS_SUPPORT
 		src = bootloader_cmdline;
 		if (have_cmdline) --dst;
 		have_cmdline = 1;
 		while ((*dst++ = *src++));
+#endif
 
 		src = usb_sn_cmdline;
 		if (have_cmdline) --dst;
@@ -408,6 +414,7 @@ unsigned char *update_cmdline(const char * cmdline)
 			while ((*dst++ = *src++));
 		}
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 		if (gpio_get(target_production_gpio()) == 1) {
 			src = production_device_type;
 			if (have_cmdline) --dst;
@@ -417,6 +424,7 @@ unsigned char *update_cmdline(const char * cmdline)
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 		}
+#endif
 
 		switch(target_baseband())
 		{
@@ -2560,7 +2568,9 @@ void aboot_fastboot_register_commands(void)
 #endif
 	fastboot_register("verify:", cmd_verify_mmc);
 	fastboot_register("dump:", cmd_dump);
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 	fastboot_publish("production", (gpio_get(target_production_gpio())==1)?"1":"0");
+#endif
 // ACOS_MOD_END
 }
 

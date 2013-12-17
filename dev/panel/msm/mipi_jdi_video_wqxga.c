@@ -59,7 +59,7 @@ int mipi_jdi_video_wqxga_config(void *pdata)
 	if (lcdc == NULL)
 		return ERR_INVALID_ARGS;
 
-	ret = mdss_mipi_dsi_video_mode_config((pinfo->xres/2 + lcdc->xres_pad),
+	ret = mipi_dsi_video_mode_config((pinfo->xres/2 + lcdc->xres_pad),
 			(pinfo->yres + lcdc->yres_pad),
 			(pinfo->xres/2),
 			(pinfo->yres),
@@ -77,7 +77,7 @@ int mipi_jdi_video_wqxga_config(void *pdata)
 			interleav,
 			MIPI_DSI0_BASE);
 
-	ret = mdss_mipi_dsi_video_mode_config((pinfo->xres/2 + lcdc->xres_pad),
+	ret = mipi_dsi_video_mode_config((pinfo->xres/2 + lcdc->xres_pad),
 			(pinfo->yres + lcdc->yres_pad),
 			(pinfo->xres/2),
 			(pinfo->yres),

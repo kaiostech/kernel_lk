@@ -35,6 +35,7 @@
 #include <board.h>
 #include <mdp5.h>
 #include <platform/gpio.h>
+#include <platform/iomap.h>
 #include <target/display.h>
 #include <dev/fbgfx.h>
 
@@ -64,7 +65,7 @@ static int apollo_mdss_dsi_panel_clock(uint8_t enable)
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
 		mdp_clock_init();
-		mdss_dsi_uniphy_pll_config();
+		apollo_dsi_uniphy_pll_config(MIPI_DSI0_BASE);
 		mmss_clock_init(0x100, 1);
 	} else if(!target_cont_splash_screen()) {
 		// * Add here for continuous splash  *
@@ -83,46 +84,72 @@ static void apollo_mdss_mipi_panel_reset(uint8_t enable)
 		.vin_sel = 0x02,
 	};
 
-	pm8x41_gpio_config(19, &gpio19_param);
-	gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
+	struct pm8x41_gpio gpio20_param = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = PM_GPIO_OUT_CMOS,
+		.out_strength = PM_GPIO_OUT_DRIVE_MED,
+	};
 
-	pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
-	mdelay(2);
-	pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
-	mdelay(5);
-	pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
-	mdelay(2);
-	gpio_set(58, 2);
+	pm8x41_gpio_config(19, &gpio19_param);
+	if (enable) {
+		gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
+		gpio_tlmm_config(0, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
+		gpio_tlmm_config(1, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
+
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
+		mdelay(20);
+		gpio_set(1, 0);
+		mdelay(20);
+		gpio_set(58, 2);
+		mdelay(20);
+		gpio_set(0, 2);
+		mdelay(15);
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
+		mdelay(15);
+	} else {
+		gpio_tlmm_config(58, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
+		gpio_tlmm_config(0, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
+		gpio19_param.out_strength = PM_GPIO_OUT_DRIVE_LOW;
+		gpio20_param.out_strength = PM_GPIO_OUT_DRIVE_LOW;
+		pm8x41_gpio_config(19, &gpio19_param);
+		pm8x41_gpio_set(19, PM_GPIO_FUNC_LOW);
+		pm8x41_gpio_set(20, PM_GPIO_FUNC_LOW);
+		gpio_set(58, 2);
+		gpio_set(0, 0);
+	}
 }
 
 static int apollo_mipi_panel_power(uint8_t enable)
 {
 	if (enable) {
 		/* backlight enable is out of this */
+		struct pm8x41_ldo ldo22 = LDO(PM8x41_LDO22, PLDO_TYPE);
+		struct pm8x41_ldo ldo12 = LDO(PM8x41_LDO2, PLDO_TYPE);
+		struct pm8x41_ldo ldo2 = LDO(PM8x41_LDO2, NLDO_TYPE);
 
 		/* Turn on LDO8 for lcd1 mipi vdd */
-		dprintf(SPEW, " Setting LDO22\n");
-		pm8x41_ldo_set_voltage("LDO22", 3000000);
-		pm8x41_ldo_control("LDO22", enable);
+		pm8x41_ldo_set_voltage(&ldo22, 3000000);
+		pm8x41_ldo_control(&ldo22, enable);
 
-		dprintf(SPEW, " Setting LDO12\n");
 		/* Turn on LDO23 for lcd1 mipi vddio */
-		pm8x41_ldo_set_voltage("LDO12", 1800000);
-		pm8x41_ldo_control("LDO12", enable);
+		pm8x41_ldo_set_voltage(&ldo12, 1800000);
+		pm8x41_ldo_control(&ldo12, enable);
 
-		dprintf(SPEW, " Setting LDO2\n");
 		/* Turn on LDO2 for vdda_mipi_dsi */
-		pm8x41_ldo_set_voltage("LDO2", 1200000);
-		pm8x41_ldo_control("LDO2", enable);
+		pm8x41_ldo_set_voltage(&ldo2, 1200000);
+		pm8x41_ldo_control(&ldo2, enable);
 
-		dprintf(SPEW, " Panel Reset \n");
+		dprintf(INFO, " Panel Reset \n");
 		/* Panel Reset */
 		apollo_mdss_mipi_panel_reset(enable);
-		dprintf(SPEW, " Panel Reset Done\n");
+		dprintf(INFO, " Panel Reset Done\n");
 	} else {
+		struct pm8x41_ldo ldo22 = LDO(PM8x41_LDO22, PLDO_TYPE);
+		struct pm8x41_ldo ldo2 = LDO(PM8x41_LDO2, NLDO_TYPE);
+
 		apollo_mdss_mipi_panel_reset(enable);
-		pm8x41_ldo_control("LDO2", enable);
-		pm8x41_ldo_control("LDO22", enable);
+		pm8x41_ldo_control(&ldo2, enable);
+		pm8x41_ldo_control(&ldo22, enable);
 
 	}
 
@@ -131,13 +158,10 @@ static int apollo_mipi_panel_power(uint8_t enable)
 
 void display_init(void)
 {
-	uint32_t hw_id = board_hardware_id();
-	uint32_t soc_ver = board_soc_version();
+	dprintf(INFO, "display_init()\n");
 
-	dprintf(INFO, "display_init(),target_id=%d.\n", hw_id);
-
-        if (!display_enable)
-        {
+	if (!display_enable)
+	{
 		mipi_jdi_video_wqxga_init(&(panel.panel_info));
 		panel.clk_func = apollo_mdss_dsi_panel_clock;
 		panel.power_func = apollo_mipi_panel_power;

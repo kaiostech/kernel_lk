@@ -46,3 +46,8 @@ ifeq ($(TARGET),thor)
 OBJS += \
 	$(LOCAL_DIR)/mipi_novatek_video_1080p.o
 endif
+
+ifeq ($(TARGET),apollo)
+OBJS += \
+	$(LOCAL_DIR)/mipi_jdi_video_wqxga.o
+endif

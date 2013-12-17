@@ -224,7 +224,26 @@
 #define MIPI_DSI_BASE               (0xFD922800)
 #define MIPI_DSI0_BASE              (MIPI_DSI_BASE)
 #define MIPI_DSI1_BASE              (0xFD922E00)
+#if !defined(CONFIG_ARCH_MSM8974_THOR) && defined(CONFIG_ARCH_MSM8974_APOLLO)
 #define REG_DSI(off)                (MIPI_DSI_BASE + 0x04 + (off))
+#else
+// ACOS_MOD_BEGIN
+// We use a macro overload trick here for the original REG_DSI(off)
+#define REG_DSI_0(off)              (MIPI_DSI_BASE + 0x04 + (off))
+#define REG_DSI_1(base, off)        ((base) + 0x04 + (off))
+
+#define _ARG2(_0, _1, _2, ...) _2
+#define NARGS(...) _ARG2(__VA_ARGS__, 2, 1, 0)
+
+#define _ONE_OR_TWO_ARGS_1(a)       REG_DSI_0(a)
+#define _ONE_OR_TWO_ARGS_2(a, b)    REG_DSI_1(a, b)
+
+#define __ONE_OR_TWO_ARGS(N, ...)   _ONE_OR_TWO_ARGS_ ## N (__VA_ARGS__)
+#define _ONE_OR_TWO_ARGS(N, ...)    __ONE_OR_TWO_ARGS(N, __VA_ARGS__)
+
+#define REG_DSI(...)                _ONE_OR_TWO_ARGS(NARGS(__VA_ARGS__), __VA_ARGS__)
+// ACOS_MOD_END
+#endif
 
 #define EDP_BASE                    (0xFD923400)
 
