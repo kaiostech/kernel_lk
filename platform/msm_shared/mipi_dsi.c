@@ -182,8 +182,6 @@ int mdss_dual_dsi_cmds_tx(struct mipi_dsi_cmd *cmds, int count)
 	char pload[256];
 	uint32_t off;
 
-	dprintf(INFO, "hoiho: HERE %s\n", __FUNCTION__);
-
 #if (DISPLAY_TYPE_MDSS == 1)
 	/* Align pload at 8 byte boundry */
 	off = pload;
@@ -422,7 +420,6 @@ int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
 	timing_ctl = ((pinfo->t_clk_post << 8) | pinfo->t_clk_pre);
 
 	if (broadcast) {
-		dprintf(INFO, "hoiho: BROADCAST: %d\n", broadcast);
 		writel(0x0001, MIPI_DSI1_BASE + SOFT_RESET);
 		writel(0x0000, MIPI_DSI1_BASE + SOFT_RESET);
 
@@ -436,7 +433,7 @@ int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
 				| PACK_TYPE1 << 24 | VC1 << 22 | DT1 << 16 | WC1,
 				MIPI_DSI1_BASE + COMMAND_MODE_DMA_CTRL);
 
-		writel(lane_swap, MIPI_DSI1_BASE + LANE_SWAP_CTL);
+		writel(0x02, MIPI_DSI1_BASE + LANE_SWAP_CTL);
 		writel(timing_ctl, MIPI_DSI1_BASE + TIMING_CTL);
 	}
 
@@ -519,6 +516,7 @@ int mipi_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo)
 	if (pinfo->panel_cmds)
 		status = mipi_dsi_cmds_tx(pinfo->panel_cmds,
 					  pinfo->num_of_panel_cmds);
+
 	return status;
 }
 
@@ -896,6 +894,9 @@ int mdss_dsi_video_mode_config(uint16_t disp_width,
 	mdp_disable();
 
 	writel(0x00000000, ctl_base + CLK_CTRL);
+        writel(0x00000000, ctl_base + CLK_CTRL);
+        writel(0x00000000, ctl_base + CLK_CTRL);
+	writel(0x00000000, ctl_base + CLK_CTRL);
 	writel(0x00000002, ctl_base + CLK_CTRL);
 	writel(0x00000006, ctl_base + CLK_CTRL);
 	writel(0x0000000e, ctl_base + CLK_CTRL);
@@ -1013,87 +1014,81 @@ int mipi_dsi_video_mode_config(unsigned short disp_width,
 	unsigned char lane_en,
 	unsigned low_pwr_stop_mode,
 	unsigned char eof_bllp_pwr,
-	unsigned char interleav,
-	uint32_t ctl_base)
+	unsigned char interleav)
 {
 	int status = 0;
 
-#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 	/* disable mdp first */
 	mdp_disable();
 
-// hoiho
-	dprintf(INFO, "===== MIPI %d\n", (ctl_base == MIPI_DSI0_BASE) ? 0 : 1);
+	writel(0x00000000, DSI_CLK_CTRL);
+	writel(0x00000000, DSI_CLK_CTRL);
+	writel(0x00000000, DSI_CLK_CTRL);
+	writel(0x00000000, DSI_CLK_CTRL);
+	writel(0x00000002, DSI_CLK_CTRL);
+	writel(0x00000006, DSI_CLK_CTRL);
+	writel(0x0000000e, DSI_CLK_CTRL);
+	writel(0x0000001e, DSI_CLK_CTRL);
+	writel(0x0000023f, DSI_CLK_CTRL);
 
-	writel(0x00000000, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
-	writel(0x00000000, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
-	writel(0x00000000, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
-	writel(0x00000000, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
-	writel(0x00000002, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
-	writel(0x00000006, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
-	writel(0x0000000e, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
-	writel(0x0000001e, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
-	writel(0x0000023f, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CLK_CTRL : DSI1_CLK_CTRL);
+	writel(0, DSI_CTRL);
 
-	writel(0, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CTRL : DSI1_CTRL);
+	writel(0, DSI_ERR_INT_MASK0);
 
-	writel(0, (ctl_base == MIPI_DSI0_BASE) ? DSI0_ERR_INT_MASK0 : DSI1_ERR_INT_MASK0);
-
-	writel(0x02020202, (ctl_base == MIPI_DSI0_BASE) ? DSI0_INT_CTRL : DSI1_INT_CTRL);
+	writel(0x02020202, DSI_INT_CTRL);
 
 	writel(((disp_width + hsync_porch0_bp) << 16) | hsync_porch0_bp,
-			(ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_ACTIVE_H : DSI1_VIDEO_MODE_ACTIVE_H);
+			DSI_VIDEO_MODE_ACTIVE_H);
 
 	writel(((disp_height + vsync_porch0_bp) << 16) | (vsync_porch0_bp),
-			(ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_ACTIVE_V : DSI1_VIDEO_MODE_ACTIVE_V);
+			DSI_VIDEO_MODE_ACTIVE_V);
 
 	if (mdp_get_revision() >= MDP_REV_41) {
 		writel(((disp_height + vsync_porch0_fp
 			+ vsync_porch0_bp - 1) << 16)
 			| (disp_width + hsync_porch0_fp
 			+ hsync_porch0_bp - 1),
-			(ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_TOTAL : DSI1_VIDEO_MODE_TOTAL);
+			DSI_VIDEO_MODE_TOTAL);
 	} else {
 		writel(((disp_height + vsync_porch0_fp
 			+ vsync_porch0_bp) << 16)
 			| (disp_width + hsync_porch0_fp
 			+ hsync_porch0_bp),
-			(ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_TOTAL : DSI1_VIDEO_MODE_TOTAL);
+			DSI_VIDEO_MODE_TOTAL);
 	}
 
-	writel((hsync_width << 16) | 0, (ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_HSYNC : DSI1_VIDEO_MODE_HSYNC);
+	writel((hsync_width << 16) | 0, DSI_VIDEO_MODE_HSYNC);
 
-	writel(0 << 16 | 0, (ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_VSYNC : DSI1_VIDEO_MODE_VSYNC);
+	writel(0 << 16 | 0, DSI_VIDEO_MODE_VSYNC);
 
-	writel(vsync_width << 16 | 0, (ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_VSYNC_VPOS : DSI1_VIDEO_MODE_VSYNC_VPOS);
+	writel(vsync_width << 16 | 0, DSI_VIDEO_MODE_VSYNC_VPOS);
 
-	writel(0x0, (ctl_base == MIPI_DSI0_BASE) ? DSI0_EOT_PACKET_CTRL : DSI1_EOT_PACKET_CTRL);
+	writel(0x0, DSI_EOT_PACKET_CTRL);
 
-	writel(0x00000100, (ctl_base == MIPI_DSI0_BASE) ? DSI0_MISR_VIDEO_CTRL : DSI1_MISR_VIDEO_CTRL);
+	writel(0x00000100, DSI_MISR_VIDEO_CTRL);
 
 	if (mdp_get_revision() >= MDP_REV_41) {
 		writel(low_pwr_stop_mode << 16 |
 				eof_bllp_pwr << 12 | traffic_mode << 8
-				| dst_format << 4 | 0x0, (ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_CTRL : DSI1_VIDEO_MODE_CTRL);
+				| dst_format << 4 | 0x0, DSI_VIDEO_MODE_CTRL);
 	} else {
 		writel(1 << 28 | 1 << 24 | 1 << 20 | low_pwr_stop_mode << 16 |
 				eof_bllp_pwr << 12 | traffic_mode << 8
-				| dst_format << 4 | 0x0, (ctl_base == MIPI_DSI0_BASE) ? DSI0_VIDEO_MODE_CTRL : DSI1_VIDEO_MODE_CTRL);
+				| dst_format << 4 | 0x0, DSI_VIDEO_MODE_CTRL);
 	}
 
-	writel(0x3fd08, (ctl_base == MIPI_DSI0_BASE) ? DSI0_HS_TIMER_CTRL : DSI1_HS_TIMER_CTRL);
-	writel(0x67, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CAL_STRENGTH_CTRL : DSI1_CAL_STRENGTH_CTRL);
-	writel(0x80006711, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CAL_CTRL : DSI1_CAL_CTRL);
-	writel(0x00010100, (ctl_base == MIPI_DSI0_BASE) ? DSI0_MISR_VIDEO_CTRL : DSI1_MISR_VIDEO_CTRL);
+	writel(0x3fd08, DSI_HS_TIMER_CTRL);
+	writel(0x67, DSI_CAL_STRENGTH_CTRL);
+	writel(0x80006711, DSI_CAL_CTRL);
+	writel(0x00010100, DSI_MISR_VIDEO_CTRL);
 
-	writel(0x00010100, (ctl_base == MIPI_DSI0_BASE) ? DSI0_INT_CTRL : DSI1_INT_CTRL);
-	writel(0x02010202, (ctl_base == MIPI_DSI0_BASE) ? DSI0_INT_CTRL : DSI1_INT_CTRL);
-	writel(0x02030303, (ctl_base == MIPI_DSI0_BASE) ? DSI0_INT_CTRL : DSI1_INT_CTRL);
+	writel(0x00010100, DSI_INT_CTRL);
+	writel(0x02010202, DSI_INT_CTRL);
+	writel(0x02030303, DSI_INT_CTRL);
 
 	writel(interleav << 30 | 0 << 24 | 0 << 20 | lane_en << 4
-			| 0x103, (ctl_base == MIPI_DSI0_BASE) ? DSI0_CTRL : DSI1_CTRL);
+			| 0x103, DSI_CTRL);
 
-#endif
 	return status;
 }
 
@@ -1226,8 +1221,6 @@ int mipi_dsi_on()
 	int ret = NO_ERROR;
 	unsigned long ReadValue;
 	unsigned long count = 0;
-
-	dprintf(INFO, "hoiho: %s\n", __FUNCTION__);
 
 	ReadValue = readl(DSI_INT_CTRL) & 0x00010000;
 

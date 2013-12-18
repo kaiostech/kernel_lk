@@ -58,7 +58,7 @@ int mipi_sharp_video_qhd_config(void *pdata)
 	if (!lcdc)
 		return ERR_INVALID_ARGS;
 
-	ret = mipi_dsi_video_mode_config((pinfo->xres + lcdc->xres_pad),
+	ret = mdss_dsi_video_mode_config((pinfo->xres + lcdc->xres_pad),
 			(pinfo->yres + lcdc->yres_pad),
 			(pinfo->xres),
 			(pinfo->yres),
