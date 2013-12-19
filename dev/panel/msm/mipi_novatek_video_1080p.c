@@ -37,6 +37,99 @@
 #include <mdp4.h>
 #include <platform/iomap.h>
 
+/* Novatek 1080p display panel commands */
+
+/*[32 01 00 00 64 02 00 00];*/
+/*Turn ON peripheral command*/
+static const unsigned char novatek_on_cmd[4] = {
+	0x00, 0x00,  0x32, 0x80,
+};
+
+/*[23 00 00 00 00 00 02 f3 a8]*/
+/*unlock page 8*/
+static const unsigned char unlock_page_8[4] = {
+	0xf3, 0xa8, DTYPE_GEN_WRITE2, 0x80,
+};
+
+/*[23 00 00 00 00 00 02 7a 2b]*/
+/*0x87a = 2b*/
+static const unsigned char write_addr_87a[4] = {
+	0x7a, 0x2b, DTYPE_GEN_WRITE2, 0x80,
+};
+
+/*[23 00 00 00 00 00 02 7b 63]*/
+/*0x87b = 63*/
+static const unsigned char write_addr_87b[4] = {
+	0x7b, 0x63, DTYPE_GEN_WRITE2, 0x80,
+};
+
+/*[23 00 00 00 00 00 02 7c 0d]*/
+/*0x87c = 0d*/
+static const unsigned char write_addr_87c[4] = {
+	0x7c, 0x0d, DTYPE_GEN_WRITE2, 0x80,
+};
+
+/*[23 00 00 00 00 00 02 7e 60]*/
+/*0x87e = 60*/
+static const unsigned char write_addr_87e[4] = {
+	0x7e, 0x60, DTYPE_GEN_WRITE2, 0x80,
+};
+
+
+/*[23 00 00 00 00 00 02 80 00]*/
+/*0x880 = 00*/
+static const unsigned char write_addr_880[4] = {
+	0x80, 0x00, DTYPE_GEN_WRITE2, 0x80,
+};
+
+
+/*[23 00 00 00 00 00 02 81 00]*/
+/*0x881 = 00*/
+static const unsigned char write_addr_881[4] = {
+	0x81, 0x00, DTYPE_GEN_WRITE2, 0x80,
+};
+
+/*[03 01 00 00 10 00 00]*/
+/*Lock page 8*/
+static const unsigned char lock_page_8[4] = {
+	0x00, 0x00, 0x03, 0x80,
+};
+
+/*[23 00 00 00 00 00 02 f3 a1]*/
+/*unlock page 1*/
+static const unsigned char unlock_page_1[4] = {
+	0xf3, 0xa1, DTYPE_GEN_WRITE2, 0x80,
+};
+
+/*[23 00 00 00 10 00 02 53 80]*/
+/*0x153 = 80*/
+static const unsigned char write_addr_153[4] = {
+	0x53, 0x80, DTYPE_GEN_WRITE2, 0x80,
+};
+
+/*[03 01 00 00 10 00 00]*/
+/*Lock page 1*/
+static const unsigned char lock_page_1[4] = {
+	0x00, 0x00, 0x03, 0x80,
+};
+
+/* End of Novatek 1080p display panel commands */
+
+static struct mipi_dsi_cmd novatek_1080p_video_mode_cmds[] = {
+	{sizeof(novatek_on_cmd), (char *)novatek_on_cmd, 10},
+	{sizeof(unlock_page_8), (char *)unlock_page_8, 0},
+	{sizeof(write_addr_87a), (char *)write_addr_87a, 0},
+	{sizeof(write_addr_87b), (char *)write_addr_87b, 0},
+	{sizeof(write_addr_87c), (char *)write_addr_87c, 0},
+	{sizeof(write_addr_87e), (char *)write_addr_87e, 0},
+	{sizeof(write_addr_880), (char *)write_addr_880, 0},
+	{sizeof(write_addr_881), (char *)write_addr_881, 0},
+	{sizeof(lock_page_8), (char *)lock_page_8, 10},
+	{sizeof(unlock_page_1), (char *)unlock_page_1, 0},
+	{sizeof(write_addr_153), (char *)write_addr_153, 10},
+	{sizeof(lock_page_1), (char *)lock_page_1, 10},
+};
+
 int mipi_novatek_video_1080p_config(void *pdata)
 {
 	int ret = NO_ERROR;
@@ -59,7 +152,7 @@ int mipi_novatek_video_1080p_config(void *pdata)
 	if (lcdc == NULL)
 		return ERR_INVALID_ARGS;
 
-	ret = mipi_dsi_video_mode_config((pinfo->xres + lcdc->xres_pad),
+	ret = mdss_dsi_video_mode_config((pinfo->xres + lcdc->xres_pad),
 			(pinfo->yres + lcdc->yres_pad),
 			(pinfo->xres),
 			(pinfo->yres),
@@ -111,7 +204,6 @@ static struct mdss_dsi_phy_ctrl dsi_video_mode_phy_db = {
 	 0x00, 0x00, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x01, 0x97,
 	 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xbb},
 };
-
 
 void mipi_novatek_video_1080p_init(struct msm_panel_info *pinfo)
 {
@@ -177,4 +269,3 @@ void mipi_novatek_video_1080p_init(struct msm_panel_info *pinfo)
 
 	return;
 }
-

@@ -37,6 +37,86 @@
 #include <mdp4.h>
 #include <debug.h>
 
+/* JDI wqxga split display panel commands */
+static const unsigned char jdi_wqxga_mcap[4] = {
+		0xB0, 0x00, DTYPE_GEN_WRITE2, 0x80,
+};
+
+static const unsigned char jdi_wqxga_intf_setting[12] = {
+		0x06, 0x00, DTYPE_GEN_LWRITE, 0xC0,
+			0xB3, 0x04, 0x08, 0x00,
+				0x22, 0x00, 0xFF, 0xFF
+};
+
+static const unsigned char jdi_wqxga_intf_id_setting[8] = {
+		0x02, 0x00, DTYPE_GEN_LWRITE, 0xC0,
+			0xB4, 0x0C, 0xFF, 0xFF,
+};
+
+static const unsigned char jdi_wqxga_dsi_ctrl[8] = {
+		0x03, 0x00, DTYPE_GEN_LWRITE, 0xC0,
+			0xB6, 0x3A, 0xD3, 0xFF,
+};
+
+static const unsigned char jdi_wqxga_pixel_format[4] = {
+		0x3A, 0x77, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static const unsigned char jdi_wqxga_col_addr[12] = {
+		0x05, 0x00, DTYPE_DCS_LWRITE, 0xC0,
+			0x2A, 0x00, 0x00, 0x04,
+				0xFF, 0xFF, 0xFF, 0xFF,
+};
+
+static const unsigned char jdi_wqxga_page_addr[12] = {
+		0x05, 0x00, DTYPE_DCS_LWRITE, 0xC0,
+			0x2B, 0x00, 0x00, 0x06,
+				0x3F, 0xFF, 0xFF, 0xFF,
+};
+
+static const unsigned char jdi_wqxga_tear_on[4] = {
+		0x35, 0x00, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static const unsigned char jdi_wqxga_tear_scanline[8] = {
+		0x03, 0x00, DTYPE_DCS_LWRITE, 0xC0,
+			0x44, 0x00, 0x00, 0xFF,
+};
+
+static const unsigned char jdi_wqxga_write_brightness[4] = {
+		0x51, 0xFF, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static const unsigned char jdi_wqxga_ctrl_display[4] = {
+		0x53, 0x24, DTYPE_DCS_WRITE1, 0x80,
+};
+
+static const unsigned char jdi_wqxga_intf_setting2[12] = {
+		0x06, 0x00, DTYPE_GEN_LWRITE, 0xC0,
+			0xB3, 0x14, 0x08, 0x00,
+				0x22, 0x00, 0xFF, 0xFF
+};
+
+/* End of JDI wqxga split display commands */
+
+static struct mipi_dsi_cmd jdi_wqxga_video_mode_cmds[] = {
+	{sizeof(dsi_display_sw_reset), (char *)dsi_display_sw_reset, 120},
+	{sizeof(jdi_wqxga_mcap), (char *)jdi_wqxga_mcap, 120},
+	{sizeof(jdi_wqxga_intf_setting), (char *)jdi_wqxga_intf_setting, 120},
+	{sizeof(jdi_wqxga_intf_id_setting), (char *)jdi_wqxga_intf_id_setting, 120},
+	{sizeof(jdi_wqxga_dsi_ctrl), (char *)jdi_wqxga_dsi_ctrl, 120},
+	{sizeof(jdi_wqxga_pixel_format), (char *)jdi_wqxga_pixel_format, 120},
+	{sizeof(jdi_wqxga_col_addr), (char *)jdi_wqxga_col_addr, 120},
+	{sizeof(jdi_wqxga_page_addr), (char *)jdi_wqxga_page_addr, 120},
+	{sizeof(jdi_wqxga_tear_on), (char *)jdi_wqxga_tear_on, 120},
+	{sizeof(jdi_wqxga_tear_scanline), (char *)jdi_wqxga_tear_scanline, 120},
+	{sizeof(jdi_wqxga_write_brightness), (char *)jdi_wqxga_write_brightness, 120},
+	{sizeof(jdi_wqxga_ctrl_display), (char *)jdi_wqxga_ctrl_display, 120},
+	{sizeof(dsi_display_exit_sleep), (char *)dsi_display_exit_sleep, 120},
+	{sizeof(jdi_wqxga_intf_setting2), (char *)jdi_wqxga_intf_setting2, 120},
+	{sizeof(dsi_display_display_on), (char *)dsi_display_display_on, 120},
+};
+
 int mipi_jdi_video_wqxga_config(void *pdata)
 {
 	int ret = NO_ERROR;
@@ -59,7 +139,7 @@ int mipi_jdi_video_wqxga_config(void *pdata)
 	if (lcdc == NULL)
 		return ERR_INVALID_ARGS;
 
-	ret = mipi_dsi_video_mode_config((pinfo->xres/2 + lcdc->xres_pad),
+	ret = mdss_dsi_video_mode_config((pinfo->xres/2 + lcdc->xres_pad),
 			(pinfo->yres + lcdc->yres_pad),
 			(pinfo->xres/2),
 			(pinfo->yres),
@@ -77,7 +157,7 @@ int mipi_jdi_video_wqxga_config(void *pdata)
 			interleav,
 			MIPI_DSI0_BASE);
 
-	ret = mipi_dsi_video_mode_config((pinfo->xres/2 + lcdc->xres_pad),
+	ret = mdss_dsi_video_mode_config((pinfo->xres/2 + lcdc->xres_pad),
 			(pinfo->yres + lcdc->yres_pad),
 			(pinfo->xres/2),
 			(pinfo->yres),
@@ -164,9 +244,11 @@ void mipi_jdi_video_wqxga_init(struct msm_panel_info *pinfo)
 	pinfo->clk_rate = 424000000;
 	pinfo->lcdc.dual_pipe = TRUE;
 	pinfo->lcdc.pipe_swap = TRUE;
+	pinfo->lcdc.split_display = TRUE;
 
 	pinfo->mipi.lane_swap = 0x6;
 	pinfo->mipi.dual_dsi = TRUE;
+	pinfo->mipi.broadcast = TRUE;
 	pinfo->mipi.mode = DSI_VIDEO_MODE;
 	pinfo->mipi.pulse_mode_hsa_he = FALSE;
 	pinfo->mipi.hfp_power_stop = FALSE;

@@ -38,20 +38,14 @@
 #define DSI_CLKOUT_TIMING_CTRL                REG_DSI(0x0C0)
 #define DSI_SOFT_RESET                        REG_DSI(0x114)
 #define DSI_CAL_CTRL                          REG_DSI(0x0F4)
-#define DSI0_CAL_CTRL                         REG_DSI(MIPI_DSI0_BASE,0x0F4)
-#define DSI1_CAL_CTRL                         REG_DSI(MIPI_DSI1_BASE,0x0F4)
 
 #define DSIPHY_SW_RESET                       REG_DSI(0x128)
 #define DSIPHY_PLL_RDY                        REG_DSI(0x280)
 #define DSIPHY_REGULATOR_CAL_PWR_CFG          REG_DSI(0x518)
 
 #define DSI_CLK_CTRL                          REG_DSI(0x118)
-#define DSI0_CLK_CTRL                         REG_DSI(MIPI_DSI0_BASE,0x118)
-#define DSI1_CLK_CTRL                         REG_DSI(MIPI_DSI1_BASE,0x118)
 #define DSI_TRIG_CTRL                         REG_DSI(0x080)
 #define DSI_CTRL                              REG_DSI(0x000)
-#define DSI0_CTRL                             REG_DSI(MIPI_DSI0_BASE,0x000)
-#define DSI1_CTRL                             REG_DSI(MIPI_DSI1_BASE,0x000)
 #define DSI_COMMAND_MODE_DMA_CTRL             REG_DSI(0x038)
 #define DSI_COMMAND_MODE_MDP_CTRL             REG_DSI(0x03C)
 #define DSI_COMMAND_MODE_MDP_DCS_CMD_CTRL     REG_DSI(0x040)
@@ -62,49 +56,24 @@
 #define DSI_COMMAND_MODE_MDP_STREAM1_CTRL     REG_DSI(0x05C)
 #define DSI_COMMAND_MODE_MDP_STREAM1_TOTAL    REG_DSI(0x060)
 #define DSI_ERR_INT_MASK0                     REG_DSI(0x108)
-#define DSI0_ERR_INT_MASK0                    REG_DSI(MIPI_DSI0_BASE,0x108)
-#define DSI1_ERR_INT_MASK0                    REG_DSI(MIPI_DSI1_BASE,0x108)
 #define DSI_INT_CTRL                          REG_DSI(0x10C)
-#define DSI0_INT_CTRL                         REG_DSI(MIPI_DSI0_BASE,0x10C)
-#define DSI1_INT_CTRL                         REG_DSI(MIPI_DSI1_BASE,0x10C)
 
 #define DSI_VIDEO_MODE_ACTIVE_H               REG_DSI(0x020)
-#define DSI0_VIDEO_MODE_ACTIVE_H              REG_DSI(MIPI_DSI0_BASE,0x020)
-#define DSI1_VIDEO_MODE_ACTIVE_H              REG_DSI(MIPI_DSI1_BASE,0x020)
 #define DSI_VIDEO_MODE_ACTIVE_V               REG_DSI(0x024)
-#define DSI0_VIDEO_MODE_ACTIVE_V              REG_DSI(MIPI_DSI0_BASE,0x024)
-#define DSI1_VIDEO_MODE_ACTIVE_V              REG_DSI(MIPI_DSI1_BASE,0x024)
 #define DSI_VIDEO_MODE_TOTAL                  REG_DSI(0x028)
-#define DSI0_VIDEO_MODE_TOTAL                 REG_DSI(MIPI_DSI0_BASE,0x028)
-#define DSI1_VIDEO_MODE_TOTAL                 REG_DSI(MIPI_DSI1_BASE,0x028)
 #define DSI_VIDEO_MODE_HSYNC                  REG_DSI(0x02C)
-#define DSI0_VIDEO_MODE_HSYNC                 REG_DSI(MIPI_DSI0_BASE,0x02C)
-#define DSI1_VIDEO_MODE_HSYNC                 REG_DSI(MIPI_DSI1_BASE,0x02C)
 #define DSI_VIDEO_MODE_VSYNC                  REG_DSI(0x030)
-#define DSI0_VIDEO_MODE_VSYNC                 REG_DSI(MIPI_DSI0_BASE,0x030)
-#define DSI1_VIDEO_MODE_VSYNC                 REG_DSI(MIPI_DSI1_BASE,0x030)
 #define DSI_VIDEO_MODE_VSYNC_VPOS             REG_DSI(0x034)
-#define DSI0_VIDEO_MODE_VSYNC_VPOS            REG_DSI(MIPI_DSI0_BASE,0x034)
 #define DSI1_VIDEO_MODE_VSYNC_VPOS            REG_DSI(0x034)
 
 #define DSI_MISR_CMD_CTRL                     REG_DSI(0x09C)
 #define DSI_MISR_VIDEO_CTRL                   REG_DSI(0x0A0)
-#define DSI0_MISR_VIDEO_CTRL                  REG_DSI(MIPI_DSI0_BASE,0x0A0)
-#define DSI1_MISR_VIDEO_CTRL                  REG_DSI(MIPI_DSI1_BASE,0x0A0)
 #define DSI_EOT_PACKET_CTRL                   REG_DSI(0x0C8)
-#define DSI0_EOT_PACKET_CTRL                  REG_DSI(MIPI_DSI0_BASE,0x0C8)
-#define DSI1_EOT_PACKET_CTRL                  REG_DSI(MIPI_DSI1_BASE,0x0C8)
 #define DSI_VIDEO_MODE_CTRL                   REG_DSI(0x00C)
-#define DSI0_VIDEO_MODE_CTRL                  REG_DSI(MIPI_DSI0_BASE,0x00C)
-#define DSI1_VIDEO_MODE_CTRL                  REG_DSI(MIPI_DSI1_BASE,0x00C)
 #define DSI_CAL_STRENGTH_CTRL                 REG_DSI(0x100)
-#define DSI0_CAL_STRENGTH_CTRL                REG_DSI(MIPI_DSI0_BASE,0x100)
-#define DSI1_CAL_STRENGTH_CTRL                REG_DSI(MIPI_DSI1_BASE,0x100)
 #define DSI_CMD_MODE_DMA_SW_TRIGGER           REG_DSI(0x08C)
 #define DSI_CMD_MODE_MDP_SW_TRIGGER           REG_DSI(0x090)
 #define DSI_HS_TIMER_CTRL                     REG_DSI(0x0B8)
-#define DSI0_HS_TIMER_CTRL                     REG_DSI(MIPI_DSI0_BASE,0x0B8)
-#define DSI1_HS_TIMER_CTRL                     REG_DSI(MIPI_DSI1_BASE,0x0B8)
 
 #define DSI_LANE_CTRL                         REG_DSI(0x0A8)
 
@@ -491,82 +460,6 @@ static const unsigned char toshiba_mdt61_set_pixel_format[4] = {
 	0x3A, 0x70, DTYPE_DCS_WRITE1, 0x80,
 };
 
-/*Novatek 1080P commands*/
-/*[32 01 00 00 64 02 00 00];*/
-/*Turn ON peripheral command*/
-static const unsigned char novatek_on_cmd[4] = {
-	0x00, 0x00,  0x32, 0x80,
-};
-
-/*[23 00 00 00 00 00 02 f3 a8]*/
-/*unlock page 8*/
-static const unsigned char unlock_page_8[4] = {
-	0xf3, 0xa8, DTYPE_GEN_WRITE2, 0x80,
-};
-
-/*[23 00 00 00 00 00 02 7a 2b]*/
-/*0x87a = 2b*/
-static const unsigned char write_addr_87a[4] = {
-	0x7a, 0x2b, DTYPE_GEN_WRITE2, 0x80,
-};
-
-/*[23 00 00 00 00 00 02 7b 63]*/
-/*0x87b = 63*/
-static const unsigned char write_addr_87b[4] = {
-	0x7b, 0x63, DTYPE_GEN_WRITE2, 0x80,
-};
-
-/*[23 00 00 00 00 00 02 7c 0d]*/
-/*0x87c = 0d*/
-static const unsigned char write_addr_87c[4] = {
-	0x7c, 0x0d, DTYPE_GEN_WRITE2, 0x80,
-};
-
-/*[23 00 00 00 00 00 02 7e 60]*/
-/*0x87e = 60*/
-static const unsigned char write_addr_87e[4] = {
-	0x7e, 0x60, DTYPE_GEN_WRITE2, 0x80,
-};
-
-
-/*[23 00 00 00 00 00 02 80 00]*/
-/*0x880 = 00*/
-static const unsigned char write_addr_880[4] = {
-	0x80, 0x00, DTYPE_GEN_WRITE2, 0x80,
-};
-
-
-/*[23 00 00 00 00 00 02 81 00]*/
-/*0x881 = 00*/
-static const unsigned char write_addr_881[4] = {
-	0x81, 0x00, DTYPE_GEN_WRITE2, 0x80,
-};
-
-/*[03 01 00 00 10 00 00]*/
-/*Lock page 8*/
-static const unsigned char lock_page_8[4] = {
-	0x00, 0x00, 0x03, 0x80,
-};
-
-/*[23 00 00 00 00 00 02 f3 a1]*/
-/*unlock page 1*/
-static const unsigned char unlock_page_1[4] = {
-	0xf3, 0xa1, DTYPE_GEN_WRITE2, 0x80,
-};
-
-/*[23 00 00 00 10 00 02 53 80]*/
-/*0x153 = 80*/
-static const unsigned char write_addr_153[4] = {
-	0x53, 0x80, DTYPE_GEN_WRITE2, 0x80,
-};
-
-/*[03 01 00 00 10 00 00]*/
-/*Lock page 1*/
-static const unsigned char lock_page_1[4] = {
-	0x00, 0x00, 0x03, 0x80,
-};
-
-
 /* Done Toshiba MDT61 Panel Commands */
 /* Toshiba MDT61 (R69320) End */
 
@@ -725,68 +618,6 @@ static const unsigned char toshiba_mdv24_nvm_load_ctrl[4] = {
 };
 
 /* End of Toshiba MDV24 commands */
-
-/* JDI wqxga split display panel commands */
-static const unsigned char jdi_wqxga_mcap[4] = {
-		0xB0, 0x00, DTYPE_GEN_WRITE2, 0x80,
-};
-
-static const unsigned char jdi_wqxga_intf_setting[12] = {
-		0x06, 0x00, DTYPE_GEN_LWRITE, 0xC0,
-			0xB3, 0x04, 0x08, 0x00,
-				0x22, 0x00, 0xFF, 0xFF
-};
-
-static const unsigned char jdi_wqxga_intf_id_setting[8] = {
-		0x02, 0x00, DTYPE_GEN_LWRITE, 0xC0,
-			0xB4, 0x0C, 0xFF, 0xFF,
-};
-
-static const unsigned char jdi_wqxga_dsi_ctrl[8] = {
-		0x03, 0x00, DTYPE_GEN_LWRITE, 0xC0,
-			0xB6, 0x3A, 0xD3, 0xFF,
-};
-
-static const unsigned char jdi_wqxga_pixel_format[4] = {
-		0x3A, 0x77, DTYPE_DCS_WRITE1, 0x80,
-};
-
-static const unsigned char jdi_wqxga_col_addr[12] = {
-		0x05, 0x00, DTYPE_DCS_LWRITE, 0xC0,
-			0x2A, 0x00, 0x00, 0x04,
-				0xFF, 0xFF, 0xFF, 0xFF,
-};
-
-static const unsigned char jdi_wqxga_page_addr[12] = {
-		0x05, 0x00, DTYPE_DCS_LWRITE, 0xC0,
-			0x2B, 0x00, 0x00, 0x06,
-				0x3F, 0xFF, 0xFF, 0xFF,
-};
-
-static const unsigned char jdi_wqxga_tear_on[4] = {
-		0x35, 0x00, DTYPE_DCS_WRITE1, 0x80,
-};
-
-static const unsigned char jdi_wqxga_tear_scanline[8] = {
-		0x03, 0x00, DTYPE_DCS_LWRITE, 0xC0,
-			0x44, 0x00, 0x00, 0xFF,
-};
-
-static const unsigned char jdi_wqxga_write_brightness[4] = {
-		0x51, 0xFF, DTYPE_DCS_WRITE1, 0x80,
-};
-
-static const unsigned char jdi_wqxga_ctrl_display[4] = {
-		0x53, 0x24, DTYPE_DCS_WRITE1, 0x80,
-};
-
-static const unsigned char jdi_wqxga_intf_setting2[12] = {
-		0x06, 0x00, DTYPE_GEN_LWRITE, 0xC0,
-			0xB3, 0x14, 0x08, 0x00,
-				0x22, 0x00, 0xFF, 0xFF
-};
-
-/* End of JDI wqxga split display commands */
 
 static const unsigned char  dsi_display_sw_reset[4] = {
 		0x01, 0x00, 0x05, 0x80,
@@ -967,21 +798,6 @@ static struct mipi_dsi_cmd toshiba_mdt61_video_mode_cmds[] = {
 	{sizeof(dsi_display_display_on), (char *)dsi_display_display_on, 0},
 };
 
-static struct mipi_dsi_cmd novatek_1080p_video_mode_cmds[] = {
-	{sizeof(novatek_on_cmd), (char *)novatek_on_cmd,10},
-	{sizeof(unlock_page_8),  (char *)unlock_page_8,  0},
-	{sizeof(write_addr_87a), (char *)write_addr_87a, 0},
-	{sizeof(write_addr_87b), (char *)write_addr_87b, 0},
-	{sizeof(write_addr_87c), (char *)write_addr_87c, 0},
-	{sizeof(write_addr_87e), (char *)write_addr_87e, 0},
-	{sizeof(write_addr_880), (char *)write_addr_880, 0},
-	{sizeof(write_addr_881), (char *)write_addr_881, 0},
-	{sizeof(lock_page_8),    (char *)lock_page_8,   10},
-	{sizeof(unlock_page_1),  (char *)unlock_page_1,  0},
-	{sizeof(write_addr_153), (char *)write_addr_153,10},
-	{sizeof(lock_page_1),    (char *)lock_page_1,   10},
- };
-
 static struct mipi_dsi_cmd toshiba_mdv24_video_mode_cmds[] = {
 	{sizeof(toshiba_mdv24_mcap), (char *)toshiba_mdv24_mcap, 0},
 	{sizeof(toshiba_mdv24_acr),
@@ -1157,26 +973,6 @@ static struct mipi_dsi_phy_ctrl mipi_dsi_novatek_panel_phy_ctrl = {
 	 0x05, 0x14, 0x03, 0x0, 0x0, 0x54, 0x06, 0x10, 0x04, 0x0},
 };
 
-static struct mipi_dsi_cmd jdi_wqxga_video_mode_cmds[] = {
-	{sizeof(dsi_display_sw_reset), (char *)dsi_display_sw_reset, 0},
-	{sizeof(jdi_wqxga_mcap), (char *)jdi_wqxga_mcap, 0},
-	{sizeof(jdi_wqxga_intf_setting), (char *)jdi_wqxga_intf_setting, 0},
-	{sizeof(jdi_wqxga_intf_id_setting),
-	 (char *)jdi_wqxga_intf_id_setting, 0},
-	{sizeof(jdi_wqxga_dsi_ctrl), (char *)jdi_wqxga_dsi_ctrl, 0},
-	{sizeof(jdi_wqxga_pixel_format), (char *)jdi_wqxga_pixel_format, 0},
-	{sizeof(jdi_wqxga_col_addr), (char *)jdi_wqxga_col_addr, 0},
-	{sizeof(jdi_wqxga_page_addr), (char *)jdi_wqxga_page_addr, 0},
-	{sizeof(jdi_wqxga_tear_on), (char *)jdi_wqxga_tear_on, 0},
-	{sizeof(jdi_wqxga_tear_scanline), (char *)jdi_wqxga_tear_scanline, 0},
-	{sizeof(jdi_wqxga_write_brightness),
-	 (char *)jdi_wqxga_write_brightness, 0},
-	{sizeof(jdi_wqxga_ctrl_display), (char *)jdi_wqxga_ctrl_display, 0},
-	{sizeof(dsi_display_exit_sleep), (char *)dsi_display_exit_sleep, 0},
-	{sizeof(jdi_wqxga_intf_setting2), (char *)jdi_wqxga_intf_setting2, 0},
-	{sizeof(dsi_display_display_on), (char *)dsi_display_display_on, 0},
-};
-
 enum {		/* mipi dsi panel */
 	DSI_VIDEO_MODE,
 	DSI_CMD_MODE,
@@ -1255,8 +1051,7 @@ int mipi_dsi_video_mode_config(unsigned short disp_width,
 		unsigned char lane_en,
 		unsigned low_pwr_stop_mode,
 		unsigned char eof_bllp_pwr,
-		unsigned char interleav,
-		uint32_t ctl_base);
+		unsigned char interleav);
 
 int mipi_dsi_on();
 int mipi_dsi_off(struct msm_panel_info *pinfo);
