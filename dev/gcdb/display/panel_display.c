@@ -72,6 +72,9 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->lcdc.pipe_swap = (pstruct->paneldata->panel_operating_mode
 								 & 0x4);
 
+	pinfo->mipi.lp11_init = pstruct->paneldata->panel_lp11_init;
+	pinfo->mipi.init_delay = pstruct->paneldata->panel_init_delay;
+
 	/* Color setting*/
 	pinfo->lcdc.border_clr = pstruct->color->border_color;
 	pinfo->lcdc.underflow_clr = pstruct->color->underflow_color;
