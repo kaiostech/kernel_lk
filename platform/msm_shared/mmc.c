@@ -2393,14 +2393,14 @@ unsigned int mmc_boot_main(unsigned char slot, unsigned int base)
 	mmc_slot = slot;
 	mmc_boot_mci_base = base;
 
-	/* Get the capabilities for the host/target */
-	target_mmc_caps(&mmc_host);
-
 #if TARGET_TABLET
 	/* Set Drive strength */
 	tlmm_set_hdrive(0x7, 0x7, 0x7);
 	tlmm_set_pull(0x7, 0x7, 0x7);
 #endif
+
+	/* Get the capabilities for the host/target */
+	target_mmc_caps(&mmc_host);
 
 	/* Initialize necessary data structure and enable/set clock and power */
 	dprintf(SPEW, " Initializing MMC host data structure and clock!\n");

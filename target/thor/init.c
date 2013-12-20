@@ -253,10 +253,10 @@ void target_init(void)
 
 void target_mmc_caps(struct mmc_host *host)
 {
-	host->caps.ddr_mode = 0;
-	host->caps.hs200_mode = 0;
-	host->caps.bus_width = MMC_BOOT_BUS_WIDTH_4_BIT;
-	host->caps.hs_clk_rate = MMC_CLK_50MHZ;
+	host->caps.ddr_mode = 1;
+	host->caps.hs200_mode = 1;
+	host->caps.bus_width = MMC_BOOT_BUS_WIDTH_9_BIT;
+	host->caps.hs_clk_rate = MMC_CLK_96MHZ;
 }
 
 unsigned board_machtype(void)
@@ -417,7 +417,6 @@ void reboot_device(unsigned reboot_reason)
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
 {
-	dprintf(SPEW, "Target_cont_splash=1\n");
 	return 1;
 }
 
