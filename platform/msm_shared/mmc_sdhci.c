@@ -1537,6 +1537,7 @@ uint32_t mmc_sdhci_read(struct mmc_device *dev, void *dest,
 {
 	uint32_t mmc_ret = 0;
 	struct mmc_command cmd;
+	struct mmc_card *card = &dev->card;
 
 	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
 
@@ -1548,7 +1549,16 @@ uint32_t mmc_sdhci_read(struct mmc_device *dev, void *dest,
 	else
 		cmd.cmd_index = CMD18_READ_MULTIPLE_BLOCK;
 
-	cmd.argument = blk_addr;
+	/*
+	 * Standard emmc cards use byte mode addressing
+	 * convert the block address to byte address before
+	 * sending the command
+	 */
+	if (card->type == MMC_TYPE_STD_MMC)
+		cmd.argument = blk_addr * card->block_size;
+	else
+		cmd.argument = blk_addr;
+
 	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
 	cmd.resp_type = SDHCI_CMD_RESP_R1;
 	cmd.trans_mode = SDHCI_MMC_READ;
@@ -1596,6 +1606,7 @@ uint32_t mmc_sdhci_write(struct mmc_device *dev, void *src,
 {
 	uint32_t mmc_ret = 0;
 	struct mmc_command cmd;
+	struct mmc_card *card = &dev->card;
 
 	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
 
@@ -1608,7 +1619,16 @@ uint32_t mmc_sdhci_write(struct mmc_device *dev, void *src,
 	else
 		cmd.cmd_index = CMD25_WRITE_MULTIPLE_BLOCK;
 
-	cmd.argument = blk_addr;
+	/*
+	 * Standard emmc cards use byte mode addressing
+	 * convert the block address to byte address before
+	 * sending the command
+	 */
+	if (card->type == MMC_TYPE_STD_MMC)
+		cmd.argument = blk_addr * card->block_size;
+	else
+		cmd.argument = blk_addr;
+
 	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
 	cmd.resp_type = SDHCI_CMD_RESP_R1;
 	cmd.trans_mode = SDHCI_MMC_WRITE;
