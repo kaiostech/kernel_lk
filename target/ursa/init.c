@@ -319,27 +319,6 @@ void target_detect(struct board_data *board)
 {
 	switch (board_hardware_version())
 	{
-	case BOARD_REVISION_P0:
-		board->platform_hw = HW_PLATFORM_URSA_P0;
-		board->target = LINUX_MACHTYPE_URSA_P0;
-		break;
-
-	case BOARD_REVISION_PRE_P1:
-		if (board_soc_version() == BOARD_SOC_VERSION2)
-		{
-			/* *HACK* Support for pre-P1 plus
-			 * Load P1 device-tree for pre-P1 with v2 SOCs.
-			 */
-			board->platform_hw = HW_PLATFORM_URSA_P1;
-			board->target = LINUX_MACHTYPE_URSA_P1;
-		}
-		else
-		{
-			board->platform_hw = HW_PLATFORM_URSA_PRE_P1;
-			board->target = LINUX_MACHTYPE_URSA_PRE_P1;
-		}
-		break;
-
 	case BOARD_REVISION_P1:
 	case BOARD_REVISION_P0_5:
 		board->platform_hw = HW_PLATFORM_URSA_P1;
@@ -349,6 +328,13 @@ void target_detect(struct board_data *board)
 	case BOARD_REVISION_P2:
 		board->platform_hw = HW_PLATFORM_URSA_P2;
 		board->target = LINUX_MACHTYPE_URSA_P2;
+		break;
+	case BOARD_REVISION_PRE_EVT:
+	case BOARD_REVISION_EVT:
+	case BOARD_REVISION_P0_E:
+	case BOARD_REVISION_PRE_DVT:
+		board->platform_hw = HW_PLATFORM_URSA_EVT;
+		board->target = LINUX_MACHTYPE_URSA_EVT;
 		break;
 
 	default:
@@ -484,6 +470,10 @@ void target_usb_init(void)
 	{
 	case BOARD_REVISION_P1:
 	case BOARD_REVISION_P0_5:
+	case BOARD_REVISION_P2:
+	case BOARD_REVISION_PRE_EVT:
+	case BOARD_REVISION_EVT:
+	case BOARD_REVISION_P0_E:
 		/* set PARAMETER_OVERRIDE_C register value to 0x2b */
 		ulpi_write(0x2b, PARAMETER_OVERRIDE_C);
 		break;
