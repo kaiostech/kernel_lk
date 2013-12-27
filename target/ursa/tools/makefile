@@ -34,7 +34,6 @@ EMMCBOOT.MBN: emmc_appsboothd.mbn $(OUTBIN)
 	cp $(OUTBIN) $(APPSBOOTHEADER_DIR)/emmc_appsboot.raw
 	cat $(APPSBOOTHEADER_DIR)/emmc_appsboothd.mbn $(OUTBIN) > $(APPSBOOTHEADER_DIR)/EMMCBOOT.MBN
 	cat $(APPSBOOTHEADER_DIR)/emmc_appsboothd.mbn $(OUTBIN) > $(APPSBOOTHEADER_DIR)/emmc_appsboot.mbn
-	scripts/sign_image.sh $(SIGNING_TOOL_PATH) $(APPSBOOTHEADER_DIR)/emmc_appsboot.mbn
 	rm -f $(APPSBOOTHEADER_DIR)/emmc_appsboothd.mbn
 
 emmc_appsboothd.mbn: mkheader $(OUTBIN)

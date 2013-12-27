@@ -1,5 +1,5 @@
 /* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
- *
+ * Copyright (c) 2012, Amazon.com, Inc. or its affiliates. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
@@ -27,11 +27,13 @@
  */
 
 #include <debug.h>
-#include <platform/gpio.h>
 #include <platform/iomap.h>
+#include <platform/irqs.h>
+#include <platform/gpio.h>
 #include <reg.h>
 #include <target.h>
 #include <platform.h>
+#include <dload_util.h>
 #include <uart_dm.h>
 #include <mmc.h>
 #include <spmi.h>
@@ -41,6 +43,12 @@
 #include <dev/keys.h>
 #include <pm8x41.h>
 #include <crypto5_wrapper.h>
+#include <hsusb.h>
+#include <clock.h>
+#include <partition_parser.h>
+#include <scm.h>
+#include <platform/clock.h>
+#include <stdlib.h>
 #include <target/board.h>
 #ifdef WITH_ENABLE_IDME
 #include <idme.h>
@@ -67,6 +75,8 @@ struct mmc_device *dev;
 #define CE_FIFO_SIZE            64
 #define CE_READ_PIPE            3
 #define CE_WRITE_PIPE           2
+#define CE_READ_PIPE_LOCK_GRP   0
+#define CE_WRITE_PIPE_LOCK_GRP  0
 #define CE_ARRAY_SIZE           20
 
 #define REBOOT_MODE_NONE     0x00000000
@@ -82,13 +92,13 @@ static uint32_t mmc_sdhci_base[] =
 static uint32_t mmc_sdc_base[] =
 	{ MSM_SDC1_BASE, MSM_SDC2_BASE, MSM_SDC3_BASE, MSM_SDC4_BASE };
 
+static uint32_t mmc_sdc_pwrctl_irq[] =
+	{ SDCC1_PWRCTL_IRQ, SDCC2_PWRCTL_IRQ, SDCC3_PWRCTL_IRQ, SDCC4_PWRCTL_IRQ };
+
 void target_early_init(void)
 {
 #if WITH_DEBUG_UART
-	if (board_hardware_version() == BOARD_REVISION_P0)
-		uart_dm_init(7, 0, BLSP2_UART1_BASE);
-	else
-		uart_dm_init(1, 0, BLSP1_UART1_BASE);
+	uart_dm_init(1, 0, BLSP1_UART1_BASE);
 #endif
 }
 
@@ -155,11 +165,19 @@ void target_crypto_init_params()
 	ce_params.bam_ee           = CE_EE;
 	ce_params.pipes.read_pipe  = CE_READ_PIPE;
 	ce_params.pipes.write_pipe = CE_WRITE_PIPE;
+	ce_params.pipes.read_pipe_grp  = CE_READ_PIPE_LOCK_GRP;
+	ce_params.pipes.write_pipe_grp = CE_WRITE_PIPE_LOCK_GRP;
 
 	/* Assign buffer sizes. */
 	ce_params.num_ce           = CE_ARRAY_SIZE;
 	ce_params.read_fifo_size   = CE_FIFO_SIZE;
 	ce_params.write_fifo_size  = CE_FIFO_SIZE;
+
+	/* BAM is initialized by TZ for this platform.
+	 * Do not do it again as the initialization address space
+	 * is locked.
+	 */
+	ce_params.do_bam_init      = 0;
 
 	crypto_init_params(&ce_params);
 }
@@ -170,24 +188,26 @@ crypto_engine_type board_ce_type(void)
 }
 
 #if MMC_SDHCI_SUPPORT
-static target_mmc_sdhci_init()
+static void target_mmc_sdhci_init()
 {
-	struct mmc_config_data config;
-
-	/* Enable sdhci mode */
-	sdhci_mode_enable(1);
+	struct mmc_config_data config = {0};
 
 	config.bus_width = DATA_BUS_WIDTH_8BIT;
 	config.max_clk_rate = MMC_CLK_200MHZ;
 
 	/* Trying Slot 1*/
 	config.slot = 1;
-	config.base = mmc_sdhci_base[config.slot - 1];
+	config.sdhc_base = mmc_sdhci_base[config.slot - 1];
+	config.pwrctl_base = mmc_sdc_base[config.slot - 1];
+	config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
 
 	if (!(dev = mmc_init(&config))) {
 		/* Trying Slot 2 next */
 		config.slot = 2;
-		config.base = mmc_sdhci_base[config.slot - 1];
+		config.sdhc_base = mmc_sdhci_base[config.slot - 1];
+		config.pwrctl_base = mmc_sdc_base[config.slot - 1];
+		config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
+
 		if (!(dev = mmc_init(&config))) {
 			dprintf(CRITICAL, "mmc init failed!");
 			ASSERT(0);
@@ -195,12 +215,12 @@ static target_mmc_sdhci_init()
 	}
 }
 
-struct mmc_device *target_mmc_device()
+void *target_mmc_device()
 {
-	return dev;
+	return (void*) dev;
 }
 #else
-static target_mmc_mci_init()
+static void target_mmc_mci_init()
 {
 	uint32_t base_addr;
 	uint8_t slot;
@@ -431,7 +451,7 @@ void reboot_device(unsigned reboot_reason)
 		writel(reboot_reason, RESTART_REASON_ADDR);
 
 	/* Configure PMIC for warm reset */
-	if (pmic_ver == PMIC_VERSION_V2)
+	if (pmic_ver == PM8X41_VERSION_V2)
 		pm8x41_v2_reset_configure(PON_PSHOLD_WARM_RESET);
 	else
 		pm8x41_reset_configure(PON_PSHOLD_WARM_RESET);
@@ -474,19 +494,15 @@ void target_usb_init(void)
 	}
 }
 
+uint8_t target_panel_auto_detect_enabled()
+{
+	return 0;
+}
+
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
 {
-	switch(board_hardware_version())
-	{
-		case BOARD_REVISION_P0:
-			dprintf(SPEW, "Target_cont_splash=1\n");
-			return 1;
-		default:
-			dprintf(SPEW, "Target_cont_splash=1\n");
-			return 1;
-			break;
-	}
+	return 0;
 }
 
 unsigned target_pause_for_battery_charge(void)
@@ -537,7 +553,7 @@ void shutdown_device()
 	dprintf(CRITICAL, "Going down for shutdown.\n");
 
 	/* Configure PMIC for shutdown. */
-	if (pmic_ver == PMIC_VERSION_V2)
+	if (platform_is_8974() && (pmic_ver == PM8X41_VERSION_V2))
 		pm8x41_v2_reset_configure(PON_PSHOLD_SHUTDOWN);
 	else
 		pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
