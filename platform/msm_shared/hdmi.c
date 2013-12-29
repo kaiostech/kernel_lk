@@ -40,8 +40,20 @@
 #define MDP4_RGB_BASE           0x40000
 #define MDP4_RGB_OFF            0x10000
 #define DBC_START_OFFSET	4
-#define SHORT_VIDEO_DESCRIPTOR	2
 #define HDMI_MSM_BPP		24
+
+#define MAX_AUDIO_DATA_BLOCK_SIZE	0x80
+
+enum edid_data_block_type {
+	RESERVED_DATA_BLOCK1 = 0,
+	AUDIO_DATA_BLOCK,
+	VIDEO_DATA_BLOCK,
+	VENDOR_SPECIFIC_DATA_BLOCK,
+	SPEAKER_ALLOCATION_DATA_BLOCK,
+	VESA_DTC_DATA_BLOCK,
+	RESERVED_DATA_BLOCK2,
+	EXTENDED_DATA_BLOCK
+};
 
 /* all video formats defined by CEA 861D */
 #define HDMI_VFRMT_UNKNOWN		0
@@ -354,11 +366,11 @@ const uint8_t *hdmi_edid_find_block(const uint8_t *in_buf,
 	return NULL;
 }
 
+static uint8_t edid_buf[0x80];
 void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 {
 	int block 			= 1;
 	int block_size			= 0x80;
-	uint8_t edid_buf[0x80]		= {0};
 	uint8_t *b			= edid_buf;
 	const uint8_t *svd		= NULL;
 	struct msm_panel_info *pinfo	= NULL;
@@ -385,7 +397,7 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 			b[ndx+12], b[ndx+13], b[ndx+14], b[ndx+15]);
 
 	svd = hdmi_edid_find_block(edid_buf, DBC_START_OFFSET,
-				   SHORT_VIDEO_DESCRIPTOR, &len);
+				   VIDEO_DATA_BLOCK, &len);
 
 	if (svd != NULL) {
 		++svd;
@@ -960,9 +972,71 @@ int hdmi_msm_audio_info_setup(uint32_t num_of_channels)
 	return 0;
 }
 
+static void hdmi_edid_get_audio_data(const uint8_t *in_buf,
+		uint8_t *channels, uint8_t *formats,
+		uint8_t *freq,     uint8_t *bitrate)
+{
+	const uint8_t *adb = NULL;
+	uint32_t adb_size = 0;
+	uint8_t len = 0, count = 0, i = 0;
+	uint32_t next_offset = DBC_START_OFFSET;
+	uint8_t audio_data_block[MAX_AUDIO_DATA_BLOCK_SIZE];
+
+	do {
+		adb = hdmi_edid_find_block(in_buf, next_offset,
+				AUDIO_DATA_BLOCK, &len);
+
+		if ((adb_size + len) > MAX_AUDIO_DATA_BLOCK_SIZE) {
+			dprintf(INFO, "%s: invalid length\n", __func__);
+			break;
+		}
+
+		if (!adb) {
+			dprintf(INFO, "%s: No adb found\n", __func__);
+			break;
+		}
+
+		memcpy((audio_data_block + adb_size), adb + 1, len);
+		next_offset = (adb - in_buf) + 1 + len;
+
+		adb_size += len;
+
+	} while (adb);
+
+	count = adb_size/3;
+	adb = audio_data_block;
+
+	while (count--) {
+		*channels++ = (*adb & 0x07) + 1;
+		*formats++  = (*adb & 0x78) >> 3;
+		*freq++     = *(adb + 1) & 0xFF;
+		*bitrate++  = *(adb + 2) & 0xFF;
+
+		adb += 3;
+	}
+}
+
+#define MAX_SAD 40
 static void hdmi_audio_playback(void)
 {
 	uint32_t data_base;
+	uint8_t channels[MAX_SAD] = {0};
+	uint8_t formats[MAX_SAD] = {0};
+	uint8_t frequency[MAX_SAD] = {0};
+	uint8_t bitrate[MAX_SAD] = {0};
+	uint8_t i = 0;
+
+	hdmi_edid_get_audio_data(edid_buf, channels, formats,
+		frequency, bitrate);
+
+	while (i < MAX_SAD) {
+		if (frequency[i] & BIT(2))
+			break;
+		i++;
+	}
+
+	if (i == MAX_SAD)
+		dprintf(INFO, "%s: 48KHz not supported by TV\n", __func__);
 
 	data_base = (uint32_t) memalign(4096, 0x1000);
 	if (!data_base)
