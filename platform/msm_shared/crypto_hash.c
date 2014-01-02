@@ -33,13 +33,9 @@
 
 static crypto_SHA256_ctx g_sha256_ctx;
 static crypto_SHA1_ctx g_sha1_ctx;
-static bool crypto_init_done = FALSE;
+static bool crypto_init_done;
 
 extern void ce_clock_init(void);
-
-__WEAK void crypto_eng_cleanup()
-{
-}
 
 /*
  * Top level function which calculates SHAx digest with given data and size.
@@ -77,9 +73,6 @@ hash_find(unsigned char *addr, unsigned int size, unsigned char *digest,
 	if (ret_val != CRYPTO_SHA_ERR_NONE) {
 		dprintf(CRITICAL, "crypto_sha256 returns error %d\n", ret_val);
 	}
-
-	crypto_eng_cleanup();
-
 }
 
 /*
