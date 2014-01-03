@@ -52,7 +52,12 @@
 #include <platform/timer.h>
 #include <stdlib.h>
 #include <ufs.h>
-
+#include <target/display.h>
+#if WITH_FBGFX_SPLASH
+#include <dev/fbgfx.h>
+struct fbgfx_image splash;
+extern struct fbgfx_image image_boot_Kindle;
+#endif
 
 #define LINUX_MACHTYPE_LOKI	10
 
@@ -279,6 +284,11 @@ void target_init(void)
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
+
+#if WITH_FBGFX_SPLASH
+	/* if fbcon.c does not hardcode 'splash' we can skip this memcpy */
+	memcpy(&splash, &image_boot_Kindle, sizeof(struct fbgfx_image));
+#endif
 	dprintf(INFO, "Display Init: Start\n");
 	display_init();
 	dprintf(INFO, "Display Init: Done\n");
