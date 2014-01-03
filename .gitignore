@@ -10,3 +10,6 @@ target/*/tools/mkheader
 cscope.*
 ncscope.*
 
+# pyc files
+signing/gensecimage/*.pyc
+signing/gensecimage/ssd/*.pyc
