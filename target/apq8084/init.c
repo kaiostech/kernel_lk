@@ -60,6 +60,8 @@
 
 #define BOOT_DEVICE_MASK(val)   ((val & 0x3E) >>1)
 
+#define SSD_CE_INSTANCE         1
+
 enum cdp_subtype
 {
 	CDP_SUBTYPE_SMB349 = 0,
@@ -67,7 +69,8 @@ enum cdp_subtype
 	CDP_SUBTYPE_9x25_SMB1357,
 	CDP_SUBTYPE_9x35,
 	CDP_SUBTYPE_SMB1357,
-	CDP_SUBTYPE_SMB350
+	CDP_SUBTYPE_SMB350,
+	CDP_SUBTYPE_9x35_M
 };
 
 enum mtp_subtype
@@ -76,6 +79,7 @@ enum mtp_subtype
 	MTP_SUBTYPE_9x25_SMB349,
 	MTP_SUBTYPE_9x25_SMB1357,
 	MTP_SUBTYPE_9x35,
+	MTP_SUBTYPE_9x35_M
 };
 
 enum rcm_subtype
@@ -85,7 +89,8 @@ enum rcm_subtype
 	RCM_SUBTYPE_9x25_SMB1357,
 	RCM_SUBTYPE_9x35,
 	RCM_SUBTYPE_SMB1357,
-	RCM_SUBTYPE_SMB350
+	RCM_SUBTYPE_SMB350,
+	RCM_SUBTYPE_9x35_M
 };
 
 enum liquid_subtype
@@ -315,6 +320,58 @@ void target_init(void)
 #endif
 }
 
+void target_load_ssd_keystore(void)
+{
+	uint64_t ptn;
+	int      index;
+	uint64_t size;
+	uint32_t *buffer = NULL;
+
+	if (!target_is_ssd_enabled())
+		return;
+
+	index = partition_get_index("ssd");
+
+	ptn = partition_get_offset(index);
+	if (ptn == 0){
+		dprintf(CRITICAL, "Error: ssd partition not found\n");
+		return;
+	}
+
+	size = partition_get_size(index);
+	if (size == 0) {
+		dprintf(CRITICAL, "Error: invalid ssd partition size\n");
+		return;
+	}
+
+	buffer = memalign(CACHE_LINE, ROUNDUP(size, CACHE_LINE));
+	if (!buffer) {
+		dprintf(CRITICAL, "Error: allocating memory for ssd buffer\n");
+		return;
+	}
+
+	if (mmc_read(ptn, buffer, size)) {
+		dprintf(CRITICAL, "Error: cannot read data\n");
+		free(buffer);
+		return;
+	}
+
+	clock_ce_enable(SSD_CE_INSTANCE);
+	scm_protect_keystore(buffer, size);
+	clock_ce_disable(SSD_CE_INSTANCE);
+	free(buffer);
+}
+
+/* Do any target specific intialization needed before entering fastboot mode */
+void target_fastboot_init(void)
+{
+	if (target_is_ssd_enabled()) {
+		clock_ce_enable(SSD_CE_INSTANCE);
+		target_load_ssd_keystore();
+	}
+
+}
+
 unsigned board_machtype(void)
 {
 	return LINUX_MACHTYPE_UNKNOWN;
@@ -338,6 +395,7 @@ void set_cdp_baseband(struct board_data *board)
 		board->baseband = BASEBAND_MDM;
 		break;
 	case CDP_SUBTYPE_9x35:
+	case CDP_SUBTYPE_9x35_M:
 		board->baseband = BASEBAND_MDM2;
 		break;
 	case CDP_SUBTYPE_SMB349:
@@ -365,6 +423,7 @@ void set_mtp_baseband(struct board_data *board)
 		board->baseband = BASEBAND_MDM;
 		break;
 	case MTP_SUBTYPE_9x35:
+	case MTP_SUBTYPE_9x35_M:
 		board->baseband = BASEBAND_MDM2;
 		break;
 	case MTP_SUBTYPE_SMB349:
@@ -388,6 +447,7 @@ void set_rcm_baseband(struct board_data *board)
 		board->baseband = BASEBAND_MDM;
 		break;
 	case RCM_SUBTYPE_9x35:
+	case RCM_SUBTYPE_9x35_M:
 		board->baseband = BASEBAND_MDM2;
 		break;
 	case RCM_SUBTYPE_SMB349:
@@ -462,6 +522,9 @@ void target_baseband_detect(struct board_data *board)
 		break;
 	case HW_PLATFORM_LIQUID:
 		set_liquid_baseband(board);
+		break;
+	case HW_PLATFORM_SBC:
+		board->baseband = BASEBAND_APQ;
 		break;
 	default:
 		dprintf(CRITICAL, "Platform :%u is not supported\n",

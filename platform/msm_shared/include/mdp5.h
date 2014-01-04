@@ -64,10 +64,29 @@
 #define LAYER_3_BLEND_OP                        0xB0
 #define LAYER_3_BLEND0_FG_ALPHA                 0xB4
 
+/* HW Revisions for different MDSS targets */
+#define MDSS_GET_MAJOR(rev)         ((rev) >> 28)
+#define MDSS_GET_MINOR(rev)         (((rev) >> 16) & 0xFFF)
+#define MDSS_GET_STEP(rev)          ((rev) & 0xFFFF)
+#define MDSS_GET_MAJOR_MINOR(rev)   ((rev) >> 16)
 
-#define MDSS_MDP_HW_REV_100                     0x10000000
-#define MDSS_MDP_HW_REV_101                     0x10010000
-#define MDSS_MDP_HW_REV_102                     0x10020000
+#define MDSS_IS_MAJOR_MINOR_MATCHING(a, b) \
+        (MDSS_GET_MAJOR_MINOR((a)) == MDSS_GET_MAJOR_MINOR((b)))
+
+#define MDSS_MDP_REV(major, minor, step) \
+        ((((major) & 0x000F) << 28) |    \
+         (((minor) & 0x0FFF) << 16) |    \
+         ((step)   & 0xFFFF))
+
+#define MDSS_MDP_HW_REV_100    MDSS_MDP_REV(1, 0, 0) /* 8974 v1.0 */
+#define MDSS_MDP_HW_REV_101    MDSS_MDP_REV(1, 1, 0) /* 8x26 v1.0 */
+#define MDSS_MDP_HW_REV_101_1  MDSS_MDP_REV(1, 1, 1) /* 8x26 v2.0, 8926 v1.0 */
+#define MDSS_MDP_HW_REV_102    MDSS_MDP_REV(1, 2, 0) /* 8974 v2.0 */
+#define MDSS_MDP_HW_REV_102_1  MDSS_MDP_REV(1, 2, 1) /* 8974 v3.0 (Pro) */
+#define MDSS_MDP_HW_REV_103    MDSS_MDP_REV(1, 3, 0) /* 8084 v1.0 */
+#define MDSS_MDP_HW_REV_200    MDSS_MDP_REV(2, 0, 0) /* 8092 v1.0 */
+
+#define MDSS_MAX_LINE_BUF_WIDTH 2048
 
 #define MDP_HW_REV                              REG_MDP(0x0100)
 #define MDP_INTR_EN                             REG_MDP(0x0110)
@@ -126,16 +145,8 @@
 #define MDP_CLK_CTRL6                           REG_MDP(0x03C4)
 #define MDP_CLK_CTRL7                           REG_MDP(0x04D0)
 
-#define MMSS_MDP_CLIENT_ID_UNUSED               0x00000000
-#define MMSS_MDP_1_1_CLIENT_ID_RGB0             0x00000007
-#define MMSS_MDP_1_2_CLIENT_ID_RGB0             0x00000010
-#define MMSS_MDP_1_2_CLIENT_ID_RGB1             0x00000011
-
-#define MMSS_MDP_MAX_SMP_SIZE                   0x00001000
-#define MMSS_MDP_SMP_ALLOC_W_0                  REG_MDP(0x0180)
-#define MMSS_MDP_SMP_ALLOC_W_1                  REG_MDP(0x0184)
-#define MMSS_MDP_SMP_ALLOC_R_0                  REG_MDP(0x0230)
-#define MMSS_MDP_SMP_ALLOC_R_1                  REG_MDP(0x0234)
+#define MMSS_MDP_SMP_ALLOC_W_BASE               REG_MDP(0x0180)
+#define MMSS_MDP_SMP_ALLOC_R_BASE               REG_MDP(0x0230)
 
 #define MDP_QOS_REMAPPER_CLASS_0                REG_MDP(0x02E0)
 #define MDP_QOS_REMAPPER_CLASS_1                REG_MDP(0x02E4)
