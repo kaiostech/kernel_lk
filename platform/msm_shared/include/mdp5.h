@@ -108,9 +108,9 @@
 #define CTL_FLUSH                               0x18
 #define CTL_START                               0x1C
 
-#define MDP_TG_SINK                             REG_MDP(0x4F0)
 #define MDP_REG_SPLIT_DISPLAY_EN                REG_MDP(0x3F4)
 #define MDP_REG_SPLIT_DISPLAY_UPPER_PIPE_CTL    REG_MDP(0x3F8)
+#define MDP_REG_SPLIT_DISPLAY_LOWER_PIPE_CTL    REG_MDP(0x4F0)
 
 #define MDP_INTF_0_BASE                         REG_MDP(0x12500)
 #define MDP_INTF_1_BASE                         REG_MDP(0x12700)
