@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,7 +45,7 @@
 /*---------------------------------------------------------------------------*/
 static struct panel_config ssd2080m_720p_video_panel_data = {
 	"qcom,mdss_dsi_ssd2080m_720p_video", "dsi:0:", "qcom,mdss-dsi-panel",
-	10, 0, "DISPLAY_1", 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 50000
+	10, 0, "DISPLAY_1", 0, 0, 60, 0, 0, 0, 1, 50000, 0, 0, 0, 0, 0, 0
 };
 
 /*---------------------------------------------------------------------------*/
