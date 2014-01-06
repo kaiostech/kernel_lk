@@ -57,8 +57,8 @@ typedef struct panel_config{
 	uint16_t panel_channelid;
 	uint16_t dsi_virtualchannel_id;
 	uint16_t panel_broadcast_mode;
-	uint16_t dsi_lp11_atinit;
-	uint16_t dsi_initmaster_time;
+	uint16_t panel_lp11_init;
+	uint16_t panel_init_delay;
 	uint16_t dsi_stream;
 	uint8_t  interleave_mode;
 	uint32_t panel_bitclock_freq;
