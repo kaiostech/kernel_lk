@@ -410,21 +410,52 @@ void target_usb_init(void)
 	writel(val, USB_USBCMD);
 }
 
+uint8_t target_panel_auto_detect_enabled()
+{
+	uint8_t ret = 0;
+
+        switch(board_hardware_id())
+        {
+		case HW_PLATFORM_QRD:
+			/* Enable auto detect for DVT boards only */
+			if (((board_target_id() >> 16) & 0xFF) == 0x2)
+				ret = 1;
+			else
+				ret = 0;
+			break;
+		case HW_PLATFORM_SURF:
+		case HW_PLATFORM_MTP:
+                default:
+                        ret = 0;
+        }
+        return ret;
+}
+
+static uint8_t splash_override;
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
 {
-	switch(board_hardware_id())
-	{
-		case HW_PLATFORM_MTP:
-		case HW_PLATFORM_QRD:
-		case HW_PLATFORM_SURF:
-			dprintf(SPEW, "Target_cont_splash=1\n");
-			return 1;
-			break;
-		default:
-			dprintf(SPEW, "Target_cont_splash=0\n");
-			return 0;
-	}
+        uint8_t splash_screen = 0;
+        if(!splash_override) {
+                switch(board_hardware_id())
+                {
+                        case HW_PLATFORM_MTP:
+			case HW_PLATFORM_QRD:
+                        case HW_PLATFORM_SURF:
+                                dprintf(SPEW, "Target_cont_splash=1\n");
+                                splash_screen = 1;
+                                break;
+                        default:
+                                dprintf(SPEW, "Target_cont_splash=0\n");
+                                splash_screen = 0;
+                }
+        }
+        return splash_screen;
+}
+
+void target_force_cont_splash_disable(uint8_t override)
+{
+        splash_override = override;
 }
 
 unsigned target_pause_for_battery_charge(void)
