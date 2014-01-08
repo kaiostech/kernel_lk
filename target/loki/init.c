@@ -293,6 +293,10 @@ void target_init(void)
 	display_init();
 	dprintf(INFO, "Display Init: Done\n");
 #endif
+     /* GPIO 12 need to be set high in order to activate smb349 charger*/
+     dprintf(ALWAYS, "set gpio 12 to high\n");
+     gpio_tlmm_config(12, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
+     gpio_set(12, 1<<1);
 }
 
 unsigned board_machtype(void)
