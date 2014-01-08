@@ -259,6 +259,13 @@ void *target_mmc_device()
 
 void target_init(void)
 {
+	struct pm8x41_gpio gpio19_param;
+        /* Configure the GPIO */
+        gpio19_param.direction = PM_GPIO_DIR_OUT;
+        gpio19_param.function  = 0;
+        gpio19_param.pull      = PM_GPIO_PULL_UP_30;
+        gpio19_param.vin_sel   = 2;
+
 	dprintf(INFO, "target_init()\n");
 
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
@@ -297,6 +304,12 @@ void target_init(void)
      dprintf(ALWAYS, "set gpio 12 to high\n");
      gpio_tlmm_config(12, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
      gpio_set(12, 1<<1);
+       
+     pm8x41_gpio_config(19, &gpio19_param);
+     pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
+
+     gpio_tlmm_config(0, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
+     gpio_set(0, 1<<1);
 }
 
 unsigned board_machtype(void)
