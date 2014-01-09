@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -62,6 +62,15 @@
 
 #define SSD_CE_INSTANCE         1
 
+#define CE2_INSTANCE            2
+#define CE_EE                   1
+#define CE_FIFO_SIZE            64
+#define CE_READ_PIPE            3
+#define CE_WRITE_PIPE           2
+#define CE_READ_PIPE_LOCK_GRP   0
+#define CE_WRITE_PIPE_LOCK_GRP  0
+#define CE_ARRAY_SIZE           20
+
 enum cdp_subtype
 {
 	CDP_SUBTYPE_SMB349 = 0,
@@ -69,7 +78,8 @@ enum cdp_subtype
 	CDP_SUBTYPE_9x25_SMB1357,
 	CDP_SUBTYPE_9x35,
 	CDP_SUBTYPE_SMB1357,
-	CDP_SUBTYPE_SMB350
+	CDP_SUBTYPE_SMB350,
+	CDP_SUBTYPE_9x35_M
 };
 
 enum mtp_subtype
@@ -78,6 +88,7 @@ enum mtp_subtype
 	MTP_SUBTYPE_9x25_SMB349,
 	MTP_SUBTYPE_9x25_SMB1357,
 	MTP_SUBTYPE_9x35,
+	MTP_SUBTYPE_9x35_M
 };
 
 enum rcm_subtype
@@ -87,7 +98,8 @@ enum rcm_subtype
 	RCM_SUBTYPE_9x25_SMB1357,
 	RCM_SUBTYPE_9x35,
 	RCM_SUBTYPE_SMB1357,
-	RCM_SUBTYPE_SMB350
+	RCM_SUBTYPE_SMB350,
+	RCM_SUBTYPE_9x35_M
 };
 
 enum liquid_subtype
@@ -131,6 +143,9 @@ static int target_volume_up()
 	gpio.vin_sel   = 2;
 
 	pm8x41_gpio_config(2, &gpio);
+
+	/* Wait for the pmic gpio config to take effect */
+	thread_sleep(1);
 
 	/* Get status of P_GPIO_2 */
 	pm8x41_gpio_get(2, &status);
@@ -292,6 +307,9 @@ void target_init(void)
 
 	target_keystatus();
 
+	if (target_use_signed_kernel())
+		target_crypto_init_params();
+
 	boot_device = target_read_boot_config();
 
 	if (target_boot_device_emmc())
@@ -392,6 +410,7 @@ void set_cdp_baseband(struct board_data *board)
 		board->baseband = BASEBAND_MDM;
 		break;
 	case CDP_SUBTYPE_9x35:
+	case CDP_SUBTYPE_9x35_M:
 		board->baseband = BASEBAND_MDM2;
 		break;
 	case CDP_SUBTYPE_SMB349:
@@ -419,6 +438,7 @@ void set_mtp_baseband(struct board_data *board)
 		board->baseband = BASEBAND_MDM;
 		break;
 	case MTP_SUBTYPE_9x35:
+	case MTP_SUBTYPE_9x35_M:
 		board->baseband = BASEBAND_MDM2;
 		break;
 	case MTP_SUBTYPE_SMB349:
@@ -442,6 +462,7 @@ void set_rcm_baseband(struct board_data *board)
 		board->baseband = BASEBAND_MDM;
 		break;
 	case RCM_SUBTYPE_9x35:
+	case RCM_SUBTYPE_9x35_M:
 		board->baseband = BASEBAND_MDM2;
 		break;
 	case RCM_SUBTYPE_SMB349:
@@ -627,4 +648,40 @@ void target_usb_phy_reset(void)
 	writel(val, GCC_USB30_PHY_COM_BCR);
 	udelay(10);
 	writel(val & ~BIT(0), GCC_USB30_PHY_COM_BCR);
+}
+
+/* Set up params for h/w CE. */
+void target_crypto_init_params()
+{
+	struct crypto_init_params ce_params;
+
+	/* Set up base addresses and instance. */
+	ce_params.crypto_instance  = CE2_INSTANCE;
+	ce_params.crypto_base      = MSM_CE2_BASE;
+	ce_params.bam_base         = MSM_CE2_BAM_BASE;
+
+	/* Set up BAM config. */
+	ce_params.bam_ee               = CE_EE;
+	ce_params.pipes.read_pipe      = CE_READ_PIPE;
+	ce_params.pipes.write_pipe     = CE_WRITE_PIPE;
+	ce_params.pipes.read_pipe_grp  = CE_READ_PIPE_LOCK_GRP;
+	ce_params.pipes.write_pipe_grp = CE_WRITE_PIPE_LOCK_GRP;
+
+	/* Assign buffer sizes. */
+	ce_params.num_ce           = CE_ARRAY_SIZE;
+	ce_params.read_fifo_size   = CE_FIFO_SIZE;
+	ce_params.write_fifo_size  = CE_FIFO_SIZE;
+
+	/* BAM is initialized by TZ for this platform.
+	 * Do not do it again as the initialization address space
+	 * is locked.
+	 */
+	ce_params.do_bam_init      = 0;
+
+	crypto_init_params(&ce_params);
+}
+
+crypto_engine_type board_ce_type(void)
+{
+	return CRYPTO_ENGINE_TYPE_HW;
 }
