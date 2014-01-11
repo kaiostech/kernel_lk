@@ -211,6 +211,7 @@
 
 /* I2C */
 #define BLSP2_QUP5_I2C_APPS_CBCR    (CLK_CTL_BASE + 0xB88)
+#define BLSP2_QUP6_I2C_APPS_CBCR    (CLK_CTL_BASE + 0xC08)
 
 #define BLSP_QUP_BASE(blsp_id, qup_id)   ((blsp_id == 1) ? \
                                          (PERIPH_SS_BASE + 0x00123000 \

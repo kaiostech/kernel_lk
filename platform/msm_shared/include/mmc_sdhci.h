@@ -86,6 +86,8 @@
 
 /* EXT_CSD */
 /* Offsets in the ext csd */
+#define MMC_EXT_BOOT_WP              		  	  173 // ACOS_MOD_ONELINE
+#define MMC_EXT_PARTITION_CONFIG			      179 // ACOS_MOD_ONELINE
 #define MMC_EXT_MMC_BUS_WIDTH                     183
 #define MMC_EXT_MMC_HS_TIMING                     185
 #define MMC_DEVICE_TYPE                           196
@@ -98,6 +100,19 @@
 #define MMC_ERASE_GRP_DEF                         175
 #define MMC_USR_WP                                171
 #define MMC_HC_ERASE_GRP_SIZE                     224
+
+// ACOS_MOD_BEGIN
+//#define MMC_BOOT_B_PERM_WP_EN            not used
+#define MMC_BOOT_B_PWR_WP_DIS             (1<<6)
+
+#define MMC_BOOT_B_PERM_WP_DIS            (1<<4)
+#define MMC_BOOT_B_PWR_WP_EN              1
+
+/* Partition Access */
+#define MMC_US_PARTITION             0x00
+#define MMC_B_PARTITION_1            0x01
+#define MMC_B_PARTITION_2            0x02
+// ACOS_MOD_END
 
 /* Values for ext csd fields */
 #define MMC_HS_TIMING                             0x1
@@ -131,6 +146,11 @@
 #define MMC_R1_CC_ERROR                           (1 << 20)
 #define MMC_R1_WP_VIOLATION                       (1 << 26)
 #define MMC_R1_ADDR_OUT_OF_RANGE                  (1 << 31)
+#define MMC_R1_WP_ERASE_SKIP                      BIT(15)
+#define MMC_US_PERM_WP_DIS                        BIT(4)
+#define MMC_US_PWR_WP_DIS                         BIT(3)
+#define MMC_US_PERM_WP_EN                         BIT(2)
+#define MMC_US_PWR_WP_EN                          BIT(0)
 
 /* RCA of the card */
 #define MMC_RCA                                   2
@@ -193,6 +213,8 @@
 #define CMD55_APP_CMD                             55
 
 #define MMC_SAVE_TIMING(host, TIMING)              host->timing = TIMING
+
+#define MMC_ADDR_OUT_OF_RANGE(resp)              ((resp >> 31) & 0x01)
 
 /* Can be used to unpack array of upto 32 bits data */
 #define UNPACK_BITS(array, start, len, size_of)           \
@@ -326,4 +348,11 @@ uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uin
 uint32_t mmc_get_wp_status(struct mmc_device *dev, uint32_t addr, uint8_t *wp_status);
 /* API: Put the mmc card in sleep mode */
 void mmc_put_card_to_sleep(struct mmc_device *dev);
+
+
+// ACOS_MOD_BEGIN
+unsigned int switch_to_boot_partition(void);
+unsigned int switch_to_user_partition(void);
+// ACOS_MOD_END
+
 #endif

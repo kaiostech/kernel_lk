@@ -175,7 +175,7 @@ int mdss_dual_dsi_cmd_dma_trigger_for_panel()
 
 	writel((readl(MIPI_DSI1_BASE + INT_CTRL) | 0x01000001),
 			MIPI_DSI1_BASE + INT_CTRL);
-	dprintf(SPEW, "Panel CMD: command mode dma tested successfully\n");
+	dprintf(SPEW, "%s: Panel CMD: command mode dma tested successfully\n", __FUNCTION__);
 #endif
 	return status;
 }
@@ -464,7 +464,7 @@ int mdss_dsi_host_init(struct mipi_dsi_panel_config *pinfo, uint32_t
 				| PACK_TYPE1 << 24 | VC1 << 22 | DT1 << 16 | WC1,
 				MIPI_DSI1_BASE + COMMAND_MODE_DMA_CTRL);
 
-		writel(lane_swap, MIPI_DSI1_BASE + LANE_SWAP_CTL);
+		writel(0x02, MIPI_DSI1_BASE + LANE_SWAP_CTL);
 		writel(timing_ctl, MIPI_DSI1_BASE + TIMING_CTL);
 	}
 
@@ -548,7 +548,6 @@ int mipi_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo)
 	writel((0 << 16) | 0x3f, DSI_CLK_CTRL);	/* Turn on all DSI Clks */
 	writel(DMA_STREAM1 << 8 | 0x04, DSI_TRIG_CTRL);	// reg 0x80 dma trigger: sw
 	// trigger 0x4; dma stream1
-
 	writel(0 << 30 | DLNx_EN << 4 | 0x105, DSI_CTRL);	// reg 0x00 for this
 	// build
 	writel(EMBED_MODE1 << 28 | POWER_MODE2 << 26
@@ -689,7 +688,7 @@ config_dsi_cmd_mode(unsigned short disp_width, unsigned short disp_height,
 	DST_FORMAT = 8;		// RGB888
 	dprintf(SPEW, "DSI_Cmd_Mode - Dst Format: RGB888\n");
 
-	DLNx_EN = 3;		// 2 lane with clk programming
+	DLNx_EN = 0x3;		// 2 lane with clk programming
 	dprintf(SPEW, "Data Lane: 2 lane\n");
 
 	TRAFIC_MODE = 0;	// non burst mode with sync pulses
@@ -778,7 +777,7 @@ int mipi_dsi_video_config(unsigned short num_of_lanes)
 		count++;
 		if (count > 0xffff) {
 			status = FAIL;
-			dprintf(CRITICAL, "Video lane test failed\n");
+			dprintf(CRITICAL, "AAA: Video lane test failed\n");
 			return status;
 		}
 	}
@@ -935,6 +934,9 @@ int mdss_dsi_video_mode_config(uint16_t disp_width,
 	/* disable mdp first */
 	mdp_disable();
 
+	writel(0x00000000, ctl_base + CLK_CTRL);
+        writel(0x00000000, ctl_base + CLK_CTRL);
+        writel(0x00000000, ctl_base + CLK_CTRL);
 	writel(0x00000000, ctl_base + CLK_CTRL);
 	writel(0x00000002, ctl_base + CLK_CTRL);
 	writel(0x00000006, ctl_base + CLK_CTRL);
@@ -1237,7 +1239,7 @@ int mipi_dsi_cmd_mode_config(unsigned short disp_width,
 	writel(0x00000006, DSI_CLK_CTRL);
 	writel(0x0000000e, DSI_CLK_CTRL);
 	writel(0x0000001e, DSI_CLK_CTRL);
-	writel(0x0000003e, DSI_CLK_CTRL);
+	writel(0x0000023f, DSI_CLK_CTRL);
 
 	writel(0x10000000, DSI_ERR_INT_MASK0);
 
@@ -1245,15 +1247,15 @@ int mipi_dsi_cmd_mode_config(unsigned short disp_width,
 	DST_FORMAT = 8;		// RGB888
 	dprintf(SPEW, "DSI_Cmd_Mode - Dst Format: RGB888\n");
 
-	DLNx_EN = 3;		// 2 lane with clk programming
+	DLNx_EN = 0xf;		// 2 lane with clk programming
 	dprintf(SPEW, "Data Lane: 2 lane\n");
 
 	TRAFIC_MODE = 0;	// non burst mode with sync pulses
 	dprintf(SPEW, "Traffic mode: non burst mode with sync pulses\n");
 
-	writel(0x02020202, DSI_INT_CTRL);
+	writel(0x02000202, DSI_INT_CTRL);
 
-	writel(0x00100000 | DST_FORMAT, DSI_COMMAND_MODE_MDP_CTRL);
+	writel(DST_FORMAT, DSI_COMMAND_MODE_MDP_CTRL);
 	writel((img_width * ystride + 1) << 16 | 0x0039,
 	       DSI_COMMAND_MODE_MDP_STREAM0_CTRL);
 	writel((img_width * ystride + 1) << 16 | 0x0039,
@@ -1264,14 +1266,12 @@ int mipi_dsi_cmd_mode_config(unsigned short disp_width,
 	       DSI_COMMAND_MODE_MDP_STREAM1_TOTAL);
 	writel(0xEE, DSI_CAL_STRENGTH_CTRL);
 	writel(0x80000000, DSI_CAL_CTRL);
-	writel(0x40, DSI_TRIG_CTRL);
 	writel(0x13c2c, DSI_COMMAND_MODE_MDP_DCS_CMD_CTRL);
 	writel(interleav << 30 | 0 << 24 | 0 << 20 | DLNx_EN << 4 | 0x105,
 	       DSI_CTRL);
 	writel(0x10000000, DSI_COMMAND_MODE_DMA_CTRL);
 	writel(0x10000000, DSI_MISR_CMD_CTRL);
 	writel(0x00000040, DSI_ERR_INT_MASK0);
-	writel(0x1, DSI_EOT_PACKET_CTRL);
 
 	return NO_ERROR;
 }

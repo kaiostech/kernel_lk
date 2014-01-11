@@ -25,6 +25,8 @@
 #include <target.h>
 #include <compiler.h>
 #include <dload_util.h>
+#include <certificate.h>
+#include <mmc.h>
 
 #define EXPAND(NAME) #NAME
 #define TARGET(NAME) EXPAND(NAME)
@@ -46,7 +48,7 @@ __WEAK void *target_get_scratch_address(void)
     return (void *)(SCRATCH_ADDR);
 }
 
-__WEAK unsigned target_get_max_flash_size(void)
+__WEAK unsigned long long target_get_max_flash_size(void)
 {
     return (120 * 1024 * 1024);
 }
@@ -120,6 +122,16 @@ __WEAK void target_load_ssd_keystore(void)
 {
 }
 
+__WEAK uint32_t target_read_panel_signature(uint32_t panel_signature)
+{
+	return 0;
+}
+
+__WEAK void target_enter_emergency_download(void)
+{
+	return;
+}
+
 /* Default target does not support continuous splash screen feature. */
 __WEAK int target_cont_splash_screen()
 {
@@ -133,6 +145,13 @@ __WEAK void target_usb_init(void)
 
 /* Default target specific usb shutdown */
 __WEAK void target_usb_stop(void)
+{
+}
+
+/*
+ * Default target specific function to set the capabilities for the host
+ */
+__WEAK void target_mmc_caps(struct mmc_host *host)
 {
 }
 
@@ -175,4 +194,39 @@ __WEAK const char * target_usb_controller()
 /* override for target specific usb phy reset. */
 __WEAK void target_usb_phy_reset(void)
 {
+}
+
+__WEAK const unsigned char *target_certificate(void)
+{
+	return certBuffer;
+}
+
+__WEAK int target_certificate_size(void)
+{
+	return sizeof(certBuffer);
+}
+
+__WEAK const unsigned char *target_production_certificate(void)
+{
+	return NULL;
+}
+
+__WEAK int target_production_certificate_size(void)
+{
+	return 0;
+}
+
+__WEAK int target_production_gpio(void)
+{
+	return 0;
+}
+
+__WEAK int target_unlock(void *data, int size)
+{
+	return 1;
+}
+
+__WEAK int target_verify_unlock_code(void)
+{
+	return 0;
 }

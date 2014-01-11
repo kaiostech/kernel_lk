@@ -2393,6 +2393,12 @@ unsigned int mmc_boot_main(unsigned char slot, unsigned int base)
 	mmc_slot = slot;
 	mmc_boot_mci_base = base;
 
+#if TARGET_TABLET
+	/* Set Drive strength */
+	tlmm_set_hdrive(0x7, 0x7, 0x7);
+	tlmm_set_pull(0x7, 0x7, 0x7);
+#endif
+
 	/* Get the capabilities for the host/target */
 	target_mmc_caps(&mmc_host);
 
@@ -2724,6 +2730,11 @@ void mmc_wp_test(void)
 unsigned mmc_get_psn(void)
 {
 	return mmc_card.cid.psn;
+}
+
+uint8_t mmc_get_manfid(void)
+{
+        return mmc_card.cid.mid;
 }
 
 /*
@@ -3090,6 +3101,60 @@ mmc_erase_card(unsigned long long data_addr, unsigned long long size)
 	dprintf(CRITICAL, "ERASE SUCCESSFULLY COMPLETED\n");
 	return MMC_BOOT_E_SUCCESS;
 }
+
+// ACOS_MOD_BEGIN
+struct mmc_card *get_mmc_card(void)
+{
+	return &mmc_card;
+}
+
+static unsigned int
+wait_for_ready(struct mmc_card *card)
+{
+	unsigned int mmc_ret = MMC_BOOT_E_SUCCESS;
+	unsigned int status;
+
+	/* Wait for card to be in the transfer state */
+	do {
+		mmc_ret = mmc_boot_get_card_status(card, 0, &status);
+		if (MMC_BOOT_CARD_STATUS(status) == MMC_BOOT_TRAN_STATE)
+			break;
+	}
+	while ((mmc_ret == MMC_BOOT_E_SUCCESS) &&
+	       (MMC_BOOT_CARD_STATUS(status) == MMC_BOOT_PROG_STATE));
+
+	return mmc_ret;
+}
+
+/* Switch to a different partition, e.g. MMC_BOOT_B_PARTITION_1 */
+static unsigned int
+switch_to_partition(int partition_type)
+{
+	unsigned int mmc_ret = MMC_BOOT_E_SUCCESS;
+	struct mmc_card *card = get_mmc_card();
+
+	mmc_ret = mmc_boot_switch_cmd(card, MMC_BOOT_ACCESS_WRITE,
+					    MMC_BOOT_EXT_PARTITION_CONFIG,
+					    partition_type);
+	if (mmc_ret != MMC_BOOT_E_SUCCESS) {
+		return mmc_ret;
+	}
+
+	return wait_for_ready(card);
+}
+
+unsigned int
+switch_to_boot_partition(void)
+{
+	return switch_to_partition(MMC_BOOT_B_PARTITION_1);
+}
+
+unsigned int
+switch_to_user_partition(void)
+{
+	return switch_to_partition(MMC_BOOT_US_PARTITION);
+}
+// ACOS_MOD_END
 
 /*
  * Disable MCI clk

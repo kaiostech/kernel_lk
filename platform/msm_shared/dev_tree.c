@@ -735,6 +735,55 @@ int dev_tree_add_mem_info(void *fdt, uint32_t offset, uint64_t addr, uint64_t si
 	return ret;
 }
 
+#ifdef WITH_ENABLE_IDME
+int update_IDME_device_tree(void *fdt, const char *cmdline,
+					   void *ramdisk, uint32_t ramdisk_size)
+{
+	int ret = 0;
+	uint32_t offset;
+
+	/* Check the device tree header */
+	ret = fdt_check_header(fdt);
+	if (ret)
+	{
+		dprintf(CRITICAL, "Invalid device tree header \n");
+		return ret;
+	}
+
+	/* Add padding to make space for new nodes and properties. */
+	ret = fdt_open_into(fdt, fdt, fdt_totalsize(fdt) + DTB_PAD_SIZE);
+	if (ret!= 0)
+	{
+		dprintf(CRITICAL, "Failed to move/resize dtb buffer: %d\n", ret);
+		return ret;
+	}
+
+	/* Get offset of the memory node */
+	ret = fdt_path_offset(fdt, "/memory");
+	if (ret < 0)
+	{
+		dprintf(CRITICAL, "Could not find memory node.\n");
+		return ret;
+	}
+
+	offset = ret;
+	ret = target_dev_tree_mem(fdt, offset);
+	if(ret)
+	{
+		dprintf(CRITICAL, "ERROR: Cannot update memory node\n");
+		return ret;
+	}
+
+	ret = idme_device_tree_initialize(fdt);
+	if (ret) {
+		dprintf(CRITICAL, "ERROR: Cannot init IDME\n");
+		assert(0);
+	}
+	fdt_pack(fdt);
+	return ret;
+}
+#endif
+
 /* Top level function that updates the device tree. */
 int update_device_tree(void *fdt, const char *cmdline,
 					   void *ramdisk, uint32_t ramdisk_size)
@@ -774,6 +823,10 @@ int update_device_tree(void *fdt, const char *cmdline,
 		dprintf(CRITICAL, "ERROR: Cannot update memory node\n");
 		return ret;
 	}
+
+#ifdef WITH_ENABLE_IDME
+	idme_device_tree_initialize(fdt);
+#endif
 
 	/* Get offset of the chosen node */
 	ret = fdt_path_offset(fdt, "/chosen");
