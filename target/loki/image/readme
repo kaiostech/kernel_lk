@@ -1,0 +1,12 @@
+image_thor.c: the Thor splash image in fbgfx_image format.
+Other files are just there for reference (thor.png, thor.raw, thor.raw.gz)
+
+All images need to be converted to fbgfx_image format:
+
+1. use gimg on ubuntu to generate raw image:
+   1.1 from the menu, do Layer -> Transparency -> Remove Alpha Channel
+   1.2 save file as Raw format
+2. gzip raw image to get gz file (gzip will remove the input file)
+3. dump to C format: xxd -i image.gz
+4. Modify the C file to fbgfx_image format, e.g. add the fbgfx_image structure and fill in width/height/format/bpp
+ 

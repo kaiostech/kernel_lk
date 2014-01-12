@@ -1,8 +1,8 @@
-# top level project rules for the loki project
+# top level project rules for the saturn project
 #
 LOCAL_DIR := $(GET_LOCAL_DIR)
 
-TARGET := loki
+TARGET := saturn
 
 MODULES += app/aboot
 
@@ -17,8 +17,6 @@ DEFINES += WITH_DEBUG_UART=1
 #DEFINES += WITH_DEBUG_FBCON=1
 DEFINES += DEVICE_TREE=1
 DEFINES += ABOOT_IGNORE_BOOT_HEADER_ADDRS=1
-DEFINES += WITH_FBGFX_FASTBOOT_OUTPUT=1
-DEFINES += WITH_FBGFX_SPLASH=1
 
 #Disable thumb mode
 ENABLE_THUMB := false

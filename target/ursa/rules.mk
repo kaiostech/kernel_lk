@@ -17,7 +17,7 @@ SCRATCH_ADDR     := 0x11000000
 SIGNING_TOOL_PATH := $(LK_TOP_DIR)/../../../vendor/qcom/non-hlos/ursa/common/tools/gensecimage/
 
 DEFINES += CONFIG_MACH_URSA=1
-DEFINES += DISPLAY_SPLASH_SCREEN=1
+DEFINES += DISPLAY_SPLASH_SCREEN=0
 DEFINES += DISPLAY_TYPE_MIPI=1
 DEFINES += DISPLAY_TYPE_DSI6G=1
 
@@ -27,7 +27,6 @@ MODULES += \
 	dev/panel/msm \
 	lib/ptable \
 	lib/libfdt \
-	dev/fbgfx\
 	lib/zlib
 
 DEFINES += \

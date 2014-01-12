@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -24,22 +24,65 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
-#ifndef _TARGET_COPPER_DISPLAY_H
-#define _TARGET_COPPER_DISPLAY_H
 
-#define MIPI_FB_ADDR  0x0D200000
+#include <reg.h>
+#include <debug.h>
+#include <malloc.h>
+#include <smem.h>
+#include <stdint.h>
+#include <libfdt.h>
+#include <platform/iomap.h>
+#include <dev_tree.h>
 
-#define MIPI_HSYNC_PULSE_WIDTH       12
-#define MIPI_HSYNC_BACK_PORCH_DCLK   32
-#define MIPI_HSYNC_FRONT_PORCH_DCLK  144
+uint32_t target_dev_tree_mem(void *fdt, uint32_t memory_node_offset)
+{
+	ram_partition ptn_entry;
+	unsigned int index;
+	int ret = 0;
+	uint32_t len = 0;
 
-#define MIPI_VSYNC_PULSE_WIDTH       4
-#define MIPI_VSYNC_BACK_PORCH_LINES  3
-#define MIPI_VSYNC_FRONT_PORCH_LINES 9
+	/* Make sure RAM partition table is initialized */
+	ASSERT(smem_ram_ptable_init_v1());
 
-extern int mdss_dsi_phy_init(struct mipi_dsi_panel_config *, uint32_t ctl_base);
-extern int mdss_dsi_uniphy_pll_config(void);
+	len = smem_get_ram_ptable_len();
 
-#endif
+	/* Calculating the size of the mem_info_ptr */
+	for (index = 0 ; index < len; index++)
+	{
+		smem_get_ram_ptable_entry(&ptn_entry, index);
+
+		if((ptn_entry.category == SDRAM) &&
+			(ptn_entry.type == SYS_MEMORY))
+		{
+
+			/* Pass along all other usable memory regions to Linux */
+			ret = dev_tree_add_mem_info(fdt,
+							memory_node_offset,
+							ptn_entry.start,
+							ptn_entry.size);
+
+			if (ret)
+			{
+				dprintf(CRITICAL, "Failed to add secondary banks memory addresses\n"
+);
+				goto target_dev_tree_mem_err;
+			}
+
+		}
+	}
+
+target_dev_tree_mem_err:
+
+	return ret;
+}
+
+void *target_get_scratch_address(void)
+{
+	return ((void *)SCRATCH_ADDR);
+}
+
+unsigned target_get_max_flash_size(void)
+{
+	return (512 * 1024 * 1024);
+}
