@@ -53,5 +53,6 @@ void fastboot_okay(const char *result);
 void fastboot_fail(const char *reason);
 void fastboot_info(const char *reason);
 
+void cmd_dump(const char *arg, void *data, unsigned sz);
 
 #endif

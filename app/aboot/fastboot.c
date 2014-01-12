@@ -60,6 +60,20 @@ typedef struct
 
 usb_controller_interface_t usb_if;
 
+// ACOS_MOD_START
+#if WITH_FBGFX_FASTBOOT_OUTPUT
+#include <dev/fbgfx.h>
+#if WITH_FBGFX_SPLASH
+extern struct fbgfx_image splash;
+#endif
+#define set_foreground_color fbgfx_set_foreground_color
+#define printf(...) fbgfx_printf(__VA_ARGS__); fbgfx_flip()
+#else
+#define set_foreground_color(__ignore__)
+#define printf(__ignore__, ...)
+#endif
+// ACOS_MOD_END
+
 #define MAX_USBFS_BULK_SIZE (32 * 1024)
 
 void boot_linux(void *bootimg, unsigned sz);
@@ -378,16 +392,37 @@ void fastboot_info(const char *reason)
 	snprintf(response, MAX_RSP_SIZE, "INFO%s", reason);
 
 	usb_if.usb_write(response, strlen(response));
+// ACOS_MOD_START
+	set_foreground_color(0xffffff);
+	printf("%s\n", reason);
+// ACOS_MOD_END
 }
 
 void fastboot_fail(const char *reason)
 {
 	fastboot_ack("FAIL", reason);
+// ACOS_MOD_START
+	set_foreground_color(0xff0000);
+	printf("FAIL: %s.\n", reason ? reason : "<no reason given>");
+// ACOS_MOD_END
 }
 
 void fastboot_okay(const char *info)
 {
 	fastboot_ack("OKAY", info);
+// ACOS_MOD_START
+	set_foreground_color(0x00ff00);
+	if (info != NULL && *info != 0) {
+		set_foreground_color(0x808080);
+		printf("[[ ");
+		set_foreground_color(0x00ff00);
+		printf("%s", info);
+		set_foreground_color(0x808080);
+		printf(" ]].\n");
+	} else {
+		printf("Ok.\n");
+	}
+// ACOS_MOD_END
 }
 
 static void cmd_getvar(const char *arg, void *data, unsigned sz)
@@ -428,6 +463,68 @@ static void cmd_download(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+/* Dump one parition via fastboot. */
+void cmd_dump(const char *arg, void *data, unsigned sz)
+{
+	char* ptn_name;
+	int ptn_index;
+	unsigned long long ptn_size;
+	unsigned long long ptn_offset;
+	unsigned char* ptn_buf;
+	unsigned long long i;
+	char msg[1024];
+
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+	if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0))
+	{
+		fastboot_fail("oem idme not allowed for locked hw");
+		return;
+	}
+    #endif
+#endif
+
+
+	/* Response to "dump:partition_name" command. */
+	ptn_name = strtok((char*)arg, " ");
+
+	ptn_index = partition_get_index(ptn_name);
+	if (ptn_index == -1) {
+		snprintf(msg, sizeof(msg), "Partition %s not found.", ptn_name);
+		fastboot_fail(msg);
+		return;
+	}
+
+	ptn_size = partition_get_size(ptn_index);
+	ptn_offset = partition_get_offset(ptn_index);
+
+	/* Ready to send the partition content. */
+	snprintf(msg, sizeof(msg), "Dumping partition %s, size=%lld",
+		ptn_name, ptn_size);
+	fastboot_okay(msg);
+
+	/* Write the partition size first. */
+	usb_if.usb_write(&ptn_size, sizeof(ptn_size));
+
+	/* Write to the host with 4KB block data. */
+	ptn_buf = (unsigned char*)malloc(4096);
+	for (i = 0; i < ptn_size / 4096; ++i) {
+		mmc_read(ptn_offset + i * 4096, (unsigned int*)ptn_buf, 4096);
+		usb_if.usb_write(ptn_buf, 4096);
+	}
+
+	/* Write the rest of the data if there is any. */
+	if (ptn_size - i * 4096 > 0) {
+		mmc_read(ptn_offset + i * 4096, (unsigned int*)ptn_buf,
+			ptn_size - i * 4096);
+		usb_if.usb_write(ptn_buf, ptn_size - i * 4096);
+	}
+
+	snprintf(msg, sizeof(msg), "Dumping partition %s done.", ptn_name);
+	free(ptn_buf);
+}
+
 static void fastboot_command_loop(void)
 {
 	struct fastboot_cmd *cmd;
@@ -450,10 +547,19 @@ again:
 		memset(buffer, 0, MAX_RSP_SIZE);
 		arch_clean_invalidate_cache_range((addr_t) buffer, MAX_RSP_SIZE);
 
+// ACOS_MOD_START
+		set_foreground_color(0xffffff);
+		printf("Ready.   \r");
+// ACOS_MOD_END
 		r = usb_if.usb_read(buffer, MAX_RSP_SIZE);
+
 		if (r < 0) break;
 		buffer[r] = 0;
 		dprintf(INFO,"fastboot: %s\n", buffer);
+// ACOS_MOD_START
+		set_foreground_color(0xffffff);
+		printf("%s...", buffer);
+// ACOS_MOD_END
 
 		fastboot_state = STATE_COMMAND;
 
@@ -473,6 +579,11 @@ again:
 	fastboot_state = STATE_OFFLINE;
 	dprintf(INFO,"fastboot: oops!\n");
 	free(buffer);
+
+// ACOS_MOD_START
+	set_foreground_color(0x808080);
+	printf("[OFFLINE]\r");
+// ACOS_MOD_END
 }
 
 static int fastboot_handler(void *arg)
@@ -493,9 +604,79 @@ static void fastboot_notify(struct udc_gadget *gadget, unsigned event)
 
 int fastboot_init(void *base, unsigned size)
 {
-	char sn_buf[13];
+	char sn_buf[17];
+//ACOS_MOD_START
+#if (WITH_FBGFX_FASTBOOT_OUTPUT && WITH_FBGFX_SPLASH)
+	unsigned int display_width = 0, display_height = 0;
+	unsigned int font_width = 0, font_height = 0;
+	unsigned int scroll_height;
+	unsigned int scroll_step;
+	unsigned int image_bottom;
+#endif
+//ACOS_MOD_END
 	thread_t *thr;
 	dprintf(INFO, "fastboot_init()\n");
+
+//ACOS_MOD_START
+#if WITH_FBGFX_FASTBOOT_OUTPUT
+#if WITH_FBGFX_SPLASH
+	/*
+	 * scroll the splash image up, to be centered on the top quarter line of the screen;
+	 * emit "[  fastboot  ]" in gray at the bottom right of the image;
+	 * establish console output below the image and fastboot text, to emit fastboot output.
+	 */
+	fbgfx_get_display_dimensions(&display_width, &display_height);
+	fbgfx_get_font_dimensions(NULL, &font_width, &font_height);
+	if (display_width != 0 && display_height != 0 && font_width != 0 && font_height != 0) {
+		/*
+		 * scroll up by 1/4 of the display height, since the splash was already
+		 * centered on the midpoint. if the image is too tall, just scroll up
+		 * enough to get it flush with the top of the screen.
+		 */
+		scroll_height = display_height / 2;
+		if (splash.height <= scroll_height) {
+			scroll_height /= 2;
+		} else {
+			scroll_height -= (splash.height + 1) / 2;
+		}
+		image_bottom = (display_height / 2) + (splash.height / 2) - scroll_height;
+
+		/* make sure there are 20 iterations of the loop regardless of size */
+		scroll_step = (scroll_height + 79) / 20;
+		if (scroll_step == 0) {
+			scroll_step = 1;
+		}
+		for (;
+		     scroll_height > 0;
+		     scroll_height -= scroll_step) {
+
+			if (scroll_step > scroll_height || scroll_step == 0) {
+				scroll_step = scroll_height;
+			}
+			fbgfx_scroll_up(scroll_step, 0, 0, FBGFX_MAX, FBGFX_MAX);
+			fbgfx_flip();
+		}
+
+		/*
+		 * if the splash is small, just center fastboot text; otherwise place
+		 * it near the lower right edge of the image
+		 */
+		font_width *= 14; /* number of chars in fastboot text */
+		if (splash.width < font_width + 100) {
+			fbgfx_set_text_window(FBGFX_CENTERED, image_bottom, font_width, FBGFX_MAX);
+		} else {
+			fbgfx_set_text_window((display_width / 2) + (splash.width / 2) - font_width - 50, image_bottom, FBGFX_MAX, FBGFX_MAX);
+		}
+		fbgfx_set_foreground_color(0x808080);
+		fbgfx_printf("[  fastboot  ]");
+		fbgfx_flip();
+
+		fbgfx_set_text_window(50, image_bottom + (font_height * 2), FBGFX_MAX, FBGFX_MAX);
+	}
+#endif // WITH_FBGFX_SPLASH
+	fbgfx_set_foreground_color(0xffffff);
+#endif // WITH_FBGFX_FASTBOOT_OUTPUT
+//ACOS_MOD_END
 
 	download_base = base;
 	download_max = size;

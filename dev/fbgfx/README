@@ -1,0 +1,100 @@
+fbgfx sits on top of fbcon and provides richer graphics support to the lk.
+
+
+========================================
+Quick Start
+========================================
+
+
+just getting a splash screen and fastboot output up and running:
+----------------------------------------------------------------
+0. Make sure your display already works in lk (i.e., you see a tux splash
+   screen if you define DISPLAY_SPLASH_SCREEN).
+1. Add the following lines to some part of your projects build:
+   DEFINES += DISPLAY_SPLASH_SCREEN=1 (if you haven't already)
+   DEFINES += WITH_FBGFX_SPLASH=1
+   DEFINES += WITH_FBGFX_FASTBOOT_OUTPUT=1
+2. Define a global fbgfx_image called "splash" (notes on images below).
+3. Enjoy the awesomeness!
+
+
+direct use of fbgfx:
+--------------------
+0. Make sure your display already works in lk (i.e., you see a tux splash
+   screen if you define DISPLAY_SPLASH_SCREEN).
+1. If double-buffering is desired, call fbgfx_enable_double_buffer() before
+   calling fbgfx_init().
+2. Call fbgfx_init() before using any of the functionality; this must be
+   called *after* fbcon has initialized, so there is a useable frame buffer.
+3. Do stuff!
+
+
+========================================
+NOTES
+========================================
+
+
+images
+------
+  The fbgfx_image structure is designed to make adding images fairly easy,
+without requiring a full-blown filesystem and jpg/png/gif parser in lk.  The
+images can be defined with either uncompressed pixel data (currently assumed
+to match the frame buffer byte ordering--see LIMITATIONS); or pixel data using
+RLE compression. If the uncompressed buffer pointer does not exist, the
+compressed buffer is assumed to be valid and will be decompressed on first use.
+If you wish to make sure that decompression doesn't affect the timing of the
+display of the image, you can call fbgfx_preload_image() ahead of time. It
+doesn't hurt to call this more than once so there's no need to be extra careful
+about it. If you don't care about the timing then you don't have to bother--
+fbgfx_apply_image() will uncompress and cache the image automatically.
+
+  This may sound terribly complicated, but it's actually born out of the
+following workflow which serves as a "quick start" for creating an image:
+1. Build/edit the image in GIMP.
+2. Save the image as C source code.
+    * do use RLE compression;
+    * use RGB or ARGB (transparency *will* actually work).
+3. Tweak the C file to #include <dev/fbgfx.h> and change the structure
+   definition to be an fbgfx_image with NULL for the uncompressed data.
+
+  As a final gotcha, the sequence of characters "??>" is sometimes emitted by
+GIMP, and is interpreted as a special escape sequence by the compiler. If there
+are any in your data, just replace one of the '?' with its ASCII equivalent
+and the image will work properly.
+
+
+the text window
+---------------
+  The text window is a region of the screen which acts like a console screen:
+   * Text will be displayed within it when fbgfx_printf() is called,
+   * There is the a "cursor", where text will be emitted,
+   * The foreground and background colors will be used for text output,
+   * The region will auto-scroll when the bottom of the region is reached.
+It is defined in pixels (and can be manually scrolled in pixels), but text
+cursor references can be made using rows and columns.
+
+
+double buffering
+----------------
+  Double buffering often results in smoother animation and scrolling; also
+text output will appear instantaneous (for "console output" sometimes direct
+buffering has a more pleasing/retro appearance). If using double buffering,
+ensure that the lk memory area has enough room for the allocation of a
+contiguous buffer large enough for the whole display (i.e., x*y*bpp/8);
+otherwise fbgfx_init() will emit an error and revert to direct buffering.
+When double-buffering, all calls to fbgfx_*() will do their work on the back
+buffer, and a call to fbgfx_flip() is required to actually display updates
+on the screen. Note that the modified fbcon and fastboot code that uses fbgfx
+will automatically call fbgfx_flip() when required.
+
+========================================
+LIMITATIONS (or, "if it's not working for you this might be why")
+========================================
+
+Currently fbgfx only supports 24-bit BGR frame buffers, because that's what
+we had. Adding support for 24-bit RGB frame buffers is pretty easy; supporting
+16-bit frame buffers likely would not be. 32-bit frame buffers (with alpha)
+might require some stride adjustments and would definitely not run as smoothly.
+
+The font is hard-coded, and while it can be scaled it is not smoothed at all.
+It could definitely be made to be more pretty.

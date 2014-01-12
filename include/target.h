@@ -35,7 +35,7 @@ void target_init(void);
 void *target_get_scratch_address(void);
 
 /* get the max allowed flash size */
-unsigned target_get_max_flash_size(void);
+unsigned long long target_get_max_flash_size(void);
 
 /* if target is using eMMC bootup */
 int target_is_emmc_boot(void);
@@ -65,5 +65,12 @@ enum boot_device
 	BOOT_EMMC=2,
 	BOOT_UFS=4,
 };
+const unsigned char *target_certificate(void);
+int target_certificate_size(void);
+const unsigned char *target_production_certificate(void);
+int target_production_certificate_size(void);
+int target_production_gpio(void);
+int target_unlock(void *data, int size);
+int target_verify_unlock_code(void);
 
 #endif

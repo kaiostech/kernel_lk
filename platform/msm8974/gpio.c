@@ -52,16 +52,38 @@ void gpio_set(uint32_t gpio, uint32_t dir)
 	return;
 }
 
+int gpio_get(uint32_t gpio)
+{
+	return (readl((unsigned int *)GPIO_IN_OUT_ADDR(gpio)) & 1);
+}
+
 /* Configure gpio for blsp uart 2 */
 void gpio_config_uart_dm(uint8_t id)
 {
-    /* configure rx gpio */
-	gpio_tlmm_config(5, 2, GPIO_INPUT, GPIO_NO_PULL,
-				GPIO_8MA, GPIO_DISABLE);
+	if (id == 1)
+	{
+		/* configure rx gpio */
+		gpio_tlmm_config(5, 2, GPIO_INPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
 
-    /* configure tx gpio */
-	gpio_tlmm_config(4, 2, GPIO_OUTPUT, GPIO_NO_PULL,
-				GPIO_8MA, GPIO_DISABLE);
+		/* configure tx gpio */
+		gpio_tlmm_config(4, 2, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
+	}
+	else if (id == 7)
+	{
+		/* configure rx gpio */
+		gpio_tlmm_config(46, 2, GPIO_INPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
+
+		/* configure tx gpio */
+		gpio_tlmm_config(45, 2, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
+	}
+	else
+	{
+		dprintf(CRITICAL, "invalid uart id = %d\n", id);
+	}
 }
 
 void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
@@ -74,6 +96,14 @@ void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
 			gpio_tlmm_config(84, 3, GPIO_OUTPUT, GPIO_NO_PULL,
 						GPIO_6MA, GPIO_DISABLE);
 		break;
+
+		case QUP_ID_5:
+			gpio_tlmm_config(87, 3, GPIO_OUTPUT, GPIO_NO_PULL,
+						GPIO_6MA, GPIO_DISABLE);
+			gpio_tlmm_config(88, 3, GPIO_OUTPUT, GPIO_NO_PULL,
+						GPIO_6MA, GPIO_DISABLE);
+		break;
+
 		default:
 			dprintf(CRITICAL, "Configure gpios for QUP instance: %u\n",
 					  qup_id);
@@ -88,4 +118,32 @@ void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
 			ASSERT(0);
 		};
 	}
+}
+
+void tlmm_set_val(uint32_t off, uint8_t val)
+{
+	uint32_t reg_val;
+	uint8_t mask = 0x7;
+
+	reg_val = readl(SDC1_HDRV_PULL_CTL);
+
+	reg_val &= ~(mask << off);
+
+	reg_val |= (val << off);
+
+	writel(reg_val, SDC1_HDRV_PULL_CTL);
+}
+
+void tlmm_set_hdrive(uint8_t dat_val, uint8_t cmd_val, uint8_t clk_val)
+{
+	tlmm_set_val(SDC1_DATA_HDRV_CTL_OFF, dat_val);
+	tlmm_set_val(SDC1_CMD_HDRV_CTL_OFF, cmd_val);
+	tlmm_set_val(SDC1_CLK_HDRV_CTL_OFF, clk_val);
+}
+
+void tlmm_set_pull(uint8_t dat_val, uint8_t cmd_val, uint8_t clk_val)
+{
+	tlmm_set_val(SDC1_DATA_PULL_CTL_OFF, dat_val);
+	tlmm_set_val(SDC1_CMD_PULL_CTL_OFF, cmd_val);
+	tlmm_set_val(SDC1_CLK_PULL_CTL_OFF, clk_val);
 }

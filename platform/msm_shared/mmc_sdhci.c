@@ -743,6 +743,58 @@ static uint32_t mmc_switch_cmd(struct sdhci_host *host, struct mmc_card *card,
 	return mmc_ret;
 }
 
+// ACOS_MOD_BEGIN
+static unsigned int
+wait_for_ready(struct sdhci_host *host, struct mmc_card *card)
+{
+	unsigned int mmc_ret = 0;
+	unsigned int status;
+
+	/* Wait for card to be in the transfer state */
+	do {
+		mmc_ret = mmc_get_card_status(host, card, &status);
+		if (MMC_CARD_STATUS(status) == MMC_TRAN_STATE)
+			break;
+	}
+	while ((!mmc_ret) &&
+	       (MMC_CARD_STATUS(status) == MMC_PROG_STATE));
+
+	return mmc_ret;
+}
+
+/* Switch to a different partition, e.g. MMC_BOOT_B_PARTITION_1 */
+static unsigned int
+switch_to_partition(int partition_type)
+{
+	unsigned int mmc_ret = 0;
+	struct mmc_device *dev = get_mmc_device();
+	struct sdhci_host *host = &dev->host;
+	struct mmc_card *card = &dev->card;
+
+	mmc_ret = mmc_switch_cmd(host, card, MMC_ACCESS_WRITE,
+					    MMC_EXT_PARTITION_CONFIG,
+					    partition_type);
+	if (mmc_ret) {
+		return mmc_ret;
+	}
+
+	return wait_for_ready(host, card);
+}
+
+unsigned int
+switch_to_boot_partition(void)
+{
+	return switch_to_partition(MMC_B_PARTITION_1);
+}
+
+unsigned int
+switch_to_user_partition(void)
+{
+	return switch_to_partition(MMC_US_PARTITION);
+}
+// ACOS_MOD_END
+
+
 /*
  * Function: mmc set bus width
  * Arg     : Host, card structure & width
@@ -1853,21 +1905,44 @@ uint32_t mmc_sdhci_write(struct mmc_device *dev, void *src,
 	return mmc_ret;
 }
 
+/* Function to put the mmc card to sleep */
+void mmc_put_card_to_sleep(struct mmc_device *dev)
+{
+	struct mmc_command cmd = {0};
+	struct mmc_card *card = &dev->card;
+
+	cmd.cmd_index = CMD7_SELECT_DESELECT_CARD;
+	cmd.argument = 0x00000000;
+	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
+	cmd.resp_type = SDHCI_CMD_RESP_NONE;
+
+	/* send command */
+	if(sdhci_send_command(&dev->host, &cmd))
+	{
+		dprintf(CRITICAL, "card deselect error: %s\n", __func__);
+		return;
+	}
+
+	cmd.cmd_index = CMD5_SLEEP_AWAKE;
+	cmd.argument = (card->rca << MMC_CARD_RCA_BIT) | MMC_CARD_SLEEP;
+	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
+	cmd.resp_type = SDHCI_CMD_RESP_R1B;
+
+	/* send command */
+	if(sdhci_send_command(&dev->host, &cmd))
+		dprintf(CRITICAL, "card sleep error: %s\n", __func__);
+}
+
 /*
  * Send the erase group start address using CMD35
  */
 static uint32_t mmc_send_erase_grp_start(struct mmc_device *dev, uint32_t erase_start)
 {
 	struct mmc_command cmd;
-	struct mmc_card *card = &dev->card;
 
 	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
 
-	if (MMC_CARD_MMC(card))
-		cmd.cmd_index = CMD35_ERASE_GROUP_START;
-	else
-		cmd.cmd_index = CMD32_ERASE_WR_BLK_START;
-
+	cmd.cmd_index = CMD35_ERASE_GROUP_START;
 	cmd.argument = erase_start;
 	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
 	cmd.resp_type = SDHCI_CMD_RESP_R1;
@@ -1894,15 +1969,10 @@ static uint32_t mmc_send_erase_grp_start(struct mmc_device *dev, uint32_t erase_
 static uint32_t mmc_send_erase_grp_end(struct mmc_device *dev, uint32_t erase_end)
 {
 	struct mmc_command cmd;
-	struct mmc_card *card = &dev->card;
 
 	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
 
-	if (MMC_CARD_MMC(card))
-		cmd.cmd_index = CMD36_ERASE_GROUP_END;
-	else
-		cmd.cmd_index = CMD33_ERASE_WR_BLK_END;
-
+	cmd.cmd_index = CMD36_ERASE_GROUP_END;
 	cmd.argument = erase_end;
 	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
 	cmd.resp_type = SDHCI_CMD_RESP_R1;
@@ -1930,7 +2000,7 @@ static uint32_t mmc_send_erase(struct mmc_device *dev)
 {
 	struct mmc_command cmd;
 	uint32_t status;
-	uint32_t retry = 0;
+	uint32_t retry;
 
 	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
 
@@ -1982,29 +2052,14 @@ uint32_t mmc_sdhci_erase(struct mmc_device *dev, uint32_t blk_addr, uint64_t len
 	uint32_t blk_end;
 	uint32_t num_erase_grps;
 	uint32_t *out;
-	struct mmc_card *card;
-
-
-	card = &dev->card;
 
 	/*
-	 * Calculate the erase unit size,
-	 * 1. Based on emmc 4.5 spec for emmc card
-	 * 2. Use SD Card Status info for SD cards
+	 * Calculate the erase unit size as per the emmc specification v4.5
 	 */
-	if (MMC_CARD_MMC(card))
-	{
-		/*
-		 * Calculate the erase unit size as per the emmc specification v4.5
-		 */
-		if (dev->card.ext_csd[MMC_ERASE_GRP_DEF])
-			erase_unit_sz = (MMC_HC_ERASE_MULT * dev->card.ext_csd[MMC_HC_ERASE_GRP_SIZE]) / MMC_BLK_SZ;
-		else
-			erase_unit_sz = (dev->card.csd.erase_grp_size + 1) * (dev->card.csd.erase_grp_mult + 1);
-	}
+	if (dev->card.ext_csd[MMC_ERASE_GRP_DEF])
+		erase_unit_sz = (MMC_HC_ERASE_MULT * dev->card.ext_csd[MMC_HC_ERASE_GRP_SIZE]) / MMC_BLK_SZ;
 	else
-		erase_unit_sz = dev->card.ssr.au_size * dev->card.ssr.num_aus;
-
+		erase_unit_sz = (dev->card.csd.erase_grp_size + 1) * (dev->card.csd.erase_grp_mult + 1);
 
 	/* Convert length in blocks */
 	len = len / MMC_BLK_SZ;
@@ -2101,7 +2156,7 @@ uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uin
 	uint32_t status;
 	uint32_t num_wp_grps;
 	uint32_t ret;
-	uint32_t retry = 0;
+	uint32_t retry;
 	uint32_t i;
 
 	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
@@ -2204,32 +2259,4 @@ uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uin
 	}
 
 	return 0;
-}
-
-/* Function to put the mmc card to sleep */
-void mmc_put_card_to_sleep(struct mmc_device *dev)
-{
-	struct mmc_command cmd = {0};
-	struct mmc_card *card = &dev->card;
-
-	cmd.cmd_index = CMD7_SELECT_DESELECT_CARD;
-	cmd.argument = 0x00000000;
-	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
-	cmd.resp_type = SDHCI_CMD_RESP_NONE;
-
-	/* send command */
-	if(sdhci_send_command(&dev->host, &cmd))
-	{
-		dprintf(CRITICAL, "card deselect error: %s\n", __func__);
-		return;
-	}
-
-	cmd.cmd_index = CMD5_SLEEP_AWAKE;
-	cmd.argument = (card->rca << MMC_CARD_RCA_BIT) | MMC_CARD_SLEEP;
-	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
-	cmd.resp_type = SDHCI_CMD_RESP_R1B;
-
-	/* send command */
-	if(sdhci_send_command(&dev->host, &cmd))
-		dprintf(CRITICAL, "card sleep error: %s\n", __func__);
 }

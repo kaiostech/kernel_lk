@@ -34,6 +34,7 @@
 #include <err.h>
 #include <reg.h>
 #include <mdp4.h>
+#include <platform/iomap.h>
 
 int mipi_sharp_video_qhd_config(void *pdata)
 {
@@ -57,7 +58,7 @@ int mipi_sharp_video_qhd_config(void *pdata)
 	if (!lcdc)
 		return ERR_INVALID_ARGS;
 
-	ret = mipi_dsi_video_mode_config((pinfo->xres + lcdc->xres_pad),
+	ret = mdss_dsi_video_mode_config((pinfo->xres + lcdc->xres_pad),
 			(pinfo->yres + lcdc->yres_pad),
 			(pinfo->xres),
 			(pinfo->yres),
@@ -72,7 +73,8 @@ int mipi_sharp_video_qhd_config(void *pdata)
 			lane_en,
 			low_pwr_stop_mode,
 			eof_bllp_pwr,
-			interleav);
+			interleav,
+			MIPI_DSI0_BASE);
 	return ret;
 }
 

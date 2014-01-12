@@ -48,6 +48,9 @@
 #include <partition_parser.h>
 #include <platform.h>
 #include <crypto_hash.h>
+#ifdef WITH_ENABLE_IDME
+#include <idme.h> // ACOS_MOD_ONELINE
+#endif
 #include <malloc.h>
 #include <boot_stats.h>
 #include <sha.h>
@@ -68,6 +71,8 @@
 #include "board.h"
 
 #include "scm.h"
+
+#include "base64.h"
 
 extern  bool target_use_signed_kernel(void);
 extern void platform_uninit(void);
@@ -107,6 +112,7 @@ void write_device_info_flash(device_info *dev);
 static const char *emmc_cmdline = " androidboot.bootdevice=msm_sdcc.1";
 static const char *ufs_cmdline = " androidboot.bootdevice=msm_ufs.1";
 #else
+static const char *bootloader_cmdline= " androidboot.bootloader=" TARGET(BOARD);
 static const char *emmc_cmdline = " androidboot.emmc=true";
 #endif
 static const char *usb_sn_cmdline = " androidboot.serialno=";
@@ -116,6 +122,9 @@ static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
 static const char *secondary_gpt_enable = " gpt";
+static const char *unlocked_kernel = " androidboot.unlocked_kernel=true";
+static const char *engineering_device_type = " androidboot.prod=0";
+static const char *production_device_type = " androidboot.prod=1";
 
 static const char *baseband_apq     = " androidboot.baseband=apq";
 static const char *baseband_msm     = " androidboot.baseband=msm";
@@ -133,6 +142,8 @@ static unsigned page_mask = 0;
 static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
 static bool boot_into_ffbm;
 static char target_boot_params[64];
+
+int skip_authentication = 0;
 
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
@@ -166,13 +177,14 @@ struct getvar_partition_info {
 struct getvar_partition_info part_info[] =
 {
 	{ "system"  , "partition-size:", "partition-type:", "", "ext4" },
+	{ "dfs"     , "partition-size:", "partition-type:", "@", "ext4" },
 	{ "userdata", "partition-size:", "partition-type:", "", "ext4" },
 	{ "cache"   , "partition-size:", "partition-type:", "", "ext4" },
 };
 
 char max_download_size[MAX_RSP_SIZE];
 char charger_screen_enabled[MAX_RSP_SIZE];
-char sn_buf[13];
+char sn_buf[17] = {0}; // ACOS_MOD_ONELINE
 char display_panel_buf[MAX_PANEL_BUF_SIZE];
 
 extern int emmc_recovery_init(void);
@@ -254,6 +266,10 @@ unsigned char *update_cmdline(const char * cmdline)
 #endif
 	}
 
+#ifndef UFS_SUPPORT
+	cmdline_len += strlen(bootloader_cmdline);
+#endif
+
 	cmdline_len += strlen(usb_sn_cmdline);
 	cmdline_len += strlen(sn_buf);
 
@@ -282,6 +298,18 @@ unsigned char *update_cmdline(const char * cmdline)
 		have_target_boot_params = 1;
 		cmdline_len += strlen(target_boot_params);
 	}
+
+	if (target_use_signed_kernel() && skip_authentication) {
+		cmdline_len += strlen(unlocked_kernel);
+	}
+
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+	if (gpio_get(target_production_gpio()) == 1) {
+		cmdline_len += strlen(production_device_type);
+	} else {
+		cmdline_len += strlen(engineering_device_type);
+	}
+#endif
 
 	/* Determine correct androidboot.baseband to use */
 	switch(target_baseband())
@@ -356,6 +384,13 @@ unsigned char *update_cmdline(const char * cmdline)
 			while ((*dst++ = *src++));
 		}
 
+#ifndef UFS_SUPPORT
+		src = bootloader_cmdline;
+		if (have_cmdline) --dst;
+		have_cmdline = 1;
+		while ((*dst++ = *src++));
+#endif
+
 		src = usb_sn_cmdline;
 		if (have_cmdline) --dst;
 		have_cmdline = 1;
@@ -393,6 +428,24 @@ unsigned char *update_cmdline(const char * cmdline)
 			while ((*dst++ = *src++));
 		}
 
+		if (target_use_signed_kernel() && skip_authentication) {
+			src = unlocked_kernel;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		}
+
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+		if (gpio_get(target_production_gpio()) == 1) {
+			src = production_device_type;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		} else {
+			src = engineering_device_type;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		}
+#endif
+
 		switch(target_baseband())
 		{
 			case BASEBAND_APQ:
@@ -402,7 +455,7 @@ unsigned char *update_cmdline(const char * cmdline)
 				break;
 
 			case BASEBAND_MSM:
-				src = baseband_msm;
+				src = baseband_apq;
 				if (have_cmdline) --dst;
 				while ((*dst++ = *src++));
 				break;
@@ -557,6 +610,12 @@ void generate_atags(unsigned *ptr, const char *cmdline,
 	}
 
 	ptr = atag_cmdline(ptr, cmdline);
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	/*Add IDME atags, and need an idme space*/
+	ptr = target_atag_idme(ptr);
+#endif
+// ACOS_MOD_END
 	ptr = atag_end(ptr);
 }
 
@@ -579,6 +638,15 @@ void boot_linux(void *kernel, unsigned *tags,
 
 #if DEVICE_TREE
 	dprintf(INFO, "Updating device tree: start\n");
+
+#ifdef WITH_ENABLE_IDME
+	ret = update_IDME_device_tree((void *)tags, final_cmdline, ramdisk, ramdisk_size);
+	if(ret)
+	{
+		dprintf(CRITICAL, "ERROR: Updating IDME Device Tree Failed \n");
+		ASSERT(0);
+	}
+#endif
 
 	/* Update the Device Tree */
 	ret = update_device_tree((void *)tags, final_cmdline, ramdisk, ramdisk_size);
@@ -725,11 +793,29 @@ int boot_linux_from_mmc(void)
 		goto unified_boot;
 	}
 	if (!boot_into_recovery) {
-		index = partition_get_index("boot");
-		ptn = partition_get_offset(index);
-		if(ptn == 0) {
-			dprintf(CRITICAL, "ERROR: No boot partition found\n");
-                    return -1;
+#ifdef WITH_ENABLE_IDME
+		if (idme_boot_mode() == IDME_BOOTMODE_DIAG) {
+			index = partition_get_index("dkernel");
+			ptn = partition_get_offset(index);
+			if(ptn == 0) {
+				dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
+			dprintf(INFO, "********************\n");
+			dprintf(INFO, "BOOTING INTO DKERNEL\n");
+			dprintf(INFO, "********************\n");
+		} else
+#endif
+		{
+			index = partition_get_index("boot");
+			ptn = partition_get_offset(index);
+			if(ptn == 0) {
+				dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
+			dprintf(INFO, "***************\n");
+			dprintf(INFO, "BOOTING INTO OS\n");
+			dprintf(INFO, "***************\n");
 		}
 	}
 	else {
@@ -739,6 +825,9 @@ int boot_linux_from_mmc(void)
 			dprintf(CRITICAL, "ERROR: No recovery partition found\n");
                     return -1;
 		}
+		dprintf(INFO, "*********************\n");
+		dprintf(INFO, "BOOTING INTO RECOVERY\n");
+		dprintf(INFO, "*********************\n");
 	}
 
 	if (mmc_read(ptn + offset, (unsigned int *) buf, page_size)) {
@@ -787,13 +876,15 @@ int boot_linux_from_mmc(void)
 	}
 #endif
 
+	if (target_verify_unlock_code() == 1)
+		skip_authentication = 1;
+
 	/* Authenticate Kernel */
-	dprintf(INFO, "use_signed_kernel=%d, is_unlocked=%d, is_tampered=%d.\n",
+	dprintf(INFO, "use_signed_kernel=%d, is_tampered=%d.\n",
 		(int) target_use_signed_kernel(),
-		device.is_unlocked,
 		device.is_tampered);
 
-	if(target_use_signed_kernel() && (!device.is_unlocked))
+	if(target_use_signed_kernel())
 	{
 		offset = 0;
 
@@ -847,7 +938,14 @@ int boot_linux_from_mmc(void)
 			return -1;
 		}
 
-		verify_signed_bootimg(image_addr, imagesize_actual);
+		if (!skip_authentication)
+		{
+			verify_signed_bootimg(image_addr, imagesize_actual);
+		}
+		else
+		{
+			dprintf(INFO, "Device unlocked, skipping authentication\n");
+		}
 
 		/* Move kernel, ramdisk and device tree to correct address */
 		memmove((void*) hdr->kernel_addr, (char *)(image_addr + page_size), hdr->kernel_size);
@@ -1046,12 +1144,24 @@ int boot_linux_from_flash(void)
 
 	if(!boot_into_recovery)
 	{
-	        ptn = ptable_find(ptable, "boot");
+#ifdef WITH_ENABLE_IDME
+		if (idme_boot_mode() == IDME_BOOTMODE_DIAG) {
+			ptn = ptable_find(ptable, "dkernel");
 
-	        if (ptn == NULL) {
-		        dprintf(CRITICAL, "ERROR: No boot partition found\n");
-		        return -1;
-	        }
+			if (ptn == NULL) {
+		  		dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
+		} else
+#endif
+		{
+			ptn = ptable_find(ptable, "boot");
+
+			if (ptn == NULL) {
+				dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
+		}
 	}
 	else
 	{
@@ -1506,6 +1616,17 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	int ret = 0;
 	uint8_t dtb_copied = 0;
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+	if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0))
+	{
+		fastboot_fail("boot not allowed for locked hw");
+		return;
+	}
+    #endif
+#endif
+
 	if (sz < sizeof(hdr)) {
 		fastboot_fail("invalid bootimage header");
 		return;
@@ -1662,21 +1783,123 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+unsigned int
+do_mmc_verify(unsigned long long data_addr, unsigned char *verify_buf, unsigned int data_len) {
 
-void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
+	unsigned int read_size = 1<<17;
+
+	unsigned char *b = (unsigned char*) malloc( read_size );
+
+	unsigned int bytes_left = data_len;
+	unsigned int read_len = 0;
+	unsigned int verify_offset = 0;
+
+	while(b && bytes_left) {
+		memset(b,0,read_size);
+		read_len = MIN(bytes_left, read_size);
+		if(mmc_read(data_addr + verify_offset, b, ROUND_TO_PAGE(read_len, 511)))
+		{
+			dprintf(CRITICAL, "mmc read failure at %llu\n", data_addr);
+			free(b);
+			return 1;
+		}
+		else if (memcmp(b,verify_buf+verify_offset,read_len)) {
+			dprintf(CRITICAL, "verification failed within offset range (%d, %d)\n", verify_offset, verify_offset+read_len);
+
+			if(DEBUGLEVEL>=SPEW) {
+				unsigned char* v = verify_buf + verify_offset;
+				for(int i=0;i<read_len-4;i++) {
+					if(b[i]!=v[i]) {
+						dprintf(SPEW, "stream mismatch at %d:\n", verify_offset+i);
+
+						dprintf(SPEW, "Read:   %02x %02x %02x %02x\n", v[i], v[i+1], v[i+2], v[i+3] );
+						dprintf(SPEW, "Expect: %02x %02x %02x %02x\n", b[i], b[i+1], b[i+2], b[i+3] );
+						break;
+					}
+				}
+			}
+
+			dprintf(INFO, "Verify failed. Images do not match");
+			free(b);
+			return 2;
+		}
+		else {
+			dprintf(SPEW, "verify: bits match within offset range (%d, %d)\n", verify_offset, verify_offset+read_len);
+
+			bytes_left-=read_len;
+			verify_offset+=read_len;
+		}
+	}
+
+	free(b);
+	return 0;
+}
+
+void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz, bool verify)
 {
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
 	int index = INVALID_PTN;
+	int retry;
+	int ret;
+
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+	if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0)
+		&& (strcmp(arg, "unlock")))
+	{
+		fastboot_fail("flashing not allowed for locked hw");
+		return;
+	}
+    #endif
+#endif
 
 	if (!strcmp(arg, "partition"))
 	{
 		dprintf(INFO, "Attempt to write partition image.\n");
-		if (write_partition(sz, (unsigned char *) data)) {
+
+		for( retry = 0; retry < 5; ++retry ) {
+			ret = write_partition(sz, (unsigned char*)data);
+			if( ret ) {
+				dprintf( CRITICAL, "Failed to write partition." );
+				mdelay(5);
+			} else {
+				break;
+			}
+		}
+		if( (retry == 5) && ret ) {
 			fastboot_fail("failed to write partition");
 			return;
 		}
 	}
+#ifdef WITH_ENABLE_IDME
+	else if (!strcmp(arg, "unlock"))
+	{
+		if (target_unlock(data, sz))
+		{
+			fastboot_fail("Unlock code is NOT correct");
+			return;
+		}
+		else
+		{
+			/* Write the data into IDME */
+			char *b64 = base64_encode(data, sz);
+
+			if (idme_update_var_ex("unlock_code", b64, strlen(b64)) == -1)
+			{
+				fastboot_fail("Failed to write unlock code into IDME");
+				free(b64);
+				return;
+			}
+
+			free(b64);
+
+			fastboot_okay("Unlock code is correct");
+			return;
+		}
+	}
+#endif
 	else
 	{
 		index = partition_get_index(arg);
@@ -1698,7 +1921,11 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 			fastboot_fail("size too large");
 			return;
 		}
-		else if (mmc_write(ptn , sz, (unsigned int *)data)) {
+		else if (verify && do_mmc_verify(ptn, (unsigned char*)data, sz)) {
+			fastboot_fail("flash verify failure");
+			return;
+		}
+		else if (!verify && mmc_write(ptn , sz, (unsigned int *)data)) {
 			fastboot_fail("flash write failure");
 			return;
 		}
@@ -1707,7 +1934,7 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 	return;
 }
 
-void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
+void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz, bool verify)
 {
 	unsigned int chunk;
 	unsigned int chunk_data_sz;
@@ -1722,6 +1949,17 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	int index = INVALID_PTN;
 	int i;
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+	if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0)
+		&& (strcmp(arg, "unlock")))
+	{
+		fastboot_fail("flashing not allowed for locked hw");
+		return;
+	}
+    #endif
+#endif
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
 	if(ptn == 0) {
@@ -1761,6 +1999,15 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	dprintf (SPEW, "total_blks: %d\n", sparse_header->total_blks);
 	dprintf (SPEW, "total_chunks: %d\n", sparse_header->total_chunks);
 
+	dprintf (SPEW, "size %d, blk_sz*total_blks %d\n", size, sparse_header->blk_sz*sparse_header->total_blks);
+
+	sz = sparse_header->blk_sz * sparse_header->total_blks;
+	if (ROUND_TO_PAGE(sz, 511) > size ) {
+		dprintf( CRITICAL, "unsparse image size %u too large for partition\n", sz);
+	    fastboot_fail("unsparse image size too large");
+	    return;
+	 }
+
 	/* Start processing chunks */
 	for (chunk=0; chunk<sparse_header->total_chunks; chunk++)
 	{
@@ -1792,11 +2039,14 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 
-			if(mmc_write(ptn + ((uint64_t)total_blocks*sparse_header->blk_sz),
-						chunk_data_sz,
-						(unsigned int*)data))
+			if(!verify && mmc_write(ptn + ((uint64_t)total_blocks*sparse_header->blk_sz), chunk_data_sz, (unsigned int*)data))
 			{
 				fastboot_fail("flash write failure");
+				return;
+			}
+			else if(verify && do_mmc_verify(ptn + ((uint64_t)total_blocks*sparse_header->blk_sz), (unsigned char*)data, chunk_data_sz ))
+			{
+				fastboot_fail("flash verify failure");
 				return;
 			}
 			total_blocks += chunk_header->chunk_sz;
@@ -1865,19 +2115,28 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		}
 	}
 
-	dprintf(INFO, "Wrote %d blocks, expected to write %d blocks\n",
-					total_blocks, sparse_header->total_blks);
+	dprintf(INFO, "%s %d blocks, expected to %s %d blocks\n",
+					verify? "Verified":"Wrote",
+					total_blocks, 
+					verify? "verify":"write",
+					sparse_header->total_blks);
 
 	if(total_blocks != sparse_header->total_blks)
 	{
-		fastboot_fail("sparse image write failure");
+		if(verify) {
+			fastboot_fail("sparse image verify failure");
+		}
+		else {
+			fastboot_fail("sparse image write failure");
+		}
+
 	}
 
 	fastboot_okay("");
 	return;
 }
 
-void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
+void cmd_flash_or_verify_mmc(const char *arg, void *data, unsigned sz, bool verify)
 {
 	sparse_header_t *sparse_header;
 	/* 8 Byte Magic + 2048 Byte xml + Encrypted Data */
@@ -1951,10 +2210,18 @@ void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
 
 	sparse_header = (sparse_header_t *) data;
 	if (sparse_header->magic != SPARSE_HEADER_MAGIC)
-		cmd_flash_mmc_img(arg, data, sz);
+		cmd_flash_mmc_img(arg, data, sz, verify);
 	else
-		cmd_flash_mmc_sparse_img(arg, data, sz);
+		cmd_flash_mmc_sparse_img(arg, data, sz, verify);
 	return;
+}
+
+void cmd_flash_mmc(const char *arg, void *data, unsigned sz) {
+	cmd_flash_or_verify_mmc(arg, data, sz, false);
+}
+
+void cmd_verify_mmc(const char *arg, void *data, unsigned sz) {
+	cmd_flash_or_verify_mmc(arg, data, sz, true);
 }
 
 void cmd_flash(const char *arg, void *data, unsigned sz)
@@ -2087,6 +2354,38 @@ int splash_screen_check_header(struct fbimage *logo)
 		return -1;
 	return 0;
 }
+
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+void cmd_oem_relock(const char *arg, void *data, unsigned sz)
+{
+	idme_update_var_ex("unlock_code", "", 0);
+	fastboot_okay("");
+}
+
+void cmd_idme(const char *arg, void *data, unsigned sz)
+{
+	char response[64] = "idme done";
+
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+    #if defined(BUILD_USER_VARIANT)
+	if ((gpio_get(target_production_gpio()) == 1)
+		&& (target_verify_unlock_code() == 0))
+	{
+		fastboot_fail("oem idme not allowed for locked hw");
+		return;
+	}
+    #endif
+#endif
+	if( 0 == fastboot_idme( arg )) {
+		fastboot_info(response);
+		fastboot_okay("");
+	} else {
+		fastboot_fail("idme fail");
+	}
+}
+#endif
+// ACOS_MOD_END
 
 struct fbimage* splash_screen_flash()
 {
@@ -2303,6 +2602,18 @@ void aboot_fastboot_register_commands(void)
 			device.charger_screen_enabled);
 	fastboot_publish("charger-screen-enabled",
 			(const char *) charger_screen_enabled);
+
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	fastboot_register("oem idme", cmd_idme);
+	fastboot_register("oem relock", cmd_oem_relock);
+#endif
+	fastboot_register("verify:", cmd_verify_mmc);
+	fastboot_register("dump:", cmd_dump);
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+	fastboot_publish("production", (gpio_get(target_production_gpio())==1)?"1":"0");
+#endif
+// ACOS_MOD_END
 }
 
 void aboot_init(const struct app_descriptor *app)
@@ -2326,33 +2637,47 @@ void aboot_init(const struct app_descriptor *app)
 
 	read_device_info(&device);
 
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	idme_initialize();
+
+	if (idme_boot_mode() == IDME_BOOTMODE_FASTBOOT) {
+		/* Boot mode 6: Switch to fastboot */
+		boot_into_fastboot = true;
+	} else if (idme_boot_mode() == IDME_BOOTMODE_RECOVERY) {
+		/* Boot mode 3: Switch to recovery */
+		boot_into_recovery = 1;
+	}
+
+#endif
+// ACOS_MOD_END
 	target_serialno((unsigned char *) sn_buf);
 	dprintf(SPEW,"serial number: %s\n",sn_buf);
 
 	memset(display_panel_buf, '\0', MAX_PANEL_BUF_SIZE);
 
 	/* Check if we should do something other than booting up */
-	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN))
-	{
-		dprintf(ALWAYS,"dload mode key sequence detected\n");
-		if (set_download_mode(EMERGENCY_DLOAD))
-		{
-			dprintf(CRITICAL,"dload mode not supported by target\n");
-		}
-		else
-		{
-			reboot_device(0);
-			dprintf(CRITICAL,"Failed to reboot into dload mode\n");
-		}
-		boot_into_fastboot = true;
-	}
-	if (!boot_into_fastboot)
-	{
-		if (keys_get_state(KEY_HOME) || keys_get_state(KEY_VOLUMEUP))
+	if (keys_get_state(KEY_HOME) != 0)
+		boot_into_recovery = 1;
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+		if (target_volume_up() != 0)
 			boot_into_recovery = 1;
-		if (!boot_into_recovery &&
-			(keys_get_state(KEY_BACK) || keys_get_state(KEY_VOLUMEDOWN)))
+#else
+		if (keys_get_state(KEY_VOLUMEUP) != 0)
+			boot_into_recovery = 1;
+#endif
+	if(!boot_into_recovery)
+	{
+		if (keys_get_state(KEY_BACK) != 0)
 			boot_into_fastboot = true;
+
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
+			if (target_volume_down() != 0)
+				boot_into_fastboot = true;
+#else
+			if (keys_get_state(KEY_VOLUMEDOWN) != 0)
+				boot_into_fastboot = true;
+#endif
 	}
 	#if NO_KEYPAD_DRIVER
 	if (fastboot_trigger())
@@ -2366,8 +2691,23 @@ void aboot_init(const struct app_descriptor *app)
 		boot_into_fastboot = true;
 	}
 
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+	idme_boot_info();
+#endif
+// ACOS_MOD_END
+
 	if (!boot_into_fastboot)
 	{
+// ACOS_MOD_BEGIN
+#ifdef WITH_ENABLE_IDME
+		/* Check for emergency download mode */
+		if (idme_boot_mode() == IDME_BOOTMODE_EMERGENCY)
+		{
+			target_enter_emergency_download();
+		}
+#endif
+// ACOS_MOD_END
 		if (target_is_emmc_boot())
 		{
 			if(emmc_recovery_init())

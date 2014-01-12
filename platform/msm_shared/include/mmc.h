@@ -402,7 +402,9 @@ extern unsigned int mmc_boot_mci_base;
 #define MMC_BOOT_SET_BIT                  0x1
 
 #define MMC_BOOT_EXT_USER_WP              171
+#define MMC_BOOT_EXT_BOOT_WP              173 // ACOS_MOD_ONELINE
 #define MMC_BOOT_EXT_ERASE_GROUP_DEF      175
+#define MMC_BOOT_EXT_PARTITION_CONFIG     179 // ACOS_MOD_ONELINE
 #define MMC_BOOT_EXT_ERASE_MEM_CONT       181
 #define MMC_BOOT_EXT_CMMC_BUS_WIDTH       183
 #define MMC_BOOT_EXT_CMMC_HS_TIMING       185
@@ -418,6 +420,19 @@ extern unsigned int mmc_boot_mci_base;
 
 #define MMC_BOOT_US_PERM_WP_DIS           (1<<4)
 #define MMC_BOOT_US_PWR_WP_EN             1
+
+// ACOS_MOD_BEGIN
+//#define MMC_BOOT_B_PERM_WP_EN            not used
+#define MMC_BOOT_B_PWR_WP_DIS             (1<<6)
+
+#define MMC_BOOT_B_PERM_WP_DIS            (1<<4)
+#define MMC_BOOT_B_PWR_WP_EN              1
+
+/* Partition Access */
+#define MMC_BOOT_US_PARTITION             0x00
+#define MMC_BOOT_B_PARTITION_1            0x01
+#define MMC_BOOT_B_PARTITION_2            0x02
+// ACOS_MOD_END
 
 /* For SD */
 #define MMC_BOOT_SD_HC_VOLT_SUPPLIED      0x000001AA
@@ -606,6 +621,8 @@ struct mmc_host {
 #define MMC_CLK_50MHZ                 49152000
 #define MMC_CLK_96MHZ                 96000000
 #define MMC_CLK_200MHZ                200000000
+#define MMC_CLK_192MHZ                192000000
+#define MMC_CLK_400MHZ                400000000
 
 #define MMC_CLK_ENABLE      1
 #define MMC_CLK_DISABLE     0
@@ -620,6 +637,13 @@ unsigned mmc_get_psn(void);
 
 unsigned int mmc_erase_card(unsigned long long data_addr,
 			    unsigned long long data_len);
+
+// ACOS_MOD_BEGIN
+unsigned int switch_to_boot_partition(void);
+unsigned int switch_to_user_partition(void);
+struct mmc_boot_host *get_mmc_host(void);
+struct mmc_card *get_mmc_card(void);
+// ACOS_MOD_END
 
 void mmc_mclk_reg_wr_delay();
 void mmc_boot_mci_clk_enable();

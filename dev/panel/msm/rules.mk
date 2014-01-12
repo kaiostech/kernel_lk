@@ -41,3 +41,13 @@ OBJS += \
 	$(LOCAL_DIR)/mipi_otm8018b_video_fwvga.o \
 	$(LOCAL_DIR)/mipi_nt35590_video_720p.o
 endif
+
+ifeq ($(TARGET),thor)
+OBJS += \
+	$(LOCAL_DIR)/mipi_novatek_video_1080p.o
+endif
+
+ifeq ($(TARGET),apollo)
+OBJS += \
+	$(LOCAL_DIR)/mipi_jdi_video_wqxga.o
+endif

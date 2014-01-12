@@ -101,6 +101,7 @@ enum dt_err_codes
 int dev_tree_validate(struct dt_table *table, unsigned int page_size, uint32_t *dt_hdr_size);
 int dev_tree_get_entry_info(struct dt_table *table, struct dt_entry *dt_entry_info);
 int update_device_tree(void *fdt, const char *, void *, unsigned);
+int update_IDME_device_tree(void *fdt, const char *, void *, unsigned);
 int dev_tree_add_mem_info(void *fdt, uint32_t offset, uint64_t size, uint64_t addr);
 void *dev_tree_appended(void *kernel, uint32_t kernel_size, void *tags);
 #endif

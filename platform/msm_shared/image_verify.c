@@ -41,30 +41,85 @@ image_decrypt_signature(unsigned char *signature_ptr, unsigned char *plain_text)
 	 */
 	int ret = -1;
 	X509 *x509_certificate = NULL;
-	unsigned char *cert_ptr = certBuffer;
-	unsigned int cert_size = sizeof(certBuffer);
+	unsigned char *prod_cert_ptr = target_production_certificate();
+	unsigned int prod_cert_size = target_production_certificate_size();
+	unsigned char *cert_ptr = target_certificate();
+	unsigned int cert_size = target_certificate_size();
 	EVP_PKEY *pub_key = NULL;
 	RSA *rsa_key = NULL;
 
-	/*
-	 * Get Pubkey and Convert the internal EVP_PKEY to RSA internal struct
-	 */
-	if ((x509_certificate = d2i_X509(NULL, &cert_ptr, cert_size)) == NULL) {
+	/* If production certificate is available, check it first */
+	if (prod_cert_ptr && prod_cert_size) {
+		/*
+		 * Get Pubkey and Convert the internal EVP_PKEY to RSA internal struct
+		 */
+		if ((x509_certificate = d2i_X509(NULL, &prod_cert_ptr, prod_cert_size)) == NULL) {
+			dprintf(CRITICAL,
+				"ERROR: Image Invalid, X509_Certificate is NULL!\n");
+			goto cleanup;
+		}
+		pub_key = X509_get_pubkey(x509_certificate);
+		rsa_key = EVP_PKEY_get1_RSA(pub_key);
+		if (rsa_key == NULL) {
+			dprintf(CRITICAL, "ERROR: Boot Invalid, RSA_KEY is NULL!\n");
+			goto cleanup;
+		}
+
+		ret = RSA_public_decrypt(SIGNATURE_SIZE, signature_ptr, plain_text,
+					 rsa_key, RSA_PKCS1_PADDING);
+		dprintf(SPEW, "DEBUG openssl: Return of RSA_public_decrypt = %d\n",
+			ret);
+
 		dprintf(CRITICAL,
-			"ERROR: Image Invalid, X509_Certificate is NULL!\n");
-		goto cleanup;
-	}
-	pub_key = X509_get_pubkey(x509_certificate);
-	rsa_key = EVP_PKEY_get1_RSA(pub_key);
-	if (rsa_key == NULL) {
-		dprintf(CRITICAL, "ERROR: Boot Invalid, RSA_KEY is NULL!\n");
-		goto cleanup;
+			"*** Image %sauthenticated with Production Key ***\n",
+			ret == -1 ? "NOT " : "");
+
+		/* Free the resources, attempt to authenticate with engineering key */
+		if (rsa_key != NULL) {
+			RSA_free(rsa_key);
+			rsa_key = NULL;
+		}
+		if (x509_certificate != NULL) {
+			X509_free(x509_certificate);
+			x509_certificate = NULL;
+		}
+
+		if (pub_key != NULL) {
+			EVP_PKEY_free(pub_key);
+			pub_key = NULL;
+		}
+
+		/* If authenticated with production key already, done */
+		if (ret != -1)
+			goto cleanup;
 	}
 
-	ret = RSA_public_decrypt(SIGNATURE_SIZE, signature_ptr, plain_text,
-				 rsa_key, RSA_PKCS1_PADDING);
-	dprintf(SPEW, "DEBUG openssl: Return of RSA_public_decrypt = %d\n",
-		ret);
+	/* If it's an engineering device, authenticate with engineering key */
+	if (!gpio_get(target_production_gpio())) {
+		/*
+		 * Get Pubkey and Convert the internal EVP_PKEY to RSA internal struct
+		 */
+		if ((x509_certificate = d2i_X509(NULL, &cert_ptr, cert_size)) == NULL) {
+			dprintf(CRITICAL,
+				"ERROR: Image Invalid, X509_Certificate is NULL!\n");
+			goto cleanup;
+		}
+		pub_key = X509_get_pubkey(x509_certificate);
+		rsa_key = EVP_PKEY_get1_RSA(pub_key);
+		if (rsa_key == NULL) {
+			dprintf(CRITICAL, "ERROR: Boot Invalid, RSA_KEY is NULL!\n");
+			goto cleanup;
+		}
+
+		ret = RSA_public_decrypt(SIGNATURE_SIZE, signature_ptr, plain_text,
+					 rsa_key, RSA_PKCS1_PADDING);
+		dprintf(SPEW, "DEBUG openssl: Return of RSA_public_decrypt = %d\n",
+			ret);
+
+		dprintf(CRITICAL,
+			"*** Image %sauthenticated with Engineering Key ***\n",
+			ret == -1 ? "NOT" : "");
+	}
 
  cleanup:
 	if (rsa_key != NULL)

@@ -84,6 +84,20 @@ static struct mmc_card *get_mmc_card()
 }
 
 /*
+ * Function: get mmc device
+ * Arg     : None
+ * Return  : Pointer to mmc device structure
+ * Flow    : Get the card pointer from the device structure
+ */
+struct mmc_device *get_mmc_device()
+{
+	void *dev;
+
+	dev = target_mmc_device();
+	return (struct mmc_device*)dev;
+}
+
+/*
  * Function: mmc_write
  * Arg     : Data address on card, data length, i/p buffer
  * Return  : 0 on Success, non zero on failure
