@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -299,6 +299,7 @@ void target_uart_init(void)
 		break;
 
 	case LINUX_MACHTYPE_8064_CDP:
+	case LINUX_MACHTYPE_8064_ADP_2:
 	case LINUX_MACHTYPE_8064_MTP:
 	case LINUX_MACHTYPE_8064_LIQUID:
 		uart_dm_init(7, 0x16600000, 0x16640000);
@@ -414,6 +415,9 @@ void target_detect(struct board_data *board)
 			break;
 		case HW_PLATFORM_LIQUID:
 			target_id = LINUX_MACHTYPE_8064_LIQUID;
+			break;
+		case HW_PLATFORM_OEM:
+			target_id = LINUX_MACHTYPE_8064_ADP_2;
 			break;
 		default:
 			target_id = LINUX_MACHTYPE_8064_CDP;

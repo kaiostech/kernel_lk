@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -271,6 +271,7 @@ enum platform {
 	HW_PLATFORM_DTV = 14,
     HW_PLATFORM_RUMI   = 15,
     HW_PLATFORM_VIRTIO = 16,
+    HW_PLATFORM_OEM = 25,
 	HW_PLATFORM_32BITS = 0x7FFFFFFF,
 };
 
