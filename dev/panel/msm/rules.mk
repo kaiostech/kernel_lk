@@ -51,3 +51,7 @@ ifeq ($(TARGET),apollo)
 OBJS += \
 	$(LOCAL_DIR)/mipi_jdi_video_wqxga.o
 endif
+ifeq ($(TARGET),loki)
+OBJS += \
+	$(LOCAL_DIR)/mipi_jdi_video_wqxga.o
+endif

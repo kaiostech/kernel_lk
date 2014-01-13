@@ -50,177 +50,128 @@
 #define GPIO_STATE_HIGH 2
 #define RESET_GPIO_SEQ_LEN 3
 
-static uint32_t dsi_pll_enable_seq(uint32_t ctl_base)
+static struct msm_fb_panel_data panel;
+static uint8_t display_enable;
+
+
+extern int msm_display_init(struct msm_fb_panel_data *pdata);
+extern int msm_display_off();
+extern int loki_dsi_uniphy_pll_config(uint32_t ctl_base);
+
+
+static int loki_mdss_dsi_panel_clock(uint8_t enable)
 {
-	uint32_t rc = 0;
-
-	mdss_dsi_uniphy_pll_sw_reset(ctl_base);
-
-	writel(0x01, ctl_base + 0x0220); /* GLB CFG */
-	mdelay(1);
-	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
-	mdelay(1);
-	writel(0x07, ctl_base + 0x0220); /* GLB CFG */
-	mdelay(1);
-	writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-	mdelay(1);
-
-	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
-
-	while (!(readl(ctl_base + 0x02c0) & 0x01)) {
-		mdss_dsi_uniphy_pll_sw_reset(ctl_base);
-		writel(0x01, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x05, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x07, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x05, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x07, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(2);
-		mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
-	}
-	return rc;
-}
-
-int target_backlight_ctrl(uint8_t enable)
-{
-	struct pm8x41_gpio pwmgpio_param = {
-		.direction = PM_GPIO_DIR_OUT,
-		.function = PM_GPIO_FUNC_1,
-		.vin_sel = 2,	/* VIN_2 */
-		.pull = PM_GPIO_PULL_UP_1_5 | PM_GPIO_PULLDOWN_10,
-		.output_buffer = PM_GPIO_OUT_CMOS,
-		.out_strength = 0x03,
-	};
-	if (enable) {
-		pm8x41_gpio_config(7, &pwmgpio_param);
-
-		/* lpg channel 2 */
-		pm8x41_lpg_write(3, 0x41, 0x33); /* LPG_PWM_SIZE_CLK, */
-		pm8x41_lpg_write(3, 0x42, 0x01); /* LPG_PWM_FREQ_PREDIV */
-		pm8x41_lpg_write(3, 0x43, 0x20); /* LPG_PWM_TYPE_CONFIG */
-		pm8x41_lpg_write(3, 0x44, 0xcc); /* LPG_VALUE_LSB */
-		pm8x41_lpg_write(3, 0x45, 0x00);  /* LPG_VALUE_MSB */
-		pm8x41_lpg_write(3, 0x46, 0xe4); /* LPG_ENABLE_CONTROL */
-	} else {
-		pm8x41_lpg_write(3, 0x46, 0x0); /* LPG_ENABLE_CONTROL */
-	}
-
-	return NO_ERROR;
-}
-
-int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
-{
-	struct mdss_dsi_pll_config *pll_data;
-	uint32_t dual_dsi = pinfo->mipi.dual_dsi;
-	dprintf(SPEW, "target_panel_clock\n");
-
-	pll_data = pinfo->mipi.dsi_pll_config;
+	uint32_t dual_dsi = panel.panel_info.mipi.dual_dsi;
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
-		mmss_bus_clock_enable();
 		mdp_clock_enable();
-		mdss_dsi_auto_pll_config(MIPI_DSI0_BASE, pll_data);
-		dsi_pll_enable_seq(MIPI_DSI0_BASE);
-		if (pinfo->mipi.dual_dsi &&
-				!(pinfo->mipi.broadcast)) {
-			mdss_dsi_auto_pll_config(MIPI_DSI1_BASE, pll_data);
-			dsi_pll_enable_seq(MIPI_DSI1_BASE);
-		}
-		mmss_dsi_clock_enable(DSI0_PHY_PLL_OUT, dual_dsi,
-					pll_data->pclk_m,
-					pll_data->pclk_n,
-					pll_data->pclk_d);
+		loki_dsi_uniphy_pll_config(MIPI_DSI0_BASE);
+		mmss_bus_clock_enable();
+		mmss_dsi_clock_enable(DSI0_PHY_PLL_OUT, dual_dsi,0,0,0);
 	} else if(!target_cont_splash_screen()) {
-		/* Disable clocks if continuous splash off */
-		mmss_dsi_clock_enable(dual_dsi);
-		mdp_clock_disable();
-		mmss_bus_clock_disable();
-		mdp_gdsc_ctrl(enable);
+		// * Add here for continuous splash  *
 	}
 
-	return NO_ERROR;
+	return 0;
 }
 
 /* Pull DISP_RST_N high to get panel out of reset */
-int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
-					struct msm_panel_info *pinfo)
+static void loki_mdss_mipi_panel_reset(uint8_t enable)
 {
-	uint32_t i = 0;
+	uint8_t rst_gpio=96;
+	uint8_t disp_en_gpio=59;
+	uint8_t lcd_en_gpio=85;
 
 	if (enable) {
-		gpio_tlmm_config(reset_gpio.pin_id, 0,
-				reset_gpio.pin_direction, reset_gpio.pin_pull,
-				reset_gpio.pin_strength, reset_gpio.pin_state);
+		gpio_tlmm_config(rst_gpio, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
+		gpio_tlmm_config(disp_en_gpio, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
+		gpio_tlmm_config(lcd_en_gpio, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_DISABLE);
 
-		gpio_tlmm_config(enable_gpio.pin_id, 0,
-			enable_gpio.pin_direction, enable_gpio.pin_pull,
-			enable_gpio.pin_strength, enable_gpio.pin_state);
-
-		gpio_tlmm_config(bkl_gpio.pin_id, 0,
-			bkl_gpio.pin_direction, bkl_gpio.pin_pull,
-			bkl_gpio.pin_strength, bkl_gpio.pin_state);
-
-		gpio_set(enable_gpio.pin_id, 2);
-		gpio_set(bkl_gpio.pin_id, 2);
-		/* reset */
-		for (i = 0; i < RESET_GPIO_SEQ_LEN; i++) {
-			if (resetseq->pin_state[i] == GPIO_STATE_LOW)
-				gpio_set(reset_gpio.pin_id, GPIO_STATE_LOW);
-			else
-				gpio_set(reset_gpio.pin_id, GPIO_STATE_HIGH);
-			mdelay(resetseq->sleep[i]);
-		}
+		gpio_set(rst_gpio, 0);
+		mdelay(1);
+		gpio_set(disp_en_gpio, 0);
+		mdelay(10);
+		gpio_set(disp_en_gpio, 2);
+		mdelay(15);
+		gpio_set(lcd_en_gpio, 2);
+		mdelay(15);
+		gpio_set(rst_gpio, 2);
+		mdelay(15);
 	} else {
-		gpio_set(reset_gpio.pin_id, 0);
-		gpio_set(enable_gpio.pin_id, 0);
-		gpio_set(bkl_gpio.pin_id, 0);
-	}
+		gpio_tlmm_config(rst_gpio, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
+		gpio_tlmm_config(disp_en_gpio, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
+		gpio_tlmm_config(lcd_en_gpio, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA, GPIO_DISABLE);
 
-	return NO_ERROR;
+		gpio_set(rst_gpio, 0);
+		gpio_set(disp_en_gpio, 0);
+		gpio_set(lcd_en_gpio, 0);
+	}
 }
 
-int target_ldo_ctrl(uint8_t enable)
+static int loki_mipi_panel_power(uint8_t enable)
 {
-	uint32_t ldocounter = 0;
-	uint32_t pm8x41_ldo_base = 0x13F00;
+	if (enable) {
+		/* backlight enable is out of this */
+		struct pm8x41_ldo ldo22 = LDO(PM8x41_LDO22, PLDO_TYPE);
+		struct pm8x41_ldo ldo12 = LDO(PM8x41_LDO2, PLDO_TYPE);
+		struct pm8x41_ldo ldo2 = LDO(PM8x41_LDO2, NLDO_TYPE);
 
-	while (ldocounter < TOTAL_LDO_DEFINED) {
-		struct pm8x41_ldo ldo_entry = LDO((pm8x41_ldo_base +
-			0x100 * ldo_entry_array[ldocounter].ldo_id),
-			ldo_entry_array[ldocounter].ldo_type);
+		/* Turn on LDO8 for lcd1 mipi vdd */
+		pm8x41_ldo_set_voltage(&ldo22, 3000000);
+		pm8x41_ldo_control(&ldo22, enable);
 
-		dprintf(SPEW, "Setting %s\n",
-				ldo_entry_array[ldocounter].ldo_id);
+		/* Turn on LDO23 for lcd1 mipi vddio */
+		pm8x41_ldo_set_voltage(&ldo12, 1800000);
+		pm8x41_ldo_control(&ldo12, enable);
 
-		/* Set voltage during power on */
-		if (enable) {
-			pm8x41_ldo_set_voltage(&ldo_entry,
-					ldo_entry_array[ldocounter].ldo_voltage);
-			pm8x41_ldo_control(&ldo_entry, enable);
-		} else if(ldo_entry_array[ldocounter].ldo_id != HFPLL_LDO_ID) {
-			pm8x41_ldo_control(&ldo_entry, enable);
-		}
-		ldocounter++;
+		/* Turn on LDO2 for vdda_mipi_dsi */
+		pm8x41_ldo_set_voltage(&ldo2, 1200000);
+		pm8x41_ldo_control(&ldo2, enable);
+
+		dprintf(INFO, " Panel Reset \n");
+		/* Panel Reset */
+	loki_mdss_mipi_panel_reset(enable);
+		dprintf(INFO, " Panel Reset Done\n");
+	} else {
+		struct pm8x41_ldo ldo22 = LDO(PM8x41_LDO22, PLDO_TYPE);
+		struct pm8x41_ldo ldo2 = LDO(PM8x41_LDO2, NLDO_TYPE);
+		loki_mdss_mipi_panel_reset(enable);
+		pm8x41_ldo_control(&ldo2, enable);
+		pm8x41_ldo_control(&ldo22, enable);
+
 	}
-
-	return NO_ERROR;
+	return 0;
 }
-
 void display_init(void)
 {
 	uint32_t ret = 0;
-	ret = gcdb_display_init(MDP_REV_50, MIPI_FB_ADDR);
-	if (ret) {
-		msm_display_off();
-	}
+        if (!display_enable)
+        {
+		mipi_jdi_video_wqxga_init(&(panel.panel_info));
+		panel.clk_func = loki_mdss_dsi_panel_clock;
+		panel.power_func = loki_mipi_panel_power;
+		panel.fb.base = MIPI_FB_ADDR;
+		panel.fb.width =  panel.panel_info.xres;
+		panel.fb.height =  panel.panel_info.yres;
+		panel.fb.stride =  panel.panel_info.xres;
+		panel.fb.bpp =  panel.panel_info.bpp;
+		panel.fb.format = FB_FORMAT_RGB888;
+		panel.mdp_rev = MDP_REV_50;
+
+		if (msm_display_init(&panel)) {
+			dprintf(CRITICAL, "Display init failed!\n");
+			return;
+		}
+		display_enable = 1;
+        }
 }
 
 void display_shutdown(void)
 {
-	gcdb_display_shutdown();
+	if (display_enable){
+		if(!target_cont_splash_screen()) {
+			//lp855x_bl_off();
+		}
+		msm_display_off();
+	    }
 }

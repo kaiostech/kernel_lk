@@ -40,14 +40,29 @@
 #define LINUX_MACHTYPE_URSA_P1     HW_PLATFORM_URSA_P1
 #define HW_PLATFORM_URSA_P2        3153
 #define LINUX_MACHTYPE_URSA_P2     HW_PLATFORM_URSA_P2
+#define HW_PLATFORM_URSA_EVT       3154
+#define LINUX_MACHTYPE_URSA_EVT    HW_PLATFORM_URSA_EVT
+
+//Added to a given hw_platform number to give the device ID for loading the
+// device tree
+#define URSA_SECOND_SOURCE_DISPLAY_OFFSET   6000
 
 /* Board ID Macros */
-#define BOARD_REVISION_INVALID     0x0
-#define BOARD_REVISION_P0          0x1
-#define BOARD_REVISION_PRE_P1      0x3
-#define BOARD_REVISION_P1          0x4
-#define BOARD_REVISION_P0_5        0x5
-#define BOARD_REVISION_P2          0x6
-#define BOARD_REVISION_MAX         BOARD_REVISION_P2
+#define BOARD_REVISION_INVALID     0
+#define BOARD_REVISION_P0          1
+#define BOARD_REVISION_PRE_P1      3
+#define BOARD_REVISION_P1          4
+#define BOARD_REVISION_P0_5        5
+#define BOARD_REVISION_P2          6
+#define BOARD_REVISION_PRE_EVT     7
+#define BOARD_REVISION_EVT         8
+#define BOARD_REVISION_P0_E        9
+#define BOARD_REVISION_PRE_DVT     10
+#define BOARD_REVISION_DVT         11
+#define BOARD_REVISION_MAX         BOARD_REVISION_DVT
+
+//Used to provide an offset to the platform_hw_version value for a second
+// or third display supplier
+int target_display_vendor_offset();
 
 #endif

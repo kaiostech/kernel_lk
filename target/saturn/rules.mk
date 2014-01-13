@@ -19,16 +19,9 @@ DEFINES += DISPLAY_TYPE_DSI6G=1
 MODULES += \
 	dev/keys \
 	dev/pmic/pm8x41 \
-	dev/backlight/lp855x \
-	dev/battery/bq27741 \
-	dev/thermal/tmp103 \
-	dev/charger/smb349 \
-	dev/panel/msm \
-	lib/ptable \
+    lib/ptable \
 	dev/gcdb/display \
-	lib/libfdt \
-	dev/fbgfx \
-	lib/zlib
+    lib/libfdt
 
 DEFINES += \
 	MEMSIZE=$(MEMSIZE) \
@@ -44,5 +37,4 @@ OBJS += \
     $(LOCAL_DIR)/init.o \
     $(LOCAL_DIR)/meminfo.o \
     $(LOCAL_DIR)/target_display.o \
-#    $(LOCAL_DIR)/oem_panel.o
-include $(LOCAL_DIR)/image/rules.mk
+    $(LOCAL_DIR)/oem_panel.o

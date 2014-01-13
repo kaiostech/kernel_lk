@@ -52,14 +52,9 @@
 #include <platform/timer.h>
 #include <stdlib.h>
 #include <ufs.h>
-#include <target/display.h>
-#if WITH_FBGFX_SPLASH
-#include <dev/fbgfx.h>
-struct fbgfx_image splash;
-extern struct fbgfx_image image_boot_Kindle;
-#endif
 
-#define LINUX_MACHTYPE_LOKI	10
+
+#define LINUX_MACHTYPE_SATURN	12
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
@@ -259,13 +254,6 @@ void *target_mmc_device()
 
 void target_init(void)
 {
-	struct pm8x41_gpio gpio19_param;
-        /* Configure the GPIO */
-        gpio19_param.direction = PM_GPIO_DIR_OUT;
-        gpio19_param.function  = 0;
-        gpio19_param.pull      = PM_GPIO_PULL_UP_30;
-        gpio19_param.vin_sel   = 2;
-
 	dprintf(INFO, "target_init()\n");
 
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
@@ -291,37 +279,22 @@ void target_init(void)
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
-
-#if WITH_FBGFX_SPLASH
-	/* if fbcon.c does not hardcode 'splash' we can skip this memcpy */
-	memcpy(&splash, &image_boot_Kindle, sizeof(struct fbgfx_image));
-#endif
 	dprintf(INFO, "Display Init: Start\n");
 	display_init();
 	dprintf(INFO, "Display Init: Done\n");
 #endif
-     /* GPIO 12 need to be set high in order to activate smb349 charger*/
-     dprintf(ALWAYS, "set gpio 12 to high\n");
-     gpio_tlmm_config(12, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
-     gpio_set(12, 1<<1);
-       
-     pm8x41_gpio_config(19, &gpio19_param);
-     pm8x41_gpio_set(19, PM_GPIO_FUNC_HIGH);
-
-     gpio_tlmm_config(0, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA, GPIO_ENABLE);
-     gpio_set(0, 1<<1);
 }
 
 unsigned board_machtype(void)
 {
-	return LINUX_MACHTYPE_LOKI;
+	return LINUX_MACHTYPE_SATURN;
 }
 
 /* Detect the target type */
 void target_detect(struct board_data *board)
 {
-	board->target = LINUX_MACHTYPE_LOKI;
-	board->platform_hw = LINUX_MACHTYPE_LOKI;
+	board->target = LINUX_MACHTYPE_SATURN;
+	board->platform_hw = LINUX_MACHTYPE_SATURN;
 }
 
 /* Returns 1 if target supports continuous splash screen. */
