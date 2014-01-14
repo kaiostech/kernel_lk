@@ -35,8 +35,11 @@ void target_init(void);
 void *target_get_scratch_address(void);
 
 /* get the max allowed flash size */
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 unsigned long long target_get_max_flash_size(void);
-
+#else
+unsigned target_get_max_flash_size(void);
+#endif
 /* if target is using eMMC bootup */
 int target_is_emmc_boot(void);
 
