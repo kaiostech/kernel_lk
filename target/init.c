@@ -48,10 +48,17 @@ __WEAK void *target_get_scratch_address(void)
     return (void *)(SCRATCH_ADDR);
 }
 
+#if defined(CONFIG_ARCH_MSM8974_THOR) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 __WEAK unsigned long long target_get_max_flash_size(void)
 {
     return (120 * 1024 * 1024);
 }
+#else
+__WEAK unsigned target_get_max_flash_size(void)
+{
+    return (120 * 1024 * 1024);
+}
+#endif
 
 __WEAK int target_is_emmc_boot(void)
 {
