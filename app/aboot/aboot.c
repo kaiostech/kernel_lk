@@ -568,6 +568,11 @@ BUF_DMA_ALIGN(dt_buf, 4096);
 static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 {
 	int ret;
+#if IMAGE_VERIF_ALGO_SHA1
+	uint32_t auth_algo = CRYPTO_AUTH_ALG_SHA1;
+#else
+	uint32_t auth_algo = CRYPTO_AUTH_ALG_SHA256;
+#endif
 
 	/* Assume device is rooted at this time. */
 	device.is_tampered = 1;
@@ -577,7 +582,7 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 	ret = image_verify((unsigned char *)bootimg_addr,
 					   (unsigned char *)(bootimg_addr + bootimg_size),
 					   bootimg_size,
-					   CRYPTO_AUTH_ALG_SHA256);
+					   auth_algo);
 
 	dprintf(INFO, "Authenticating boot image: done return value = %d\n", ret);
 
@@ -1454,7 +1459,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		check_aboot_addr_range_overlap(hdr->ramdisk_addr, ramdisk_actual))
 	{
 		dprintf(CRITICAL, "kernel/ramdisk addresses overlap with aboot addresses.\n");
-		return -1;
+		return;
 	}
 
 	/* sz should have atleast raw boot image */
@@ -1472,7 +1477,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	if (check_aboot_addr_range_overlap(hdr->tags_addr, MAX_TAGS_SIZE))
 	{
 		dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
-		return -1;
+		return;
 	}
 #endif
 
@@ -1502,7 +1507,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	if (check_aboot_addr_range_overlap(hdr->tags_addr, MAX_TAGS_SIZE))
 	{
 		dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
-		return -1;
+		return;
 	}
 #endif
 

@@ -120,11 +120,6 @@ __WEAK void target_load_ssd_keystore(void)
 {
 }
 
-__WEAK uint32_t target_read_panel_signature(uint32_t panel_signature)
-{
-	return 0;
-}
-
 /* Default target does not support continuous splash screen feature. */
 __WEAK int target_cont_splash_screen()
 {
@@ -152,6 +147,11 @@ __WEAK bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 }
 
 __WEAK uint8_t target_panel_auto_detect_enabled()
+{
+	return 0;
+}
+
+__WEAK uint8_t target_is_edp()
 {
 	return 0;
 }
