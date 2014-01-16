@@ -49,6 +49,8 @@
 #include "include/panel_ssd2080m_720p_video.h"
 #include "include/panel_jdi_1080p_video.h"
 
+#define SSD2080M_720P_VIDEO_PANEL_ON_DELAY 200
+
 /*---------------------------------------------------------------------------*/
 /* static panel selection variable                                           */
 /*---------------------------------------------------------------------------*/
@@ -95,11 +97,14 @@ int oem_panel_rotation()
 	return ret;
 }
 
-
 int oem_panel_on()
 {
 	/* OEM can keep there panel spefic on instructions in this
 	function */
+	if (panel_id == SSD2080M_720P_VIDEO_PANEL) {
+		/* SSD2080M needs extra delay to avoid unexpected artifacts */
+		mdelay(SSD2080M_720P_VIDEO_PANEL_ON_DELAY);
+	}
 	return NO_ERROR;
 }
 
