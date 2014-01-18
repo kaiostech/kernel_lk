@@ -464,7 +464,11 @@ int mdss_dsi_host_init(struct mipi_dsi_panel_config *pinfo, uint32_t
 				| PACK_TYPE1 << 24 | VC1 << 22 | DT1 << 16 | WC1,
 				MIPI_DSI1_BASE + COMMAND_MODE_DMA_CTRL);
 
+#if defined(CONFIG_ARCH_APQ8084_LOKI) || defined(CONFIG_ARCH_MSM8974_APOLLO)
 		writel(0x02, MIPI_DSI1_BASE + LANE_SWAP_CTL);
+#else
+		writel(lane_swap, MIPI_DSI1_BASE + LANE_SWAP_CTL);
+#endif
 		writel(timing_ctl, MIPI_DSI1_BASE + TIMING_CTL);
 	}
 
