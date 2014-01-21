@@ -105,33 +105,54 @@ static int mdss_dsi_panel_power(uint8_t enable)
 	if (enable) {
 		ret = target_ldo_ctrl(enable);
 		if (ret) {
-			dprintf(CRITICAL, "LDO control enable failed \n");
+			dprintf(CRITICAL, "LDO control enable failed\n");
 			return ret;
 		}
 
 		/* Panel Reset */
-		ret = mdss_dsi_panel_reset(enable);
-		if (ret) {
-			dprintf(CRITICAL, "panel reset failed \n");
-			return ret;
+		if (!panelstruct.paneldata->panel_lp11_init) {
+			ret = mdss_dsi_panel_reset(enable);
+			if (ret) {
+				dprintf(CRITICAL, "panel reset failed\n");
+				return ret;
+			}
 		}
 		dprintf(SPEW, "Panel power on done\n");
 	} else {
 		/* Disable panel and ldo */
 		ret = mdss_dsi_panel_reset(enable);
 		if (ret) {
-			dprintf(CRITICAL, "panel reset disable failed \n");
+			dprintf(CRITICAL, "panel reset disable failed\n");
 			return ret;
 		}
 
 		ret = target_ldo_ctrl(enable);
 		if (ret) {
-			dprintf(CRITICAL, "ldo control disable failed \n");
+			dprintf(CRITICAL, "ldo control disable failed\n");
 			return ret;
 		}
 		dprintf(SPEW, "Panel power off done\n");
 	}
 
+	return ret;
+}
+
+static int mdss_dsi_panel_pre_init(void)
+{
+	int ret = NO_ERROR;
+
+	if (panelstruct.paneldata->panel_lp11_init) {
+		ret = mdss_dsi_panel_reset(1);
+		if (ret) {
+			dprintf(CRITICAL, "panel reset failed\n");
+			return ret;
+		}
+	}
+
+	if(panelstruct.paneldata->panel_init_delay)
+		udelay(panelstruct.paneldata->panel_init_delay);
+
+	dprintf(SPEW, "Panel pre init done\n");
 	return ret;
 }
 
@@ -148,19 +169,44 @@ static int mdss_dsi_bl_enable(uint8_t enable)
 
 bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 {
-	char *dsi_id = NULL, *panel_node = NULL;
-	bool ret = false;
+	char *dsi_id = NULL;
+	char *panel_node = NULL;
+	uint16_t dsi_id_len = 0;
+	bool ret = true;
+	char *default_str;
 
-	if(!panelstruct.paneldata) {
-		return ret;
+	if(panelstruct.paneldata)
+	{
+		dsi_id = panelstruct.paneldata->panel_controller;
+		panel_node = panelstruct.paneldata->panel_node_id;
+	}
+	else
+	{
+		if (target_is_edp())
+		{
+			default_str = "0:edp:";
+		}
+		else
+		{
+			default_str = "0:dsi:0:";
+		}
+		strlcpy(pbuf, default_str, buf_size);
+		return true;
 	}
 
-	dsi_id = panelstruct.paneldata->panel_controller;
-	panel_node = panelstruct.paneldata->panel_node_id;
+	if (dsi_id == NULL || panel_node == NULL)
+		return false;
 
-	if (buf_size >= (strlen(panel_node) + MAX_DSI_STREAM_LEN +
-			MAX_PANEL_FORMAT_STRING + 1) &&
-		strlen(panel_node) && strlen(dsi_id))
+	dsi_id_len = strlen(dsi_id);
+
+	if (buf_size < (strlen(panel_node) + dsi_id_len +
+			MAX_PANEL_FORMAT_STRING + 1) ||
+		strlen(panel_node) ||
+		strlen(dsi_id))
+	{
+		ret = false;
+	}
+	else
 	{
 		pbuf[0] = '1'; // 1 indicates that LK is overriding the panel
 		pbuf[1] = ':'; // seperator
@@ -168,8 +214,8 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 		buf_size -= MAX_PANEL_FORMAT_STRING;
 
 		strlcpy(pbuf, dsi_id, buf_size);
-		pbuf += MAX_DSI_STREAM_LEN;
-		buf_size -= MAX_DSI_STREAM_LEN;
+		pbuf += dsi_id_len;
+		buf_size -= dsi_id_len;
 
 		strlcpy(pbuf, panel_node, buf_size);
 		ret = true;
@@ -212,6 +258,7 @@ int gcdb_display_init(uint32_t rev, void *base)
 
 	panel.pll_clk_func = mdss_dsi_panel_clock;
 	panel.power_func = mdss_dsi_panel_power;
+	panel.pre_init_func = mdss_dsi_panel_pre_init;
 	panel.bl_func = mdss_dsi_bl_enable;
 	panel.fb.base = base;
 	panel.fb.width =  panel.panel_info.xres;
