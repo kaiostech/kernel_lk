@@ -40,6 +40,23 @@ static uint8_t display_enable;
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 
+static void apq8064_lvds_fpdlink3_on(void)
+{
+	struct pm8921_gpio pdb_pin = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = 0,
+		.output_value = 1,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = 2,
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
+		.function = PM_GPIO_FUNC_1,
+		.inv_int_pol = 0,
+	};
+	int rc = pm8921_gpio_config(PM_GPIO(37),&pdb_pin);
+	if (rc)
+		dprintf(CRITICAL, "FAIL pm8921_gpio_config(): rc=%d.\n", rc);
+}
+
 static int apq8064_lvds_panel_power(int enable)
 {
 	if (enable) {
@@ -58,6 +75,12 @@ static int apq8064_lvds_panel_power(int enable)
 
 		/* Configure PMM MPP  3*/
 		pm8921_mpp_set_digital_output(mpp_3);
+
+		/*
+		 * drive gpio high to enable adp_2 board
+		 * todo: link this to board id
+		 */
+		apq8064_lvds_fpdlink3_on();
 	}
 
 	return 0;
