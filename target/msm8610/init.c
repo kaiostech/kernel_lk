@@ -403,6 +403,11 @@ unsigned board_machtype(void)
 	return 0;
 }
 
+int emmc_recovery_init(void)
+{
+	return _emmc_recovery_init();
+}
+
 static void set_sdc_power_ctrl()
 {
 	/* Drive strength configs for sdc pins */
