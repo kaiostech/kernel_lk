@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -86,7 +86,7 @@ static uint32_t dsi_pll_enable_seq(uint32_t ctl_base)
 	return rc;
 }
 
-int target_backlight_ctrl(uint8_t enable)
+int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 {
 	struct pm8x41_gpio pwmgpio_param = {
 		.direction = PM_GPIO_DIR_OUT,
@@ -96,18 +96,19 @@ int target_backlight_ctrl(uint8_t enable)
 		.output_buffer = PM_GPIO_OUT_CMOS,
 		.out_strength = 0x03,
 	};
+
 	if (enable) {
-		pm8x41_gpio_config(7, &pwmgpio_param);
+		pm8x41_gpio_config(pwm_gpio.pin_id, &pwmgpio_param);
 
 		/* lpg channel 2 */
-		pm8x41_lpg_write(3, 0x41, 0x33); /* LPG_PWM_SIZE_CLK, */
-		pm8x41_lpg_write(3, 0x42, 0x01); /* LPG_PWM_FREQ_PREDIV */
-		pm8x41_lpg_write(3, 0x43, 0x20); /* LPG_PWM_TYPE_CONFIG */
-		pm8x41_lpg_write(3, 0x44, 0xcc); /* LPG_VALUE_LSB */
-		pm8x41_lpg_write(3, 0x45, 0x00);  /* LPG_VALUE_MSB */
-		pm8x41_lpg_write(3, 0x46, 0xe4); /* LPG_ENABLE_CONTROL */
+		pm8x41_lpg_write(PWM_BL_LPG_CHAN_ID, 0x41, 0x33); /* LPG_PWM_SIZE_CLK, */
+		pm8x41_lpg_write(PWM_BL_LPG_CHAN_ID, 0x42, 0x01); /* LPG_PWM_FREQ_PREDIV */
+		pm8x41_lpg_write(PWM_BL_LPG_CHAN_ID, 0x43, 0x20); /* LPG_PWM_TYPE_CONFIG */
+		pm8x41_lpg_write(PWM_BL_LPG_CHAN_ID, 0x44, 0xcc); /* LPG_VALUE_LSB */
+		pm8x41_lpg_write(PWM_BL_LPG_CHAN_ID, 0x45, 0x00);  /* LPG_VALUE_MSB */
+		pm8x41_lpg_write(PWM_BL_LPG_CHAN_ID, 0x46, 0xe4); /* LPG_ENABLE_CONTROL */
 	} else {
-		pm8x41_lpg_write(3, 0x46, 0x0); /* LPG_ENABLE_CONTROL */
+		pm8x41_lpg_write(PWM_BL_LPG_CHAN_ID, 0x46, 0x0); /* LPG_ENABLE_CONTROL */
 	}
 
 	return NO_ERROR;
@@ -224,7 +225,6 @@ int target_display_pre_on()
 	writel(0xCCCCC0C0, MDP_CLK_CTRL5);
 	writel(0x00CCC000, MDP_CLK_CTRL7);
 
-	writel(0x00000001, VBIF_VBIF_DDR_FORCE_CLK_ON);
 	writel(0x00080808, VBIF_VBIF_IN_RD_LIM_CONF0);
 	writel(0x08000808, VBIF_VBIF_IN_RD_LIM_CONF1);
 	writel(0x00080808, VBIF_VBIF_IN_RD_LIM_CONF2);
