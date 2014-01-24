@@ -208,7 +208,12 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 			$(LOCAL_DIR)/uic.o \
 			$(LOCAL_DIR)/ucs.o \
 			$(LOCAL_DIR)/ufs_hci.o \
-			$(LOCAL_DIR)/dme.o
+			$(LOCAL_DIR)/dme.o \
+			$(LOCAL_DIR)/certificate.o \
+			$(LOCAL_DIR)/crypto_hash.o \
+			$(LOCAL_DIR)/crypto5_eng.o \
+			$(LOCAL_DIR)/crypto5_wrapper.o
+
 endif
 
 ifeq ($(PLATFORM),msm7x27a)
@@ -276,7 +281,7 @@ ifeq ($(PLATFORM),mdm9x25)
 			$(LOCAL_DIR)/clock_lib2.o
 endif
 
-ifeq ($(PLATFORM),mdmkrypton)
+ifeq ($(PLATFORM),mdm9x35)
 	OBJS += $(LOCAL_DIR)/qgic.o \
 			$(LOCAL_DIR)/uart_dm.o \
 			$(LOCAL_DIR)/interrupts.o \
