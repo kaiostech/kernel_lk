@@ -685,6 +685,9 @@ void target_uninit(void)
 #ifdef SSD_ENABLE
 	clock_ce_disable(SSD_CE_INSTANCE_1);
 #endif
+
+	/* Disable HC mode before jumping to kernel */
+	sdhci_mode_disable(&dev->host);
 }
 
 void shutdown_device()
