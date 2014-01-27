@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -59,5 +59,6 @@
 #define LINUX_MACHTYPE_8064_MPQ_CDP 3993
 #define LINUX_MACHTYPE_8064_MPQ_HRD 3994
 #define LINUX_MACHTYPE_8064_MPQ_DTV 3995
+#define LINUX_MACHTYPE_8064_ADP_2   4839
 
 #endif
