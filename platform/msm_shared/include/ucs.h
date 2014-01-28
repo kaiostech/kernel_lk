@@ -29,7 +29,7 @@
 #ifndef _UCS_H
 #define _UCS_H
 
-#define SCSI_MAX_DATA_TRANS_BLK_LEN    0x40
+#define SCSI_MAX_DATA_TRANS_BLK_LEN    0xFFFF
 #define UFS_DEFAULT_SECTORE_SIZE       4096
 
 #define SCSI_STATUS_GOOD               0x00
@@ -96,6 +96,28 @@ struct scsi_rdwr_cdb
 	uint16_t trans_len;
 	uint8_t  control;
 	uint8_t  resv[6];
+}__PACKED;
+
+struct scsi_unmap_req
+{
+	uint8_t  lun;
+	uint64_t start_lba;
+	uint32_t num_blocks;
+}__PACKED;
+
+struct unmap_blk_desc
+{
+	uint64_t lba;
+	uint32_t num_blks;
+	uint32_t reserved;
+}__PACKED;
+
+struct unmap_param_list
+{
+	uint16_t data_len;
+	uint16_t blk_desc_data_len;
+	uint32_t reserved;
+	struct unmap_blk_desc blk_desc;
 }__PACKED;
 
 struct scsi_sense_cdb
