@@ -2,6 +2,9 @@ LOCAL_DIR := $(GET_LOCAL_DIR)
 
 MODULE := $(LOCAL_DIR)
 
+MODULE_DEPS := \
+	lib/dlmalloc
+
 MODULE_SRCS += \
 	$(LOCAL_DIR)/atoi.c \
 	$(LOCAL_DIR)/ctype.c \
