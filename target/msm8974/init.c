@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -66,8 +66,7 @@ struct mmc_device *dev;
 
 #define WDOG_DEBUG_DISABLE_BIT  17
 
-#define CE1_INSTANCE            1
-#define CE2_INSTANCE            2
+#define CE_INSTANCE             2
 #define CE_EE                   1
 #define CE_FIFO_SIZE            64
 #define CE_READ_PIPE            3
@@ -160,18 +159,9 @@ void target_crypto_init_params()
 	struct crypto_init_params ce_params;
 
 	/* Set up base addresses and instance. */
-	if (platform_is_8x62())
-	{
-		ce_params.crypto_instance  = CE1_INSTANCE;
-		ce_params.crypto_base      = MSM_CE1_BASE;
-		ce_params.bam_base         = MSM_CE1_BAM_BASE;
-	}
-	else
-	{
-		ce_params.crypto_instance  = CE2_INSTANCE;
-		ce_params.crypto_base      = MSM_CE2_BASE;
-		ce_params.bam_base         = MSM_CE2_BAM_BASE;
-	}
+	ce_params.crypto_instance  = CE_INSTANCE;
+	ce_params.crypto_base      = MSM_CE2_BASE;
+	ce_params.bam_base         = MSM_CE2_BAM_BASE;
 
 	/* Set up BAM config. */
 	ce_params.bam_ee               = CE_EE;
@@ -338,10 +328,7 @@ void target_init(void)
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
 	dprintf(INFO, "Display Init: Start\n");
-	if (!platform_is_8x62())
-	{
-		display_init();
-	}
+	display_init();
 	dprintf(INFO, "Display Init: Done\n");
 #endif
 
@@ -404,8 +391,7 @@ static void ssd_load_keystore_from_emmc()
 void target_fastboot_init(void)
 {
 	/* Set the BOOT_DONE flag in PM8921 */
-	if (!platform_is_8x62())
-		pm8x41_set_boot_done();
+	pm8x41_set_boot_done();
 
 #ifdef SSD_ENABLE
 	clock_ce_enable(SSD_CE_INSTANCE_1);
@@ -423,8 +409,24 @@ void target_detect(struct board_data *board)
 void target_baseband_detect(struct board_data *board)
 {
 	uint32_t platform;
+	uint32_t platform_subtype;
 
 	platform = board->platform;
+	platform_subtype = board->platform_subtype;
+
+	/*
+	 * Look for platform subtype if present, else
+	 * check for platform type to decide on the
+	 * baseband type
+	 */
+	switch(platform_subtype) {
+	case HW_PLATFORM_SUBTYPE_UNKNOWN:
+	case HW_PLATFORM_SUBTYPE_8974PRO_PM8084:
+		break;
+	default:
+		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n",platform_subtype);
+		ASSERT(0);
+	};
 
 	switch(platform) {
 	case MSM8974:
@@ -439,15 +441,12 @@ void target_baseband_detect(struct board_data *board)
 	case MSM8974AA:
 	case MSM8974AB:
 	case MSM8974AC:
-	case MSM8262:
-	case MSM8962:
 		board->baseband = BASEBAND_MSM;
 		break;
 	case APQ8074:
 	case APQ8074AA:
 	case APQ8074AB:
 	case APQ8074AC:
-	case APQ8062:
 		board->baseband = BASEBAND_APQ;
 		break;
 	default:
