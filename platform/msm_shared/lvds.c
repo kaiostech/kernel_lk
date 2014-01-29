@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -104,13 +104,13 @@ void lvds_init(struct msm_panel_info *pinfo)
 		/* MDP_LCDC_LVDS_MUX_CTL_FOR_D1_6_TO_4 */
 		MDP_OUTP(MDP_BASE +  0xc2020, 0x00090a0b);
 		/* MDP_LCDC_LVDS_MUX_CTL_FOR_D2_3_TO_0 */
-		MDP_OUTP(MDP_BASE +  0xc2024, 0x151a191a);
+		MDP_OUTP(MDP_BASE +  0xc2024, 0x1518191a);
 		/* MDP_LCDC_LVDS_MUX_CTL_FOR_D2_6_TO_4 */
 		MDP_OUTP(MDP_BASE +  0xc2028, 0x00121314);
 		/* MDP_LCDC_LVDS_MUX_CTL_FOR_D3_3_TO_0 */
-		MDP_OUTP(MDP_BASE +  0xc202c, 0x1706071b);
+		MDP_OUTP(MDP_BASE +  0xc202c, 0x0F16171b);
 		/* MDP_LCDC_LVDS_MUX_CTL_FOR_D3_6_TO_4 */
-		MDP_OUTP(MDP_BASE +  0xc2030, 0x000e0f16);
+		MDP_OUTP(MDP_BASE +  0xc2030, 0x0006070E);
 
 		if (pinfo->lvds.channel_mode ==
 			LVDS_DUAL_CHANNEL_MODE) {
