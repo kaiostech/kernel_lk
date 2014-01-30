@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -323,13 +323,11 @@ enum {
 	FSM9915   = 192,
 	FSM9910   = 193,
 	MSM8974AC = 194,
-	MSM8962   = 195,
-	MSM8262   = 196,
-	APQ8062   = 197,
 	MSM8126   = 198,
 	APQ8026   = 199,
 	MSM8926   = 200,
 	MSM8326   = 205,
+	MSM8916   = 206,
 	APQ8074AA  = 208,
 	APQ8074AB  = 209,
 	APQ8074AC  = 210,
@@ -378,6 +376,7 @@ enum platform {
 enum platform_subtype {
 	HW_PLATFORM_SUBTYPE_UNKNOWN = 0,
 	HW_PLATFORM_SUBTYPE_MDM = 1,
+	HW_PLATFORM_SUBTYPE_8974PRO_PM8084 = 1,
 	HW_PLATFORM_SUBTYPE_CSFB = 1,
 	HW_PLATFORM_SUBTYPE_SVLTE1 = 2,
 	HW_PLATFORM_SUBTYPE_SVLTE2A = 3,
