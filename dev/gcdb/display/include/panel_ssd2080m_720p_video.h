@@ -465,14 +465,14 @@ static struct panel_timing ssd2080m_720p_video_timing_info = {
 /* Panel reset sequence                                                      */
 /*---------------------------------------------------------------------------*/
 static struct panel_reset_sequence ssd2080m_720p_video_panel_reset_seq = {
-	{1, 0, 1, }, {20, 2, 20, }, 2
+    { 1, 0, 1, }, { 20, 20, 20, }, 2
 };
 
 /*---------------------------------------------------------------------------*/
 /* Backlight setting                                                         */
 /*---------------------------------------------------------------------------*/
 static struct backlight ssd2080m_720p_video_backlight = {
-	1, 1, 4095, 100, 1, "PMIC_8941"
+    1, 1, 4095, 100, 1, "bl_ctrl_wled"
 };
 
 #endif /*_PANEL_SSD2080M_720P_VIDEO_H_*/
