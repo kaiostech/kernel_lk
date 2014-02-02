@@ -91,7 +91,7 @@ int ufs_read(struct ufs_dev* dev, uint64_t start_lba, addr_t buffer, uint32_t nu
 	int                  ret;
 
 	req.data_buffer_base = buffer;
-	req.lun              = 0;
+	req.lun              = dev->current_lun;
 	req.num_blocks       = num_blocks;
 	req.start_lba        = start_lba / dev->block_size;
 
@@ -99,6 +99,7 @@ int ufs_read(struct ufs_dev* dev, uint64_t start_lba, addr_t buffer, uint32_t nu
 	if (ret)
 	{
 		dprintf(CRITICAL, "UFS read failed.\n");
+		ufs_dump_hc_registers(dev);
 	}
 
 	return ret;
@@ -110,7 +111,7 @@ int ufs_write(struct ufs_dev* dev, uint64_t start_lba, addr_t buffer, uint32_t n
 	int                  ret;
 
 	req.data_buffer_base = buffer;
-	req.lun              = 0;
+	req.lun              = dev->current_lun;
 	req.num_blocks       = num_blocks;
 	req.start_lba        = start_lba / dev->block_size;
 
@@ -118,22 +119,48 @@ int ufs_write(struct ufs_dev* dev, uint64_t start_lba, addr_t buffer, uint32_t n
 	if (ret)
 	{
 		dprintf(CRITICAL, "UFS write failed.\n");
+		ufs_dump_hc_registers(dev);
 	}
 
 	return ret;
 }
+
+int ufs_erase(struct ufs_dev* dev, uint64_t start_lba, uint32_t num_blocks)
+{
+	struct scsi_unmap_req req;
+	int                    ret;
+
+	req.lun        = dev->current_lun;
+	req.start_lba  = start_lba / dev->block_size;
+	req.num_blocks = num_blocks;
+
+	ret = ucs_do_scsi_unmap(dev, &req);
+	if(ret)
+	{
+		dprintf(CRITICAL, "UFS erase failed \n");
+	}
+
+	return ret;
+}
+
 uint64_t ufs_get_dev_capacity(struct ufs_dev* dev)
 {
 	uint64_t capacity;
-	int ret = 0;
+	uint8_t lun = dev->current_lun;
 
-	ret = dme_read_unit_desc(dev, 0, &capacity);
-	if (ret)
-	{
-		dprintf(CRITICAL, "Failed to read unit descriptor\n");
-	}
+	capacity = dev->lun_cfg[lun].logical_blk_cnt * dev->block_size;
 
 	return capacity;
+}
+
+uint32_t ufs_get_erase_blk_size(struct ufs_dev* dev)
+{
+	uint32_t erase_blk_size;
+	uint8_t lun = dev->current_lun;
+
+	erase_blk_size = dev->lun_cfg[lun].erase_blk_size;
+
+	return erase_blk_size;
 }
 
 uint32_t ufs_get_serial_num(struct ufs_dev* dev)
@@ -144,6 +171,7 @@ uint32_t ufs_get_serial_num(struct ufs_dev* dev)
 	if (ret)
 	{
 		dprintf(CRITICAL, "UFS get serial number failed.\n");
+		ufs_dump_hc_registers(dev);
 	}
 
 	return dev->serial_num;
@@ -154,10 +182,16 @@ uint32_t ufs_get_page_size(struct ufs_dev* dev)
 	return dev->block_size;
 }
 
+uint8_t ufs_get_num_of_luns(struct ufs_dev* dev)
+{
+	return dev->num_lus;
+}
+
 int ufs_init(struct ufs_dev *dev)
 {
 	uint32_t ret = UFS_SUCCESS;
 	uint64_t cap;
+	uint8_t lun = 0;
 
 	dev->block_size = 4096;
 
@@ -165,7 +199,7 @@ int ufs_init(struct ufs_dev *dev)
 	ret = ufs_dev_init(dev);
 	if (ret != UFS_SUCCESS)
 	{
-		dprintf(CRITICAL, "UFS init failed\n");
+		dprintf(CRITICAL, "UFS dev_init failed\n");
 		goto ufs_init_err;
 	}
 
@@ -173,7 +207,7 @@ int ufs_init(struct ufs_dev *dev)
 	ret = uic_init(dev);
 	if (ret != UFS_SUCCESS)
 	{
-		dprintf(CRITICAL, "UFS init failed\n");
+		dprintf(CRITICAL, "UFS uic_init failed\n");
 		goto ufs_init_err;
 	}
 
@@ -184,24 +218,64 @@ int ufs_init(struct ufs_dev *dev)
 	ret = dme_send_nop_query(dev);
 	if (ret != UFS_SUCCESS)
 	{
-		dprintf(CRITICAL, "UFS init failed\n");
+		dprintf(CRITICAL, "UFS dme_send_nop_query failed\n");
 		goto ufs_init_err;
 	}
 
 	ret = dme_set_fdeviceinit(dev);
-    if (ret != UFS_SUCCESS)
-    {
-        dprintf(CRITICAL, "UFS init failed\n");
-        goto ufs_init_err;
-    }
+	if (ret != UFS_SUCCESS)
+	{
+		dprintf(CRITICAL, "UFS dme_set_fdeviceinit failed\n");
+		goto ufs_init_err;
+	}
 
 	ret = ucs_scsi_send_inquiry(dev);
-    if (ret != UFS_SUCCESS)
-    {
-        dprintf(CRITICAL, "UFS init failed\n");
-        goto ufs_init_err;
-    }
+	if (ret != UFS_SUCCESS)
+	{
+		dprintf(CRITICAL, "UFS ucs_scsi_send_inquiry failed\n");
+		goto ufs_init_err;
+	}
+
+	ret = dme_read_device_desc(dev);
+	if (ret != UFS_SUCCESS)
+	{
+		dprintf(CRITICAL, "dme_read_dev_desc read failed\n");
+		goto ufs_init_err;
+	}
+
+
+	for(lun=0; lun < dev->num_lus; lun++)
+	{
+		ret = dme_read_unit_desc(dev, lun);
+		if (ret != UFS_SUCCESS)
+		{
+			dprintf(CRITICAL, "UFS dme_read_unit_desc failed\n");
+			goto ufs_init_err;
+		}
+	}
+
+	dprintf(CRITICAL,"UFS init success\n");
 
 ufs_init_err:
+
+	if(ret != UFS_SUCCESS)
+	{
+		ufs_dump_hc_registers(dev);
+	}
+
 	return ret;
+}
+
+void ufs_dump_hc_registers(struct ufs_dev *dev)
+{
+	uint32_t base = dev->base;
+
+	dprintf(CRITICAL,"------Host controller register dump ---------\n");
+	dprintf(CRITICAL,"UFS_UECPA 0x%x\n",readl(UFS_UECPA(base)));
+	dprintf(CRITICAL,"UFS_UECDL 0x%x\n",readl(UFS_UECDL(base)));
+	dprintf(CRITICAL,"UFS_UECN 0x%x\n", readl(UFS_UECN(base)));
+	dprintf(CRITICAL,"UFS_UECT 0x%x\n",readl(UFS_UECT(base)));
+	dprintf(CRITICAL,"UFS_UECDME 0x%x\n",readl(UFS_UECDME(base)));
+	dprintf(CRITICAL,"UFS_HCS 0x%x\n", readl(UFS_HCS(base)));
+	dprintf(CRITICAL,"-----------End--------------------------------\n");
 }
