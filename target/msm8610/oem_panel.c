@@ -255,7 +255,7 @@ bool oem_panel_select(struct panel_struct *panelstruct,
 		break;
 	case HW_PLATFORM_MTP:
 		if (0 == platform_subtype)
-			panel_id = TRULY_WVGA_VIDEO_PANEL;
+			panel_id = TRULY_WVGA_CMD_PANEL;
 		else
 			panel_id = NT35590_720P_VIDEO_PANEL;
 		break;
