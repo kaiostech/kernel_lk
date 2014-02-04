@@ -239,10 +239,19 @@ static void target_mmc_sdhci_init()
 			config.bus_width = DATA_BUS_WIDTH_8BIT;
 	};
 
-	config.max_clk_rate = MMC_CLK_200MHZ;
-
 	/* Trying Slot 1*/
 	config.slot = 1;
+	/*
+	 * For 8974 AC platform the software clock
+	 * plan recommends to use the following frequencies:
+	 * 200 MHz --> 192 MHZ
+	 * 400 MHZ --> 384 MHZ
+	 * only for emmc slot
+	 */
+	if (platform_is_8974ac())
+		config.max_clk_rate = MMC_CLK_192MHZ;
+	else
+		config.max_clk_rate = MMC_CLK_200MHZ;
 	config.sdhc_base = mmc_sdhci_base[config.slot - 1];
 	config.pwrctl_base = mmc_sdc_base[config.slot - 1];
 	config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
@@ -250,6 +259,7 @@ static void target_mmc_sdhci_init()
 	if (!(dev = mmc_init(&config))) {
 		/* Trying Slot 2 next */
 		config.slot = 2;
+		config.max_clk_rate = MMC_CLK_200MHZ;
 		config.sdhc_base = mmc_sdhci_base[config.slot - 1];
 		config.pwrctl_base = mmc_sdc_base[config.slot - 1];
 		config.pwr_irq     = mmc_sdc_pwrctl_irq[config.slot - 1];
@@ -685,6 +695,9 @@ void target_uninit(void)
 #ifdef SSD_ENABLE
 	clock_ce_disable(SSD_CE_INSTANCE_1);
 #endif
+
+	/* Disable HC mode before jumping to kernel */
+	sdhci_mode_disable(&dev->host);
 }
 
 void shutdown_device()
@@ -745,9 +758,20 @@ static void set_sdc_power_ctrl()
 		{ SDC1_DATA_PULL_CTL_OFF, TLMM_PULL_UP, TLMM_PULL_MASK },
 	};
 
+	struct tlmm_cfgs sdc1_rclk_cfg[] =
+	{
+		{ SDC1_RCLK_PULL_CTL_OFF, TLMM_PULL_DOWN, TLMM_PULL_MASK },
+	};
+
 	/* Set the drive strength & pull control values */
 	tlmm_set_hdrive_ctrl(sdc1_hdrv_cfg, ARRAY_SIZE(sdc1_hdrv_cfg));
 	tlmm_set_pull_ctrl(sdc1_pull_cfg, ARRAY_SIZE(sdc1_pull_cfg));
+
+	/* RCLK is supported only with 8974 pro, set rclk to pull down
+	 * only for 8974 pro targets
+	 */
+	if (!platform_is_8974())
+		tlmm_set_pull_ctrl(sdc1_rclk_cfg, ARRAY_SIZE(sdc1_rclk_cfg));
 }
 
 int emmc_recovery_init(void)
