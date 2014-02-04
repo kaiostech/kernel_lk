@@ -1,5 +1,5 @@
 /*
- * * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+ * * Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -342,5 +342,5 @@ void config_mmss_clk(uint32_t ns,
              uint32_t ns_addr, uint32_t md_addr, uint32_t cc_addr);
 void config_mdp_lut_clk(void);
 void mdp_clock_init(void);
-
+void clock_config_uart_dm(uint8_t id);
 #endif

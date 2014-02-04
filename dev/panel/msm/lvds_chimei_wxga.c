@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,9 +30,20 @@
 #include <stdint.h>
 #include <msm_panel.h>
 #include <err.h>
+#include <target/board.h>
+
+extern int fpdlink3_init(void);
+extern int fpdlink3_config_slave(void);
 
 int lvds_chimei_wxga_config(void *pdata)
 {
+	int target_id = board_target_id();
+
+	if (target_id == LINUX_MACHTYPE_8064_ADP_2) {
+		fpdlink3_init();
+		fpdlink3_config_slave();
+	}
+
 	return NO_ERROR;
 }
 

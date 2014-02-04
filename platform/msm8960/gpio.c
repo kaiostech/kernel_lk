@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -329,4 +329,18 @@ void apq8064_display_gpio_init()
 			pm8921_gpio_config(pm8921_display_gpios_apq[i].gpio,
 				&(pm8921_display_gpios_apq[i].config));
 		}
+}
+
+void gpio_config_i2c(uint8_t id)
+{
+	switch (id) {
+	case GSBI_ID_1:
+		writel(0x2, GSBIn_UART_I2C_SEL(0));
+		gpio_tlmm_config(0, 4, GPIO_ENABLE, GPIO_PULL_UP, GPIO_2MA,
+								GPIO_ENABLE);
+		gpio_tlmm_config(1, 4, GPIO_OUTPUT, GPIO_PULL_UP,
+		GPIO_2MA, GPIO_ENABLE);
+	default:
+		dprintf(CRITICAL, "gpio_config_i2c(%hhu)\n", id);
+	}
 }
