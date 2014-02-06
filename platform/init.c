@@ -95,3 +95,9 @@ __WEAK void ce_clock_init(void)
 __WEAK void bs_set_timestamp(enum bs_entry bs_id)
 {
 }
+
+__WEAK int get_target_boot_params(const char *cmdline, const char *part,
+				  char *buf, int buflen)
+{
+	return -1;
+}
