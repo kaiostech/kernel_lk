@@ -48,5 +48,6 @@ void target_serialno(unsigned char *buf);
 void target_fastboot_init(void);
 struct mmc_device *target_mmc_device();
 
+bool target_display_panel_node(char *pbuf, uint16_t buf_size);
 
 #endif
