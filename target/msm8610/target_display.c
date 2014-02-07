@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -49,7 +49,7 @@
 #define GPIO_STATE_HIGH 2
 #define RESET_GPIO_SEQ_LEN 3
 
-int target_backlight_ctrl(uint8_t enable)
+int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 {
 	struct pm8x41_mpp mpp;
 	mpp.base = PM8x41_MMP3_BASE;
