@@ -57,14 +57,15 @@ typedef struct panel_config{
 	uint16_t panel_channelid;
 	uint16_t dsi_virtualchannel_id;
 	uint16_t panel_broadcast_mode;
-	uint16_t dsi_lp11_atinit;
-	uint16_t dsi_initmaster_time;
+	uint16_t panel_lp11_init;
+	uint16_t panel_init_delay;
 	uint16_t dsi_stream;
 	uint8_t  interleave_mode;
 	uint32_t panel_bitclock_freq;
 	uint32_t panel_operating_mode;
 	uint32_t panel_with_enable_gpio;
 	uint8_t  mode_gpio_state;
+	char  *slave_panel_node_id;
 };
 
 typedef struct panel_resolution{
@@ -165,8 +166,6 @@ typedef struct backlight {
 	uint16_t bl_step;
 	uint16_t bl_pmic_controltype;
 	char     *bl_pmic_model;
-	uint16_t bl_pwm_gpio_num;
-	uint16_t bl_lpg_chan_id;
 };
 
 #endif /*_PANEL_H_ */
