@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -697,6 +697,9 @@ void target_uninit(void)
 #endif
 	if (crypto_initialized())
 		crypto_eng_cleanup();
+
+	/* Disable HC mode before jumping to kernel */
+	sdhci_mode_disable(&dev->host);
 }
 
 void shutdown_device()

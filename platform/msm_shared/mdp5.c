@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -124,12 +124,17 @@ static void mdss_vbif_setup()
 	 * successfully unlocked. Ignore TZ return value till it's fixed */
 	if (!access_secure || 1) {
 		dprintf(SPEW, "MDSS VBIF registers unlocked by TZ.\n");
-		/* Force VBIF Clocks on  */
-		writel(0x1, VBIF_VBIF_DDR_FORCE_CLK_ON);
 
-		if (mdp_hw_rev == MDSS_MDP_HW_REV_100
-			|| mdp_hw_rev >= MDSS_MDP_HW_REV_102) {
-			/* Configure DDR burst length */
+		/* Force VBIF Clocks on */
+		if (mdp_hw_rev < MDSS_MDP_HW_REV_103)
+			writel(0x1, VBIF_VBIF_DDR_FORCE_CLK_ON);
+
+		/*
+		 * Following configuration is needed because on some versions,
+		 * recommended reset values are not stored.
+		 */
+		if (MDSS_IS_MAJOR_MINOR_MATCHING(mdp_hw_rev,
+			MDSS_MDP_HW_REV_100)) {
 			writel(0x00000707, VBIF_VBIF_DDR_OUT_MAX_BURST);
 			writel(0x00000030, VBIF_VBIF_DDR_ARB_CTRL );
 			writel(0x00000001, VBIF_VBIF_DDR_RND_RBN_QOS_ARB);
@@ -137,7 +142,8 @@ static void mdss_vbif_setup()
 			writel(0x0FFF0FFF, VBIF_VBIF_DDR_OUT_AX_AOOO);
 			writel(0x22222222, VBIF_VBIF_DDR_AXI_AMEMTYPE_CONF0);
 			writel(0x00002222, VBIF_VBIF_DDR_AXI_AMEMTYPE_CONF1);
-		} else if (mdp_hw_rev >= MDSS_MDP_HW_REV_101) {
+		} else if (MDSS_IS_MAJOR_MINOR_MATCHING(mdp_hw_rev,
+			MDSS_MDP_HW_REV_101)) {
 			writel(0x00000707, VBIF_VBIF_DDR_OUT_MAX_BURST);
 			writel(0x00000003, VBIF_VBIF_DDR_ARB_CTRL);
 		}
@@ -225,7 +231,7 @@ void mdss_intf_tg_setup(struct msm_panel_info *pinfo, uint32_t intf_base)
 	if (pinfo->lcdc.split_display) {
 		adjust_xres /= 2;
 		if (intf_base == MDP_INTF_1_BASE) {
-			writel(BIT(8), MDP_TG_SINK);
+			writel(BIT(8), MDP_REG_SPLIT_DISPLAY_LOWER_PIPE_CTL);
 			writel(0x0, MDP_REG_SPLIT_DISPLAY_UPPER_PIPE_CTL);
 			writel(0x1, MDP_REG_SPLIT_DISPLAY_EN);
 		}
@@ -294,7 +300,7 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 {
 	uint32_t mdp_rgb_size, height, width;
 
-	height = (fb->height << 16);
+	height = fb->height;
 	width = fb->width;
 
 	if (pinfo->lcdc.dual_pipe)
@@ -331,10 +337,31 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 
 		/* Baselayer for layer mixer 1 */
 		if (pinfo->lcdc.split_display)
-			writel(0x04000, MDP_CTL_1_BASE + CTL_LAYER_1);
+			writel(0x1000, MDP_CTL_1_BASE + CTL_LAYER_1);
 		else
 			writel(0x01000, MDP_CTL_0_BASE + CTL_LAYER_1);
 	}
+}
+
+void mdss_qos_remapper_setup(void)
+{
+	uint32_t mdp_hw_rev = readl(MDP_HW_REV);
+	uint32_t map;
+
+	if (MDSS_IS_MAJOR_MINOR_MATCHING(mdp_hw_rev, MDSS_MDP_HW_REV_100) ||
+		MDSS_IS_MAJOR_MINOR_MATCHING(mdp_hw_rev,
+						MDSS_MDP_HW_REV_102))
+		map = 0xE9;
+	else if (MDSS_IS_MAJOR_MINOR_MATCHING(mdp_hw_rev,
+						MDSS_MDP_HW_REV_101))
+		map = 0xA5;
+	else if (MDSS_IS_MAJOR_MINOR_MATCHING(mdp_hw_rev,
+						MDSS_MDP_HW_REV_103))
+		map = 0xFA;
+	else
+		return;
+
+	writel(map, MDP_QOS_REMAPPER_CLASS_0);
 }
 
 int mdp_dsi_video_config(struct msm_panel_info *pinfo,
@@ -354,7 +381,7 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 	mdss_vbif_setup();
 	mdss_smp_setup(pinfo);
 
-	writel(0x0E9, MDP_QOS_REMAPPER_CLASS_0);
+	mdss_qos_remapper_setup();
 
 	mdss_rgb_pipe_config(fb, pinfo, MDP_VP_0_RGB_0_BASE);
 	if (pinfo->lcdc.dual_pipe)
@@ -390,7 +417,7 @@ int mdp_edp_config(struct msm_panel_info *pinfo, struct fbcon_config *fb)
 	mdss_vbif_setup();
 	mdss_smp_setup(pinfo);
 
-	writel(0x0E9, MDP_QOS_REMAPPER_CLASS_0);
+	mdss_qos_remapper_setup();
 
 	mdss_rgb_pipe_config(fb, pinfo, MDP_VP_0_RGB_0_BASE);
 	if (pinfo->lcdc.dual_pipe)
@@ -416,6 +443,7 @@ int mdp_edp_config(struct msm_panel_info *pinfo, struct fbcon_config *fb)
 int mdp_dsi_cmd_config(struct msm_panel_info *pinfo,
                 struct fbcon_config *fb)
 {
+	uint32_t intf_sel = BIT(8);
 	int ret = NO_ERROR;
 
 	struct lcdc_panel_info *lcdc = NULL;
@@ -428,21 +456,38 @@ int mdp_dsi_cmd_config(struct msm_panel_info *pinfo,
 	if (lcdc == NULL)
 		return ERR_INVALID_ARGS;
 
+	if (pinfo->lcdc.split_display) {
+		writel(0x102, MDP_REG_SPLIT_DISPLAY_UPPER_PIPE_CTL);
+		writel(0x2, MDP_REG_SPLIT_DISPLAY_LOWER_PIPE_CTL);
+		writel(0x1, MDP_REG_SPLIT_DISPLAY_EN);
+	}
+
 	mdss_mdp_intf_off = mdss_mdp_intf_offset();
 
 	mdp_clk_gating_ctrl();
 
-	writel(0x0100, MDP_DISP_INTF_SEL);
+	if (pinfo->mipi.dual_dsi)
+		intf_sel |= BIT(16); /* INTF 2 enable */
+
+	writel(intf_sel, MDP_DISP_INTF_SEL);
 
 	mdss_vbif_setup();
 	mdss_smp_setup(pinfo);
+	mdss_qos_remapper_setup();
+
 	mdss_rgb_pipe_config(fb, pinfo, MDP_VP_0_RGB_0_BASE);
+	if (pinfo->lcdc.dual_pipe)
+		mdss_rgb_pipe_config(fb, pinfo, MDP_VP_0_RGB_1_BASE);
 
 	mdss_layer_mixer_setup(fb, pinfo);
 
 	writel(0x213F, MDP_INTF_1_BASE + MDP_PANEL_FORMAT + mdss_mdp_intf_off);
+	writel(0x21f20, MDP_CTL_0_BASE + CTL_TOP);
 
-	writel(0x20020, MDP_CTL_0_BASE + CTL_TOP);
+	if (pinfo->mipi.dual_dsi) {
+		writel(0x213F, MDP_INTF_2_BASE + MDP_PANEL_FORMAT + mdss_mdp_intf_off);
+		writel(0x21F30, MDP_CTL_1_BASE + CTL_TOP);
+	}
 
 	return ret;
 }
@@ -489,6 +534,7 @@ int mdp_dsi_cmd_off()
 int mdp_dma_on(void)
 {
 	writel(0x32048, MDP_CTL_0_BASE + CTL_FLUSH);
+	writel(0x32090, MDP_CTL_1_BASE + CTL_FLUSH);
 	writel(0x01, MDP_CTL_0_BASE + CTL_START);
 	return NO_ERROR;
 }
