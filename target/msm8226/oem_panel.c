@@ -49,8 +49,6 @@
 #include "include/panel_ssd2080m_720p_video.h"
 #include "include/panel_jdi_1080p_video.h"
 
-#define DISPLAY_MAX_PANEL_DETECTION 2
-
 #define SSD2080M_720P_VIDEO_PANEL_ON_DELAY 200
 
 /*---------------------------------------------------------------------------*/

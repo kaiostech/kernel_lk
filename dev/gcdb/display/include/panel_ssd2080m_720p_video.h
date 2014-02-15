@@ -381,7 +381,6 @@ static struct mipi_dsi_cmd ssd2080m_720p_video_on_command[] = {
 
 #define SSD2080M_720P_VIDEO_ON_COMMAND 47
 
-#define SSD2080M_720P_VIDEO_ON_COMMAND 48
 
 static char ssd2080m_720p_videooff_cmd0[] = {
 	0x10, 0x00, 0x15, 0x80
