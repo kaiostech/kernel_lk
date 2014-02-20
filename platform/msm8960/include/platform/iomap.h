@@ -1,7 +1,7 @@
-/* Copyright (c) 2008, Google Inc.
- * All rights reserved.
+/* Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008, Google Inc.
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -83,6 +83,8 @@
 
 #define GPIO_CONFIG_ADDR(x) (TLMM_BASE_ADDR + 0x1000 + (x)*0x10)
 #define GPIO_IN_OUT_ADDR(x) (TLMM_BASE_ADDR + 0x1004 + (x)*0x10)
+#define GSBIn_UART_I2C_SEL(x)   (TLMM_BASE_ADDR + 0x20D0 + (x)*0x4)
+
 
 #define EBI2_CHIP_SELECT_CFG0   0x1A100000
 #define EBI2_XMEM_CS3_CFG1      0x1A110034
@@ -143,4 +145,8 @@
 #define CE1_CRYPTO4_BASE        (0x18500000)
 #define CE3_CRYPTO4_BASE        (0x11000000)
 #define LCDC_BASE               (0x000C0000)
+#define GSBI_BASE(id)         	(0x12440000)
+#define GSBI_UART_DM_BASE(id) 	(GSBI_BASE(id) + 0x40000)
+#define QUP_BASE(id)          	(GSBI_BASE(id) + 0x20000)
+
 #endif
