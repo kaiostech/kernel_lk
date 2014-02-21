@@ -108,7 +108,7 @@ static void fpdlink3_read_reg(uint8_t addr, uint8_t reg, int len, uint8_t *buf)
 		};
 
 		int err = qup_i2c_xfer(dev, rd_buf, 2);
-		if (err) {
+		if (err < 0) {
 			dprintf(INFO, "Read reg %x failed\n", reg);
 			return;
 		}
@@ -125,7 +125,7 @@ static void fpdlink3_write_reg(uint8_t addr, uint8_t reg, uint8_t val)
 		};
 
 		int err = qup_i2c_xfer(dev, msg_buf, 1);
-		if (err) {
+		if (err < 0) {
 			dprintf(INFO, "Write reg %x failed\n", reg);
 			return;
 		}
@@ -163,7 +163,7 @@ static void fpdlink3_conf_bit(uint16_t addr, uint8_t reg, uint8_t mask, bool set
 		 * read default setting first
 		 */
 		int err = qup_i2c_xfer(dev, rd_buf, 2);
-		if (err) {
+		if (err < 0) {
 			dprintf(INFO, "Read reg %x failed\n", reg);
 			return;
 		}
@@ -183,7 +183,7 @@ static void fpdlink3_conf_bit(uint16_t addr, uint8_t reg, uint8_t mask, bool set
 		}
 
 		err = qup_i2c_xfer(dev, msg_buf, 1);
-		if (err) {
+		if (err < 0) {
 			dprintf(INFO, "Write reg %x failed\n", reg);
 			return;
 		}
@@ -221,14 +221,14 @@ static void fpdlink3_reset_sx1509(void)
 		};
 
 		int err = qup_i2c_xfer(dev, msg_buf, 1);
-		if (err) {
+		if (err < 0) {
 			dprintf(INFO, "Write reg %x failed\n", REG_RESET);
 			return;
 		}
 
 		buf[1] = 0x34;
 		err = qup_i2c_xfer(dev, msg_buf, 1);
-		if (err) {
+		if (err < 0) {
 			dprintf(INFO, "Write reg %x failed\n", REG_RESET);
 			return;
 		}
