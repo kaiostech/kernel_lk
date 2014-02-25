@@ -162,12 +162,12 @@ int target_ldo_ctrl(uint8_t enable)
 	return 0;
 }
 
-void display_init(void)
+void target_display_init(void)
 {
 	gcdb_display_init(MDP_REV_304, MIPI_FB_ADDR);
 }
 
-void display_shutdown(void)
+void target_display_shutdown(void)
 {
 	gcdb_display_shutdown();
 }

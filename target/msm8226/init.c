@@ -250,7 +250,7 @@ void target_init(void)
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
 	dprintf(SPEW, "Display Init: Start\n");
-	display_init();
+	target_display_init();
 	dprintf(SPEW, "Display Init: Done\n");
 #endif
 
@@ -391,6 +391,8 @@ void target_uninit(void)
 
 	if (target_is_ssd_enabled())
 		clock_ce_disable(SSD_CE_INSTANCE);
+
+	target_display_shutdown();
 }
 
 void target_usb_init(void)

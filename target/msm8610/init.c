@@ -166,13 +166,14 @@ void target_init(void)
 
 	/* Display splash screen if enabled */
 	dprintf(SPEW, "Display Init: Start\n");
-	display_init();
+	target_display_init();
 	dprintf(SPEW, "Display Init: Done\n");
 }
 
 void target_uninit(void)
 {
         mmc_put_card_to_sleep(dev);
+	target_display_shutdown();
 }
 
 #define SSD_CE_INSTANCE         1
