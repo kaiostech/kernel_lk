@@ -51,6 +51,6 @@ bool target_is_ssd_enabled(void);
 struct mmc_device *target_mmc_device();
 
 bool target_display_panel_node(char *pbuf, uint16_t buf_size);
-void target_display_init(void);
+void target_display_init(const char *panel_name);
 void target_display_shutdown(void);
 #endif
