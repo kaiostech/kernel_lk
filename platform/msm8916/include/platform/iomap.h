@@ -97,6 +97,7 @@
 #define SDCC1_M                     (CLK_CTL_BASE + 0x4D8) /* m */
 #define SDCC1_N                     (CLK_CTL_BASE + 0x4DC) /* n */
 #define SDCC1_D                     (CLK_CTL_BASE + 0x4E0) /* d */
+#define SDC1_HDRV_PULL_CTL           0x110A000
 
 /* UART */
 #define BLSP1_AHB_CBCR              (CLK_CTL_BASE + 0x5C4)
