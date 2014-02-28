@@ -38,55 +38,139 @@
 
 void hsusb_clock_init(void)
 {
+	int ret;
+	struct clk *iclk, *cclk;
 
+	ret = clk_get_set_enable("usb_iface_clk", 0, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set usb_iface_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	ret = clk_get_set_enable("usb_core_clk", 80000000, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set usb_core_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+	mdelay(20);
+
+	iclk = clk_get("usb_iface_clk");
+	cclk = clk_get("usb_core_clk");
+
+	clk_disable(iclk);
+	clk_disable(cclk);
+
+	mdelay(20);
+
+	/* Start the block reset for usb */
+	writel(1, USB_HS_BCR);
+
+	mdelay(20);
+
+	/* Take usb block out of reset */
+	writel(0, USB_HS_BCR);
+
+	mdelay(20);
+
+	ret = clk_enable(iclk);
+
+	if(ret)
+	{
+        dprintf(CRITICAL, "failed to set usb_iface_clk after async ret = %d\n", ret);
+        ASSERT(0);
+	}
+
+	ret = clk_enable(cclk);
+
+	if(ret)
+	{
+        dprintf(CRITICAL, "failed to set usb_iface_clk after async ret = %d\n", ret);
+        ASSERT(0);
+	}
 }
 
 void clock_init_mmc(uint32_t interface)
 {
+	char clk_name[64];
+	int ret;
 
+	snprintf(clk_name, 64, "sdc%u_iface_clk", interface);
+
+	/* enable interface clock */
+	ret = clk_get_set_enable(clk_name, 0, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set sdc1_iface_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
 }
 
 /* Configure MMC clock */
 void clock_config_mmc(uint32_t interface, uint32_t freq)
 {
+	int ret;
+	uint32_t reg;
+	char clk_name[64];
+
+	snprintf(clk_name, 64, "sdc%u_core_clk", interface);
+
+#ifndef MMC_SDHCI_SUPPORT
+	mmc_boot_mci_clk_disable();
+#endif
+	if(freq == MMC_CLK_400KHZ)
+	{
+		ret = clk_get_set_enable(clk_name, 400000, 1);
+	}
+	else if(freq == MMC_CLK_50MHZ)
+	{
+		ret = clk_get_set_enable(clk_name, 50000000, 1);
+	}
+	else if(freq == MMC_CLK_200MHZ)
+	{
+		ret = clk_get_set_enable(clk_name, 200000000, 1);
+	}
+	else if(freq == MMC_CLK_177MHZ)
+	{
+		ret = clk_get_set_enable(clk_name, 177770000, 1);
+	}
+	else
+	{
+		dprintf(CRITICAL, "sdc frequency (%d) is not supported\n", freq);
+		ASSERT(0);
+	}
+
+
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set sdc1_core_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
+
+#ifndef MMC_SDHCI_SUPPORT
+	/* Enalbe MCI clock */
 	mmc_boot_mci_clk_enable();
+#endif
 }
 
 /* Configure UART clock based on the UART block id*/
 void clock_config_uart_dm(uint8_t id)
 {
+	int ret;
 
-}
+	ret = clk_get_set_enable("uart2_iface_clk", 0, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set uart3_iface_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
 
-/* Function to asynchronously reset CE.
- * Function assumes that all the CE clocks are off.
- */
-static void ce_async_reset(uint8_t instance)
-{
-
-}
-
-static void clock_ce_enable(uint8_t instance)
-{
-
-}
-
-static void clock_ce_disable(uint8_t instance)
-{
-
-}
-
-void clock_config_ce(uint8_t instance)
-{
-	/* Need to enable the clock before disabling since the clk_disable()
-	 * has a check to default to nop when the clk_enable() is not called
-	 * on that particular clock.
-	 */
-	clock_ce_enable(instance);
-
-	clock_ce_disable(instance);
-
-	ce_async_reset(instance);
-
-	clock_ce_enable(instance);
+	ret = clk_get_set_enable("uart2_core_clk", 7372800, 1);
+	if(ret)
+	{
+		dprintf(CRITICAL, "failed to set uart3_core_clk ret = %d\n", ret);
+		ASSERT(0);
+	}
 }
