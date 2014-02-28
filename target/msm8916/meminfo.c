@@ -46,7 +46,7 @@ uint32_t target_dev_tree_mem(void *fdt, uint32_t memory_node_offset)
 	int ret = 0;
 
 	/* Make sure RAM partition table is initialized */
-	ASSERT(smem_ram_ptable_init(&ram_ptable));
+	ASSERT(smem_ram_ptable_init_v1());
 
 	/* Calculating the size of the mem_info_ptr */
 	for (i = 0 ; i < ram_ptable.len; i++)
