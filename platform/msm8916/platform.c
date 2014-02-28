@@ -59,6 +59,7 @@ static struct smem_ram_ptable ram_ptable;
 
 void platform_early_init(void)
 {
+	board_init();
 	platform_clock_init();
 	qgic_init();
 	qtimer_init();
