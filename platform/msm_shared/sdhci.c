@@ -800,6 +800,7 @@ void sdhci_init(struct sdhci_host *host)
 {
 	uint32_t caps[2];
 	uint8_t sdcc_version = 0;
+	uint8_t sdcc_minor_version = 0;
 
 	/* Read the capabilities register & store the info */
 	caps[0] = REG_READ32(host, SDHCI_CAPS_REG1);
@@ -842,7 +843,8 @@ void sdhci_init(struct sdhci_host *host)
 	 * Version >= 1 --> SDCC5 or above core
 	 */
 	sdcc_version  = ((readl(host->msm_host->pwrctl_base + MCI_VERSION)) & CORE_VERSION_MAJOR_MASK) >> CORE_VERSION_MAJOR_SHIFT;
-	host->caps.hs400_support = (sdcc_version >= 1) ? 1 : 0;
+	sdcc_minor_version  = ((readl(host->msm_host->pwrctl_base + MCI_VERSION)) & CORE_VERSION_MINOR_MASK);
+	host->caps.hs400_support = ((sdcc_version >= 1) && (sdcc_minor_version	!= 0xE)) ? 1 : 0;
 
 	/* Set bus power on */
 	sdhci_set_bus_power_on(host);

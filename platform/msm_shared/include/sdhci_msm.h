@@ -101,6 +101,8 @@
 #define MCI_VERSION                               0x50
 #define CORE_VERSION_MAJOR_MASK                   0xF0000000
 #define CORE_VERSION_MAJOR_SHIFT                  0x1C
+#define CORE_VERSION_MINOR_MASK                   0x0000000F
+#define CORE_VERSION_MAJOR_SHIFT                  0x3
 
 struct sdhci_msm_data
 {
