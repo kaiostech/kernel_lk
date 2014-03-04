@@ -325,12 +325,6 @@ void target_init(void)
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
-	/* Display splash screen if enabled */
-#if DISPLAY_SPLASH_SCREEN
-	dprintf(INFO, "Display Init: Start\n");
-	display_init();
-	dprintf(INFO, "Display Init: Done\n");
-#endif
 
 	/*
 	 * Set drive strength & pull ctrl for

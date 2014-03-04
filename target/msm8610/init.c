@@ -174,11 +174,6 @@ void target_init(void)
 
 	target_sdc_init();
 
-	/* Display splash screen if enabled */
-	dprintf(SPEW, "Display Init: Start\n");
-	display_init();
-	dprintf(SPEW, "Display Init: Done\n");
-
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
 }
