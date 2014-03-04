@@ -52,4 +52,13 @@ struct mmc_device *target_mmc_device();
 
 bool target_display_panel_node(char *pbuf, uint16_t buf_size);
 
+#ifdef ANDROID_BOOT_RTC_ALARM
+uint32_t target_rtc_status_detect(void);
+#else
+uint32_t inline target_rtc_status_detect(void)
+{
+	return 0;
+}
+#endif
+
 #endif
