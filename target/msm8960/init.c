@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -141,12 +141,6 @@ void target_init(void)
 	default:
 		dprintf(CRITICAL,"Keyboard is not supported for platform: %d\n",platform_id);
 	};
-
-	/* Display splash screen if enabled */
-#if DISPLAY_SPLASH_SCREEN
-	display_init();
-	dprintf(SPEW, "Diplay initialized\n");
-#endif
 
 	if ((platform_id == MSM8960) || (platform_id == MSM8960AB) ||
 		(platform_id == APQ8060AB) || (platform_id == MSM8260AB) ||

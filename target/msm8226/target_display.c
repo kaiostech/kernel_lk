@@ -341,13 +341,13 @@ int target_ldo_ctrl(uint8_t enable)
 	return ret;
 }
 
-void display_init(void)
+void target_display_init(const char *panel_name)
 {
         uint32_t panel_loop = 0;
         uint32_t ret = 0;
 
 	do {
-		ret = gcdb_display_init(MDP_REV_50, MIPI_FB_ADDR);
+		ret = gcdb_display_init(panel_name, MDP_REV_50, MIPI_FB_ADDR);
 		if (!ret || ret == ERR_NOT_SUPPORTED) {
 			break;
 		} else {
@@ -359,7 +359,7 @@ void display_init(void)
 
 }
 
-void display_shutdown(void)
+void target_display_shutdown(void)
 {
 	gcdb_display_shutdown();
 }

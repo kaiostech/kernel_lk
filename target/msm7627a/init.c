@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -184,12 +184,6 @@ void target_init(void)
 #if (!ENABLE_NANDWRITE)
 	keys_init();
 	keypad_init();
-#endif
-
-	/* Display splash screen if enabled */
-#if DISPLAY_SPLASH_SCREEN
-	display_init();
-	dprintf(SPEW, "Diplay initialized\n");
 #endif
 
 	if (target_is_emmc_boot()) {
