@@ -49,6 +49,7 @@
 #include <partition_parser.h>
 #include <platform/clock.h>
 #include <platform/timer.h>
+#include <shutdown_detect.h>
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
@@ -189,6 +190,8 @@ void target_init(void)
 	target_keystatus();
 
 	target_sdc_init();
+
+	shutdown_detect();
 
 	/* Display splash screen if enabled */
 	dprintf(SPEW, "Display Init: Start\n");
