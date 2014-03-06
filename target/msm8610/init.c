@@ -431,3 +431,21 @@ struct mmc_device *target_mmc_device()
 {
 	return dev;
 }
+
+/* Configure PMIC and Drop PS_HOLD for shutdown */
+void shutdown_device()
+{
+	dprintf(CRITICAL, "Going down for shutdown.\n");
+
+	/* Configure PMIC for shutdown */
+	pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "shutdown failed\n");
+
+	ASSERT(0);
+}
