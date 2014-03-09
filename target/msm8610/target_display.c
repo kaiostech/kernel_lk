@@ -162,7 +162,7 @@ int target_ldo_ctrl(uint8_t enable)
 	return 0;
 }
 
-void target_display_init(void)
+void target_display_init(const char *panel_name)
 {
 	gcdb_display_init(MDP_REV_304, MIPI_FB_ADDR);
 }
