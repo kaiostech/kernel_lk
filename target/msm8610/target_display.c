@@ -164,7 +164,7 @@ int target_ldo_ctrl(uint8_t enable)
 
 void target_display_init(const char *panel_name)
 {
-	gcdb_display_init(MDP_REV_304, MIPI_FB_ADDR);
+	gcdb_display_init(panel_name, MDP_REV_304, MIPI_FB_ADDR);
 }
 
 void target_display_shutdown(void)

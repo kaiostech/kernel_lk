@@ -221,7 +221,7 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 	return true;
 }
 
-bool oem_panel_select(struct panel_struct *panelstruct,
+bool oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 			struct msm_panel_info *pinfo,
 			struct mdss_dsi_phy_ctrl *phy_db)
 {
