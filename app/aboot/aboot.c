@@ -65,7 +65,6 @@
 #include "mmc.h"
 #include "devinfo.h"
 #include "board.h"
-
 #include "scm.h"
 
 extern  bool target_use_signed_kernel(void);
@@ -124,7 +123,7 @@ static bool boot_into_ffbm;
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
 
-static device_info device = {DEVICE_MAGIC, 0, 0, 0};
+static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0};
 
 struct atag_ptbl_entry
 {
@@ -161,6 +160,7 @@ char max_download_size[MAX_RSP_SIZE];
 char charger_screen_enabled[MAX_RSP_SIZE];
 char sn_buf[13];
 char display_panel_buf[MAX_PANEL_BUF_SIZE];
+char panel_display_mode[MAX_RSP_SIZE];
 
 extern int emmc_recovery_init(void);
 
@@ -1920,6 +1920,16 @@ void cmd_oem_disable_charger_screen(const char *arg, void *data, unsigned size)
 	fastboot_okay("");
 }
 
+void cmd_oem_select_display_panel(const char *arg, void *data, unsigned size)
+{
+	dprintf(INFO, "Selecting display panel %s\n", arg);
+	if (arg)
+		strlcpy(device.display_panel, arg,
+			sizeof(device.display_panel));
+	write_device_info(&device);
+	fastboot_okay("");
+}
+
 void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
 {
 	if(!device.is_unlocked)
@@ -1932,12 +1942,14 @@ void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
 
 void cmd_oem_devinfo(const char *arg, void *data, unsigned sz)
 {
-	char response[64];
+	char response[128];
 	snprintf(response, sizeof(response), "\tDevice tampered: %s", (device.is_tampered ? "true" : "false"));
 	fastboot_info(response);
 	snprintf(response, sizeof(response), "\tDevice unlocked: %s", (device.is_unlocked ? "true" : "false"));
 	fastboot_info(response);
 	snprintf(response, sizeof(response), "\tCharger screen enabled: %s", (device.charger_screen_enabled ? "true" : "false"));
+	fastboot_info(response);
+	snprintf(response, sizeof(response), "\tDisplay panel: %s", (device.display_panel));
 	fastboot_info(response);
 	fastboot_okay("");
 }
@@ -2151,6 +2163,8 @@ void aboot_fastboot_register_commands(void)
 			cmd_oem_enable_charger_screen);
 	fastboot_register("oem disable-charger-screen",
 			cmd_oem_disable_charger_screen);
+	fastboot_register("oem select-display-panel",
+			cmd_oem_select_display_panel);
 	/* publish variables and their values */
 	fastboot_publish("product",  TARGET(BOARD));
 	fastboot_publish("kernel",   "lk");
@@ -2174,6 +2188,10 @@ void aboot_fastboot_register_commands(void)
 			device.charger_screen_enabled);
 	fastboot_publish("charger-screen-enabled",
 			(const char *) charger_screen_enabled);
+	snprintf(panel_display_mode, MAX_RSP_SIZE, "%s",
+			device.display_panel);
+	fastboot_publish("display-panel",
+			(const char *) panel_display_mode);
 }
 
 void aboot_init(const struct app_descriptor *app)
@@ -2200,7 +2218,7 @@ void aboot_init(const struct app_descriptor *app)
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
 	dprintf(SPEW, "Display Init: Start\n");
-	target_display_init(NULL);
+	target_display_init(device.display_panel);
 	dprintf(SPEW, "Display Init: Done\n");
 #endif
 
