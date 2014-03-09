@@ -255,13 +255,6 @@ void target_init(void)
 	/* turn on vibrator to indicate that phone is booting up to end user */
 	vib_timed_turn_on(VIBRATE_TIME);
 
-	/* Display splash screen if enabled */
-#if DISPLAY_SPLASH_SCREEN
-	dprintf(SPEW, "Display Init: Start\n");
-	target_display_init();
-	dprintf(SPEW, "Display Init: Done\n");
-#endif
-
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
 }
@@ -420,8 +413,6 @@ void target_uninit(void)
 
 	if (target_is_ssd_enabled())
 		clock_ce_disable(SSD_CE_INSTANCE);
-
-	target_display_shutdown();
 }
 
 void target_usb_init(void)
