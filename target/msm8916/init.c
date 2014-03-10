@@ -115,6 +115,7 @@ static int target_volume_up()
 	thread_sleep(10);
 
 	/* Get status of GPIO */
+	thread_sleep(1);
 	status = gpio_status(TLMM_VOL_UP_BTN_GPIO);
 
 	/* Active low signal. */
