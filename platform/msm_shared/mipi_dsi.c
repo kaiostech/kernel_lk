@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -975,7 +975,7 @@ int mdss_dsi_video_mode_config(uint16_t disp_width,
 
 	writel(vsync_width << 16 | 0, ctl_base + VIDEO_MODE_VSYNC_VPOS);
 
-	writel(0x0, ctl_base + EOT_PACKET_CTRL);
+	writel(0x1, ctl_base + EOT_PACKET_CTRL);
 
 	writel(0x00000100, ctl_base + MISR_VIDEO_CTRL);
 
@@ -1208,8 +1208,8 @@ int mdss_dsi_cmd_mode_config(uint16_t disp_width,
 	       DSI_CTRL);
 	writel(0x10000000, DSI_COMMAND_MODE_DMA_CTRL);
 	writel(0x10000000, DSI_MISR_CMD_CTRL);
+	writel(0x1, DSI_EOT_PACKET_CTRL);
 #endif
-
 	return 0;
 }
 
