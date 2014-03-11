@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -37,14 +37,14 @@
 #define MDP4_RGB_OFF            0x10000
 
 struct hdmi_disp_mode_timing_type hdmi_timing_default = {
-	.height         = 1080,
-	.hsync_porch_fp = 88,
-	.hsync_width    = 44,
-	.hsync_porch_bp = 148,
-	.width          = 1920,
-	.vsync_porch_fp = 4,
-	.vsync_width    = 5,
-	.vsync_porch_bp = 36,
+	.width          = 1280,
+	.hsync_porch_fp = 48,
+	.hsync_width    = 32,
+	.hsync_porch_bp = 80,
+	.height         = 800,
+	.vsync_porch_fp = 2,
+	.vsync_width    = 6,
+	.vsync_porch_bp = 15,
 	.bpp            = 24,
 };
 
@@ -79,14 +79,28 @@ static uint8_t hdmi_msm_avi_iframe_lut[][16] = {
 	 0x07,	0x07,	0x07,	0x07,	0x02, 0x02, 0x02}  /*12*/
 };
 
+bool hdmi_msm_is_dvi()
+{
+	/*
+	 * return DVI mode for now as
+	 * the current requirement is
+	 * only for a DVI panel.
+	 */
+	return true;
+}
+
 void hdmi_msm_set_mode(int on)
 {
 	uint32_t val = 0;
+
+	if (!hdmi_msm_is_dvi())
+		val |= 0x02; /* Enable HDMI mode */
+
 	if (on) {
-		val |= 0x00000003;
+		val |= 0x00000001;
 		writel(val, HDMI_CTRL);
 	} else {
-		val &= ~0x00000002;
+		val &= ~0x00000000;
 		writel(val, HDMI_CTRL);
 	}
 }
@@ -305,14 +319,14 @@ int hdmi_msm_turn_on(void)
 	// Enable USEC REF timer
 	writel(0x0001001B, HDMI_USEC_REFTIMER);
 
-	// Write 1 to HDMI_CTRL to enable HDMI
-	hdmi_msm_set_mode(1);
-
 	// Video setup for HDMI
 	hdmi_video_setup();
 
-	// AVI info setup
-	hdmi_msm_avi_info_frame();
+	if (!hdmi_msm_is_dvi())
+		hdmi_msm_avi_info_frame();
+
+	// Write 1 to HDMI_CTRL to enable HDMI
+	hdmi_msm_set_mode(1);
 
 	return 0;
 }
