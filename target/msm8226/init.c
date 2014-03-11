@@ -48,6 +48,8 @@
 #include <scm.h>
 #include <stdlib.h>
 #include <partition_parser.h>
+#include <shutdown_detect.h>
+#include <vibrator.h>
 
 extern  bool target_use_signed_kernel(void);
 static void set_sdc_power_ctrl(void);
@@ -65,6 +67,7 @@ static void set_sdc_power_ctrl(void);
 #define CRYPTO_ENGINE_CMD_ARRAY_SIZE       20
 
 #define TLMM_VOL_UP_BTN_GPIO    106
+#define VIBRATE_TIME    250
 
 #define SSD_CE_INSTANCE         1
 
@@ -247,6 +250,11 @@ void target_init(void)
 
 	target_sdc_init();
 
+	shutdown_detect();
+
+	/* turn on vibrator to indicate that phone is booting up to end user */
+	vib_timed_turn_on(VIBRATE_TIME);
+
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
 	dprintf(SPEW, "Display Init: Start\n");
@@ -369,6 +377,24 @@ void reboot_device(unsigned reboot_reason)
 	dprintf(CRITICAL, "Rebooting failed\n");
 }
 
+/* Configure PMIC and Drop PS_HOLD for shutdown */
+void shutdown_device()
+{
+	dprintf(CRITICAL, "Going down for shutdown.\n");
+
+	/* Configure PMIC for shutdown */
+	pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "shutdown failed\n");
+
+	ASSERT(0);
+}
+
 crypto_engine_type board_ce_type(void)
 {
 	return CRYPTO_ENGINE_TYPE_HW;
@@ -387,6 +413,9 @@ void target_usb_stop(void)
 
 void target_uninit(void)
 {
+	/* wait for the vibrator timer is expried */
+	wait_vib_timeout();
+
 	mmc_put_card_to_sleep(dev);
 
 	if (target_is_ssd_enabled())
