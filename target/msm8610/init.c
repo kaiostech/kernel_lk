@@ -80,6 +80,32 @@ void target_early_init(void)
 	uart_dm_init(2, 0, BLSP1_UART1_BASE);
 #endif
 }
+enum mtp_subtype
+{
+	MTP_SUBTYPE_WVGA,
+	MTP_SUBTYPE_720P,
+	MTP_SUBTYPE_APQ_WVGA,
+};
+
+void set_mtp_baseband(struct board_data *board)
+{
+	uint32_t platform_subtype;
+	platform_subtype = board->platform_subtype;
+
+	switch(platform_subtype) {
+	case MTP_SUBTYPE_WVGA:
+	case MTP_SUBTYPE_720P:
+		board->baseband = BASEBAND_MSM;
+		break;
+	case MTP_SUBTYPE_APQ_WVGA:
+		board->baseband = BASEBAND_APQ;
+		break;
+	default:
+		dprintf(CRITICAL, "MTP platform subtype :%u is not supported\n",
+				platform_subtype);
+		ASSERT(0);
+	};
+}
 
 /* Return 1 if vol_up pressed */
 static int target_volume_up()
@@ -245,47 +271,22 @@ void target_detect(struct board_data *board)
 void target_baseband_detect(struct board_data *board)
 {
 	uint32_t platform;
-	uint32_t platform_subtype;
+	uint32_t platform_hardware;
 
 	platform         = board->platform;
-	platform_subtype = board->platform_subtype;
+	platform_hardware = board->platform_hw;
 
-	/*
-	 * Look for platform subtype if present, else
-	 * check for platform type to decide on the
-	 * baseband type
-	 */
-	switch(platform_subtype)
-	{
-	case HW_PLATFORM_SUBTYPE_UNKNOWN:
-		break;
-	case HW_PLATFORM_SUBTYPE_SKUAA:
-		break;
-	case HW_PLATFORM_SUBTYPE_SKUF:
-		break;
-	case HW_PLATFORM_SUBTYPE_SKUAB:
-		break;
-	default:
-		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n", platform_subtype);
-		ASSERT(0);
-	};
-
-	switch(platform)
-	{
-	case MSM8610:
-	case MSM8110:
-	case MSM8210:
-	case MSM8810:
-	case MSM8612:
-	case MSM8212:
-	case MSM8812:
-	case MSM8510:
-	case MSM8512:
+	switch(platform_hardware) {
+	case HW_PLATFORM_MTP:
+		set_mtp_baseband(board);
+	break;
+	case HW_PLATFORM_SURF:
+	case HW_PLATFORM_QRD:
 		board->baseband = BASEBAND_MSM;
-		break;
+	break;
 	default:
-		dprintf(CRITICAL, "Platform type: %u is not supported\n", platform);
-		ASSERT(0);
+		dprintf(CRITICAL, "Platform type : %u is not supported defaulting the baseband to MSM\n", platform_hardware);
+		board->baseband = BASEBAND_MSM;
 	};
 }
 
