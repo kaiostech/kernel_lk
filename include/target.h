@@ -60,7 +60,7 @@ uint32_t target_get_boot_device();
 const char * target_usb_controller();
 void target_usb_phy_reset(void);
 void target_usb_phy_mux_configure(void);
-
+bool target_is_cdp_qvga();
 /* Boot device */
 enum boot_device
 {
