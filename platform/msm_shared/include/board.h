@@ -36,6 +36,7 @@ struct board_data {
 	uint32_t platform;
 	uint32_t platform_hw;
 	uint32_t platform_subtype;
+	uint32_t platform_version;
 	uint32_t target;
 	uint32_t baseband;
 	uint32_t pmic_type;
