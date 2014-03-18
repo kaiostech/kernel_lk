@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -314,34 +314,20 @@ int hdmi_dtv_on()
 	if (hdmi_pll_on)
 		hdmi_pll_disable();
 
-	/* 1080p60/1080p50 case */
-	writel(0x2, HDMI_PHY_PLL_REFCLK_CFG);
-	writel(0x2, HDMI_PHY_PLL_CHRG_PUMP_CFG);
+	/* TYPICAL TIMING SETTINGS 69.3 MHz @ 59.94 */
+	writel(0x12, HDMI_PHY_PLL_REFCLK_CFG);
 	writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
-	writel(0x33, HDMI_PHY_PLL_LOOP_FLT_CFG1);
-	writel(0x2C, HDMI_PHY_PLL_IDAC_ADJ_CFG);
-	writel(0x6, HDMI_PHY_PLL_I_VI_KVCO_CFG);
-	writel(0xA, HDMI_PHY_PLL_PWRDN_B);
-	writel(0x76, HDMI_PHY_PLL_SDM_CFG0);
-	writel(0x01, HDMI_PHY_PLL_SDM_CFG1);
-	writel(0x4C, HDMI_PHY_PLL_SDM_CFG2);
-	writel(0xC0, HDMI_PHY_PLL_SDM_CFG3);
-	writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
-	writel(0x9A, HDMI_PHY_PLL_SSC_CFG0);
-	writel(0x00, HDMI_PHY_PLL_SSC_CFG1);
-	writel(0x00, HDMI_PHY_PLL_SSC_CFG2);
-	writel(0x00, HDMI_PHY_PLL_SSC_CFG3);
-	writel(0x10, HDMI_PHY_PLL_LOCKDET_CFG0);
-	writel(0x1A, HDMI_PHY_PLL_LOCKDET_CFG1);
-	writel(0x0D, HDMI_PHY_PLL_LOCKDET_CFG2);
-	writel(0xe6, HDMI_PHY_PLL_VCOCAL_CFG0);
+	writel(0x63, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+	writel(0xB5, HDMI_PHY_PLL_VCOCAL_CFG0);
 	writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
 	writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
-	writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG3);
 	writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
 	writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
-	writel(0x33, HDMI_PHY_PLL_VCOCAL_CFG6);
-	writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG7);
+	writel(0x72, HDMI_PHY_PLL_SDM_CFG0);
+	writel(0x72, HDMI_PHY_PLL_SDM_CFG1);
+	writel(0x55, HDMI_PHY_PLL_SDM_CFG2);
+	writel(0x55, HDMI_PHY_PLL_SDM_CFG3);
+	writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
 
 	udelay(10);
 
