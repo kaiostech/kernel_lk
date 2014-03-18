@@ -148,6 +148,7 @@
 #define MMC_CLK_48MHZ                             48000000
 #define MMC_CLK_50MHZ                             49152000
 #define MMC_CLK_96MHZ                             96000000
+#define MMC_CLK_177MHZ                            177770000
 #define MMC_CLK_200MHZ                            200000000
 #define MMC_CLK_192MHZ                            192000000
 #define MMC_CLK_400MHZ                            400000000
@@ -300,6 +301,7 @@ struct mmc_config_data {
 	uint32_t pwrctl_base;  /* Base address for power control registers */
 	uint16_t bus_width;    /* Bus width used */
 	uint32_t max_clk_rate; /* Max clock rate supported */
+	uint8_t hs400_support; /* SDHC HS400 mode supported or not */
 };
 
 /* mmc device structure */
