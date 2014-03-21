@@ -40,6 +40,7 @@
 #include <board.h>
 #include <baseband.h>
 #include <hsusb.h>
+#include <scm.h>
 #include <platform/gpio.h>
 #include <platform/gpio.h>
 #include <platform/irqs.h>
@@ -47,6 +48,8 @@
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
 #define TLMM_VOL_UP_BTN_GPIO    107
+
+#define FASTBOOT_MODE           0x77665500
 
 static void set_sdc_power_ctrl(void);
 
@@ -187,10 +190,25 @@ unsigned check_reboot_mode(void)
 
 void reboot_device(unsigned reboot_reason)
 {
+	uint8_t reset_type = 0;
+	uint32_t ret = 0;
+
+	ret = scm_call_atomic2(SCM_SVC_BOOT, BOOT_MISC_DETECT, 0, 0);
+	if (ret)
+		dprintf(CRITICAL, "Failed to write to the boot_misc_detect register\n");
+
 	writel(reboot_reason, RESTART_REASON_ADDR);
 
-	/* Configure PMIC for warm reset */
-	pm8x41_reset_configure(PON_PSHOLD_WARM_RESET);
+	if(reboot_reason == FASTBOOT_MODE)
+		reset_type = PON_PSHOLD_WARM_RESET;
+	else
+		reset_type = PON_PSHOLD_HARD_RESET;
+
+	pm8x41_reset_configure(reset_type);
+
+	ret = scm_halt_pmic_arbiter();
+	if (ret)
+		dprintf(CRITICAL , "Failed to halt pmic arbiter: %d\n", ret);
 
 	/* Drop PS_HOLD for MSM */
 	writel(0x00, MPM2_MPM_PS_HOLD);
