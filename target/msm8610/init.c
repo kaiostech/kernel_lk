@@ -51,6 +51,8 @@
 #include <platform/clock.h>
 #include <platform/timer.h>
 #include <crypto5_wrapper.h>
+#include <shutdown_detect.h>
+#include <vibrator.h>
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
@@ -65,6 +67,7 @@
 #define CRYPTO_ENGINE_CMD_ARRAY_SIZE       20
 
 #define TLMM_VOL_UP_BTN_GPIO    72
+#define VIBRATE_TIME    250
 
 enum target_subtype {
 	HW_PLATFORM_SUBTYPE_SKUAA = 1,
@@ -176,12 +179,20 @@ void target_init(void)
 
 	target_sdc_init();
 
+	shutdown_detect();
+
+	/* turn on vibrator to indicate that phone is booting up to end user */
+	vib_timed_turn_on(VIBRATE_TIME);
+
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
 }
 
 void target_uninit(void)
 {
+	/* wait for the vibrator timer is expried */
+	wait_vib_timeout();
+
 	mmc_put_card_to_sleep(dev);
 
 	if (crypto_initialized())
@@ -508,6 +519,24 @@ int set_download_mode(enum dload_mode mode)
 	pm8x41_clear_pmic_watchdog();
 
 	return 0;
+}
+
+/* Configure PMIC and Drop PS_HOLD for shutdown */
+void shutdown_device()
+{
+	dprintf(CRITICAL, "Going down for shutdown.\n");
+
+	/* Configure PMIC for shutdown */
+	pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "shutdown failed\n");
+
+	ASSERT(0);
 }
 
 crypto_engine_type board_ce_type(void)
