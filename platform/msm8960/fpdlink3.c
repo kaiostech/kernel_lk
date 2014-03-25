@@ -454,9 +454,7 @@ int fpdlink3_init(void)
 	dprintf(INFO, "init serializer of fpdlink III\n");
 
 	dev = qup_i2c_init(GSBI_ID_1, 100, 24000);
-	if(dev)
-		fpdlink3_uh927q_init(dev);
-	else
+	if(!dev)
 		dprintf(INFO, "qup_i2c_init() failed\n");
 
 	return NO_ERROR;

@@ -41,7 +41,6 @@ int lvds_chimei_wxga_config(void *pdata)
 
 	if (target_id == LINUX_MACHTYPE_8064_ADP_2) {
 		fpdlink3_init();
-		fpdlink3_config_slave();
 	}
 
 	return NO_ERROR;
