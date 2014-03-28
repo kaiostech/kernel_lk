@@ -216,13 +216,13 @@ static void target_mmc_sdhci_init()
 	/* Trying Slot 1*/
 	config.slot = 1;
 	/*
-	 * For 8974 AC & 8x62 platforms the software clock
+	 * For 8974 AC platform the software clock
 	 * plan recommends to use the following frequencies:
 	 * 200 MHz --> 192 MHZ
 	 * 400 MHZ --> 384 MHZ
 	 * only for emmc slot
 	 */
-	if (platform_is_8974ac() || platform_is_8x62())
+	if (platform_is_8974ac())
 		config.max_clk_rate = MMC_CLK_192MHZ;
 	else
 		config.max_clk_rate = MMC_CLK_200MHZ;
@@ -392,6 +392,20 @@ void target_fastboot_init(void)
 	clock_ce_enable(SSD_CE_INSTANCE_1);
 	ssd_load_keystore_from_emmc();
 #endif
+}
+
+/* Initialize target specific USB handlers */
+target_usb_iface_t* target_usb30_init()
+{
+	target_usb_iface_t *t_usb_iface;
+
+	t_usb_iface = calloc(1, sizeof(target_usb_iface_t));
+	ASSERT(t_usb_iface);
+
+	t_usb_iface->mux_config = target_usb_phy_mux_configure;
+	t_usb_iface->clock_init = clock_usb30_init;
+
+	return t_usb_iface;
 }
 
 /* Detect the target type */
