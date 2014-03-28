@@ -164,6 +164,7 @@ ifeq ($(PLATFORM),msm8916)
 		$(LOCAL_DIR)/uart_dm.o \
 		$(LOCAL_DIR)/board.o \
 		$(LOCAL_DIR)/spmi.o \
+		$(LOCAL_DIR)/scm.o \
 		$(LOCAL_DIR)/bam.o \
 		$(LOCAL_DIR)/qpic_nand.o \
 		$(LOCAL_DIR)/gpio.o \
