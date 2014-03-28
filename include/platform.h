@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
  * (the "Software"), to deal in the Software without restriction,
@@ -57,4 +59,5 @@ int set_download_mode(enum dload_mode mode);
 uint32_t platform_get_sclk_count(void);
 void clock_config_cdc(uint32_t interface);
 int platform_is_msm8939();
+uint32_t platform_get_smem_base_addr();
 #endif

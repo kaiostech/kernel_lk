@@ -37,6 +37,8 @@
 #define SMEM_V8_SMEM_MAX_PMIC_DEVICES   3
 #define SMEM_MAX_PMIC_DEVICES           SMEM_V8_SMEM_MAX_PMIC_DEVICES
 
+#define SMEM_TARGET_INFO_IDENTIFIER     0x49494953
+
 struct smem_proc_comm {
 	unsigned command;
 	unsigned status;
