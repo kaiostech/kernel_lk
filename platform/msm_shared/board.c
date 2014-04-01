@@ -35,6 +35,7 @@
 static struct board_data board = {UNKNOWN,
 	HW_PLATFORM_UNKNOWN,
 	HW_PLATFORM_SUBTYPE_UNKNOWN,
+	HW_PLATFORM_VERSION_UNKNOWN,
 	LINUX_MACHTYPE_UNKNOWN,
 	BASEBAND_MSM,
 	PMIC_IS_INVALID,
@@ -66,6 +67,7 @@ static void platform_detect()
 		board.platform = board_info_v6.board_info_v3.msm_id;
 		board.platform_hw = board_info_v6.board_info_v3.hw_platform;
 		board.platform_subtype = board_info_v6.platform_subtype;
+		board.platform_version = board_info_v6.platform_version;
 	}
 	else if (format == 7)
 	{
@@ -80,6 +82,7 @@ static void platform_detect()
 		board.platform = board_info_v7.board_info_v3.msm_id;
 		board.platform_hw = board_info_v7.board_info_v3.hw_platform;
 		board.platform_subtype = board_info_v7.platform_subtype;
+		board.platform_version = board_info_v7.platform_version;
 		board.pmic_type = board_info_v7.pmic_type;
 		board.pmic_version = board_info_v7.pmic_version;
 	}
@@ -125,4 +128,11 @@ uint32_t board_pmic_type()
 uint32_t board_pmic_ver()
 {
 	return board.pmic_version;
+}
+
+uint32_t board_platform_ver()
+{
+	unsigned version;
+	version = board.platform_version;
+	return ((version & 0xffff0000) >> 16);
 }

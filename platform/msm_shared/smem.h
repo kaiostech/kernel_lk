@@ -288,6 +288,10 @@ enum platform_subtype {
 	HW_PLATFORM_SUBTYPE_32BITS = 0x7FFFFFFF
 };
 
+enum platform_version {
+	HW_PLATFORM_VERSION_UNKNOWN = 0,
+};
+
 typedef enum {
 	SMEM_SPINLOCK_ARRAY = 7,
 
