@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012, 2014 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -52,5 +52,5 @@ uint32_t board_baseband();
 uint32_t board_hardware_id();
 uint32_t board_pmic_type();
 uint32_t board_pmic_ver();
-
+uint32_t board_platform_ver();
 #endif

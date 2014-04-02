@@ -30,6 +30,10 @@
 #ifndef __TARGET_BOARD_H
 #define __TARGET_BOARD_H
 
+#include <board.h>
+
+#define MPLATFORM_VERSION 3
+#define MPLATFORM() (board_platform_ver()== MPLATFORM_VERSION)
 
 /* 8960 */
 #define LINUX_MACHTYPE_8960_SIM     3230
