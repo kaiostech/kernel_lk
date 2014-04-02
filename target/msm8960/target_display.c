@@ -35,6 +35,9 @@
 #include <target/board.h>
 
 static struct msm_fb_panel_data panel;
+
+static struct msm_fb_panel_data hdmi_panel;
+
 static uint8_t display_enable;
 
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
@@ -173,12 +176,24 @@ static int msm8960_mipi_panel_clock(int enable)
 
 static int mpq8064_hdmi_panel_clock(int enable)
 {
-	if (enable)
-		mdp_clock_init();
+	if (MPLATFORM()) {
+		int target_id = board_target_id();
+		if (enable) {
+			if (target_id != LINUX_MACHTYPE_8064_LIQUID ||
+				target_id != LINUX_MACHTYPE_8064_CDP) {
+				mdp_clock_init();
+			}
+			hdmi_app_clk_init(enable);
+		}
+		return 0;
+	} else {
+		if (enable)
+			mdp_clock_init();
 
-	hdmi_app_clk_init(enable);
+		hdmi_app_clk_init(enable);
 
-	return 0;
+		return 0;
+	}
 }
 
 static int mpq8064_hdmi_panel_power(int enable)
@@ -302,7 +317,6 @@ void display_init(void)
 		panel.mdp_rev = MDP_REV_44;
 		break;
 	case LINUX_MACHTYPE_8064_CDP:
-	case LINUX_MACHTYPE_8064_ADP_2:
 		lvds_chimei_wxga_init(&(panel.panel_info));
 		panel.clk_func = apq8064_lvds_clock;
 		panel.power_func = apq8064_lvds_panel_power;
@@ -310,9 +324,38 @@ void display_init(void)
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
+		panel.fb.bpp = panel.panel_info.bpp;
+		panel.fb.format = FB_FORMAT_RGB888;
+		panel.mdp_rev = MDP_REV_44;
+		break;
+	case LINUX_MACHTYPE_8064_ADP_2:
+		lvds_chimei_wxga_init(&(panel.panel_info));
+		panel.clk_func = apq8064_lvds_clock;
+		panel.power_func = apq8064_lvds_panel_power;
+		if (MPLATFORM()) {
+			panel.fb.base = 0x8ec00000;
+		} else {
+			panel.fb.base = 0x89000000;
+		}
+		panel.fb.width =  panel.panel_info.xres;
+		panel.fb.height =  panel.panel_info.yres;
+		panel.fb.stride =  panel.panel_info.xres;
 		panel.fb.bpp =  panel.panel_info.bpp;
 		panel.fb.format = FB_FORMAT_RGB888;
 		panel.mdp_rev = MDP_REV_44;
+		if (MPLATFORM()) {
+			hdmi_msm_panel_init(&(hdmi_panel.panel_info));
+			hdmi_panel.clk_func = mpq8064_hdmi_panel_clock;
+			hdmi_panel.power_func = mpq8064_hdmi_panel_power;
+			hdmi_panel.fb.base = 0x89000000;
+			hdmi_panel.fb.width = hdmi_panel.panel_info.xres;
+			hdmi_panel.fb.height = hdmi_panel.panel_info.yres;
+			hdmi_panel.fb.stride = hdmi_panel.panel_info.xres;
+			hdmi_panel.fb.bpp = hdmi_panel.panel_info.bpp;
+			hdmi_panel.fb.format = FB_FORMAT_RGB888;
+			hdmi_panel.mdp_rev = MDP_REV_44;
+			hdmi_set_fb_addr(hdmi_panel.fb.base);
+		}
 		break;
 	case LINUX_MACHTYPE_8064_MTP:
 		mipi_toshiba_video_wsvga_init(&(panel.panel_info));
@@ -380,13 +423,21 @@ void display_init(void)
 		panel.fb.format  = FB_FORMAT_RGB565;
 		panel.mdp_rev    = MDP_REV_44;
 		hdmi_set_fb_addr(panel.fb.base);
-		if (msm_display_init(&panel)) {
-			dprintf(CRITICAL, "HDMI init failed!\n");
-			return;
+		if (MPLATFORM()) {
+			if (msm_display_init(&hdmi_panel)) {
+				dprintf(CRITICAL, "HDMI init failed!\n");
+				return;
+			}
+		} else {
+			if (msm_display_init(&panel)) {
+				dprintf(CRITICAL, "HDMI init failed!\n");
+				return;
+			}
 		}
 	}
-
-	display_enable = 1;
+	if (!MPLATFORM()) {
+		display_enable = 1;
+	}
 }
 
 void display_shutdown(void)
