@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -54,9 +54,6 @@ atag_mem_info apq8064_standalone_first_256M[] = {
 	},
 	{	.size = (58 * SIZE_1M),
 		.start_addr = PHYS_MEM_START_ADDR + (0xA0 * SIZE_1M)
-	},
-	{	.size = (4 * SIZE_1M),
-		.start_addr = PHYS_MEM_START_ADDR + (0xEC * SIZE_1M)
 	},
 	{	.size = (7 * SIZE_1M),
 		.start_addr = PHYS_MEM_START_ADDR + (0xF7 * SIZE_1M)

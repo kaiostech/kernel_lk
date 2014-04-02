@@ -56,6 +56,12 @@ void gpio_set(uint32_t gpio, uint32_t dir)
 	return;
 }
 
+uint32_t gpio_get(uint32_t gpio)
+{
+	unsigned int *addr = (unsigned int *)GPIO_IN_OUT_ADDR(gpio);
+	return readl(addr);
+}
+
 /* TODO: this and other code below in this file should ideally by in target dir.
  * keeping it here for this brigup.
  */
@@ -95,7 +101,14 @@ void gpio_config_uart_dm(uint8_t id)
 							 GPIO_8MA, GPIO_DISABLE);
 			break;
 
-
+		case GSBI_ID_4:
+			/* configure rx gpio */
+			gpio_tlmm_config(11, 1, GPIO_INPUT, GPIO_NO_PULL,
+							 GPIO_8MA, GPIO_DISABLE);
+			/* configure tx gpio */
+			gpio_tlmm_config(10, 1, GPIO_OUTPUT, GPIO_NO_PULL,
+							 GPIO_8MA, GPIO_DISABLE);
+			break;
 		case GSBI_ID_7:
 			/* configure rx gpio */
 			gpio_tlmm_config(83, 1, GPIO_INPUT, GPIO_NO_PULL,
