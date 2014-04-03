@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -1790,6 +1790,8 @@ void aboot_init(const struct app_descriptor *app)
 		if (keys_get_state(KEY_BACK) != 0)
 			goto fastboot;
 		if (keys_get_state(KEY_VOLUMEDOWN) != 0)
+			goto fastboot;
+		if (!target_get_key_status(59))
 			goto fastboot;
 	}
 

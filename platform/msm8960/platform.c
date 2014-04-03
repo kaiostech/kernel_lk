@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #include <mmu.h>
 #include <arch/arm/mmu.h>
 #include <board.h>
+#include <target/board.h>
 
 extern void platform_init_timer(void);
 extern void platform_panel_backlight_on(void);
@@ -104,6 +105,10 @@ void platform_uninit(void)
 	display_shutdown();
 #endif
 
+	if (MPLATFORM()) {
+		/* set GPIO_84 to LOW when leave LK */
+		gpio_set(84, 1);
+	}
 	platform_uninit_timer();
 }
 

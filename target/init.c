@@ -124,3 +124,7 @@ __WEAK int target_mmc_bus_width()
 {
 	return MMC_BOOT_BUS_WIDTH_4_BIT;
 }
+__WEAK int  target_get_key_status(uint32_t gpio)
+{
+	return 1;
+}

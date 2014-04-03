@@ -76,6 +76,13 @@ void target_early_init(void)
 #if WITH_DEBUG_UART
 	target_uart_init();
 #endif
+
+	if (MPLATFORM()) {
+		// request GPIO_84 for debug boot up time
+		gpio_tlmm_config(84, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_ENABLE);
+		// set GPIO_84 to HIGH when enter LK
+		gpio_set(84, 2);
+	}
 }
 
 void shutdown_device(void)
@@ -97,6 +104,8 @@ void target_init(void)
 	unsigned platform_id = board_platform_id();
 
 	dprintf(INFO, "target_init()\n");
+	dprintf(INFO, "board platform id is 0x%x\n",  board_platform_id());
+	dprintf(INFO, "board platform verson is 0x%x\n",  board_platform_ver());
 
 	/* Initialize PMIC driver */
 	pmic.read = (pm8921_read_func) & pa1_ssbi2_read_bytes;
@@ -136,6 +145,11 @@ void target_init(void)
 	case MPQ8064:
 	case APQ8064AA:
 	case APQ8064AB:
+		if (MPLATFORM()) {
+			// Debug for M-Plat
+			gpio_tlmm_config(56, 2, GPIO_INPUT, GPIO_NO_PULL,
+							GPIO_8MA, GPIO_DISABLE);
+		}
 		apq8064_keypad_init();
 		break;
 	default:
@@ -302,7 +316,11 @@ void target_uart_init(void)
 	case LINUX_MACHTYPE_8064_ADP_2:
 	case LINUX_MACHTYPE_8064_MTP:
 	case LINUX_MACHTYPE_8064_LIQUID:
-		uart_dm_init(7, 0x16600000, 0x16640000);
+		if (MPLATFORM())
+			uart_dm_init(1, 0x12440000, 0x12450000);
+		else
+			uart_dm_init(4, 0x16300000, 0x16340000);
+
 		break;
 
 	case LINUX_MACHTYPE_8064_MPQ_CDP:
@@ -508,4 +526,12 @@ void target_usb_init(void)
 int target_mmc_bus_width()
 {
 	return MMC_BOOT_BUS_WIDTH_8_BIT;
+}
+
+int  target_get_key_status(uint32_t gpio)
+{
+	if (MPLATFORM()) {
+		unsigned int *addr = (unsigned int *)GPIO_IN_OUT_ADDR(gpio);
+		return readl(addr);
+	}
 }
