@@ -58,29 +58,56 @@ int lvds_chimei_wxga_off()
 
 void lvds_chimei_wxga_init(struct msm_panel_info *pinfo)
 {
-	pinfo->xres = 1364;
-	pinfo->yres = 768;
-	pinfo->type = LVDS_PANEL;
-	pinfo->wait_cycle = 0;
-	pinfo->bpp = 24;
-	pinfo->clk_rate = 75000000;
+	if (MPLATFORM()) {
+		pinfo->xres = 1280;
+		pinfo->yres = 720;
+		pinfo->type = LVDS_PANEL;
+		pinfo->wait_cycle = 0;
+		pinfo->bpp = 24;
+		pinfo->clk_rate = 79400000;
 
-	pinfo->lcdc.h_back_porch = 0;
-	pinfo->lcdc.h_front_porch = 194;
-	pinfo->lcdc.h_pulse_width = 40;
-	pinfo->lcdc.v_back_porch = 0;
-	pinfo->lcdc.v_front_porch = 38;
-	pinfo->lcdc.v_pulse_width = 20;
-	pinfo->lcdc.underflow_clr = 0xff;
-	pinfo->lcdc.hsync_skew = 0;
-	pinfo->lvds.channel_mode = LVDS_SINGLE_CHANNEL_MODE;
+		pinfo->lcdc.h_back_porch = 43;
+		pinfo->lcdc.h_front_porch = 43;
+		pinfo->lcdc.h_pulse_width = 32;
+		pinfo->lcdc.v_back_porch = 8;
+		pinfo->lcdc.v_front_porch = 3;
+		pinfo->lcdc.v_pulse_width = 5;
+		pinfo->lcdc.underflow_clr = 0xff;
+		pinfo->lcdc.hsync_skew = 0;
+		pinfo->lvds.channel_mode = LVDS_SINGLE_CHANNEL_MODE;
 
-	/* Set border color, padding only for reducing active display region */
-	pinfo->lcdc.border_clr = 0x0;
-	pinfo->lcdc.xres_pad = 0;
-	pinfo->lcdc.yres_pad = 0;
+		/* Set border color, padding only for reducing active display region */
+		pinfo->lcdc.border_clr = 0x0;
+		pinfo->lcdc.xres_pad = 0;
+		pinfo->lcdc.yres_pad = 0;
 
-	pinfo->on = lvds_chimei_wxga_on;
-	pinfo->off = lvds_chimei_wxga_off;
-	pinfo->config = lvds_chimei_wxga_config;
+		pinfo->on = lvds_chimei_wxga_on;
+		pinfo->off = lvds_chimei_wxga_off;
+	} else {
+		pinfo->xres = 1364;
+		pinfo->yres = 768;
+		pinfo->type = LVDS_PANEL;
+		pinfo->wait_cycle = 0;
+		pinfo->bpp = 24;
+		pinfo->clk_rate = 75000000;
+
+		pinfo->lcdc.h_back_porch = 0;
+		pinfo->lcdc.h_front_porch = 194;
+		pinfo->lcdc.h_pulse_width = 40;
+		pinfo->lcdc.v_back_porch = 0;
+		pinfo->lcdc.v_front_porch = 38;
+		pinfo->lcdc.v_pulse_width = 20;
+		pinfo->lcdc.underflow_clr = 0xff;
+		pinfo->lcdc.hsync_skew = 0;
+		pinfo->lvds.channel_mode = LVDS_SINGLE_CHANNEL_MODE;
+
+		/* Set border color, padding only for reducing active display region */
+		pinfo->lcdc.border_clr = 0x0;
+		pinfo->lcdc.xres_pad = 0;
+		pinfo->lcdc.yres_pad = 0;
+
+		pinfo->on = lvds_chimei_wxga_on;
+		pinfo->off = lvds_chimei_wxga_off;
+		pinfo->config = lvds_chimei_wxga_config;
+	}
 }
