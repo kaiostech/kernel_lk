@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,17 +59,9 @@ static struct mdss_dsi_phy_ctrl dsi_video_mode_phy_db;
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 
-/* TODO: add other backlight type support */
 static uint32_t panel_backlight_ctrl(uint8_t enable)
 {
-	uint32_t ret = NO_ERROR;
-
-	if (panelstruct.backlightinfo->bl_pmic_controltype != BL_DCS) {
-		/* deal with non-dcs backlight */
-		ret = target_backlight_ctrl(enable);
-	}
-
-	return ret;
+	return target_backlight_ctrl(panelstruct.backlightinfo, enable);
 }
 
 static uint32_t mdss_dsi_panel_reset(uint8_t enable)
@@ -160,6 +152,25 @@ static int mdss_dsi_panel_post_power(uint8_t enable)
 	return ret;
 }
 
+static int mdss_dsi_panel_pre_init(void)
+{
+	int ret = NO_ERROR;
+
+	if (panelstruct.paneldata->panel_lp11_init) {
+		ret = mdss_dsi_panel_reset(1);
+		if (ret) {
+			dprintf(CRITICAL, "panel reset failed\n");
+			return ret;
+		}
+	}
+
+	if(panelstruct.paneldata->panel_init_delay)
+		udelay(panelstruct.paneldata->panel_init_delay);
+
+	dprintf(SPEW, "Panel pre init done\n");
+	return ret;
+}
+
 static int mdss_dsi_bl_enable(uint8_t enable)
 {
 	int ret = NO_ERROR;
@@ -175,14 +186,20 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 {
 	char *dsi_id = NULL;
 	char *panel_node = NULL;
-	uint16_t dsi_id_len = 0;
+	char *slave_panel_node = NULL;
+	uint16_t dsi_id_len = 0, panel_node_len = 0, slave_panel_node_len = 0;
+	uint32_t arg_size = 0;
 	bool ret = true;
 	char *default_str;
+	int panel_mode = SPLIT_DISPLAY_FLAG | DUAL_PIPE_FLAG;
 
 	if(panelstruct.paneldata)
 	{
 		dsi_id = panelstruct.paneldata->panel_controller;
 		panel_node = panelstruct.paneldata->panel_node_id;
+		panel_mode = panelstruct.paneldata->panel_operating_mode &
+							panel_mode;
+		slave_panel_node = panelstruct.paneldata->slave_panel_node_id;
 	}
 	else
 	{
@@ -198,32 +215,57 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 		return true;
 	}
 
-	if (dsi_id == NULL || panel_node == NULL)
+	if (dsi_id == NULL || panel_node == NULL) {
+		dprintf(CRITICAL, "panel node or dsi ctrl not present\n");
 		return false;
+	}
+
+	if (panel_mode && slave_panel_node == NULL) {
+		dprintf(CRITICAL, "slave node not present in dual dsi case\n");
+		return false;
+	}
 
 	dsi_id_len = strlen(dsi_id);
+	panel_node_len = strlen(panel_node);
+	slave_panel_node_len = strlen(slave_panel_node);
 
-	if (buf_size < (strlen(panel_node) + dsi_id_len +
-			MAX_PANEL_FORMAT_STRING + 1) ||
-		!strlen(panel_node) ||
-		!strlen(dsi_id))
+	arg_size = dsi_id_len + panel_node_len + LK_OVERRIDE_PANEL_LEN + 1;
+
+	/* For dual pipe or split display */
+	if (panel_mode)
+		arg_size += DSI_1_STRING_LEN + slave_panel_node_len;
+
+	if (buf_size < arg_size)
 	{
+		dprintf(CRITICAL, "display command line buffer is small\n");
 		ret = false;
 	}
 	else
 	{
-		pbuf[0] = '1'; // 1 indicates that LK is overriding the panel
-		pbuf[1] = ':'; // seperator
-		pbuf += MAX_PANEL_FORMAT_STRING;
-		buf_size -= MAX_PANEL_FORMAT_STRING;
+		strlcpy(pbuf, LK_OVERRIDE_PANEL, buf_size);
+		pbuf += LK_OVERRIDE_PANEL_LEN;
+		buf_size -= LK_OVERRIDE_PANEL_LEN;
 
 		strlcpy(pbuf, dsi_id, buf_size);
 		pbuf += dsi_id_len;
 		buf_size -= dsi_id_len;
 
 		strlcpy(pbuf, panel_node, buf_size);
-		ret = true;
+
+		/* Return string for single dsi */
+		if (!panel_mode)
+			goto end;
+
+		pbuf += panel_node_len;
+		buf_size -= panel_node_len;
+
+		strlcpy(pbuf, DSI_1_STRING, buf_size);
+		pbuf += DSI_1_STRING_LEN;
+		buf_size -= DSI_1_STRING_LEN;
+
+		strlcpy(pbuf, slave_panel_node, buf_size);
 	}
+end:
 	return ret;
 }
 
@@ -263,6 +305,7 @@ int gcdb_display_init(uint32_t rev, void *base)
 	panel.pll_clk_func = mdss_dsi_panel_clock;
 	panel.power_func = mdss_dsi_panel_power;
 	panel.post_power_func = mdss_dsi_panel_post_power;
+	panel.pre_init_func = mdss_dsi_panel_pre_init;
 	panel.bl_func = mdss_dsi_bl_enable;
 	panel.fb.base = base;
 	panel.fb.width =  panel.panel_info.xres;
