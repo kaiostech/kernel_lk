@@ -248,3 +248,43 @@ void platform_init_mmu_mappings(void)
 		}
 	}
 }
+
+uint32_t platform_check_secure_fuses(void)
+{
+
+	uint32_t Oemconfig0 = readl(OEM_CONFIG0_ADDR);
+	uint32_t Oemconfig1 = readl(OEM_CONFIG1_ADDR);
+	uint32_t Featureconfig2 = readl(FEATURE_CONFIG2_ADDR);
+	uint32_t Hwkeystatus = readl(HW_KEY_STATUS_ADDR);
+
+	if (((Featureconfig2 & FEATURE_CONFIG2_QC_DAP_DEVICEEN_DISABLE_BMSK) ||
+		(Oemconfig1 & OEM_CONFIG1_DAP_DEVICEEN_DISABLE_BMSK)) &&
+		((Featureconfig2 & FEATURE_CONFIG2_QC_APPS_SPIDEN_DISABLE_BMSK) ||
+		(Oemconfig1 & OEM_CONFIG1_APPS_SPIDEN_DISABLE_BMSK)) &&
+		((Featureconfig2 & FEATURE_CONFIG2_QC_APPS_SPNIDEN_DISABLE_BMSK) ||
+		(Oemconfig1 & OEM_CONFIG1_APPS_SPNIDEN_DISABLE_BMSK)) &&
+		((Featureconfig2 & FEATURE_CONFIG2_QC_DAP_SPIDEN_DISABLE_BMSK) ||
+		(Oemconfig1 & OEM_CONFIG1_DAP_SPIDEN_DISABLE_BMSK)) &&
+		((Featureconfig2 & FEATURE_CONFIG2_QC_DAP_SPNIDEN_DISABLE_BMSK) ||
+		(Oemconfig1 & OEM_CONFIG1_DAP_SPNIDEN_DISABLE_BMSK)) &&
+		((Featureconfig2 & FEATURE_CONFIG2_QC_MSS_DBGEN_DISABLE_BMSK) ||
+		(Oemconfig0 & OEM_CONFIG0_MSS_DBGEN_DISABLE_BMSK)) &&
+		((Featureconfig2 & FEATURE_CONFIG2_QC_MSS_NIDEN_DISABLE_BMSK) ||
+		(Oemconfig0 & OEM_CONFIG0_MSS_NIDEN_DISABLE_BMSK)) &&
+		((Featureconfig2 & FEATURE_CONFIG2_QC_RPM_DAPEN_DISABLE_BMSK) ||
+		(Oemconfig0 & OEM_CONFIG0_RPM_DAPEN_DISABLE_BMSK)) &&
+		((Featureconfig2 & FEATURE_CONFIG2_QC_RPM_DBGEN_DISABLE_BMSK) ||
+		(Oemconfig0 & OEM_CONFIG0_RPM_DBGEN_DISABLE_BMSK)) &&
+		((Oemconfig0 & OEM_CONFIG0_LPASS_DBGEN_DISABLE_BMSK) ||
+		(Featureconfig2 & FEATURE_CONFIG2_QC_LPASS_DBGEN_DISABLE_BMSK)) &&
+		((Oemconfig0 & OEM_CONFIG0_WCSS_DBGEN_DISABLE_BMSK) ||
+		(Featureconfig2 & FEATURE_CONFIG2_QC_WCSS_DBGEN_DISABLE_BMSK)) &&
+		((Oemconfig0 & OEM_CONFIG0_VENUS_0_DBGEN_DISABLE_BMSK) ||
+		(Featureconfig2 & FEATURE_CONFIG2_QC_VENUS_0_DBGEN_DISABLE_BMSK)) &&
+		((Oemconfig1 & OEM_CONFIG1_DAP_DBGEN_DISABLE_BMSK) ||
+		(Featureconfig2 & FEATURE_CONFIG2_QC_DAP_DBGEN_DISABLE_BMSK)) &&
+		(Hwkeystatus & HW_KEY_STATUS_SEC_KEY_DERIVATION_KEY_BLOWN_BMSK))
+		return 1;
+	else
+		return 0;
+}
