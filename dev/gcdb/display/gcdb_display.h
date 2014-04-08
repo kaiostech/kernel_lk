@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,13 +43,16 @@
 #define BIST_SIZE 6
 #define LANE_SIZE 45
 
-#define MAX_PANEL_FORMAT_STRING 2
+#define LK_OVERRIDE_PANEL      "1:"
+#define LK_OVERRIDE_PANEL_LEN  2
+#define DSI_1_STRING           ":1:"
+#define DSI_1_STRING_LEN       3
 
 /*---------------------------------------------------------------------------*/
 /* API                                                                       */
 /*---------------------------------------------------------------------------*/
 
-int target_backlight_ctrl(uint8_t enable);
+int target_backlight_ctrl(struct backlight *bl, uint8_t enable);
 int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo);
 int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 						struct msm_panel_info *pinfo);
