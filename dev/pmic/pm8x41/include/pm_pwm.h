@@ -1,5 +1,5 @@
 /*
- * * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * * Copyright (c) 2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,32 +30,32 @@
 #ifndef __PMIC_PWM_H
 #define __PMIC_PWM_H
 
-#define PM_PWM_SIZE_SEL_MASK			0x04
-#define PM_PWM_SIZE_SEL_SHIFT			2
+#define PM_PWM_SIZE_SEL_MASK				0x04
+#define PM_PWM_SIZE_SEL_SHIFT				2
 
 #define PM_PWM_CLK_SEL_MASK				0x03
 
-#define PM_PWM_PREDIVIDE_MASK			0x60
-#define PM_PWM_PREDIVIDE_SHIFT			5
+#define PM_PWM_PREDIVIDE_MASK				0x60
+#define PM_PWM_PREDIVIDE_SHIFT				5
 
 #define PM_PWM_M_MASK					0x07
 
 #define PM_PWM_SYNC_MASK				0x01
 
-#define PM_PWM_ENABLE_CTL_MASK			0x80
-#define PM_PWM_ENABLE_CTL_SHIFT			7
+#define PM_PWM_ENABLE_CTL_MASK				0x80
+#define PM_PWM_ENABLE_CTL_SHIFT				7
 
-#define PM_PWM_EN_GLITCH_REMOVAL_MASK	0x20
-#define PM_PWM_EN_GLITCH_REMOVAL_SHIFT	5
+#define PM_PWM_EN_GLITCH_REMOVAL_MASK			0x20
+#define PM_PWM_EN_GLITCH_REMOVAL_SHIFT			5
 
 #define PM_PWM_VALUE_BIT7_0				0xFF
 #define PM_PWM_VALUE_BIT8				0x01
 #define PM_PWM_VALUE_BIT5_0				0x3F
 
 #define PM_PWM_BASE(x)					(0x1BC00 + (x))
-#define PM_PWM_CTL_REG_OFFSET			0x41
-#define PM_PWM_SYNC_REG_OFFSET			0x47
-#define PM_PWM_ENABLE_CTL_REG_OFFSET	0x46
+#define PM_PWM_CTL_REG_OFFSET				0x41
+#define PM_PWM_SYNC_REG_OFFSET				0x47
+#define PM_PWM_ENABLE_CTL_REG_OFFSET			0x46
 
 int pm_pwm_config(unsigned int duty_us, unsigned int period_us);
 void pm_pwm_enable(bool enable);
