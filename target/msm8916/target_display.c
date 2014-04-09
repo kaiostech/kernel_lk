@@ -44,16 +44,11 @@
 #include "include/panel.h"
 #include "include/display_resource.h"
 
-#define HFPLL_LDO_ID 8
-
-static struct pm8x41_wled_data wled_ctrl = {
-	.mod_scheme      = 0x00,
-	.led1_brightness = (0x0F << 8) | 0xEF,
-	.max_duty_cycle  = 0x01,
-	.ovp = 0x0,
-	.full_current_scale = 0x19,
-	.fdbck = 0x1
-};
+#define GPIO_STATE_LOW 0
+#define GPIO_STATE_HIGH 2
+#define RESET_GPIO_SEQ_LEN 3
+#define PWM_DUTY_US 13
+#define PWM_PERIOD_US 27
 
 static uint32_t dsi_pll_enable_seq_m(uint32_t pll_base)
 {
@@ -200,28 +195,27 @@ static uint32_t dsi_pll_enable_seq_e(uint32_t pll_base)
 
 int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 {
-	dprintf(SPEW, "target_backlight_ctrl\n");
+	struct pm8x41_mpp mpp;
+	int rc;
 
-	if (!bl) {
-		dprintf(CRITICAL, "backlight structure is not available\n");
-		return ERR_INVALID_ARGS;
-	}
-
-	if (bl->bl_interface_type != BL_WLED) {
-		dprintf(CRITICAL, "backlight type:%d not supported\n",
-							bl->bl_interface_type);
-		return ERR_NOT_SUPPORTED;
-	}
-
+	mpp.base = PM8x41_MMP4_BASE;
+	mpp.vin = MPP_VIN0;
 	if (enable) {
-		pm8x41_wled_config(&wled_ctrl);
-		pm8x41_wled_sink_control(enable);
-		pm8x41_wled_iled_sync_control(enable);
-		pm8x41_wled_led_mod_enable(enable);
+		pm_pwm_enable(false);
+		rc = pm_pwm_config(PWM_DUTY_US, PWM_PERIOD_US);
+		if (rc < 0)
+			mpp.mode = MPP_HIGH;
+		else {
+			mpp.mode = MPP_DTEST1;
+			pm_pwm_enable(true);
+		}
+		pm8x41_config_output_mpp(&mpp);
+		pm8x41_enable_mpp(&mpp, MPP_ENABLE);
+	} else {
+		pm_pwm_enable(false);
+		pm8x41_enable_mpp(&mpp, MPP_DISABLE);
 	}
-
-	pm8x41_wled_enable(enable);
-
+	mdelay(20);
 	return 0;
 }
 
@@ -240,7 +234,7 @@ static void dsi_pll_enable_seq(uint32_t pll_base)
 
 int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 {
-	int32_t ret;
+	int32_t ret = 0;
 	struct mdss_dsi_pll_config *pll_data;
 	dprintf(SPEW, "target_panel_clock\n");
 
@@ -248,7 +242,7 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
-		mmss_bus_clocks_enable();
+		mdss_bus_clocks_enable();
 		mdp_clock_enable();
 		ret = restore_secure_cfg(SECURE_DEVICE_MDSS);
 		if (ret) {
@@ -256,20 +250,20 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 				"%s: Failed to restore MDP security configs",
 				__func__);
 			mdp_clock_disable();
-			mmss_bus_clocks_disable();
+			mdss_bus_clocks_disable();
 			mdp_gdsc_ctrl(0);
 			return ret;
 		}
 		mdss_dsi_auto_pll_config(DSI0_PLL_BASE,
-				MIPI_DSI0_BASE, pll_data);
+						MIPI_DSI0_BASE, pll_data);
 		dsi_pll_enable_seq(DSI0_PLL_BASE);
-		mmss_dsi_clocks_enable(pll_data->pclk_m,
+		gcc_dsi_clocks_enable(pll_data->pclk_m,
 				pll_data->pclk_n,
 				pll_data->pclk_d);
 	} else if(!target_cont_splash_screen()) {
-		mmss_dsi_clocks_disable();
+		gcc_dsi_clocks_disable();
 		mdp_clock_disable();
-		mmss_bus_clocks_disable();
+		mdss_bus_clocks_disable();
 		mdp_gdsc_ctrl(enable);
 	}
 
@@ -290,22 +284,29 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 			gpio_set_dir(enable_gpio.pin_id, 2);
 		}
 
+		gpio_tlmm_config(bkl_gpio.pin_id, 0,
+				bkl_gpio.pin_direction, bkl_gpio.pin_pull,
+				bkl_gpio.pin_strength, bkl_gpio.pin_state);
+		gpio_set_dir(bkl_gpio.pin_id, 2);
+
 		gpio_tlmm_config(reset_gpio.pin_id, 0,
 				reset_gpio.pin_direction, reset_gpio.pin_pull,
 				reset_gpio.pin_strength, reset_gpio.pin_state);
 
 		gpio_set_dir(reset_gpio.pin_id, 2);
 
-		gpio_set_value(reset_gpio.pin_id, resetseq->pin_state[0]);
-		mdelay(resetseq->sleep[0]);
-		gpio_set_value(reset_gpio.pin_id, resetseq->pin_state[1]);
-		mdelay(resetseq->sleep[1]);
-		gpio_set_value(reset_gpio.pin_id, resetseq->pin_state[2]);
-		mdelay(resetseq->sleep[2]);
+		/* reset */
+		for (int i = 0; i < RESET_GPIO_SEQ_LEN; i++) {
+			if (resetseq->pin_state[i] == GPIO_STATE_LOW)
+				gpio_set_dir(reset_gpio.pin_id, GPIO_STATE_LOW);
+			else
+				gpio_set_dir(reset_gpio.pin_id, GPIO_STATE_HIGH);
+			mdelay(resetseq->sleep[i]);
+		}
 	} else if(!target_cont_splash_screen()) {
-		gpio_set_value(reset_gpio.pin_id, 0);
+		gpio_set_dir(reset_gpio.pin_id, 0);
 		if (pinfo->mipi.use_enable_gpio)
-			gpio_set_value(enable_gpio.pin_id, 0);
+			gpio_set_dir(enable_gpio.pin_id, 0);
 	}
 
 	return ret;
@@ -318,22 +319,19 @@ int target_ldo_ctrl(uint8_t enable)
 	uint32_t pm8x41_ldo_base = 0x13F00;
 
 	while (ldocounter < TOTAL_LDO_DEFINED) {
+		dprintf(SPEW, "Setting %i\n",
+				ldo_entry_array[ldocounter].ldo_id);
 		struct pm8x41_ldo ldo_entry = LDO((pm8x41_ldo_base +
 			0x100 * ldo_entry_array[ldocounter].ldo_id),
 			ldo_entry_array[ldocounter].ldo_type);
 
-		dprintf(SPEW, "Setting %s\n",
-				ldo_entry_array[ldocounter].ldo_id);
 
 		/* Set voltage during power on */
 		if (enable) {
-			pm8x41_ldo_set_voltage(&ldo_entry,
-					ldo_entry_array[ldocounter].ldo_voltage);
-
+			/* TODO: Set the LDO voltage before enabling it */
 			pm8x41_ldo_control(&ldo_entry, enable);
 
-		} else if(!target_cont_splash_screen() &&
-				ldo_entry_array[ldocounter].ldo_id != HFPLL_LDO_ID) {
+		} else if(!target_cont_splash_screen()) {
 			pm8x41_ldo_control(&ldo_entry, enable);
 		}
 		ldocounter++;
@@ -349,24 +347,11 @@ bool target_display_panel_node(char *panel_name, char *pbuf, uint16_t buf_size)
 
 void target_display_init(const char *panel_name)
 {
-        uint32_t panel_loop = 0;
-        uint32_t ret = 0;
-	uint32_t fb_addr = MIPI_FB_ADDR;
-
-	if (board_hardware_subtype() == HW_PLATFORM_SUBTYPE_QVGA)
-		fb_addr = MIPI_FB_ADDR_QVGA;
-
-	do {
-		ret = gcdb_display_init(panel_name, MDP_REV_50, fb_addr);
-		if (!ret || ret == ERR_NOT_SUPPORTED) {
-			break;
-		} else {
-			target_force_cont_splash_disable(true);
-			msm_display_off();
-			target_force_cont_splash_disable(false);
-		}
-	} while (++panel_loop <= oem_panel_max_auto_detect_panels());
-
+	uint32_t ret = 0;
+	ret = gcdb_display_init(panel_name, MDP_REV_50, MIPI_FB_ADDR);
+	if (ret) {
+		msm_display_off();
+	}
 }
 
 void target_display_shutdown(void)

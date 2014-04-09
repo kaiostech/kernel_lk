@@ -26,9 +26,9 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+#ifndef _TARGET_MSM8916_DISPLAY_H
+#define _TARGET_MSM8916_DISPLAY_H
 
-#ifndef _TARGET_MSM8610_DISPLAY_H
-#define _TARGET_MSM8610_DISPLAY_H
 /*---------------------------------------------------------------------------*/
 /* HEADER files                                                              */
 /*---------------------------------------------------------------------------*/
@@ -38,35 +38,35 @@
 /* GPIO configuration                                                        */
 /*---------------------------------------------------------------------------*/
 static struct gpio_pin reset_gpio = {
-  "msmgpio", 41, 3, 1, 0, 1
+  "msmgpio", 25, 3, 1, 0, 1
 };
 
 static struct gpio_pin enable_gpio = {
-  0, 0, 0, 0, 0, 0
+  "msmgpio", 97, 3, 1, 0, 1
+};
+
+static struct gpio_pin bkl_gpio = {
+  "msmgpio", 98, 3, 1, 0, 1
 };
 
 static struct gpio_pin te_gpio = {
-  "msmgpio", 12, 0, 2, 0, 1
+  0, 0, 0, 0, 0, 0
 };
 
 static struct gpio_pin pwm_gpio = {
   0, 0, 0, 0, 0, 0
 };
 
-static struct gpio_pin mode_gpio = {
-  "msmgpio", 7, 3, 1, 0, 1
-};
-
-
 /*---------------------------------------------------------------------------*/
-/* Supply configuration                                                      */
+/* LDO configuration                                                         */
 /*---------------------------------------------------------------------------*/
 static struct ldo_entry ldo_entry_array[] = {
-{ "vddio", 14, 0, 1800000, 100000, 100, 0, 0, 0, 0},
-{ "vdda", 19, 0, 2850000, 100000, 100, 0, 0, 0, 0},
+  { "vdd", 17, 0, 2850000, 100000, 100, 0, 0, 0, 0},
+  { "vddio", 6, 0, 1800000, 100000, 100, 0, 0, 0, 0},
+  { "vdda", 2, 1, 1200000, 100000, 100, 0, 20, 0, 0},
 };
 
-#define TOTAL_LDO_DEFINED 2
+#define TOTAL_LDO_DEFINED 3
 
 /*---------------------------------------------------------------------------*/
 /* Target Physical configuration                                             */
@@ -77,38 +77,38 @@ static const uint32_t panel_strength_ctrl[] = {
 };
 
 static const char panel_bist_ctrl[] = {
-  0x03, 0x03, 0x00, 0x00, 0x0f, 0x00
+  0x00, 0x00, 0xb1, 0xff, 0x00, 0x00
 };
 
 static const uint32_t panel_regulator_settings[] = {
-  0x02, 0x08, 0x05, 0x00, 0x20, 0x03, 0x00
+  0x07, 0x09, 0x03, 0x00, 0x20, 0x00, 0x01
 };
 
 static const char panel_lane_config[] = {
-	0x80, 0x45, 0x00, 0x00, 0x00, 0x01, 0x66, 0x00, 0x00,
-	0x80, 0x45, 0x00, 0x00, 0x00, 0x01, 0x66, 0x00, 0x00,
-	0x80, 0x45, 0x00, 0x00, 0x00, 0x01, 0x66, 0x00, 0x00,
-	0x80, 0x45, 0x00, 0x00, 0x00, 0x01, 0x66, 0x00, 0x00,
-	0x40, 0x67, 0x00, 0x00, 0x00, 0x01, 0x88, 0x00, 0x00
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x97,
+  0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x01, 0x97,
+  0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x01, 0x97,
+  0x00, 0x00, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x01, 0x97,
+  0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xbb
 };
 
 static const uint32_t panel_physical_ctrl[] = {
-  0x7f, 0x00, 0x00, 0x00
+  0x5f, 0x00, 0x00, 0x10
 };
 
 /*---------------------------------------------------------------------------*/
 /* Other Configuration                                                       */
 /*---------------------------------------------------------------------------*/
-#define DISPLAY_CMDLINE_PREFIX " mdss_mdp3.panel="
+#define DISPLAY_CMDLINE_PREFIX " mdss_mdp.panel="
 
-#define MIPI_FB_ADDR  0x03200000
+#define MIPI_FB_ADDR 0x83200000
 
-#define MIPI_HSYNC_PULSE_WIDTH       8
-#define MIPI_HSYNC_BACK_PORCH_DCLK   40
-#define MIPI_HSYNC_FRONT_PORCH_DCLK  160
+#define MIPI_HSYNC_PULSE_WIDTH       12
+#define MIPI_HSYNC_BACK_PORCH_DCLK   32
+#define MIPI_HSYNC_FRONT_PORCH_DCLK  144
 
-#define MIPI_VSYNC_PULSE_WIDTH       2
-#define MIPI_VSYNC_BACK_PORCH_LINES  10
-#define MIPI_VSYNC_FRONT_PORCH_LINES 12
+#define MIPI_VSYNC_PULSE_WIDTH       4
+#define MIPI_VSYNC_BACK_PORCH_LINES  3
+#define MIPI_VSYNC_FRONT_PORCH_LINES 9
 
 #endif
