@@ -70,6 +70,28 @@ static pm8921_dev_t pmic;
 static crypto_engine_type platform_ce_type = CRYPTO_ENGINE_TYPE_SW;
 
 static void target_uart_init(void);
+#define DELAY 20
+void qca6174_init()
+{
+	dprintf(CRITICAL, "%s SDC4 before enabling GPIO 21....\n", __func__);
+        mdelay(DELAY);
+	gpio_tlmm_config(64, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_ENABLE);
+        /* Output HIGH */
+	gpio_set(64, 2);
+        //GPIO 21  WLAN_EN
+        mdelay(DELAY);
+	gpio_tlmm_config(21, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_6MA, GPIO_ENABLE);
+        /* Output HIGH */
+	gpio_set(21, 0);
+        mdelay(DELAY);
+	gpio_set(21, 2);
+        //GPIO 17  BT_EN
+	gpio_tlmm_config(17, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_6MA, GPIO_ENABLE);
+        /* Output HIGH */
+	gpio_set(17, 0);
+        mdelay(DELAY);
+	gpio_set(17, 2);
+}
 
 void target_early_init(void)
 {
@@ -83,6 +105,7 @@ void target_early_init(void)
 		// set GPIO_84 to HIGH when enter LK
 		gpio_set(84, 2);
 	}
+    qca6174_init(); //Enable qca6174 SDC4
 }
 
 void shutdown_device(void)
