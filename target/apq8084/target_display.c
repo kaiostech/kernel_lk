@@ -50,40 +50,76 @@
 #define GPIO_STATE_HIGH 2
 #define RESET_GPIO_SEQ_LEN 3
 
-static uint32_t dsi_pll_enable_seq(uint32_t ctl_base)
+static uint32_t dsi_pll_lock_status(uint32_t ctl_base)
 {
-	uint32_t rc = 0;
+	uint32_t counter, status;
 
+	udelay(100);
+	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
+
+	status = readl(ctl_base + 0x02c0) & 0x01;
+	for (counter = 0; counter < 5 && !status; counter++) {
+		udelay(100);
+		status = readl(ctl_base + 0x02c0) & 0x01;
+	}
+
+	return status;
+}
+
+static uint32_t dsi_pll_enable_seq_b(uint32_t ctl_base)
+{
 	mdss_dsi_uniphy_pll_sw_reset(ctl_base);
 
 	writel(0x01, ctl_base + 0x0220); /* GLB CFG */
-	mdelay(1);
+	udelay(1);
 	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
-	mdelay(1);
+	udelay(200);
 	writel(0x07, ctl_base + 0x0220); /* GLB CFG */
-	mdelay(1);
+	udelay(500);
 	writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-	mdelay(1);
+	udelay(500);
 
-	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
+	return dsi_pll_lock_status(ctl_base);
+}
 
-	while (!(readl(ctl_base + 0x02c0) & 0x01)) {
-		mdss_dsi_uniphy_pll_sw_reset(ctl_base);
-		writel(0x01, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x05, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x07, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x05, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x07, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(1);
-		writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-		mdelay(2);
-		mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
+static uint32_t dsi_pll_enable_seq_d(uint32_t ctl_base)
+{
+	mdss_dsi_uniphy_pll_sw_reset(ctl_base);
+
+	writel(0x01, ctl_base + 0x0220); /* GLB CFG */
+	udelay(1);
+	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
+	udelay(200);
+	writel(0x07, ctl_base + 0x0220); /* GLB CFG */
+	udelay(250);
+	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
+	udelay(200);
+	writel(0x07, ctl_base + 0x0220); /* GLB CFG */
+	udelay(500);
+	writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
+	udelay(500);
+
+	return dsi_pll_lock_status(ctl_base);
+}
+
+static void dsi_pll_enable_seq(uint32_t ctl_base)
+{
+	uint32_t counter, status;
+
+	for (counter = 0; counter < 3; counter++) {
+		status = dsi_pll_enable_seq_b(ctl_base);
+		if (status)
+			break;
+		status = dsi_pll_enable_seq_d(ctl_base);
+		if (status)
+			break;
+		status = dsi_pll_enable_seq_d(ctl_base);
+		if(status)
+			break;
 	}
-	return rc;
+
+	if (!status)
+		dprintf(CRITICAL, "Pll lock sequence failed\n");
 }
 
 int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
@@ -241,9 +277,43 @@ int target_display_pre_on()
 	return NO_ERROR;
 }
 
+bool target_display_panel_node(char *panel_name, char *pbuf, uint16_t buf_size)
+{
+	int prefix_string_len = strlen(DISPLAY_CMDLINE_PREFIX);
+	bool ret = true;
+
+	panel_name += strspn(panel_name, " ");
+
+	if (!strcmp(panel_name, HDMI_PANEL_NAME)) {
+		if (buf_size < (prefix_string_len + LK_OVERRIDE_PANEL_LEN +
+				HDMI_CONTROLLER_STRING)) {
+			dprintf(CRITICAL, "command line argument is greater than buffer size\n");
+			return false;
+		}
+
+		strlcpy(pbuf, DISPLAY_CMDLINE_PREFIX, buf_size);
+		buf_size -= prefix_string_len;
+		strlcat(pbuf, LK_OVERRIDE_PANEL, buf_size);
+		buf_size -= LK_OVERRIDE_PANEL_LEN;
+		strlcat(pbuf, HDMI_CONTROLLER_STRING, buf_size);
+	} else {
+		ret = gcdb_display_cmdline_arg(pbuf, buf_size);
+	}
+
+	return ret;
+}
+
 void target_display_init(const char *panel_name)
 {
 	uint32_t ret = 0;
+
+	panel_name += strspn(panel_name, " ");
+
+	if (!strcmp(panel_name, HDMI_PANEL_NAME)) {
+		dprintf(INFO, "%s: HDMI is primary\n", __func__);
+		return;
+	}
+
 	ret = gcdb_display_init(panel_name, MDP_REV_50, MIPI_FB_ADDR);
 	if (ret) {
 		msm_display_off();
