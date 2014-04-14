@@ -197,7 +197,7 @@ bool oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		panel_id = JDI_1080P_VIDEO_PANEL;
 		break;
 	case HW_PLATFORM_LIQUID:
-		panel_id = JDI_QHD_DUALDSI_VIDEO_PANEL;
+		panel_id = JDI_QHD_DUALDSI_CMD_PANEL;
 		break;
 	default:
 		dprintf(CRITICAL, "Display not enabled for %d HW type\n"
