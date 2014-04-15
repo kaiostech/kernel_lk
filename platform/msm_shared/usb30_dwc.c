@@ -735,10 +735,9 @@ static void dwc_event_handler_ep_ctrl_state_setup(dwc_dev_t *dev,
 	case DWC_EVENT_EP_XFER_IN_PROGRESS:
 	default:
 		/* event is not expected in this state */
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
@@ -850,10 +849,9 @@ static void dwc_event_handler_ep_ctrl_state_data(dwc_dev_t *dev,
 	case DWC_EVENT_EP_XFER_IN_PROGRESS:
 	default:
 		 /* event is not expected in this state */
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
@@ -906,10 +904,9 @@ static void dwc_event_handler_ep_ctrl_state_wait_for_host_2(dwc_dev_t *dev,
 	case DWC_EVENT_EP_XFER_COMPLETE:
 	default:
 		/* event not expected in this state. */
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
@@ -961,10 +958,9 @@ static void dwc_event_handler_ep_ctrl_state_wait_for_host_3(dwc_dev_t *dev,
 	case DWC_EVENT_EP_XFER_COMPLETE:
 	default:
 		/* event is not expected in this state */
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
@@ -1035,10 +1031,9 @@ static void dwc_event_handler_ep_ctrl_state_status_2(dwc_dev_t *dev,
 	case DWC_EVENT_EP_XFER_IN_PROGRESS:
 	default:
 		/* event is not expected in this state */
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
@@ -1114,10 +1109,9 @@ static void dwc_event_handler_ep_ctrl_state_status_3(dwc_dev_t *dev,
 	case DWC_EVENT_EP_XFER_IN_PROGRESS:
 	default:
 		/* event is not expected in this state */
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
@@ -1189,10 +1183,9 @@ static void dwc_event_handler_ep_bulk_state_inactive(dwc_dev_t *dev,
 	case DWC_EVENT_EP_XFER_COMPLETE:
 	default:
 		/* event is not expected in this state */
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
@@ -1239,10 +1232,9 @@ static void dwc_event_handler_ep_bulk_state_start_transfer(dwc_dev_t *dev,
 		}
 		break;
 	default:
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
@@ -1319,10 +1311,9 @@ static void dwc_event_handler_ep_bulk_state_xfer_in_prog(dwc_dev_t *dev,
 		}
 		break;
 	default:
-		ERR("\n Unexpected EP event.");
+		ERR("\n Ignore the unexpected EP event: %s\n", event_lookup_ep[event_id]);
 		dwc_print_ep_event_details(dev, event);
 		dwc_print_current_state(dev);
-		ASSERT(0);
 	}
 }
 
