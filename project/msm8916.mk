@@ -24,6 +24,9 @@ DEFINES += ABOOT_FORCE_KERNEL64_ADDR=0x80080000
 DEFINES += ABOOT_FORCE_RAMDISK_ADDR=0x82000000
 DEFINES += ABOOT_FORCE_TAGS_ADDR=0x81E00000
 
+#Enable the feature of long press power on
+DEFINES += LONG_PRESS_POWER_ON=0
+
 #Disable thumb mode
 ENABLE_THUMB := false
 ENABLE_PWM_SUPPORT := true
@@ -34,7 +37,13 @@ ifeq ($(ENABLE_SDHCI_SUPPORT),1)
 DEFINES += MMC_SDHCI_SUPPORT=1
 endif
 
+#enable power on vibrator feature
+ENABLE_PON_VIB_SUPPORT := true
+
 ifeq ($(EMMC_BOOT),1)
 DEFINES += _EMMC_BOOT=1
 endif
 
+ifeq ($(ENABLE_PON_VIB_SUPPORT),true)
+DEFINES += PON_VIB_SUPPORT=1
+endif
