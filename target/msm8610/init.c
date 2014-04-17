@@ -51,8 +51,14 @@
 #include <platform/clock.h>
 #include <platform/timer.h>
 #include <crypto5_wrapper.h>
+
+#if LONG_PRESS_POWER_ON
 #include <shutdown_detect.h>
+#endif
+
+#if PON_VIB_SUPPORT
 #include <vibrator.h>
+#endif
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
@@ -67,7 +73,10 @@
 #define CRYPTO_ENGINE_CMD_ARRAY_SIZE       20
 
 #define TLMM_VOL_UP_BTN_GPIO    72
+
+#if PON_VIB_SUPPORT
 #define VIBRATE_TIME    250
+#endif
 
 enum target_subtype {
 	HW_PLATFORM_SUBTYPE_SKUAA = 1,
@@ -179,10 +188,14 @@ void target_init(void)
 
 	target_sdc_init();
 
+#if LONG_PRESS_POWER_ON
 	shutdown_detect();
+#endif
 
+#if PON_VIB_SUPPORT
 	/* turn on vibrator to indicate that phone is booting up to end user */
 	vib_timed_turn_on(VIBRATE_TIME);
+#endif
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
@@ -190,8 +203,10 @@ void target_init(void)
 
 void target_uninit(void)
 {
+#if PON_VIB_SUPPORT
 	/* wait for the vibrator timer is expried */
 	wait_vib_timeout();
+#endif
 
 	mmc_put_card_to_sleep(dev);
 

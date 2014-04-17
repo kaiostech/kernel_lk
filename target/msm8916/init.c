@@ -45,9 +45,21 @@
 #include <platform/gpio.h>
 #include <platform/irqs.h>
 
+#if LONG_PRESS_POWER_ON
+#include <shutdown_detect.h>
+#endif
+
+#if PON_VIB_SUPPORT
+#include <vibrator.h>
+#endif
+
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
 #define TLMM_VOL_UP_BTN_GPIO    107
+
+#if PON_VIB_SUPPORT
+#define VIBRATE_TIME    250
+#endif
 
 #define FASTBOOT_MODE           0x77665500
 
@@ -161,6 +173,15 @@ void target_init(void)
 		dprintf(CRITICAL, "Error reading the partition table info\n");
 		ASSERT(0);
 	}
+
+#if LONG_PRESS_POWER_ON
+	shutdown_detect();
+#endif
+
+#if PON_VIB_SUPPORT
+	/* turn on vibrator to indicate that phone is booting up to end user */
+	vib_timed_turn_on(VIBRATE_TIME);
+#endif
 }
 
 void target_serialno(unsigned char *buf)
@@ -211,6 +232,24 @@ static int scm_dload_mode(int mode)
 
 	return ret;
 }
+/* Configure PMIC and Drop PS_HOLD for shutdown */
+void shutdown_device()
+{
+	dprintf(CRITICAL, "Going down for shutdown.\n");
+
+	/* Configure PMIC for shutdown */
+	pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "shutdown failed\n");
+
+	ASSERT(0);
+}
+
 void reboot_device(unsigned reboot_reason)
 {
 	uint8_t reset_type = 0;
@@ -390,6 +429,11 @@ void target_usb_stop(void)
 
 void target_uninit(void)
 {
+#if PON_VIB_SUPPORT
+	/* wait for the vibrator timer is expried */
+	wait_vib_timeout();
+#endif
+
 	mmc_put_card_to_sleep(dev);
 	sdhci_mode_disable(&dev->host);
 }
