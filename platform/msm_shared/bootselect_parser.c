@@ -34,8 +34,9 @@
 #include "partition_parser.h"
 #include "bootselect_parser.h"
 
-static bool format_data = false;
-static bool factory_not_set = false;
+static bool format_data;
+static bool factory_not_set;
+static bool bootselect_exists;
 
 bool read_boot_select_partition()
 {
@@ -72,6 +73,7 @@ bool read_boot_select_partition()
 	in = (struct boot_selection_info *) buf;
 	if ((in->signature == BOOTSELECT_SIGNATURE) &&
 			(in->version == BOOTSELECT_VERSION)) {
+		bootselect_exists = true;
 		if(!(in->state_info & BOOTSELECT_FACTORY))
 			factory_not_set = true;
 		if ((in->state_info & BOOTSELECT_FORMAT))
@@ -94,6 +96,11 @@ bool needs_write_protection()
 bool check_format_bit()
 {
 	return(factory_not_set && format_data);
+}
+
+bool check_bootselect_exists()
+{
+	return bootselect_exists;
 }
 
 int write_protect_partitions(int enable)
