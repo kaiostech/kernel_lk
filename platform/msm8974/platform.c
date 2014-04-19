@@ -37,6 +37,7 @@
 #include <smem.h>
 #include <board.h>
 #include <boot_stats.h>
+#include <scm.h>
 
 #define MB (1024*1024)
 
@@ -180,6 +181,10 @@ void platform_uninit(void)
 #endif
 
 	qtimer_uninit();
+
+	/* Set TZ App protect fuses */
+	if(check_bootselect_exists())
+		set_non_hlos_app_fuse_cmd();
 }
 
 int platform_use_identity_mmu_mappings(void)
