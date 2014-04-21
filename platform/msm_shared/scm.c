@@ -605,3 +605,25 @@ int scm_halt_pmic_arbiter()
 
 	return ret;
 }
+
+void set_non_hlos_app_fuse_cmd()
+{
+	uint32_t svc_id = SCM_SVC_FUSE;
+	uint32_t cmd_id = SCM_BLOW_SW_FUSE_ID;
+	int ret = 0;
+	uint32_t fuse_id = NON_HLOS_APP1_PROT_FUSE;
+
+	ret = scm_call(svc_id, cmd_id, &fuse_id, sizeof(fuse_id), NULL, 0);
+	if(ret) {
+		dprintf(CRITICAL, "Failed to protect the non-hlos app1\n");
+		ASSERT(0);
+	}
+
+	fuse_id = NON_HLOS_APP2_PROT_FUSE;
+	ret = scm_call(svc_id, cmd_id, &fuse_id, sizeof(fuse_id), NULL, 0);
+	if(ret) {
+		dprintf(CRITICAL, "Failed to protect the non-hlos app2\n");
+		ASSERT(0);
+	}
+	return;
+}
