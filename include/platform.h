@@ -53,5 +53,5 @@ unsigned check_reboot_mode(void);
 void platform_uninit_timer(void);
 void reboot_device(unsigned);
 int set_download_mode(enum dload_mode mode);
-
+uint32_t platform_check_secure_fuses(void);
 #endif
