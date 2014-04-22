@@ -26,6 +26,10 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+
+#include <stdlib.h>
+#include <string.h>
+
 #include <hdmi.h>
 #include <msm_panel.h>
 #include <platform/timer.h>
@@ -197,6 +201,7 @@ static const struct msm_hdmi_mode_timing_info timings_db[HDMI_VFRMT_END] =
 };
 
 static struct msm_hdmi_mode_timing_info hdmi_msm_res_timing;
+static uint32_t current_resolution;
 
 static uint8_t hdmi_msm_avi_iframe_lut[][16] = {
 /*	480p60	480i60	576p50	576i50	720p60	 720p50	1080p60	1080i60	1080p50
@@ -397,6 +402,8 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 		struct msm_hdmi_mode_timing_info timing =
 			timings_db[preferred_format];
 
+		current_resolution = preferred_format;
+
 		hdmi_msm_res_timing = timing;
 
 		dprintf(INFO, "%s: preferred format=%d\n",
@@ -468,8 +475,6 @@ void hdmi_video_setup()
 	uint32_t hvsync_total = 0;
 	uint32_t hsync_active = 0;
 	uint32_t vsync_active = 0;
-	uint32_t hdmi_frame_ctrl = 0;
-	uint32_t val;
 	struct msm_hdmi_mode_timing_info *hdmi_timing = &hdmi_msm_res_timing;
 
 	hsync_total = hdmi_timing->active_h + hdmi_timing->front_porch_h
@@ -559,7 +564,7 @@ void hdmi_msm_avi_info_frame(void)
 		mode = 15;
 		break;
 	default:
-		dprintf("%s: mode %d not supported\n", __func__,
+		dprintf(INFO, "%s: mode %d not supported\n", __func__,
 			hdmi_msm_res_timing.video_format);
 		return;
 	}
@@ -676,39 +681,317 @@ void hdmi_app_clk_init(int on)
 	}
 }
 
+/* Supported HDMI Audio channels */
+#define MSM_HDMI_AUDIO_CHANNEL_2		0
+#define MSM_HDMI_AUDIO_CHANNEL_4		1
+#define MSM_HDMI_AUDIO_CHANNEL_6		2
+#define MSM_HDMI_AUDIO_CHANNEL_8		3
+#define MSM_HDMI_AUDIO_CHANNEL_MAX		4
+#define MSM_HDMI_AUDIO_CHANNEL_FORCE_32BIT	0x7FFFFFFF
+
+/* Supported HDMI Audio sample rates */
+#define MSM_HDMI_SAMPLE_RATE_32KHZ		0
+#define MSM_HDMI_SAMPLE_RATE_44_1KHZ		1
+#define MSM_HDMI_SAMPLE_RATE_48KHZ		2
+#define MSM_HDMI_SAMPLE_RATE_88_2KHZ		3
+#define MSM_HDMI_SAMPLE_RATE_96KHZ		4
+#define MSM_HDMI_SAMPLE_RATE_176_4KHZ		5
+#define MSM_HDMI_SAMPLE_RATE_192KHZ		6
+#define MSM_HDMI_SAMPLE_RATE_MAX		7
+#define MSM_HDMI_SAMPLE_RATE_FORCE_32BIT	0x7FFFFFFF
+
+struct hdmi_msm_audio_acr {
+	uint32_t n;	/* N parameter for clock regeneration */
+	uint32_t cts;	/* CTS parameter for clock regeneration */
+};
+
+struct hdmi_msm_audio_arcs {
+	uint32_t pclk;
+	struct hdmi_msm_audio_acr lut[MSM_HDMI_SAMPLE_RATE_MAX];
+};
+
+#define HDMI_MSM_AUDIO_ARCS(pclk, ...) { pclk, __VA_ARGS__ }
+
+/* Audio constants lookup table for hdmi_msm_audio_acr_setup */
+/* Valid Pixel-Clock rates: 25.2MHz, 27MHz, 27.03MHz, 74.25MHz, 148.5MHz */
+static const struct hdmi_msm_audio_arcs hdmi_msm_audio_acr_lut[] = {
+	/*  25.200MHz  */
+	HDMI_MSM_AUDIO_ARCS(25200, {
+		{4096, 25200}, {6272, 28000}, {6144, 25200}, {12544, 28000},
+		{12288, 25200}, {25088, 28000}, {24576, 25200} }),
+	/*  27.000MHz  */
+	HDMI_MSM_AUDIO_ARCS(27000, {
+		{4096, 27000}, {6272, 30000}, {6144, 27000}, {12544, 30000},
+		{12288, 27000}, {25088, 30000}, {24576, 27000} }),
+	/*  27.027MHz */
+	HDMI_MSM_AUDIO_ARCS(27030, {
+		{4096, 27027}, {6272, 30030}, {6144, 27027}, {12544, 30030},
+		{12288, 27027}, {25088, 30030}, {24576, 27027} }),
+	/*  74.250MHz */
+	HDMI_MSM_AUDIO_ARCS(74250, {
+		{4096, 74250}, {6272, 82500}, {6144, 74250}, {12544, 82500},
+		{12288, 74250}, {25088, 82500}, {24576, 74250} }),
+	/* 148.500MHz */
+	HDMI_MSM_AUDIO_ARCS(148500, {
+		{4096, 148500}, {6272, 165000}, {6144, 148500}, {12544, 165000},
+		{12288, 148500}, {25088, 165000}, {24576, 148500} }),
+};
+
+static void hdmi_msm_audio_acr_setup(int audio_sample_rate,
+	int num_of_channels)
+{
+	struct msm_hdmi_mode_timing_info timing =
+		timings_db[current_resolution];
+	const struct hdmi_msm_audio_arcs *audio_arc =
+		&hdmi_msm_audio_acr_lut[0];
+	const int lut_size = sizeof(hdmi_msm_audio_acr_lut)
+		/sizeof(*hdmi_msm_audio_acr_lut);
+	int i, n, cts, layout, multiplier;
+	uint32_t aud_pck_ctrl_2_reg = 0, acr_pck_ctrl_reg = 0;
+
+	if (!timing.is_supported) {
+		dprintf(INFO, "%s: video format %d not supported\n",
+			__func__, current_resolution);
+		return;
+	}
+
+	for (i = 0; i < lut_size;
+		audio_arc = &hdmi_msm_audio_acr_lut[++i]) {
+		if (audio_arc->pclk == timing.pixel_freq)
+			break;
+	}
+
+	if (i >= lut_size) {
+		dprintf(INFO, "%s: pixel clock %d not supported\n",
+			__func__, timing.pixel_freq);
+		return;
+	}
+
+	n = audio_arc->lut[audio_sample_rate].n;
+	cts = audio_arc->lut[audio_sample_rate].cts;
+	layout = (MSM_HDMI_AUDIO_CHANNEL_2 == num_of_channels) ? 0 : 1;
+
+	if ((MSM_HDMI_SAMPLE_RATE_192KHZ == audio_sample_rate) ||
+	    (MSM_HDMI_SAMPLE_RATE_176_4KHZ == audio_sample_rate)) {
+		multiplier = 4;
+		n >>= 2; /* divide N by 4 and use multiplier */
+	} else if ((MSM_HDMI_SAMPLE_RATE_96KHZ == audio_sample_rate) ||
+		  (MSM_HDMI_SAMPLE_RATE_88_2KHZ == audio_sample_rate)) {
+		multiplier = 2;
+		n >>= 1; /* divide N by 2 and use multiplier */
+	} else {
+		multiplier = 1;
+	}
+	dprintf(INFO, "%s: n=%u, cts=%u, layout=%u\n", __func__, n, cts,
+		layout);
+
+	/* AUDIO_PRIORITY | SOURCE */
+	acr_pck_ctrl_reg |= 0x80000100;
+	/* N_MULTIPLE(multiplier) */
+	acr_pck_ctrl_reg |= (multiplier & 7) << 16;
+
+	if ((MSM_HDMI_SAMPLE_RATE_48KHZ == audio_sample_rate) ||
+	    (MSM_HDMI_SAMPLE_RATE_96KHZ == audio_sample_rate) ||
+	    (MSM_HDMI_SAMPLE_RATE_192KHZ == audio_sample_rate)) {
+		/* SELECT(3) */
+		acr_pck_ctrl_reg |= 3 << 4;
+		/* CTS_48 */
+		cts <<= 12;
+
+		/* CTS: need to determine how many fractional bits */
+		/* HDMI_ACR_48_0 */
+		writel(cts, MSM_HDMI_BASE + 0xD4);
+		/* N */
+		/* HDMI_ACR_48_1 */
+		writel(n, MSM_HDMI_BASE + 0xD8);
+	} else if ((MSM_HDMI_SAMPLE_RATE_44_1KHZ == audio_sample_rate)
+		|| (MSM_HDMI_SAMPLE_RATE_88_2KHZ == audio_sample_rate)
+		|| (MSM_HDMI_SAMPLE_RATE_176_4KHZ == audio_sample_rate)) {
+		/* SELECT(2) */
+		acr_pck_ctrl_reg |= 2 << 4;
+		/* CTS_44 */
+		cts <<= 12;
+
+		/* CTS: need to determine how many fractional bits */
+		/* HDMI_ACR_44_0 */
+		writel(cts, MSM_HDMI_BASE + 0xCC);
+
+		/* N */
+		/* HDMI_ACR_44_1 */
+		writel(n, MSM_HDMI_BASE + 0xD0);
+	} else {	/* default to 32k */
+		/* SELECT(1) */
+		acr_pck_ctrl_reg |= 1 << 4;
+
+		/* CTS_32 */
+		cts <<= 12;
+
+		/* CTS: need to determine how many fractional bits */
+		/* HDMI_ACR_32_0 */
+		writel(cts, MSM_HDMI_BASE + 0xC4);
+
+		/* N */
+		/* HDMI_ACR_32_1 */
+		writel(n, MSM_HDMI_BASE + 0xC8);
+	}
+	/* Payload layout depends on number of audio channels */
+	/* LAYOUT_SEL(layout) */
+	aud_pck_ctrl_2_reg = 1 | (layout << 1);
+
+	/* override | layout */
+	/* HDMI_AUDIO_PKT_CTRL2[0x00044] */
+	writel(aud_pck_ctrl_2_reg, MSM_HDMI_BASE + 0x44);
+
+	/* SEND | CONT */
+	acr_pck_ctrl_reg |= 0x00000003;
+
+	/* HDMI_ACR_PKT_CTRL[0x0024] */
+	writel(acr_pck_ctrl_reg, MSM_HDMI_BASE + 0x24);
+}
+
+int hdmi_msm_audio_info_setup(uint32_t num_of_channels)
+{
+	uint32_t channel_count = 1;	/* Default to 2 channels
+					   -> See Table 17 in CEA-D spec */
+	uint32_t channel_allocation = 0;
+	uint32_t level_shift = 0;
+	uint32_t down_mix = 0;
+	uint32_t check_sum, audio_info_0_reg, audio_info_1_reg;
+	uint32_t audio_info_ctrl_reg;
+	uint32_t aud_pck_ctrl_2_reg;
+	uint32_t layout;
+
+	layout = (MSM_HDMI_AUDIO_CHANNEL_2 == num_of_channels) ? 0 : 1;
+	aud_pck_ctrl_2_reg = 1 | (layout << 1);
+	writel(aud_pck_ctrl_2_reg, MSM_HDMI_BASE + 0x44);
+
+	/* Please see table 20 Audio InfoFrame in HDMI spec
+	   FL  = front left
+	   FC  = front Center
+	   FR  = front right
+	   FLC = front left center
+	   FRC = front right center
+	   RL  = rear left
+	   RC  = rear center
+	   RR  = rear right
+	   RLC = rear left center
+	   RRC = rear right center
+	   LFE = low frequency effect
+	 */
+
+	/* Read first then write because it is bundled with other controls */
+	/* HDMI_INFOFRAME_CTRL0[0x002C] */
+	audio_info_ctrl_reg = readl(MSM_HDMI_BASE + 0x2C);
+
+	switch (num_of_channels) {
+	case MSM_HDMI_AUDIO_CHANNEL_2:
+		channel_allocation = 0;	/* Default to FR,FL */
+		break;
+	case MSM_HDMI_AUDIO_CHANNEL_4:
+		channel_count = 3;
+		/* FC,LFE,FR,FL */
+		channel_allocation = 0x3;
+		break;
+	case MSM_HDMI_AUDIO_CHANNEL_6:
+		channel_count = 5;
+		/* RR,RL,FC,LFE,FR,FL */
+		channel_allocation = 0xB;
+		break;
+	case MSM_HDMI_AUDIO_CHANNEL_8:
+		channel_count = 7;
+		/* FRC,FLC,RR,RL,FC,LFE,FR,FL */
+		channel_allocation = 0x1f;
+		break;
+	default:
+		dprintf(INFO, "%s(): Unsupported num_of_channels = %u\n",
+				__func__, num_of_channels);
+		return -1;
+		break;
+	}
+
+	/* Program the Channel-Speaker allocation */
+	audio_info_1_reg = 0;
+	/* CA(channel_allocation) */
+	audio_info_1_reg |= channel_allocation & 0xff;
+	/* Program the Level shifter */
+	/* LSV(level_shift) */
+	audio_info_1_reg |= (level_shift << 11) & 0x00007800;
+	/* Program the Down-mix Inhibit Flag */
+	/* DM_INH(down_mix) */
+	audio_info_1_reg |= (down_mix << 15) & 0x00008000;
+
+	/* HDMI_AUDIO_INFO1[0x00E8] */
+	writel(audio_info_1_reg, MSM_HDMI_BASE + 0xE8);
+
+	/* Calculate CheckSum
+	   Sum of all the bytes in the Audio Info Packet bytes
+	   (See table 8.4 in HDMI spec) */
+	check_sum = 0;
+	/* HDMI_AUDIO_INFO_FRAME_PACKET_HEADER_TYPE[0x84] */
+	check_sum += 0x84;
+	/* HDMI_AUDIO_INFO_FRAME_PACKET_HEADER_VERSION[0x01] */
+	check_sum += 1;
+	/* HDMI_AUDIO_INFO_FRAME_PACKET_LENGTH[0x0A] */
+	check_sum += 0x0A;
+	check_sum += channel_count;
+	check_sum += channel_allocation;
+	/* See Table 8.5 in HDMI spec */
+	check_sum += (level_shift & 0xF) << 3 | (down_mix & 0x1) << 7;
+	check_sum &= 0xFF;
+	check_sum = (256 - check_sum);
+
+	audio_info_0_reg = 0;
+	/* CHECKSUM(check_sum) */
+	audio_info_0_reg |= check_sum & 0xff;
+	/* CC(channel_count) */
+	audio_info_0_reg |= (channel_count << 8) & 0x00000700;
+
+	/* HDMI_AUDIO_INFO0[0x00E4] */
+	writel(audio_info_0_reg, MSM_HDMI_BASE + 0xE4);
+
+	/* Set these flags */
+	/* AUDIO_INFO_UPDATE | AUDIO_INFO_SOURCE | AUDIO_INFO_CONT
+	 | AUDIO_INFO_SEND */
+	audio_info_ctrl_reg |= 0x000000F0;
+
+	/* HDMI_INFOFRAME_CTRL0[0x002C] */
+	writel(audio_info_ctrl_reg, MSM_HDMI_BASE + 0x2C);
+
+	return 0;
+}
+
 static void hdmi_audio_playback(void)
 {
 	uint32_t data_base;
-	data_base = memalign(4096, 0x1000);
-	if (data_base == NULL)
-		return;
-	memset(data_base, 0, 0x1000);
 
-	writel(0x0000095E, 0x28106000);
-	writel(data_base, 0x28106004);
+	data_base = (uint32_t) memalign(4096, 0x1000);
+	if (!data_base)
+		return;
+
+	memset((void *) data_base, 0, 0x1000);
+
+	writel(0x00000956, 0x28106000);
+	writel(data_base,  0x28106004);
 	writel(0x000005FF, 0x28106008);
 	writel(0x000005FF, 0x28106010);
 	udelay(10);
-	writel(0x0000095F, 0x28106000);
+
+	writel(0x00000957, 0x28106000);
 	writel(0x00000010, 0x28101004);
 	udelay(10);
 
-	writel(0x00000170,0x04A000E4);
-	writel(0x00000000,0x04A000E8);
-	writel(0x000000F3,0x04A0002C);
-	writel(0x00000000,0x04A00204);
-	writel(0x24414000,0x04A000C4);
-	writel(0x00001000,0x04A000C8);
-	writel(0x80010110,0x04A00024);
-	writel(0x00000001,0x04A00044);
-	writel(0x00000081,0x04A001D0);
-	writel(0x00000011,0x04A00020);
+	hdmi_msm_audio_acr_setup(MSM_HDMI_SAMPLE_RATE_48KHZ,
+		MSM_HDMI_AUDIO_CHANNEL_2);
+
+	hdmi_msm_audio_info_setup(MSM_HDMI_AUDIO_CHANNEL_2);
 	udelay(20);
+
+	writel(0x41,0x04A001D0);
+	writel(0x11,0x04A00020);
 }
+
 int hdmi_msm_turn_on(void)
 {
-	uint32_t hotplug_control;
-
 	hdmi_msm_set_mode(0);
 
 	hdmi_msm_reset_core();	// Reset the core
@@ -750,7 +1033,7 @@ int hdmi_dtv_init()
 	uint32_t active_v_start = 0;
 	uint32_t active_v_end = 0;
 	uint32_t dtv_hsync_skew = 0;
-	uint32_t intf, stage, snum, mask, data;
+	uint32_t stage, snum, mask, data;
 	unsigned char *rgb_base;
 	unsigned char *overlay_base;
 	uint32_t val;
@@ -771,13 +1054,13 @@ int hdmi_dtv_init()
 	writel(0xff0000, MDP_BASE + 0xb0078);
 
 	// overlay rgb setup RGB2
-	rgb_base = MDP_BASE + MDP4_RGB_BASE;
+	rgb_base = (unsigned char *) MDP_BASE + MDP4_RGB_BASE;
 	rgb_base += (MDP4_RGB_OFF * 1);
 	writel(((timing->active_v << 16) | timing->active_h), rgb_base + 0x0000);
 	writel(0x0, rgb_base + 0x0004);
 	writel(((timing->active_v << 16) | timing->active_h), rgb_base + 0x0008);
 	writel(0x0, rgb_base + 0x000c);
-	writel(hdmi_addr_base, rgb_base + 0x0010);	//FB address
+	writel((unsigned)hdmi_addr_base, rgb_base + 0x0010);	//FB address
 	writel((timing->active_h * HDMI_MSM_BPP / 8), rgb_base + 0x0040);
 	writel(0x2443F, rgb_base + 0x0050);	//format
 	writel(0x20001, rgb_base + 0x0054);	//pattern
@@ -798,13 +1081,13 @@ int hdmi_dtv_init()
 	data = readl(MDP_BASE + 0x10100);
 
 	// Overlay cfg
-	overlay_base = MDP_BASE + MDP4_OVERLAYPROC1_BASE;
+	overlay_base = (unsigned char *) MDP_BASE + MDP4_OVERLAYPROC1_BASE;
 
 	writel(0x0, MDP_BASE + 0x0038);	//EXternal interface select
 
 	data = ((timing->active_v << 16) | timing->active_h);
 	writel(data, overlay_base + 0x0008);
-	writel(hdmi_addr_base, overlay_base + 0x000c);
+	writel((unsigned)hdmi_addr_base, overlay_base + 0x000c);
 	writel((timing->active_h * HDMI_MSM_BPP / 8), overlay_base + 0x0010);
 	writel(0x10, overlay_base + 0x104);
 	writel(0x10, overlay_base + 0x124);
