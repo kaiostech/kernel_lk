@@ -44,6 +44,13 @@
 
 #define MAX_AUDIO_DATA_BLOCK_SIZE	0x80
 
+static uint32_t pref_mode;
+
+static uint8_t pt_scan_info;
+static uint8_t it_scan_info;
+static uint8_t ce_scan_info;
+static uint8_t quant_support;
+
 enum edid_data_block_type {
 	RESERVED_DATA_BLOCK1 = 0,
 	AUDIO_DATA_BLOCK,
@@ -403,10 +410,18 @@ void hdmi_update_panel_info(struct msm_fb_panel_data *pdata)
 		++svd;
 		for (i = 0; i < len; ++i, ++svd) {
 			video_format = (*svd & 0x7F);
-			dprintf(SPEW, "Supported video format = %d\n",
-				video_format);
+
 			if (i == 0)
-				preferred_format = video_format;
+				pref_mode = video_format;
+
+			dprintf(SPEW, "video format=%d\n",
+					video_format);
+			if ((timings_db[video_format].is_supported)
+				&& hdmi_msm_res_priority[video_format]) {
+				if (hdmi_msm_res_priority[video_format] >
+					hdmi_msm_res_priority[preferred_format])
+					preferred_format = video_format;
+			}
 		}
 	}
 
@@ -516,6 +531,36 @@ void hdmi_video_setup()
 	hdmi_frame_ctrl_reg();
 }
 
+void hdmi_msm_get_scan_info()
+{
+	uint8_t len = 0;
+	uint32_t start_offset = DBC_START_OFFSET;
+
+	/* A Tage code of 7 identifies extended data blocks */
+	const uint8_t *etag = hdmi_edid_find_block(edid_buf, start_offset,
+				EXTENDED_DATA_BLOCK, &len);
+
+	while (etag != NULL) {
+		if (len < 2) {
+			dprintf(INFO, "Invalid Length\n");
+		} else {
+			if (etag[1] == 0) {
+				pt_scan_info = (etag[2] & (BIT(4) |
+					BIT(5))) >> 4;
+				it_scan_info = (etag[2] & (BIT(3) |
+					BIT(2))) >> 2;
+				ce_scan_info = etag[2] & (BIT(1) |
+					BIT(0));
+				quant_support = (etag[2] & BIT(6)) >> 6;
+			}
+		}
+
+		start_offset = etag - edid_buf + len + 1;
+		etag = hdmi_edid_find_block(edid_buf, start_offset,
+			EXTENDED_DATA_BLOCK, &len);
+	}
+}
+
 void hdmi_msm_avi_info_frame(void)
 {
 	/* two header + length + 13 data */
@@ -525,6 +570,15 @@ void hdmi_msm_avi_info_frame(void)
 	uint32_t regVal;
 	uint8_t  i;
 	uint8_t  mode;
+	uint8_t  use_csc_limited;
+	uint8_t  use_ce_scan_info;
+
+	if ((((hdmi_msm_res_timing.active_h == 640) &&
+		hdmi_msm_res_timing.active_v == 480)) ||
+		quant_support)
+		use_csc_limited = false;
+	else
+		use_csc_limited = true;
 
 	switch (hdmi_msm_res_timing.video_format) {
 	case HDMI_VFRMT_720x480p60_4_3:
@@ -581,7 +635,6 @@ void hdmi_msm_avi_info_frame(void)
 		return;
 	}
 
-
 	/* InfoFrame Type = 82 */
 	aviInfoFrame[0]  = 0x82;
 	/* Version = 2 */
@@ -592,13 +645,43 @@ void hdmi_msm_avi_info_frame(void)
 	/* Data Byte 01: 0 Y1 Y0 A0 B1 B0 S1 S0 */
 	aviInfoFrame[3]  = hdmi_msm_avi_iframe_lut[0][mode];
 
-	/* Setting underscan bit */
-	aviInfoFrame[3] |= 0x02;
+	/*
+	 * If the sink specified support for both underscan/overscan
+	 * then, by default, set the underscan bit.
+	 * Only checking underscan support for preferred format and cea formats
+	 */
+	if (hdmi_msm_res_timing.video_format == pref_mode) {
+		use_ce_scan_info = false;
+		switch (pt_scan_info) {
+		case 0:
+			use_ce_scan_info = true;
+			break;
+		case 3:
+			aviInfoFrame[3] |= 0x02;
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (use_ce_scan_info) {
+		if (3 == ce_scan_info) {
+			aviInfoFrame[3] |= 0x02;
+		}
+	}
 
 	/* Data Byte 02: C1 C0 M1 M0 R3 R2 R1 R0 */
 	aviInfoFrame[4]  = hdmi_msm_avi_iframe_lut[1][mode];
 	/* Data Byte 03: ITC EC2 EC1 EC0 Q1 Q0 SC1 SC0 */
 	aviInfoFrame[5]  = hdmi_msm_avi_iframe_lut[2][mode];
+
+	/* Limited Range: Q1 = 0 Q0 = 1, Full Range: Q1 = 1 Q0 = 0*/
+	aviInfoFrame[5] &= ~(0x3 << 2);
+	if (use_csc_limited)
+		aviInfoFrame[5] |= BIT(2);
+	else
+		aviInfoFrame[5] |= BIT(3);
+
 	/* Data Byte 04: 0 VIC6 VIC5 VIC4 VIC3 VIC2 VIC1 VIC0 */
 	aviInfoFrame[6]  = hdmi_msm_avi_iframe_lut[3][mode];
 	/* Data Byte 05: 0 0 0 0 PR3 PR2 PR1 PR0 */
@@ -978,7 +1061,7 @@ static void hdmi_edid_get_audio_data(const uint8_t *in_buf,
 {
 	const uint8_t *adb = NULL;
 	uint32_t adb_size = 0;
-	uint8_t len = 0, count = 0, i = 0;
+	uint8_t len = 0, count = 0;
 	uint32_t next_offset = DBC_START_OFFSET;
 	uint8_t audio_data_block[MAX_AUDIO_DATA_BLOCK_SIZE];
 
@@ -1020,10 +1103,10 @@ static void hdmi_edid_get_audio_data(const uint8_t *in_buf,
 static void hdmi_audio_playback(void)
 {
 	uint32_t data_base;
-	uint8_t channels[MAX_SAD] = {0};
-	uint8_t formats[MAX_SAD] = {0};
+	uint8_t channels[MAX_SAD]  = {0};
+	uint8_t formats[MAX_SAD]   = {0};
 	uint8_t frequency[MAX_SAD] = {0};
-	uint8_t bitrate[MAX_SAD] = {0};
+	uint8_t bitrate[MAX_SAD]   = {0};
 	uint8_t i = 0;
 
 	hdmi_edid_get_audio_data(edid_buf, channels, formats,
@@ -1039,20 +1122,19 @@ static void hdmi_audio_playback(void)
 		dprintf(INFO, "%s: 48KHz not supported by TV\n", __func__);
 
 	data_base = (uint32_t) memalign(4096, 0x1000);
-	if (!data_base)
-		return;
+	if (data_base) {
+		memset((void *) data_base, 0, 0x1000);
 
-	memset((void *) data_base, 0, 0x1000);
+		writel(0x00000956, 0x28106000);
+		writel(data_base,  0x28106004);
+		writel(0x000005FF, 0x28106008);
+		writel(0x000005FF, 0x28106010);
+		udelay(10);
 
-	writel(0x00000956, 0x28106000);
-	writel(data_base,  0x28106004);
-	writel(0x000005FF, 0x28106008);
-	writel(0x000005FF, 0x28106010);
-	udelay(10);
-
-	writel(0x00000957, 0x28106000);
-	writel(0x00000010, 0x28101004);
-	udelay(10);
+		writel(0x00000957, 0x28106000);
+		writel(0x00000010, 0x28101004);
+		udelay(10);
+	}
 
 	hdmi_msm_audio_acr_setup(MSM_HDMI_SAMPLE_RATE_48KHZ,
 		MSM_HDMI_AUDIO_CHANNEL_2);
@@ -1076,6 +1158,8 @@ int hdmi_msm_turn_on(void)
 
 	// Video setup for HDMI
 	hdmi_video_setup();
+
+	hdmi_msm_get_scan_info();
 
 	// AVI info setup
 	hdmi_msm_avi_info_frame();
