@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -244,7 +244,7 @@ void ce_clock_init(void)
     platform_id = board_platform_id();
 
 	if ((platform_id == APQ8064) || (platform_id == APQ8064AA)
-		|| (platform_id == APQ8064AB))
+		|| (platform_id == APQ8064AB)|| (platform_id == APQ8064AU))
 	{
 		/* Enable HCLK for CE3 */
 		clk_get_set_enable("ce3_pclk", 0, 1);
