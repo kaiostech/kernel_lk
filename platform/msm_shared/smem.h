@@ -253,6 +253,7 @@ enum {
 	MSM8130AB = 181,
 	MSM8627AA = 182,
 	MSM8227AA = 183,
+	APQ8064AU = 244, /* aka Auto grade */
 };
 
 enum platform {
