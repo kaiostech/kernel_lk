@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -191,6 +191,7 @@ struct msm_fb_panel_data {
 	/* function entry chain */
 	int (*power_func) (int enable);
 	int (*clk_func) (int enable);
+	void (*update_panel_info) (struct msm_fb_panel_data *pdata);
 };
 
 
