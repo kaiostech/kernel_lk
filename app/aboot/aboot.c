@@ -92,6 +92,7 @@ void write_device_info_flash(device_info *dev);
 
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
+#define ALARM_BOOT      0x77665503
 
 /* make 4096 as default size to ensure EFS,EXT4's erasing */
 #define DEFAULT_ERASE_SIZE  4096
@@ -126,6 +127,8 @@ static bool boot_into_ffbm;
 static int auth_kernel_img = 0;
 
 static device_info device = {DEVICE_MAGIC, 0, 0, 0};
+
+static bool boot_reason_alarm;
 
 struct atag_ptbl_entry
 {
@@ -220,6 +223,8 @@ unsigned char *update_cmdline(const char * cmdline)
 		/* reduce kernel console messages to speed-up boot */
 		cmdline_len += strlen(loglevel);
 	} else if (target_rtc_status_detect()) {
+		cmdline_len += strlen(alarmboot_mode);
+	} else if (boot_reason_alarm){
 		cmdline_len += strlen(alarmboot_mode);
 	} else if (device.charger_screen_enabled &&
 			target_pause_for_battery_charge()) {
@@ -322,6 +327,10 @@ unsigned char *update_cmdline(const char * cmdline)
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 		} else if (target_rtc_status_detect()) {
+			src = alarmboot_mode;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		} else if (boot_reason_alarm) {
 			src = alarmboot_mode;
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
@@ -2236,6 +2245,8 @@ void aboot_init(const struct app_descriptor *app)
 		boot_into_recovery = 1;
 	} else if(reboot_mode == FASTBOOT_MODE) {
 		boot_into_fastboot = true;
+	} else if(reboot_mode == ALARM_BOOT) {
+		boot_reason_alarm = true;
 	}
 
 	if (!boot_into_fastboot)
