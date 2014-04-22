@@ -337,3 +337,14 @@ uint32_t mmc_get_device_blocksize()
 
 	return card->block_size;
 }
+
+/*
+ * Function: storage page size
+ * Arg     : None
+ * Return  : Returns the page size for the card
+ * Flow    : Get the page size for storage
+ */
+uint32_t mmc_page_size()
+{
+	return BOARD_KERNEL_PAGESIZE;
+}
