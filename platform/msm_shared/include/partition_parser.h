@@ -68,6 +68,7 @@
 #define LAST_LBA_OFFSET           40
 #define ATTRIBUTE_FLAG_OFFSET     48
 #define PARTITION_NAME_OFFSET     56
+#define ATTRIBUTE_WP_FLAG_OFFSET  55
 
 #define MAX_GPT_NAME_SIZE          72
 #define PARTITION_TYPE_GUID_SIZE   16
@@ -154,6 +155,7 @@ struct partition_entry {
 	unsigned long long last_lba;
 	unsigned long long size;
 	unsigned long long attribute_flag;
+	unsigned int attribute_wp_flag;
 	unsigned char name[MAX_GPT_NAME_SIZE];
 };
 
@@ -167,4 +169,6 @@ bool partition_gpt_exists();
 /* For Debugging */
 void partition_dump(void);
 
+unsigned partition_max_count();
+struct partition_entry *partition_get_entries();
 #endif

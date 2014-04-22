@@ -1714,6 +1714,31 @@ static uint32_t mmc_parse_response(uint32_t resp)
 	return 0;
 }
 
+static uint32_t mmc_stop_command(struct mmc_device *dev)
+{
+	struct mmc_command cmd;
+	uint32_t mmc_ret = 0;
+
+	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
+
+	cmd.cmd_index = CMD12_STOP_TRANSMISSION;
+	cmd.argument = (dev->card.rca << 16);
+	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
+	cmd.resp_type = SDHCI_CMD_RESP_R1;
+
+	mmc_ret = sdhci_send_command(&dev->host, &cmd);
+	if(mmc_ret)
+	{
+		dprintf(CRITICAL, "Failed to send stop command\n");
+		return mmc_ret;
+	}
+
+	/* Response contains 32 bit Card status.
+	 * Parse the errors & provide relevant information */
+
+	return mmc_parse_response(cmd.resp[0]);
+}
+
 /*
  * Function: mmc sdhci read
  * Arg     : mmc device structure, block address, number of blocks & destination
@@ -1760,19 +1785,18 @@ uint32_t mmc_sdhci_read(struct mmc_device *dev, void *dest,
 
 	/* send command */
 	mmc_ret = sdhci_send_command(&dev->host, &cmd);
-	if (mmc_ret) {
-		return mmc_ret;
-	}
 
-	/* Response contains 32 bit Card status.
-	 * Parse the errors & provide relevant information */
-	if ((mmc_ret = mmc_parse_response(cmd.resp[0])))
+	/* For multi block read failures send stop command */
+	if (mmc_ret && num_blocks > 1)
 	{
-		dprintf(CRITICAL,"MMC Read failed, found errors in card response: %s\t%d\n", __func__, __LINE__);
-		return mmc_ret;
+		return mmc_stop_command(dev);
 	}
 
-	return mmc_ret;
+	/*
+	 * Response contains 32 bit Card status.
+	 * Parse the errors & provide relevant information
+	 */
+	return mmc_parse_response(cmd.resp[0]);
 }
 
 /*
@@ -1822,18 +1846,18 @@ uint32_t mmc_sdhci_write(struct mmc_device *dev, void *src,
 
 	/* send command */
 	mmc_ret = sdhci_send_command(&dev->host, &cmd);
-	if (mmc_ret)
-		return mmc_ret;
 
-	/* Response contains 32 bit Card status.
-	 * Parse the errors & provide relevant information */
-	if ((mmc_ret = mmc_parse_response(cmd.resp[0])))
+	/* For multi block write failures send stop command */
+	if (mmc_ret && num_blocks > 1)
 	{
-		dprintf(CRITICAL,"MMC Write failed, found errors in card response: %s\t%d\n", __func__, __LINE__);
-		return mmc_ret;
+		return mmc_stop_command(dev);
 	}
 
-	return mmc_ret;
+	/*
+	 * Response contains 32 bit Card status.
+	 * Parse the errors & provide relevant information
+	 */
+	return mmc_parse_response(cmd.resp[0]);
 }
 
 /*
@@ -2215,4 +2239,24 @@ void mmc_put_card_to_sleep(struct mmc_device *dev)
 	/* send command */
 	if(sdhci_send_command(&dev->host, &cmd))
 		dprintf(CRITICAL, "card sleep error: %s\n", __func__);
+}
+
+uint32_t mmc_get_wp_size(struct mmc_device *dev)
+{
+	uint32_t wp_grp_size;
+	int ret = 0;
+
+	if(!dev) {
+		dprintf(CRITICAL, "MMC not initialised\n");
+		ASSERT(0);
+	}
+
+	/* Calculate the wp grp size */
+	if (dev->card.ext_csd[MMC_ERASE_GRP_DEF])
+		wp_grp_size = MMC_HC_ERASE_MULT * dev->card.ext_csd[MMC_HC_ERASE_GRP_SIZE] / MMC_BLK_SZ;
+	 else
+		wp_grp_size = (dev->card.csd.wp_grp_size + 1) * (dev->card.csd.erase_grp_size + 1) \
+					  * (dev->card.csd.erase_grp_mult + 1);
+
+	return (wp_grp_size * MMC_BLK_SZ);
 }
