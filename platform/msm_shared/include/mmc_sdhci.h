@@ -118,13 +118,19 @@
 #define MMC_MAX_CARD_STAT_RETRY                   10000
 #define MMC_RD_BLOCK_LEN                          512
 #define MMC_WR_BLOCK_LEN                          512
-#define MMC_R1_BLOCK_LEN_ERR                      (1 << 29)
-#define MMC_R1_ADDR_ERR                           (1 << 30)
 #define MMC_R1_WP_ERASE_SKIP                      BIT(15)
 #define MMC_US_PERM_WP_DIS                        BIT(4)
 #define MMC_US_PWR_WP_DIS                         BIT(3)
 #define MMC_US_PERM_WP_EN                         BIT(2)
 #define MMC_US_PWR_WP_EN                          BIT(0)
+
+/* MMC errors */
+#define MMC_R1_BLOCK_LEN_ERR                      (1 << 29)
+#define MMC_R1_ADDR_ERR                           (1 << 30)
+#define MMC_R1_GENERIC_ERR                        (1 << 19)
+#define MMC_R1_CC_ERROR                           (1 << 20)
+#define MMC_R1_WP_VIOLATION                       (1 << 26)
+#define MMC_R1_ADDR_OUT_OF_RANGE                  (1 << 31)
 
 /* RCA of the card */
 #define MMC_RCA                                   2
@@ -320,4 +326,5 @@ uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uin
 uint32_t mmc_get_wp_status(struct mmc_device *dev, uint32_t addr, uint8_t *wp_status);
 /* API: Put the mmc card in sleep mode */
 void mmc_put_card_to_sleep(struct mmc_device *dev);
+uint32_t mmc_get_wp_size(struct mmc_device *dev);
 #endif
