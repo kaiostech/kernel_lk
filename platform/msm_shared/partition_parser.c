@@ -338,6 +338,10 @@ static unsigned int mmc_boot_read_gpt(uint32_t block_size)
 			    GET_LLWORD_FROM_BYTE(&data
 						 [(j * partition_entry_size) +
 						  ATTRIBUTE_FLAG_OFFSET]);
+			partition_entries[partition_count].attribute_wp_flag =
+				(GET_LWORD_FROM_BYTE(&data
+						[(j * partition_entry_size) +
+							ATTRIBUTE_WP_FLAG_OFFSET]) & 0x08);
 
 			memset(&UTF16_name, 0x00, MAX_GPT_NAME_SIZE);
 			memcpy(UTF16_name, &data[(j * partition_entry_size) +
@@ -1008,4 +1012,17 @@ partition_parse_gpt_header(unsigned char *buffer,
 bool partition_gpt_exists()
 {
 	return (gpt_partitions_exist != 0);
+}
+
+unsigned partition_max_count()
+{
+	return partition_count;
+}
+
+
+struct partition_entry *partition_get_entries()
+{
+	if(!partition_entries)
+		ASSERT(0);
+	return partition_entries;
 }
