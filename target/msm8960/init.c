@@ -145,6 +145,7 @@ void target_init(void)
 	case MPQ8064:
 	case APQ8064AA:
 	case APQ8064AB:
+	case APQ8064AU:
 		if (MPLATFORM()) {
 			// Debug for M-Plat
 			gpio_tlmm_config(56, 2, GPIO_INPUT, GPIO_NO_PULL,
@@ -167,7 +168,7 @@ void target_init(void)
 		(platform_id == MSM8660AB) || (platform_id == MSM8660A) ||
 		(platform_id == MSM8260A) || (platform_id == APQ8060A) ||
 		(platform_id == APQ8064) || (platform_id == APQ8064AA) ||
-		(platform_id == APQ8064AB))
+		(platform_id == APQ8064AB)|| (platform_id == APQ8064AU))
 		/* Enable Hardware CE */
 		platform_ce_type = CRYPTO_ENGINE_TYPE_HW;
 
@@ -423,7 +424,8 @@ void target_detect(struct board_data *board)
 			target_id = LINUX_MACHTYPE_8064_MPQ_CDP;
 		}
 	} else if ((platform == APQ8064) || (platform == APQ8064AA)
-					 || (platform == APQ8064AB)) {
+					 || (platform == APQ8064AB)
+					 || (platform == APQ8064AU)) {
 		switch (platform_hw) {
 		case HW_PLATFORM_SURF:
 			target_id = LINUX_MACHTYPE_8064_CDP;
@@ -475,6 +477,7 @@ void target_baseband_detect(struct board_data *board)
 		case APQ8064:
 		case APQ8064AA:
 		case APQ8064AB:
+		case APQ8064AU:
 		case APQ8030AB:
 		case MPQ8064:
 		case APQ8030:
