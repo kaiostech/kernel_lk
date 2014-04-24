@@ -166,7 +166,8 @@ int scm_protect_keystore(uint32_t * img_ptr, uint32_t  img_len);
 #define SCM_IS_SW_FUSE_BLOWN_ID     0x02
 
 #define HLOS_IMG_TAMPER_FUSE        0
-
+#define NON_HLOS_APP1_PROT_FUSE     1
+#define NON_HLOS_APP2_PROT_FUSE     2
 
 #define SCM_SVC_CE_CHN_SWITCH_ID    0x04
 #define SCM_CE_CHN_SWITCH_ID        0x02
@@ -189,6 +190,7 @@ uint8_t switch_ce_chn_cmd(enum ap_ce_channel_type channel);
 
 
 void set_tamper_fuse_cmd();
+void set_non_hlos_app_fuse_cmd();
 
 int scm_halt_pmic_arbiter();
 
