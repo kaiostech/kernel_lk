@@ -88,7 +88,8 @@ void gpio_config_uart_dm(uint8_t id)
 	}
 	else if((board_platform_id() == APQ8064) ||
 			(board_platform_id() == APQ8064AA) ||
-			(board_platform_id() == APQ8064AB))
+			(board_platform_id() == APQ8064AB) ||
+			(board_platform_id() == APQ8064AU))
 	{
 		switch (id) {
 
