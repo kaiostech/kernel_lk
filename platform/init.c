@@ -105,3 +105,8 @@ __WEAK uint32_t platform_get_sclk_count(void)
 __WEAK void clock_config_cdc(uint8_t slot)
 {
 }
+
+__WEAK uint32_t platform_check_secure_fuses(void)
+{
+    return 0;
+}
