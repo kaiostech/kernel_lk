@@ -197,6 +197,7 @@ unsigned *target_first_256M_atag(unsigned *ptr)
 unsigned *target_atag_mem(unsigned *ptr)
 {
 	struct smem_ram_ptable ram_ptable;
+	unsigned int platform_id = board_platform_id();
 	uint8_t i = 0;
 
 	if (smem_ram_ptable_init(&ram_ptable))
@@ -220,9 +221,12 @@ unsigned *target_atag_mem(unsigned *ptr)
 			}
 
 			/* Pass along all other usable memory regions to Linux */
+			/* Bypass this step for ADP ES2 H/w to avoid Memory map
+				conflicts with component images */
 			if (ram_ptable.parts[i].category == SDRAM &&
 				(ram_ptable.parts[i].type == SYS_MEMORY) &&
-				(ram_ptable.parts[i].start != PHYS_MEM_START_ADDR))
+				(ram_ptable.parts[i].start != PHYS_MEM_START_ADDR) &&
+				(platform_id != APQ8064AU))
 			{
 				ptr = target_mem_atag_create(ptr,
 							ram_ptable.parts[i].size,
