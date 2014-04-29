@@ -2240,3 +2240,23 @@ void mmc_put_card_to_sleep(struct mmc_device *dev)
 	if(sdhci_send_command(&dev->host, &cmd))
 		dprintf(CRITICAL, "card sleep error: %s\n", __func__);
 }
+
+uint32_t mmc_get_wp_size(struct mmc_device *dev)
+{
+	uint32_t wp_grp_size;
+	int ret = 0;
+
+	if(!dev) {
+		dprintf(CRITICAL, "MMC not initialised\n");
+		ASSERT(0);
+	}
+
+	/* Calculate the wp grp size */
+	if (dev->card.ext_csd[MMC_ERASE_GRP_DEF])
+		wp_grp_size = MMC_HC_ERASE_MULT * dev->card.ext_csd[MMC_HC_ERASE_GRP_SIZE] / MMC_BLK_SZ;
+	 else
+		wp_grp_size = (dev->card.csd.wp_grp_size + 1) * (dev->card.csd.erase_grp_size + 1) \
+					  * (dev->card.csd.erase_grp_mult + 1);
+
+	return (wp_grp_size * MMC_BLK_SZ);
+}
