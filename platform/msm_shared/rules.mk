@@ -177,7 +177,13 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 		$(LOCAL_DIR)/mipi_dsi.o \
 		$(LOCAL_DIR)/mipi_dsi_phy.o \
 		$(LOCAL_DIR)/mipi_dsi_autopll.o \
-		$(LOCAL_DIR)/shutdown_detect.o
+		$(LOCAL_DIR)/shutdown_detect.o \
+		$(LOCAL_DIR)/certificate.o \
+		$(LOCAL_DIR)/image_verify.o \
+		$(LOCAL_DIR)/crypto_hash.o \
+		$(LOCAL_DIR)/crypto5_eng.o \
+		$(LOCAL_DIR)/crypto5_wrapper.o
+
 endif
 
 
@@ -357,7 +363,7 @@ ifeq ($(PLATFORM),fsm9900)
 			$(LOCAL_DIR)/dload_util.o
 endif
 
-ifeq ($(PLATFORM),msmplutonium)
+ifeq ($(PLATFORM),msm8994)
 	OBJS += $(LOCAL_DIR)/qgic.o \
 			$(LOCAL_DIR)/qtimer.o \
 			$(LOCAL_DIR)/qtimer_mmap.o \
@@ -379,6 +385,11 @@ ifeq ($(PLATFORM),msmplutonium)
 			$(LOCAL_DIR)/ucs.o \
 			$(LOCAL_DIR)/ufs_hci.o \
 			$(LOCAL_DIR)/dme.o
+endif
+
+ifeq ($(ENABLE_BOOT_CONFIG_SUPPORT), 1)
+	OBJS += \
+		$(LOCAL_DIR)/boot_device.o
 endif
 
 ifeq ($(ENABLE_USB30_SUPPORT),1)

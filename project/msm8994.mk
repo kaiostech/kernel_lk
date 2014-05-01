@@ -1,8 +1,8 @@
-# top level project rules for the msmplutonium project
+# top level project rules for the msm8994 project
 #
 LOCAL_DIR := $(GET_LOCAL_DIR)
 
-TARGET := msmplutonium
+TARGET := msm8994
 
 MODULES += app/aboot
 
@@ -10,6 +10,7 @@ DEBUG := 1
 EMMC_BOOT := 1
 ENABLE_SDHCI_SUPPORT := 1
 ENABLE_UFS_SUPPORT   := 1
+ENABLE_BOOT_CONFIG_SUPPORT := 1
 
 #DEFINES += WITH_DEBUG_DCC=1
 DEFINES += WITH_DEBUG_UART=1
