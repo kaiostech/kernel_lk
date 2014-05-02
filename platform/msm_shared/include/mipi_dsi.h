@@ -635,6 +635,11 @@ struct mipi_dsi_phy_ctrl {
 	uint32_t pll[21];
 };
 
+enum dsi_reg_mode {
+	DSI_PHY_REGULATOR_DCDC_MODE,
+	DSI_PHY_REGULATOR_LDO_MODE,
+};
+
 struct mdss_dsi_phy_ctrl {
 	uint32_t regulator[7];
 	uint32_t timing[12];
@@ -642,6 +647,7 @@ struct mdss_dsi_phy_ctrl {
 	uint32_t strength[2];
 	char bistCtrl[6];
 	char laneCfg[45];
+	enum dsi_reg_mode regulator_mode;
 };
 
 typedef struct mdss_dsi_pll_config {
@@ -651,6 +657,7 @@ typedef struct mdss_dsi_pll_config {
 	uint32_t  bit_clock;
 	uint32_t  halfbit_clock;
 	uint32_t  vco_clock;
+	uint32_t  vco_delay;
 	uint8_t   directpath;
 	uint8_t   posdiv1;
 	uint8_t   posdiv3;
