@@ -1677,6 +1677,78 @@ struct mmc_device *mmc_init(struct mmc_config_data *data)
 	return dev;
 }
 
+static uint32_t mmc_parse_response(uint32_t resp)
+{
+	/* Trying to write beyond card capacity */
+	if (resp & MMC_R1_ADDR_OUT_OF_RANGE) {
+		dprintf(CRITICAL, "Attempting to read or write beyond the Device capacity\n");
+		return 1;
+	}
+
+	/* Misaligned address not matching block length */
+	if (resp & MMC_R1_ADDR_ERR) {
+		dprintf(CRITICAL, "The misaligned address did not match the block length used\n");
+		return 1;
+	}
+
+	/* Invalid block length */
+	if (resp & MMC_R1_BLOCK_LEN_ERR) {
+		dprintf(CRITICAL, "The transferred bytes does not match the block length\n");
+		return 1;
+	}
+
+	/* Tried to program write protected block */
+	if (resp & MMC_R1_WP_VIOLATION) {
+		dprintf(CRITICAL, "Attempt to program a write protected block\n");
+		return 1;
+	}
+
+	/* card controller error */
+	if (resp & MMC_R1_CC_ERROR) {
+		dprintf(CRITICAL, "Device error occurred, which is not related to the host command\n");
+		return 1;
+	}
+
+	/* Generic error */
+	if (resp & MMC_R1_GENERIC_ERR) {
+		dprintf(CRITICAL, "A generic Device error\n");
+		return 1;
+	}
+
+	/* Finally check for card in TRAN state */
+	if (MMC_CARD_STATUS(resp) != MMC_TRAN_STATE) {
+		dprintf(CRITICAL, "MMC card is not in TRAN state\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+static uint32_t mmc_stop_command(struct mmc_device *dev)
+{
+	struct mmc_command cmd;
+	uint32_t mmc_ret = 0;
+
+	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
+
+	cmd.cmd_index = CMD12_STOP_TRANSMISSION;
+	cmd.argument = (dev->card.rca << 16);
+	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
+	cmd.resp_type = SDHCI_CMD_RESP_R1;
+
+	mmc_ret = sdhci_send_command(&dev->host, &cmd);
+	if(mmc_ret)
+	{
+		dprintf(CRITICAL, "Failed to send stop command\n");
+		return mmc_ret;
+	}
+
+	/* Response contains 32 bit Card status.
+	 * Parse the errors & provide relevant information */
+
+	return mmc_parse_response(cmd.resp[0]);
+}
+
 /*
  * Function: mmc sdhci read
  * Arg     : mmc device structure, block address, number of blocks & destination
@@ -1723,29 +1795,18 @@ uint32_t mmc_sdhci_read(struct mmc_device *dev, void *dest,
 
 	/* send command */
 	mmc_ret = sdhci_send_command(&dev->host, &cmd);
-	if (mmc_ret) {
-		return mmc_ret;
+
+	/* For multi block read failures send stop command */
+	if (mmc_ret && num_blocks > 1)
+	{
+		return mmc_stop_command(dev);
 	}
 
-	/* Response contains 32 bit Card status. Here we'll check
-		BLOCK_LEN_ERROR and ADDRESS_ERROR */
-	if (cmd.resp[0] & MMC_R1_BLOCK_LEN_ERR) {
-		dprintf(CRITICAL, "The transferred bytes does not match the block length\n");
-		return 1;
-	}
-
-	/* Misaligned address not matching block length */
-	if (cmd.resp[0] & MMC_R1_ADDR_ERR) {
-		dprintf(CRITICAL, "The misaligned address did not match the block length used\n");
-		return 1;
-	}
-
-	if (MMC_CARD_STATUS(cmd.resp[0]) != MMC_TRAN_STATE) {
-		dprintf(CRITICAL, "MMC read failed, card is not in TRAN state\n");
-		return 1;
-	}
-
-	return mmc_ret;
+	/*
+	 * Response contains 32 bit Card status.
+	 * Parse the errors & provide relevant information
+	 */
+	return mmc_parse_response(cmd.resp[0]);
 }
 
 /*
@@ -1795,28 +1856,18 @@ uint32_t mmc_sdhci_write(struct mmc_device *dev, void *src,
 
 	/* send command */
 	mmc_ret = sdhci_send_command(&dev->host, &cmd);
-	if (mmc_ret)
-		return mmc_ret;
 
-	/* Response contains 32 bit Card status. Here we'll check
-		BLOCK_LEN_ERROR and ADDRESS_ERROR */
-	if (cmd.resp[0] & MMC_R1_BLOCK_LEN_ERR) {
-		dprintf(CRITICAL, "The transferred bytes does not match the block length\n");
-		return 1;
+	/* For multi block write failures send stop command */
+	if (mmc_ret && num_blocks > 1)
+	{
+		return mmc_stop_command(dev);
 	}
 
-	/* Misaligned address not matching block length */
-	if (cmd.resp[0] & MMC_R1_ADDR_ERR) {
-		dprintf(CRITICAL, "The misaligned address did not match the block length used\n");
-		return 1;
-	}
-
-	if (MMC_CARD_STATUS(cmd.resp[0]) != MMC_TRAN_STATE) {
-		dprintf(CRITICAL, "MMC read failed, card is not in TRAN state\n");
-		return 1;
-	}
-
-	return mmc_ret;
+	/*
+	 * Response contains 32 bit Card status.
+	 * Parse the errors & provide relevant information
+	 */
+	return mmc_parse_response(cmd.resp[0]);
 }
 
 /*
