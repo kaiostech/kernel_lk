@@ -32,8 +32,16 @@
 
 #include <msm_panel.h>
 
+#ifdef MDP_VER_5_3
+#define MDP_VP_0_RGB_0_BASE                     REG_MDP(0x2200)
+#define MDP_VP_0_RGB_1_BASE                     REG_MDP(0x2600)
+#else
 #define MDP_VP_0_RGB_0_BASE                     REG_MDP(0x1E00)
 #define MDP_VP_0_RGB_1_BASE                     REG_MDP(0x2200)
+#endif
+
+#define MDP_VP_0_DMA_0_BASE                     REG_MDP(0x2A00)
+#define MDP_VP_0_DMA_1_BASE                     REG_MDP(0x2E00)
 
 #define PIPE_SSPP_SRC0_ADDR                     0x14
 #define PIPE_SSPP_SRC_YSTRIDE                   0x24
@@ -45,9 +53,17 @@
 #define PIPE_SSPP_SRC_FORMAT                    0x30
 #define PIPE_SSPP_SRC_UNPACK_PATTERN            0x34
 #define PIPE_SSPP_SRC_OP_MODE                   0x38
+#define REQPRIORITY_FIFO_WATERMARK0        	0x50
+#define REQPRIORITY_FIFO_WATERMARK1        	0x54
+#define REQPRIORITY_FIFO_WATERMARK2        	0x58
 
+#ifdef MDP_VER_5_3
+#define MDP_VP_0_MIXER_0_BASE                   REG_MDP(0x3A00)
+#define MDP_VP_0_MIXER_1_BASE                   REG_MDP(0x3E00)
+#else
 #define MDP_VP_0_MIXER_0_BASE                   REG_MDP(0x3200)
 #define MDP_VP_0_MIXER_1_BASE                   REG_MDP(0x3600)
+#endif
 
 #define LAYER_0_OUT_SIZE                        0x04
 #define LAYER_0_OP_MODE                         0x00
@@ -82,6 +98,8 @@
 #define MDSS_MDP_HW_REV_102_1  MDSS_MDP_REV(1, 2, 1) /* 8974 v3.0 (Pro) */
 #define MDSS_MDP_HW_REV_103    MDSS_MDP_REV(1, 3, 0) /* 8084 v1.0 */
 #define MDSS_MDP_HW_REV_200    MDSS_MDP_REV(2, 0, 0) /* 8092 v1.0 */
+
+#define MDSS_MAX_LINE_BUF_WIDTH 2048
 
 #define MDP_HW_REV                              REG_MDP(0x0100)
 #define MDP_INTR_EN                             REG_MDP(0x0110)
@@ -138,24 +156,8 @@
 #define MDP_CLK_CTRL4                           REG_MDP(0x04B0)
 #define MDP_CLK_CTRL5                           REG_MDP(0x04B8)
 
-#define MMSS_MDP_CLIENT_ID_UNUSED               0x00000000
-#define MMSS_MDP_1_1_CLIENT_ID_RGB0             0x00000007
-#define MMSS_MDP_1_2_CLIENT_ID_RGB0             0x00000010
-#define MMSS_MDP_1_2_CLIENT_ID_RGB1             0x00000011
-
-#define MMSS_MDP_MAX_SMP_SIZE                   0x00001000
-#define MMSS_MDP_SMP_ALLOC_W_0                  REG_MDP(0x0180)
-#define MMSS_MDP_SMP_ALLOC_W_1                  REG_MDP(0x0184)
-#define MMSS_MDP_SMP_ALLOC_R_0                  REG_MDP(0x0230)
-#define MMSS_MDP_SMP_ALLOC_R_1                  REG_MDP(0x0234)
-
-#define RGB0_REQPRIORITY_FIFO_WATERMARK0        REG_MDP(0x1E50)
-#define RGB0_REQPRIORITY_FIFO_WATERMARK1        REG_MDP(0x1E54)
-#define RGB0_REQPRIORITY_FIFO_WATERMARK2        REG_MDP(0x1E58)
-
-#define RGB1_REQPRIORITY_FIFO_WATERMARK0        REG_MDP(0x2250)
-#define RGB1_REQPRIORITY_FIFO_WATERMARK1        REG_MDP(0x2254)
-#define RGB1_REQPRIORITY_FIFO_WATERMARK2        REG_MDP(0x2258)
+#define MMSS_MDP_SMP_ALLOC_W_BASE               REG_MDP(0x0180)
+#define MMSS_MDP_SMP_ALLOC_R_BASE               REG_MDP(0x0230)
 
 #define MDP_QOS_REMAPPER_CLASS_0                REG_MDP(0x02E0)
 
@@ -173,10 +175,10 @@ int mdp_get_revision();
 int mdp_dsi_video_config(struct msm_panel_info *pinfo, struct fbcon_config *fb);
 int mipi_dsi_cmd_config(struct fbcon_config mipi_fb_cfg,
 			unsigned short num_of_lanes);
-int mdp_dsi_video_on(void);
-int mdp_dma_on(void);
+int mdp_dsi_video_on(struct msm_panel_info *pinfo);
+int mdp_dma_on(struct msm_panel_info *pinfo);
 int mdp_edp_config(struct msm_panel_info *pinfo, struct fbcon_config *fb);
-int mdp_edp_on(void);
+int mdp_edp_on(struct msm_panel_info *pinfo);
 int mdp_edp_off(void);
 void mdp_disable(void);
 
