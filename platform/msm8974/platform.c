@@ -183,8 +183,7 @@ void platform_uninit(void)
 	qtimer_uninit();
 
 	/* Set TZ App protect fuses */
-	if(check_bootselect_exists())
-		set_non_hlos_app_fuse_cmd();
+	set_non_hlos_app_fuse_cmd();
 }
 
 int platform_use_identity_mmu_mappings(void)
