@@ -74,23 +74,45 @@ static void target_uart_init(void);
 void qca6174_init()
 {
 	dprintf(CRITICAL, "%s SDC4 before enabling GPIO 21....\n", __func__);
-        mdelay(DELAY);
+	mdelay(DELAY);
 	gpio_tlmm_config(64, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_ENABLE);
-        /* Output HIGH */
+	/* Output HIGH */
 	gpio_set(64, 2);
-        //GPIO 21  WLAN_EN
-        mdelay(DELAY);
-	gpio_tlmm_config(21, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_6MA, GPIO_ENABLE);
-        /* Output HIGH */
-	gpio_set(21, 0);
-        mdelay(DELAY);
-	gpio_set(21, 2);
-        //GPIO 17  BT_EN
-	gpio_tlmm_config(17, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_6MA, GPIO_ENABLE);
-        /* Output HIGH */
-	gpio_set(17, 0);
-        mdelay(DELAY);
-	gpio_set(17, 2);
+
+	if (!MPLATFORM()) {
+		//GPIO 21  WLAN_EN
+		mdelay(DELAY);
+		gpio_tlmm_config(21, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_6MA, GPIO_ENABLE);
+		/* Output HIGH */
+		gpio_set(21, 0);
+		mdelay(DELAY);
+		gpio_set(21, 2);
+		//GPIO 17  BT_EN
+		gpio_tlmm_config(17, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_6MA, GPIO_ENABLE);
+		/* Output HIGH */
+		gpio_set(17, 0);
+		mdelay(DELAY);
+		gpio_set(17, 2);
+	}
+}
+
+static void mobis_qca6574_init(void)
+{
+	struct pm8921_gpio mobis_qca_param = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = 0,
+		.output_value = 1,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = 2,//1.8V PM_GPIO_VIN_S4
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
+		.function = PM_GPIO_FUNC_NORMAL, //0
+		.inv_int_pol = 1,
+		.disable_pin = 0,
+	};
+	// PMGPIO 43 WLAN_EN
+	pm8921_gpio_config(PM_GPIO(43), &mobis_qca_param);
+	// PMGPIO 44 BT_EN
+	pm8921_gpio_config(PM_GPIO(44), &mobis_qca_param);
 }
 
 void target_early_init(void)
@@ -105,7 +127,8 @@ void target_early_init(void)
 		// set GPIO_84 to HIGH when enter LK
 		gpio_set(84, 2);
 	}
-    qca6174_init(); //Enable qca6174 SDC4
+
+	qca6174_init(); //Enable qca6174 SDC4
 }
 
 void shutdown_device(void)
@@ -135,6 +158,9 @@ void target_init(void)
 	pmic.write = (pm8921_write_func) & pa1_ssbi2_write_bytes;
 
 	pm8921_init(&pmic);
+
+	if (MPLATFORM())
+		mobis_qca6574_init();
 
 	/* Keypad init */
 	keys_init();
