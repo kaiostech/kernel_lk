@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Travis Geiselbrecht
+ * Copyright (c) 2013-2014 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -64,8 +64,6 @@ static void call_constructors(void)
 void lk_main(void) __NO_RETURN __EXTERNALLY_VISIBLE;
 void lk_main(void)
 {
-	inc_critical_section();
-
 	// get us into some sort of thread context
 	thread_init_early();
 
