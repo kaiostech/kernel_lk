@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011,2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011,2013-2014 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -99,24 +99,34 @@ image_verify(unsigned char *image_ptr,
 		goto cleanup;
 	}
 
-	ret = image_decrypt_signature(signature_ptr, plain_text);
-	if (ret == -1) {
-		dprintf(CRITICAL, "ERROR: Image Invalid! Decryption failed!\n");
-		goto cleanup;
-	}
-
 	/*
-	 * Calculate hash of image for comparison
+	 * Calculate hash of image and save calculated hash on TZ.
 	 */
 	hash_size =
 	    (hash_type == CRYPTO_AUTH_ALG_SHA256) ? SHA256_SIZE : SHA1_SIZE;
 	hash_find(image_ptr, image_size, (unsigned char *)&digest, hash_type);
 #ifdef TZ_SAVE_KERNEL_HASH
-	if (hash_type == CRYPTO_AUTH_ALG_SHA256)
+	if (hash_type == CRYPTO_AUTH_ALG_SHA256) {
 		save_kernel_hash_cmd(digest);
-	else
+		dprintf(INFO, "Image hash saved.\n");
+	} else
 		dprintf(INFO, "image_verify: hash is not SHA-256.\n");
 #endif
+
+	/*
+	 * Decrypt the pre-calculated expected image hash.
+	 * Return value, ret should be equal to hash_size. Otherwise it means a failure. With this check
+	 * we avoid a potential vulnerability due to trailing data placed at the end of digest.
+	 */
+	ret = image_decrypt_signature(signature_ptr, plain_text);
+	if (ret != hash_size) {
+		dprintf(CRITICAL, "ERROR: Image Invalid! signature check failed! ret %d\n", ret);
+		goto cleanup;
+	}
+
+	/*
+	 * Compare the expected hash with the calculated hash.
+	 */
 	if (memcmp(plain_text, digest, hash_size) != 0) {
 		dprintf(CRITICAL,
 			"ERROR: Image Invalid! Please use another image!\n");
