@@ -26,25 +26,66 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __MSM8994_CLOCK_H
-#define __MSM8994_CLOCK_H
+#include <reg.h>
+#include <debug.h>
+#include <malloc.h>
+#include <smem.h>
+#include <stdint.h>
+#include <libfdt.h>
+#include <platform.h>
+#include <platform/iomap.h>
+#include <dev_tree.h>
 
-#include <clock.h>
-#include <clock_lib2.h>
+#define SIZE_1M             (1024 * 1024)
 
-#define UART_DM_CLK_RX_TX_BIT_RATE 0xCC
+static struct smem_ram_ptable ram_ptable;
 
+struct smem_ram_ptable* target_smem_ram_ptable_init()
+{
+   /* Make sure RAM partition table is initialized */
+   ASSERT(smem_ram_ptable_init(&ram_ptable));
 
-void platform_clock_init(void);
+   return &ram_ptable;
+}
 
-void clock_init_mmc(uint32_t interface);
-void clock_config_mmc(uint32_t interface, uint32_t freq);
-void clock_config_uart_dm(uint8_t id);
-void hsusb_clock_init(void);
-void clock_config_ce(uint8_t instance);
-void mdp_clock_init(void);
-void clock_ce_enable(uint8_t instance);
-void clock_ce_disable(uint8_t instance);
-void clock_usb30_init(void);
+/* Funtion to add the ram partition entries into device tree.
+ * The function assumes that all the entire fixed memory regions should
+ * be listed in the first bank of the passed in ddr regions.
+ */
+uint32_t target_dev_tree_mem(void *fdt, uint32_t memory_node_offset)
+{
+	unsigned int i;
+	int ret;
 
-#endif
+	for (i = 0; i < ram_ptable.len; i++) {
+		if ((ram_ptable.parts[i].category == SDRAM) &&
+		    (ram_ptable.parts[i].type == SYS_MEMORY)) {
+			/* Pass along all other usable memory regions to Linux */
+			/* Any memory not accessible by the kernel which is below the
+			 * kernel start address must *not* be given to the kernel.
+			 */
+				ret = dev_tree_add_mem_info(fdt, memory_node_offset,
+							    ram_ptable.parts[i].start,
+							    ram_ptable.parts[i].size);
+
+			if (ret) {
+				dprintf(CRITICAL, "Failed to add memory bank addresses to device tree\n");
+				goto target_dev_tree_mem_err;
+			}
+		}
+	}
+
+target_dev_tree_mem_err:
+
+	return ret;
+}
+
+void *target_get_scratch_address(void)
+{
+	return ((void *) VA((addr_t)SCRATCH_REGION2));
+}
+
+unsigned target_get_max_flash_size(void)
+{
+	return (SCRATCH_REGION2_SIZE);
+}
