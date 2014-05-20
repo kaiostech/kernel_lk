@@ -157,7 +157,7 @@ static void arm_mmu_unmap_section(addr_t vaddr)
     arm_invalidate_tlb_mva(vaddr);
 }
 
-void arm_mmu_init(void)
+void arm_mmu_percpu_init(void)
 {
     /* unmap the initial mapings that are marked temporary */
     struct mmu_initial_mapping *map = mmu_initial_mappings;
@@ -176,6 +176,24 @@ void arm_mmu_init(void)
         }
         map++;
     }
+
+    /* set some mmu specific control bits */
+    arm_write_sctlr(arm_read_sctlr() & ~((1<<29)|(1<<28)|(1<<0))); // access flag disabled, TEX remap disabled, mmu disabled
+
+    /* set up the translation table base */
+    arm_write_ttbr0((uint32_t)arm_kernel_translation_table);
+
+    /* set up the domain access register */
+    arm_write_dacr(0x1 << (MMU_MEMORY_DOMAIN_MEM * 2));
+
+    arm_invalidate_tlb_global();
+
+    /* turn on the mmu */
+    arm_write_sctlr(arm_read_sctlr() | (1<<0));
+}
+
+void arm_mmu_init(void)
+{
 }
 
 void arch_disable_mmu(void)

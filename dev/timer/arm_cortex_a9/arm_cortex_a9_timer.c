@@ -189,11 +189,7 @@ void arm_cortex_a9_timer_init(addr_t _scu_control_base, uint32_t freq)
 {
     scu_control_base = _scu_control_base;
 
-    /* disable timer */
-    TIMREG(TIMER_CONTROL) = 0;
-
-    /* kill the watchdog */
-    TIMREG(WDOG_CONTROL) = 0;
+    arm_cortex_a9_timer_init_percpu();
 
     /* ack any irqs that may be pending */
     TIMREG(TIMER_ISR) = 1;
@@ -208,6 +204,15 @@ void arm_cortex_a9_timer_init(addr_t _scu_control_base, uint32_t freq)
 
     register_int_handler(CPU_PRIV_TIMER_INT, &platform_tick, NULL);
     unmask_interrupt(CPU_PRIV_TIMER_INT);
+}
+
+void arm_cortex_a9_timer_init_percpu(void)
+{
+    /* disable timer */
+    TIMREG(TIMER_CONTROL) = 0;
+
+    /* kill the watchdog */
+    TIMREG(WDOG_CONTROL) = 0;
 }
 
 /* vim: set ts=4 sw=4 expandtab: */

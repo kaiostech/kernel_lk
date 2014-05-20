@@ -31,6 +31,7 @@
 #include <dev/virtio.h>
 #include <lk/init.h>
 #include <kernel/vm.h>
+#include <kernel/spinlock.h>
 #include <platform.h>
 #include <platform/gic.h>
 #include <platform/interrupts.h>

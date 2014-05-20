@@ -35,6 +35,8 @@
 #include <platform/timer.h>
 #include "platform_p.h"
 
+extern void arm_reset(void);
+
 /* target can specify this as the initial jam table to set up the soc */
 __WEAK void ps7_init(void) { }
 
@@ -331,6 +333,11 @@ void platform_early_init(void)
     pmm_add_arena(&sdram_arena);
 #endif
     pmm_add_arena(&sram_arena);
+
+    /* start the second cpu */
+    /* the boot rom has been holding it in a wfe loop up until now */
+    *REG32(0xfffffff0) = (uint32_t)&arm_reset;
+    __asm__ volatile("sev");
 }
 
 void platform_init(void)

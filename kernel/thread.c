@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2009 Travis Geiselbrecht
+ * Copyright (c) 2008-2009,2014 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -217,7 +217,7 @@ status_t thread_set_real_time(thread_t *t)
 	ASSERT(t->magic == THREAD_MAGIC);
 #endif
 
-	enter_critical_section();
+	THREAD_LOCK(state);
 #if PLATFORM_HAS_DYNAMIC_TIMER
 	if (t == get_current_thread()) {
 		/* if we're currently running, cancel the preemption timer. */
@@ -225,7 +225,7 @@ status_t thread_set_real_time(thread_t *t)
 	}
 #endif
 	t->flags |= THREAD_FLAG_REAL_TIME;
-	exit_critical_section();
+	THREAD_UNLOCK(state);
 
 	return NO_ERROR;
 }

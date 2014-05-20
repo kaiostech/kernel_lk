@@ -141,7 +141,7 @@ static void gic_set_enable(uint vector, bool enable)
 		GICREG(0, GICD_ICENABLER(reg)) = mask;
 }
 
-void arm_gic_init_secondary_cpu(void)
+void arm_gic_init_percpu(void)
 {
 #if WITH_LIB_SM
 	GICREG(0, GICC_CTLR) = 0xb; // enable GIC0 and select fiq mode for secure
@@ -183,7 +183,7 @@ void arm_gic_init(void)
 	for (i = 32; i < MAX_INT; i += 32)
 		GICREG(0, GICD_IGROUPR(i / 32)) = ~0UL;
 #endif
-	arm_gic_init_secondary_cpu();
+	arm_gic_init_percpu();
 }
 
 static status_t arm_gic_set_secure_locked(u_int irq, bool secure)
@@ -302,7 +302,7 @@ enum handler_return __platform_irq(struct arm_iframe *frame)
 	THREAD_STATS_INC(interrupts);
 	KEVLOG_IRQ_ENTER(vector);
 
-//	printf("platform_irq: spsr 0x%x, pc 0x%x, currthread %p, vector %d\n", frame->spsr, frame->pc, current_thread, vector);
+//	printf("platform_irq: mpidr 0x%x spsr 0x%x, pc 0x%x, currthread %p, vector %d\n", arm_read_mpidr(), frame->spsr, frame->pc, get_current_thread(), vector);
 
 	// deliver the interrupt
 	enum handler_return ret;

@@ -196,6 +196,16 @@ ARCH_OPTFLAGS := -Os
 WITH_LINKER_GC := 1
 endif
 
+# if its requested we build with SMP, arm generically supports 4 cpus
+ifeq ($(WITH_SMP),1)
+GLOBAL_DEFINES += \
+    WITH_SMP=1 \
+    SMP_MAX_CPUS=4
+else
+GLOBAL_DEFINES += \
+    SMP_MAX_CPUS=1
+endif
+
 # try to find the toolchain
 ifndef TOOLCHAIN_PREFIX
 TOOLCHAIN_PREFIX := arm-eabi-

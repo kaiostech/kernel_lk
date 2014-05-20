@@ -43,20 +43,35 @@ platform_reset:
 
 .globl arm_reset
 arm_reset:
-	/* do some cpu setup */
-#if ARM_WITH_CP15
+	/* do some early cpu setup */
 	mrc		p15, 0, r0, c1, c0, 0
-		/* XXX this is currently for arm926, revist with armv6 cores */
-		/* new thumb behavior, low exception vectors, i/d cache disable, mmu disabled */
-	bic		r0, r0, #(1<<15| 1<<13 | 1<<12)
-	bic		r0, r0, #(1<<2 | 1<<1 | 1<<0)
-#if ARM_ARCH_LEVEL < 6
-		/* enable alignment faults on pre-ARMv6 hardware. On v6+,
-		 * GCC is free to generate unaligned accesses.
-		 */
-	orr		r0, r0, #(1<<1)
-#endif
+	/* i/d cache disable, mmu disabled */
+	bic		r0, r0, #(1<<12)
+	bic		r0, r0, #(1<<2 | 1<<0)
 	mcr		p15, 0, r0, c1, c0, 0
+
+#if WITH_SMP
+	/* figure out our cpu number */
+	mrc     p15, 0, r0, c0, c0, 5 /* read MPIDR */
+
+	/* mask off the bottom 12 bits to test cluster number:cpu number */
+	ubfx    r0, r0, #0, #12
+
+	/* if we're cpu 0:0, continue on as usual */
+	cmp     r0, #0
+	beq     2f
+
+	/* all other cpus, trap and wait to be released */
+1:
+	wfe
+	ldr     r12, =arm_boot_cpu_lock
+	ldr     r12, [r12]
+	cmp     r12, #0
+	bne     1b
+
+	/* r0 holds the cpu number */
+	b		arm_secondary_setup
+2:
 #endif
 
 #if WITH_CPU_EARLY_INIT
@@ -232,7 +247,8 @@ __mmu_start:
 	/* at this point we're running at our final location in virtual memory (if enabled) */
 .Lstack_setup:
 	/* set up the stack for irq, fiq, abort, undefined, system/user, and lastly supervisor mode */
-	ldr		r2, =abort_stack_top
+	ldr		r2, =abort_stack
+	add		r2, #ARCH_DEFAULT_STACK_SIZE
 
 	cpsid	i,#0x12       /* irq */
 	mov		sp, r2
@@ -281,18 +297,48 @@ __mmu_start:
 	bl		lk_main
 	b		.
 
-.ltorg
+#if WITH_SMP
+	/* secondary cpu entry point */
+	/* r0 holds cpu number */
+FUNCTION(arm_secondary_setup)
+	cmp		r0, #SMP_MAX_CPUS
+	bge		unsupported_cpu_trap
 
-.bss
-.align 3
-	/* the abort stack is for unrecoverable errors.
-	 * also note the initial working stack is set to here.
-	 * when the threading system starts up it'll switch to a new
-	 * dynamically allocated stack, so we don't need it for very long
-	 */
-LOCAL_DATA(abort_stack)
-	.skip 4096
-LOCAL_DATA(abort_stack_top)
+	/* set up the stack for irq, fiq, abort, undefined, system/user, and lastly supervisor mode */
+	ldr		r1, =abort_stack
+	mov		r2, #ARCH_DEFAULT_STACK_SIZE
+	add		r0, #1
+	mul		r2, r2, r0
+	add		r1, r2
+
+	cpsid	i,#0x12       /* irq */
+	mov		sp, r1
+
+	cpsid	i,#0x11       /* fiq */
+	mov		sp, r1
+
+	cpsid	i,#0x17       /* abort */
+	mov		sp, r1
+
+	cpsid	i,#0x1b       /* undefined */
+	mov		sp, r1
+
+	cpsid	i,#0x1f       /* system */
+	mov		sp, r1
+
+	cpsid	i,#0x13       /* supervisor */
+	mov		sp, r1
+
+	/* stay in supervisor and call into arm arch code for continuing setup */
+	bl		arm_secondary_entry
+
+	/* cpus above the number we claim to support get trapped here */
+unsupported_cpu_trap:
+	wfe
+	b 		unsupported_cpu_trap
+#endif
+
+.ltorg
 
 .data
 .align 2

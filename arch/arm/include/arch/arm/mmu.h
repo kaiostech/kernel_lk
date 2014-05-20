@@ -53,6 +53,8 @@
 #define MMU_MEMORY_L1_TYPE_NORMAL_WRITE_BACK_ALLOCATE    ((0x1 << 12) | (0x3 << 2))
 #define MMU_MEMORY_L1_TYPE_MASK                          ((0x3 << 12) | (0x3 << 2))
 
+#define MMU_MEMORY_L1_TYPE_INNER_WRITE_BACK_ALLOCATE     ((0x4 << 12) | (0x1 << 2))
+
 /* C, B and TEX[2:0] encodings without TEX remap (for second level descriptors) */
                                                           /* TEX     |    CB    */
 #define MMU_MEMORY_L2_TYPE_STRONGLY_ORDERED              ((0x0 << 6) | (0x0 << 2))
@@ -178,6 +180,7 @@ __BEGIN_CDECLS
 
 void arm_mmu_init(void);
 status_t arm_vtop(addr_t va, addr_t *pa);
+void arm_mmu_percpu_init(void);
 
 /* tlb routines */
 static inline void arm_invalidate_tlb_global(void) {
