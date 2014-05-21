@@ -232,6 +232,13 @@ static uint32_t mmc_decode_and_save_csd(struct mmc_card *card)
 	memcpy((struct mmc_csd *)&card->csd,(struct mmc_csd *)&mmc_csd,
 			sizeof(struct mmc_csd));
 
+	/* Calculate the wp grp size */
+	if (card->ext_csd[MMC_ERASE_GRP_DEF])
+		card->wp_grp_size = MMC_HC_ERASE_MULT * card->ext_csd[MMC_HC_ERASE_GRP_SIZE] / MMC_BLK_SZ;
+	else
+		card->wp_grp_size = (card->csd.wp_grp_size + 1) * (card->csd.erase_grp_size + 1) \
+					  * (card->csd.erase_grp_mult + 1);
+
 	dprintf(SPEW, "Decoded CSD fields:\n");
 	dprintf(SPEW, "cmmc_structure: %u\n", mmc_csd.cmmc_structure);
 	dprintf(SPEW, "card_cmd_class: %x\n", mmc_csd.card_cmd_class);
@@ -249,6 +256,7 @@ static uint32_t mmc_decode_and_save_csd(struct mmc_card *card)
 	dprintf(SPEW, "write_blk_misalign: %u\n", mmc_csd.write_blk_misalign);
 	dprintf(SPEW, "read_blk_partial: %u\n", mmc_csd.read_blk_partial);
 	dprintf(SPEW, "write_blk_partial: %u\n", mmc_csd.write_blk_partial);
+	dprintf(SPEW, "wp_grp_size: %u\n", card->wp_grp_size);
 	dprintf(SPEW, "Card Capacity: %llu Bytes\n", card->capacity);
 
 	return 0;
@@ -2174,6 +2182,7 @@ uint32_t mmc_get_wp_status(struct mmc_device *dev, uint32_t addr, uint8_t *wp_st
 uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uint64_t len, uint8_t set_clr)
 {
 	struct mmc_command cmd;
+	struct mmc_card *card = &dev->card;
 	uint32_t wp_grp_size;
 	uint32_t status;
 	uint32_t num_wp_grps;
@@ -2185,6 +2194,7 @@ uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uin
 
 	/* Convert len into blocks */
 	len = len / MMC_BLK_SZ;
+	wp_grp_size = dev->card.wp_grp_size;
 
 	/* Disable PERM WP */
 	ret = mmc_switch_cmd(&dev->host, &dev->card, MMC_SET_BIT, MMC_USR_WP, MMC_US_PERM_WP_DIS);
@@ -2211,15 +2221,6 @@ uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uin
 		dprintf(CRITICAL, "Power on protection is disabled, cannot be set\n");
 		return 1;
 	}
-
-	/* Calculate the wp grp size */
-	if (dev->card.ext_csd[MMC_ERASE_GRP_DEF])
-		wp_grp_size = (MMC_HC_ERASE_MULT * dev->card.ext_csd[MMC_HC_ERASE_GRP_SIZE]
-					  * dev->card.ext_csd[MMC_EXT_HC_WP_GRP_SIZE]) / MMC_BLK_SZ;
-	else
-		wp_grp_size = (dev->card.csd.wp_grp_size + 1) * (dev->card.csd.erase_grp_size + 1) \
-					  * (dev->card.csd.erase_grp_mult + 1);
-
 
 	if (len < wp_grp_size)
 	{
@@ -2248,7 +2249,15 @@ uint32_t mmc_set_clr_power_on_wp_user(struct mmc_device *dev, uint32_t addr, uin
 
 	for(i = 0; i < num_wp_grps; i++)
 	{
-		cmd.argument = addr + (i * wp_grp_size);
+		/*
+		* Standard emmc cards use byte mode addressing
+		* convert the block address to byte address before
+		* sending the command
+		*/
+		if (card->type == MMC_TYPE_STD_MMC)
+			cmd.argument = (addr + (i * wp_grp_size)) * card->block_size;
+		else
+			cmd.argument = addr + (i * wp_grp_size);
 
 		if (sdhci_send_command(&dev->host, &cmd))
 			return 1;
