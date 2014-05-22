@@ -510,7 +510,7 @@ void target_baseband_detect(struct board_data *board)
 	platform_subtype = board->platform_subtype;
 
 	/* Check for baseband variants. Default to MSM */
-	if (platform_subtype == HW_PLATFORM_SUBTYPE_MDM || platform == APQ8064AU)
+	if (platform_subtype == HW_PLATFORM_SUBTYPE_MDM)
 		baseband = BASEBAND_MDM;
 	else if (platform_subtype == HW_PLATFORM_SUBTYPE_SGLTE)
 		baseband = BASEBAND_SGLTE;
@@ -526,6 +526,7 @@ void target_baseband_detect(struct board_data *board)
 		case APQ8064:
 		case APQ8064AA:
 		case APQ8064AB:
+		case APQ8064AU:
 		case APQ8030AB:
 		case MPQ8064:
 		case APQ8030:
