@@ -49,11 +49,14 @@
 #include <partition_parser.h>
 #include <platform/clock.h>
 #include <platform/timer.h>
+#include <shutdown_detect.h>
+#include <vibrator.h>
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
 
 #define TLMM_VOL_UP_BTN_GPIO    72
+#define VIBRATE_TIME    250
 
 enum target_subtype {
 	HW_PLATFORM_SUBTYPE_SKUAA = 1,
@@ -190,6 +193,11 @@ void target_init(void)
 
 	target_sdc_init();
 
+	shutdown_detect();
+
+	/* turn on vibrator to indicate that phone is booting up to end user */
+	vib_timed_turn_on(VIBRATE_TIME);
+
 	/* Display splash screen if enabled */
 	dprintf(SPEW, "Display Init: Start\n");
 	display_init();
@@ -199,6 +207,9 @@ void target_init(void)
 void target_uninit(void)
 {
         mmc_put_card_to_sleep(dev);
+
+	/* wait for the vibrator timer is expried */
+	wait_vib_timeout();
 }
 
 #define SSD_CE_INSTANCE         1
@@ -430,4 +441,22 @@ static void set_sdc_power_ctrl()
 struct mmc_device *target_mmc_device()
 {
 	return dev;
+}
+
+/* Configure PMIC and Drop PS_HOLD for shutdown */
+void shutdown_device()
+{
+	dprintf(CRITICAL, "Going down for shutdown.\n");
+
+	/* Configure PMIC for shutdown */
+	pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
+
+	/* Drop PS_HOLD for MSM */
+	writel(0x00, MPM2_MPM_PS_HOLD);
+
+	mdelay(5000);
+
+	dprintf(CRITICAL, "shutdown failed\n");
+
+	ASSERT(0);
 }
