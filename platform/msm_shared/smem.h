@@ -45,6 +45,8 @@
 #define _SMEM_RAM_PTABLE_MAGIC_1        0x9DA5E0A8
 #define _SMEM_RAM_PTABLE_MAGIC_2        0xAF9EC4E2
 
+#define SMEM_TARGET_INFO_IDENTIFIER     0x49494953
+
 enum smem_ram_ptable_version
 {
 	SMEM_RAM_PTABLE_VERSION_0,
@@ -79,6 +81,13 @@ struct smem_board_info_v2 {
 	char build_id[32];
 	unsigned raw_msm_id;
 	unsigned raw_msm_version;
+};
+
+struct smem_addr_info
+{
+	uint32_t identifier; /* Shared memory magic number */
+	uint32_t size; /* Shared memory Size */
+	uint32_t phy_addr; /* Shared memory Addr */
 };
 
 typedef enum
