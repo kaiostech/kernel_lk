@@ -793,6 +793,13 @@ int boot_linux_from_mmc(void)
 				dprintf(CRITICAL, "ERROR: Cannot read device tree\n");
 				return -1;
 			}
+
+			/* Validate the tags_addr */
+			if (check_aboot_addr_range_overlap(hdr->tags_addr, kernel_actual))
+			{
+				dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
+				return -1;
+			}
 		}
 		#endif
 	}
