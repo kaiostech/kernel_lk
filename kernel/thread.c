@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2009,2014 Travis Geiselbrecht
+ * Copyright (c) 2008-2014 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -35,6 +35,7 @@
 #include <list.h>
 #include <malloc.h>
 #include <string.h>
+#include <printf.h>
 #include <err.h>
 #include <lib/dpc.h>
 #include <kernel/thread.h>
@@ -63,7 +64,7 @@ static struct list_node run_queue[NUM_PRIORITIES];
 static uint32_t run_queue_bitmap;
 
 /* the bootstrap thread (statically allocated) */
-static thread_t bootstrap_thread;
+static thread_t idle_threads[SMP_MAX_CPUS];
 
 /* the idle thread */
 static thread_t *idle_thread;
@@ -686,6 +687,8 @@ void thread_init_early(void)
 {
 	int i;
 
+	DEBUG_ASSERT(arch_curr_cpu_num() == 0);
+
 	/* initialize the run queues */
 	for (i=0; i < NUM_PRIORITIES; i++)
 		list_initialize(&run_queue[i]);
@@ -694,7 +697,7 @@ void thread_init_early(void)
 	list_initialize(&thread_list);
 
 	/* create a thread to cover the current running state */
-	thread_t *t = &bootstrap_thread;
+	thread_t *t = &idle_threads[0];
 	init_thread_struct(t, "bootstrap");
 
 	/* half construct this thread, since we're already running */
@@ -750,6 +753,10 @@ void thread_set_priority(int priority)
  */
 void thread_become_idle(void)
 {
+	char name[16];
+	snprintf(name, sizeof(name), "idle %d", arch_curr_cpu_num());
+	thread_set_name(name);
+
 	idle_thread = get_current_thread();
 
 	thread_set_name("idle");
@@ -760,6 +767,37 @@ void thread_become_idle(void)
 	thread_set_real_time(idle_thread);
 
 	/* enable interrupts and start the scheduler */
+	arch_enable_ints();
+	thread_yield();
+
+	idle_thread_routine();
+}
+
+/* create an idle thread for the cpu we're on, and start scheduling */
+void thread_secondary_cpu_entry(void)
+{
+	/* construct an idle thread to cover our cpu */
+	uint cpu = arch_curr_cpu_num();
+	thread_t *t = &idle_thread[cpu];
+
+	char name[16];
+	snprintf(name, sizeof(name), "idle %d", cpu);
+	init_thread_struct(t, name);
+
+	/* half construct this thread, since we're already running */
+	t->priority = IDLE_PRIORITY;
+	t->state = THREAD_RUNNING;
+	t->flags = THREAD_FLAG_DETACHED;
+	wait_queue_init(&t->retcode_wait_queue);
+
+	THREAD_LOCK(state);
+
+	list_add_head(&thread_list, &t->thread_list_node);
+	set_current_thread(t);
+
+	THREAD_UNLOCK(state);
+
+	/* enable interrupts and start the scheduler on this cpu */
 	arch_enable_ints();
 	thread_yield();
 
@@ -796,6 +834,8 @@ void dump_thread(thread_t *t)
 		dprintf(INFO, " 0x%x", t->tls[i]);
 	}
 	dprintf(INFO, "\n");
+	dprintf(INFO, "arch:\n");
+	arch_dump_thread(t);
 }
 
 /**

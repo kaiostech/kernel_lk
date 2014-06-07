@@ -33,6 +33,7 @@
 #include <arch/arm.h>
 #include <arch/arm/mmu.h>
 #include <kernel/spinlock.h>
+#include <kernel/thread.h>
 #include <platform.h>
 #include <target.h>
 #include <kernel/thread.h>
@@ -221,9 +222,13 @@ __NO_RETURN void arm_secondary_entry(void)
 	TRACEF("sctlr 0x%x\n", arm_read_sctlr());
 	TRACEF("actlr 0x%x\n", arm_read_actlr());
 
+	TRACEF("entering scheduler\n");
+	thread_secondary_cpu_entry();
+#if 0
 	for (;;) {
 		__asm__ volatile("wfe");
 	}
+#endif
 }
 #endif
 

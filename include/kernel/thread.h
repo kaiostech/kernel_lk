@@ -113,6 +113,7 @@ typedef struct thread {
 void thread_init_early(void);
 void thread_init(void);
 void thread_become_idle(void) __NO_RETURN;
+void thread_secondary_cpu_entry(void) __NO_RETURN;
 void thread_set_name(const char *name);
 void thread_set_priority(int priority);
 thread_t *thread_create(const char *name, thread_start_routine entry, void *arg, int priority, size_t stack_size);
@@ -126,6 +127,7 @@ status_t thread_detach_and_resume(thread_t *t);
 status_t thread_set_real_time(thread_t *t);
 
 void dump_thread(thread_t *t);
+void arch_dump_thread(thread_t *t);
 void dump_all_threads(void);
 
 /* scheduler routines */
