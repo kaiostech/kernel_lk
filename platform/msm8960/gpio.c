@@ -101,7 +101,14 @@ void gpio_config_uart_dm(uint8_t id)
 			gpio_tlmm_config(18, 1, GPIO_OUTPUT, GPIO_NO_PULL,
 							 GPIO_8MA, GPIO_DISABLE);
 			break;
-
+		case GSBI_ID_3:
+			/* configure rx gpio */
+			gpio_tlmm_config(7, 1, GPIO_INPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
+			/* configure tx gpio */
+			gpio_tlmm_config(6, 1, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_8MA, GPIO_DISABLE);
+			break;
 		case GSBI_ID_4:
 			/* configure rx gpio */
 			gpio_tlmm_config(11, 1, GPIO_INPUT, GPIO_NO_PULL,
