@@ -318,12 +318,16 @@ void target_baseband_detect(struct board_data *board)
 	switch(platform)
 	{
 	case MSM8916:
+	case MSM8116:
+	case MSM8216:
+	case MSM8616:
 	case MSM8939:
 	case MSM8236:
 	case MSM8636:
 	case MSM8936:
 		board->baseband = BASEBAND_MSM;
 	break;
+	case APQ8016:
 	case APQ8039:
 	case APQ8036:
 		board->baseband = BASEBAND_APQ;
