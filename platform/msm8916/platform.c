@@ -86,6 +86,8 @@ int qtmr_irq()
 void platform_init(void)
 {
 	dprintf(INFO, "platform_init()\n");
+	/* Configure XPU violation as Error Fatal */
+	scm_xpu_err_fatal_init();
 }
 
 void platform_uninit(void)
