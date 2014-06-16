@@ -103,6 +103,11 @@ typedef struct{
   uint32 status;
 } ssd_protect_keystore_rsp;
 
+typedef struct {
+	uint32_t config;
+	uint32_t spare;
+} tz_xpu_prot_cmd;
+
 /* Service IDs */
 #define SCM_SVC_BOOT                0x01
 #define TZBSP_SVC_INFO              0x06
@@ -110,6 +115,7 @@ typedef struct{
 #define SVC_MEMORY_PROTECTION       0x0C
 
 /*Service specific command IDs */
+#define ERR_FATAL_ENABLE            0x0
 #define SSD_DECRYPT_ID              0x01
 #define SSD_ENCRYPT_ID              0x02
 #define SSD_PROTECT_KEYSTORE_ID     0x05
@@ -117,6 +123,7 @@ typedef struct{
 #define SSD_DECRYPT_IMG_FRAG_ID     0x07
 #define WDOG_DEBUG_DISABLE          0x09
 #define SCM_DLOAD_CMD               0x10
+#define XPU_ERR_FATAL               0xe
 
 #define SECURE_DEVICE_MDSS          0x01
 
