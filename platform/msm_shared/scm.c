@@ -672,3 +672,22 @@ void scm_elexec_call(paddr_t kernel_entry, paddr_t dtb_offset)
 	dprintf(CRITICAL, "Failed to jump to kernel\n");
 	ASSERT(0);
 }
+
+int scm_xpu_err_fatal_init()
+{
+	uint32_t ret=0, response=0;
+	tz_xpu_prot_cmd cmd;
+
+	cmd.config = ERR_FATAL_ENABLE;
+	cmd.spare = 0;
+
+	ret = scm_call(SVC_MEMORY_PROTECTION, XPU_ERR_FATAL, &cmd, sizeof(cmd), &response,
+			sizeof(response));
+
+	if (ret)
+		dprintf(CRITICAL, "Failed to set XPU violations as fatal errors: %d\n", ret);
+	else
+		dprintf(CRITICAL, "Configured XPU violations to be fatal errors\n");
+
+	return ret;
+}
