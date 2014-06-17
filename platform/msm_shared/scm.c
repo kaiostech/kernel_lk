@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -69,6 +69,7 @@ static struct scm_command *alloc_scm_command(size_t cmd_size, size_t resp_size)
 
 	cmd = memalign(CACHE_LINE, ROUNDUP(len, CACHE_LINE));
 	if (cmd) {
+		memset(cmd, 0, len);
 		cmd->len = len;
 		cmd->buf_offset = offsetof(struct scm_command, buf);
 		cmd->resp_hdr_offset = cmd->buf_offset + cmd_size;
@@ -219,20 +220,19 @@ scm_call(uint32_t svc_id, uint32_t cmd_id, const void *cmd_buf,
 
 int restore_secure_cfg(uint32_t id)
 {
-	int ret, scm_ret = 0;
+	int ret = 0;
 	tz_secure_cfg secure_cfg;
 
 	secure_cfg.id    = id;
 	secure_cfg.spare = 0;
 
 	ret = scm_call(SVC_MEMORY_PROTECTION, IOMMU_SECURE_CFG, &secure_cfg, sizeof(secure_cfg),
-			&scm_ret, sizeof(scm_ret));
+			NULL, 0);
 
-	if (ret || scm_ret) {
+	if (ret) {
 		dprintf(CRITICAL, "Secure Config failed\n");
 		ret = 1;
-	} else
-		ret = 0;
+	}
 
 	return ret;
 
