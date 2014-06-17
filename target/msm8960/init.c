@@ -526,12 +526,14 @@ void target_baseband_detect(struct board_data *board)
 		case APQ8064:
 		case APQ8064AA:
 		case APQ8064AB:
-		case APQ8064AU:
 		case APQ8030AB:
 		case MPQ8064:
 		case APQ8030:
 		case APQ8030AA:
 			baseband = BASEBAND_APQ;
+			break;
+		case APQ8064AU:
+			baseband = BASEBAND_AUTO;
 			break;
 		default:
 			baseband = BASEBAND_MSM;
