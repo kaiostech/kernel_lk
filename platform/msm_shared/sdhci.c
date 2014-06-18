@@ -648,6 +648,7 @@ static struct desc_entry *sdhci_adma_transfer(struct sdhci_host *host,
  */
 uint32_t sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 {
+	uint32_t ret = 0;
 	uint8_t retry = 0;
 	uint32_t resp_type = 0;
 	uint16_t trans_mode = 0;
@@ -764,17 +765,21 @@ uint32_t sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 
 	/* Command complete sequence */
 	if (sdhci_cmd_complete(host, cmd))
-		return 1;
+	{
+		ret = 1;
+		goto err;
+	}
 
 	/* Invalidate the cache only for read operations */
 	if (cmd->trans_mode == SDHCI_MMC_READ)
 		arch_invalidate_cache_range((addr_t)cmd->data.data_ptr, (cmd->data.num_blocks * SDHCI_MMC_BLK_SZ));
 
+err:
 	/* Free the scatter/gather list */
 	if (sg_list)
 		free(sg_list);
 
-	return 0;
+	return ret;
 }
 
 /*
