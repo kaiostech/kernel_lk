@@ -355,7 +355,8 @@ ifeq ($(PLATFORM),msmzirc)
 			$(LOCAL_DIR)/clock_lib2.o \
 			$(LOCAL_DIR)/gpio.o \
 			$(LOCAL_DIR)/scm.o \
-			$(LOCAL_DIR)/qmp_usb30_phy.o
+			$(LOCAL_DIR)/qmp_usb30_phy.o \
+			$(LOCAL_DIR)/qusb2_phy.o
 endif
 
 ifeq ($(PLATFORM),fsm9900)
@@ -410,7 +411,8 @@ ifeq ($(PLATFORM),msm8994)
 			$(LOCAL_DIR)/image_verify.o \
 			$(LOCAL_DIR)/crypto_hash.o \
 			$(LOCAL_DIR)/crypto5_eng.o \
-			$(LOCAL_DIR)/crypto5_wrapper.o
+			$(LOCAL_DIR)/crypto5_wrapper.o \
+			$(LOCAL_DIR)/qusb2_phy.o
 endif
 
 ifeq ($(ENABLE_BOOT_CONFIG_SUPPORT), 1)
