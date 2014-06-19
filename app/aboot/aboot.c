@@ -35,6 +35,7 @@
 #include <arch/arm.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <kernel/thread.h>
 #include <arch/ops.h>
 
@@ -109,6 +110,8 @@ struct fastboot_cmd_desc {
 
 #define UBI_MAGIC      "UBI#"
 #define UBI_MAGIC_SIZE 0x04
+
+#define ADD_OF(a, b) (UINT_MAX - b > a) ? (a + b) : UINT_MAX
 
 #if UFS_SUPPORT
 static const char *emmc_cmdline = " androidboot.bootdevice=msm_sdcc.1";
@@ -1526,6 +1529,8 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 {
 	unsigned kernel_actual;
 	unsigned ramdisk_actual;
+	uint32_t image_actual;
+	uint32_t dt_actual = 0;
 	struct boot_img_hdr *hdr;
 	char *ptr = ((char*) data);
 	int ret = 0;
@@ -1548,6 +1553,25 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 
 	kernel_actual = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
+#if DEVICE_TREE
+	dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+#endif
+
+	image_actual = ADD_OF(page_size, kernel_actual);
+	image_actual = ADD_OF(image_actual, ramdisk_actual);
+	image_actual = ADD_OF(image_actual, dt_actual);
+
+	/* sz should have atleast raw boot image */
+	if (image_actual > sz) {
+		fastboot_fail("incomplete bootimage");
+		return;
+	}
+
+	/* Verify the boot image
+	 * device & page_size are initialized in aboot_init
+	 */
+	if (target_use_signed_kernel() && (!device.is_unlocked))
+		verify_signed_bootimg((uint32_t)data, image_actual);
 
 	/*
 	 * Update the kernel/ramdisk/tags address if the boot image header
@@ -1566,12 +1590,6 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		check_aboot_addr_range_overlap(hdr->ramdisk_addr, ramdisk_actual))
 	{
 		dprintf(CRITICAL, "kernel/ramdisk addresses overlap with aboot addresses.\n");
-		return;
-	}
-
-	/* sz should have atleast raw boot image */
-	if (page_size + kernel_actual + ramdisk_actual > sz) {
-		fastboot_fail("incomplete bootimage");
 		return;
 	}
 
