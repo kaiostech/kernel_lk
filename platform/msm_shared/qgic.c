@@ -40,31 +40,33 @@
 
 static struct ihandler handler[NR_IRQS];
 
+static uint8_t qgic_get_cpumask()
+{
+	uint32_t mask=0, i;
+
+	/* Fetch the CPU MASK from the SGI/PPI reg */
+	for (i=0; i < 32; i += 4) {
+		mask = readl(GIC_DIST_TARGET + i);
+		mask |= mask >> 16;
+		mask |= mask >> 8;
+		if (mask)
+			break;
+	}
+
+	if (!mask)
+		dprintf(CRITICAL, "GIC CPU mask not found\n");
+
+	return mask;
+}
+
 /* Intialize distributor */
 static void qgic_dist_init(void)
 {
 	uint32_t i;
 	uint32_t num_irq = 0;
-	uint32_t cpumask = 1;
-	uint32_t mpidr;
-	uint32_t core = 0;
-	uint32_t cluster;
-	uint32_t cpu_id;
+	uint32_t cpumask;
 
-	/* Read the mpidr register to find out the boot up cluster */
-	__asm__ volatile("mrc p15, 0, %0, c0, c0, 5" : "=r" (mpidr));
-
-	/* Bits [15:8] of the mpidr contain the cluster ID*/
-	cluster = (mpidr & 0xff00) >> CLUSTER_ID_OFFSET;
-
-	/* Bits [7:0] of the mpidr gives the CPU id*/
-	cpu_id = mpidr & 0xff;
-
-	/* According to the cluster and CPU id, select the core currently running */
-	core = (cpu_id + cluster * MAX_CPUS_PER_CLUSTER);
-
-	/* Based on the core,shift the bit to adjust the cpumask */
-	cpumask = cpumask << core;
+	cpumask = qgic_get_cpumask();
 
 	cpumask |= cpumask << 8;
 	cpumask |= cpumask << 16;
