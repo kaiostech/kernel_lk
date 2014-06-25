@@ -2,7 +2,7 @@
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -666,11 +666,6 @@ int udc_init(struct udc_device *dev)
 
 	hsusb_clock_init();
 
-	/* Do any target specific intialization like GPIO settings,
-	 * LDO, PHY configuration etc. needed before USB port can be used.
-	 */
-	target_usb_init();
-
 	/* RESET */
 	writel(0x00080000, USB_USBCMD);
 
@@ -681,14 +676,19 @@ int udc_init(struct udc_device *dev)
 	/* select ULPI phy */
 	writel(0x80000000, USB_PORTSC);
 
-	   /* USB_OTG_HS_AHB_BURST */
+	/* Do any target specific intialization like GPIO settings,
+	 * LDO, PHY configuration etc. needed before USB port can be used.
+	 */
+	target_usb_init();
+
+	/* USB_OTG_HS_AHB_BURST */
 	writel(0x0, USB_SBUSCFG);
 
 	/* USB_OTG_HS_AHB_MODE: HPROT_MODE */
 	/* Bus access related config. */
 	writel(0x08, USB_AHB_MODE);
 
-	epts = memalign(4096, 4096);
+	epts = memalign(lcm(4096, CACHE_LINE), ROUNDUP(4096, CACHE_LINE));
 
 	dprintf(INFO, "USB init ept @ %p\n", epts);
 	memset(epts, 0, 32 * sizeof(struct ept_queue_head));
@@ -706,7 +706,7 @@ int udc_init(struct udc_device *dev)
 	ep0out = _udc_endpoint_alloc(0, 0, 64);
 	ep0in = _udc_endpoint_alloc(0, 1, 64);
 	ep0req = udc_request_alloc();
-	ep0req->buf = memalign(CACHE_LINE, 4096);
+	ep0req->buf = memalign(CACHE_LINE, ROUNDUP(4096, CACHE_LINE));
 
 	{
 		/* create and register a language table descriptor */
@@ -858,6 +858,7 @@ int udc_start(void)
 	struct udc_descriptor *desc;
 	unsigned char *data;
 	unsigned size;
+	uint32_t val;
 
 	dprintf(ALWAYS, "udc_start()\n");
 
@@ -908,22 +909,35 @@ int udc_start(void)
 	unmask_interrupt(INT_USB_HS);
 
 	/* go to RUN mode (D+ pullup enable) */
-	writel(0x00080001, USB_USBCMD);
+	val = readl(USB_USBCMD);
+
+	writel(val | 0x00080001, USB_USBCMD);
 
 	return 0;
 }
 
 int udc_stop(void)
 {
+	uint32_t val;
+
+	/* Flush all primed end points. */
+	writel(0xffffffff, USB_ENDPTFLUSH);
+
+	/* Stop controller. */
+	val = readl(USB_USBCMD);
+	writel(val & ~USBCMD_ATTACH, USB_USBCMD);
+
+	/* Mask the interrupts. */
 	writel(0, USB_USBINTR);
 	mask_interrupt(INT_USB_HS);
 
-	/* disable pullup */
-	writel(0x00080000, USB_USBCMD);
-
+	/* Perform any target specific clean up. */
 	target_usb_stop();
 
-	thread_sleep(10);
+	/* Reset the controller. */
+	writel(USBCMD_RESET, USB_USBCMD);
+	/* Wait until reset completes. */
+	while(readl(USB_USBCMD) & USBCMD_RESET);
 
 	return 0;
 }
