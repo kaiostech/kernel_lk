@@ -108,11 +108,17 @@ typedef struct {
 	uint32_t spare;
 } tz_xpu_prot_cmd;
 
+struct tz_prng_data {
+	uint8_t *out_buf;
+	uint32_t out_buf_size;
+}__packed;
+
 /* Service IDs */
 #define SCM_SVC_BOOT                0x01
 #define TZBSP_SVC_INFO              0x06
 #define SCM_SVC_SSD                 0x07
 #define SVC_MEMORY_PROTECTION       0x0C
+#define TZ_SVC_CRYPTO               0x0A
 
 /*Service specific command IDs */
 #define ERR_FATAL_ENABLE            0x0
@@ -130,6 +136,8 @@ typedef struct {
 #define IOMMU_SECURE_CFG            0x02
 
 #define TZ_INFO_GET_FEATURE_ID      0x03
+
+#define PRNG_CMD_ID                 0x01
 
 /* Download Mode specific arguments to be passed to TZ */
 #define SCM_EDLOAD_MODE 0x02
@@ -205,6 +213,8 @@ void set_tamper_fuse_cmd();
 
 int scm_halt_pmic_arbiter();
 int scm_call_atomic2(uint32_t svc, uint32_t cmd, uint32_t arg1, uint32_t arg2);
+
+void *get_canary();
 
 /**
  * struct scm_command - one SCM command buffer
