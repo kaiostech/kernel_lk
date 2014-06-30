@@ -103,10 +103,16 @@ typedef struct{
   uint32 status;
 } ssd_protect_keystore_rsp;
 
+struct tz_prng_data {
+	uint8_t *out_buf;
+	uint32_t out_buf_size;
+}__packed;
+
 /* Service IDs */
 #define TZBSP_SVC_INFO              0x06
 #define SCM_SVC_SSD                 0x07
 #define SVC_MEMORY_PROTECTION       0x0C
+#define TZ_SVC_CRYPTO               0x0A
 
 /*Service specific command IDs */
 #define SSD_DECRYPT_ID              0x01
@@ -121,6 +127,8 @@ typedef struct{
 #define IOMMU_SECURE_CFG            0x02
 
 #define TZ_INFO_GET_FEATURE_ID      0x03
+
+#define PRNG_CMD_ID                 0x01
 
 /* SSD parsing status messages from TZ */
 #define SSD_PMD_ENCRYPTED           0
@@ -191,6 +199,8 @@ uint8_t switch_ce_chn_cmd(enum ap_ce_channel_type channel);
 void set_tamper_fuse_cmd();
 
 int scm_halt_pmic_arbiter();
+
+void *get_canary();
 
 /**
  * struct scm_command - one SCM command buffer
