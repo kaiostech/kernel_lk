@@ -605,3 +605,39 @@ int scm_halt_pmic_arbiter()
 
 	return ret;
 }
+
+/* SCM Random Command */
+int scm_random(uint32_t * rbuf, uint32_t  r_len)
+{
+	int ret;
+	struct tz_prng_data data;
+
+	data.out_buf     = (uint8_t*) rbuf;
+	data.out_buf_size = r_len;
+
+	/*
+	 * random buffer must be flushed/invalidated before and after TZ call.
+	 */
+	arch_clean_invalidate_cache_range((addr_t) rbuf, r_len);
+
+	ret = scm_call(TZ_SVC_CRYPTO, PRNG_CMD_ID, &data, sizeof(data), NULL, 0);
+
+	/* Invalidate the updated random buffer */
+	arch_clean_invalidate_cache_range((addr_t) rbuf, r_len);
+
+	return ret;
+}
+
+void * get_canary()
+{
+	void * canary;
+	if(scm_random(&canary, sizeof(canary))) {
+		dprintf(CRITICAL,"scm_call for random failed !!!");
+		/*
+		* fall back to use lib rand API if scm call failed.
+		*/
+		canary =  (void *)rand();
+	}
+
+	return canary;
+}
