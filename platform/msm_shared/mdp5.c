@@ -88,14 +88,9 @@ static void mdss_rgb_pipe_config(struct fbcon_config *fb, struct msm_panel_info
 	/* write active region size*/
 	src_size = (fb->height << 16) + fb->width;
 	out_size = src_size;
-
 	if (pinfo->lcdc.dual_pipe) {
 		out_size = (fb->height << 16) + (fb->width / 2);
-		if ((pinfo->lcdc.pipe_swap == TRUE) && (pipe_base ==
-					MDP_VP_0_RGB_0_BASE))
-			fb_off = (pinfo->xres / 2);
-		else if ((pinfo->lcdc.pipe_swap != TRUE) && (pipe_base ==
-					MDP_VP_0_RGB_1_BASE))
+		if (pipe_base == MDP_VP_0_RGB_1_BASE)
 			fb_off = (pinfo->xres / 2);
 	}
 
@@ -384,12 +379,29 @@ void mdss_qos_remapper_setup(void)
 	writel(map, MDP_QOS_REMAPPER_CLASS_0);
 }
 
+static uint32_t mdss_mdp_ctl_out_sel(struct msm_panel_info *pinfo,
+	int is_main_ctl)
+{
+	if (pinfo->lcdc.pipe_swap) {
+		if (is_main_ctl)
+			return BIT(4) | BIT(5); /* Interface 2 */
+		else
+			return BIT(5); /* Interface 1 */
+	} else {
+		if (is_main_ctl)
+			return BIT(5); /* Interface 1 */
+		else
+			return BIT(4) | BIT(5); /* Interface 2 */
+	}
+}
+
 int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 		struct fbcon_config *fb)
 {
 	int ret = NO_ERROR;
 	struct lcdc_panel_info *lcdc = NULL;
 	uint32_t intf_sel = 0x100;
+	uint32_t reg;
 
 	mdss_intf_tg_setup(pinfo, MDP_INTF_1_BASE);
 
@@ -409,10 +421,12 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 
 	mdss_layer_mixer_setup(fb, pinfo);
 
-	writel(0x1F20, MDP_CTL_0_BASE + CTL_TOP);
+	reg = 0x1f00 | mdss_mdp_ctl_out_sel(pinfo, 1);
+	writel(reg, MDP_CTL_0_BASE + CTL_TOP);
 
 	if (pinfo->mipi.dual_dsi) {
-		writel(0x1F30, MDP_CTL_1_BASE + CTL_TOP);
+		reg = 0x1f00 | mdss_mdp_ctl_out_sel(pinfo, 0);
+		writel(reg, MDP_CTL_1_BASE + CTL_TOP);
 		intf_sel |= BIT(16); /* INTF 2 enable */
 	}
 
@@ -464,6 +478,8 @@ int mdp_dsi_cmd_config(struct msm_panel_info *pinfo,
                 struct fbcon_config *fb)
 {
 	uint32_t intf_sel = BIT(8);
+	uint32_t reg;
+	uint32_t upper, lower;
 	int ret = NO_ERROR;
 
 	struct lcdc_panel_info *lcdc = NULL;
@@ -477,8 +493,13 @@ int mdp_dsi_cmd_config(struct msm_panel_info *pinfo,
 		return ERR_INVALID_ARGS;
 
 	if (pinfo->lcdc.split_display) {
-		writel(0x102, MDP_REG_SPLIT_DISPLAY_UPPER_PIPE_CTL);
-		writel(0x102, MDP_REG_SPLIT_DISPLAY_LOWER_PIPE_CTL);
+		reg = BIT(1); /* Command mode */
+		if (pinfo->lcdc.pipe_swap)
+			reg |= BIT(4); /* Use intf2 as trigger */
+		else
+			reg |= BIT(8); /* Use intf1 as trigger */
+		writel(reg, MDP_REG_SPLIT_DISPLAY_UPPER_PIPE_CTL);
+		writel(reg, MDP_REG_SPLIT_DISPLAY_LOWER_PIPE_CTL);
 		writel(0x1, MDP_REG_SPLIT_DISPLAY_EN);
 	}
 
@@ -502,11 +523,13 @@ int mdp_dsi_cmd_config(struct msm_panel_info *pinfo,
 	mdss_layer_mixer_setup(fb, pinfo);
 
 	writel(0x213F, MDP_INTF_1_BASE + MDP_PANEL_FORMAT + mdss_mdp_intf_off);
-	writel(0x21f20, MDP_CTL_0_BASE + CTL_TOP);
+	reg = 0x21f00 | mdss_mdp_ctl_out_sel(pinfo, 1);
+	writel(reg, MDP_CTL_0_BASE + CTL_TOP);
 
 	if (pinfo->mipi.dual_dsi) {
 		writel(0x213F, MDP_INTF_2_BASE + MDP_PANEL_FORMAT + mdss_mdp_intf_off);
-		writel(0x21F30, MDP_CTL_1_BASE + CTL_TOP);
+		reg = 0x21f00 | mdss_mdp_ctl_out_sel(pinfo, 0);
+		writel(reg, MDP_CTL_1_BASE + CTL_TOP);
 	}
 
 	return ret;
