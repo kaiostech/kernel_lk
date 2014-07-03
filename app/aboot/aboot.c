@@ -35,6 +35,7 @@
 #include <arch/arm.h>
 #include <dev/udc.h>
 #include <string.h>
+#include <limits.h>
 #include <kernel/thread.h>
 #include <arch/ops.h>
 
@@ -78,6 +79,7 @@
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
+#define ADD_OF(a, b) (UINT_MAX - b > a) ? (a + b) : UINT_MAX
 static const char *emmc_cmdline = " androidboot.emmc=true";
 static const char *usb_sn_cmdline = " androidboot.serialno=";
 static const char *battchg_pause = " androidboot.mode=charger";
@@ -921,6 +923,8 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	unsigned kernel_actual;
 	unsigned ramdisk_actual;
 	static struct boot_img_hdr hdr;
+	uint32_t image_actual;
+	uint32_t dt_actual = 0;
 	char *ptr = ((char*) data);
 
 	if (sz < sizeof(hdr)) {
@@ -940,18 +944,32 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 
 	kernel_actual = ROUND_TO_PAGE(hdr.kernel_size, page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr.ramdisk_size, page_mask);
+#if DEVICE_TREE
+	dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+#endif
+
+	image_actual = ADD_OF(page_size, kernel_actual);
+	image_actual = ADD_OF(image_actual, ramdisk_actual);
+	image_actual = ADD_OF(image_actual, dt_actual);
+
+	/* sz should have atleast raw boot image */
+	if (image_actual > sz) {
+		fastboot_fail("incomplete bootimage");
+		return;
+	}
+
+	/* Verify the boot image
+	 * device & page_size are initialized in aboot_init
+	 */
+	if (target_use_signed_kernel() && (!device.is_unlocked))
+		verify_signed_bootimg((uint32_t)data, image_actual);
 
 	/* Check if the addresses in the header are valid. */
 	if (check_aboot_addr_range_overlap(hdr.kernel_addr, kernel_actual) ||
 		check_aboot_addr_range_overlap(hdr.ramdisk_addr, ramdisk_actual))
 	{
 		dprintf(CRITICAL, "kernel/ramdisk addresses overlap with aboot addresses.\n");
-		return;
-	}
 
-	/* sz should have atleast raw boot image */
-	if (page_size + kernel_actual + ramdisk_actual > sz) {
-		fastboot_fail("incomplete bootimage");
 		return;
 	}
 
