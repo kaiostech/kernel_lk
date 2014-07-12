@@ -304,6 +304,24 @@ static uint32_t sdhci_msm_init_dll(struct sdhci_host *host)
 	return 0;
 }
 
+void sdhci_msm_toggle_cdr(struct sdhci_host *host, bool enable)
+{
+	uint32_t core_cfg;
+
+	core_cfg = REG_READ32(host, SDCC_DLL_CONFIG_REG);
+
+	if (enable)
+	{
+		core_cfg |= SDCC_DLL_CDR_EN;
+	}
+	else
+	{
+		core_cfg &= ~SDCC_DLL_CDR_EN;
+	}
+
+	REG_WRITE32(host, core_cfg, SDCC_DLL_CONFIG_REG);
+}
+
 /* Configure DLL with delay value based on 'phase' */
 static uint32_t sdhci_msm_config_dll(struct sdhci_host *host, uint32_t phase)
 {
@@ -689,7 +707,7 @@ retry_tuning:
 	if (tuned_phase_cnt == MAX_PHASES)
 	{
 		/* Change the driver type & rerun tuning */
-		while(++drv_type < MX_DRV_SUPPORTED_HS200)
+		while(++drv_type <= MX_DRV_SUPPORTED_HS200)
 		{
 			drv_type_changed = mmc_set_drv_type(host, card, drv_type);
 			if (drv_type_changed)
