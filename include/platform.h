@@ -42,6 +42,7 @@ int platform_use_identity_mmu_mappings(void);
 void platform_init_mmu_mappings(void);
 addr_t platform_get_virt_to_phys_mapping(addr_t virt_addr);
 addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr);
+addr_t get_bs_info_addr(void);
 
 void display_init(void);
 void display_shutdown(void);
@@ -53,5 +54,7 @@ unsigned check_reboot_mode(void);
 void platform_uninit_timer(void);
 void reboot_device(unsigned);
 int set_download_mode(enum dload_mode mode);
-
+uint32_t platform_get_sclk_count(void);
+void clock_config_cdc(uint32_t interface);
+int platform_is_msm8939();
 #endif
