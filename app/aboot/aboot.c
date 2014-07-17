@@ -35,6 +35,7 @@
 #include <arch/arm.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <kernel/thread.h>
 #include <arch/ops.h>
 
@@ -102,6 +103,8 @@ void write_device_info_flash(device_info *dev);
 #define UBI_MAGIC      "UBI#"
 #define UBI_MAGIC_SIZE 0x04
 
+#define ADD_OF(a, b) (UINT_MAX - b > a) ? (a + b) : UINT_MAX
+
 #if UFS_SUPPORT
 static const char *emmc_cmdline = " androidboot.bootdevice=msm_sdcc.1";
 static const char *ufs_cmdline = " androidboot.bootdevice=msm_ufs.1";
@@ -136,7 +139,7 @@ static char target_boot_params[64];
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
 
-static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0};
+static device_info device = {DEVICE_MAGIC, 0, 0, 1, 0};
 
 struct atag_ptbl_entry
 {
@@ -1397,7 +1400,7 @@ void read_device_info_mmc(device_info *dev)
 		memcpy(info->magic, DEVICE_MAGIC, DEVICE_MAGIC_SIZE);
 		info->is_unlocked = 0;
 		info->is_tampered = 0;
-		info->charger_screen_enabled = 0;
+		info->charger_screen_enabled = 1;
 
 		write_device_info_mmc(info);
 	}
@@ -1571,6 +1574,9 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 {
 	unsigned kernel_actual;
 	unsigned ramdisk_actual;
+	uint32_t image_actual;
+	uint32_t dt_actual = 0;
+	uint32_t sig_actual = SIGNATURE_SIZE;
 	struct boot_img_hdr *hdr;
 	char *ptr = ((char*) data);
 	int ret = 0;
@@ -1593,6 +1599,31 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 
 	kernel_actual = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
+#if DEVICE_TREE
+	dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+#endif
+
+	image_actual = ADD_OF(page_size, kernel_actual);
+	image_actual = ADD_OF(image_actual, ramdisk_actual);
+	image_actual = ADD_OF(image_actual, dt_actual);
+
+	if (target_use_signed_kernel() && (!device.is_unlocked))
+		image_actual = ADD_OF(image_actual, sig_actual);
+
+	/* sz should have atleast raw boot image */
+	if (image_actual > sz) {
+		fastboot_fail("bootimage: incomplete or not signed");
+		return;
+	}
+
+	/* Verify the boot image
+	 * device & page_size are initialized in aboot_init
+	 */
+	if (target_use_signed_kernel() && (!device.is_unlocked))
+		/* Pass size excluding signature size, otherwise we would try to
+		 * access signature beyond its length
+		 */
+		verify_signed_bootimg((uint32_t)data, (image_actual - sig_actual));
 
 	/*
 	 * Update the kernel/ramdisk/tags address if the boot image header
@@ -1611,12 +1642,6 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		check_aboot_addr_range_overlap(hdr->ramdisk_addr, ramdisk_actual))
 	{
 		dprintf(CRITICAL, "kernel/ramdisk addresses overlap with aboot addresses.\n");
-		return;
-	}
-
-	/* sz should have atleast raw boot image */
-	if (page_size + kernel_actual + ramdisk_actual > sz) {
-		fastboot_fail("incomplete bootimage");
 		return;
 	}
 
