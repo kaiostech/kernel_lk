@@ -94,7 +94,7 @@ __WEAK void ce_clock_init(void)
 
 __WEAK addr_t get_bs_info_addr()
 {
-	return NULL;
+	return 0;
 }
 
 __WEAK uint32_t platform_get_sclk_count(void)
@@ -102,6 +102,7 @@ __WEAK uint32_t platform_get_sclk_count(void)
 	return 0;
 }
 
-__WEAK void clock_config_cdc(uint8_t slot)
+__WEAK void clock_config_cdc(uint32_t slot)
 {
+
 }
