@@ -157,6 +157,11 @@ void *dev_tree_appended(void *kernel, uint32_t kernel_size, void *tags)
 			break;
 		dtb_size = fdt_totalsize(&dtb_hdr);
 
+		if (check_aboot_addr_range_overlap(tags, dtb_size)) {
+			dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
+			return NULL;
+		}
+
 		/* now that we know we have a valid DTB, we need to copy
 		 * it somewhere aligned, like tags */
 		memcpy(tags, dtb, dtb_size);
@@ -200,7 +205,7 @@ void *dev_tree_appended(void *kernel, uint32_t kernel_size, void *tags)
 int dev_tree_validate(struct dt_table *table, unsigned int page_size, uint32_t *dt_hdr_size)
 {
 	int dt_entry_size;
-	uint32_t hdr_size;
+	uint64_t hdr_size;
 
 	/* Validate the device tree table header */
 	if(table->magic != DEV_TREE_MAGIC) {
@@ -218,11 +223,15 @@ int dev_tree_validate(struct dt_table *table, unsigned int page_size, uint32_t *
 		return -1;
 	}
 
-	hdr_size = table->num_entries * dt_entry_size + DEV_TREE_HEADER_SIZE;
+	hdr_size = (uint64_t)table->num_entries * dt_entry_size + DEV_TREE_HEADER_SIZE;
+
 	/* Roundup to page_size. */
 	hdr_size = ROUNDUP(hdr_size, page_size);
 
-	*dt_hdr_size = hdr_size;
+	if (hdr_size > UINT_MAX)
+		return -1;
+	else
+		*dt_hdr_size = hdr_size & UINT_MAX;
 
 	return 0;
 }
