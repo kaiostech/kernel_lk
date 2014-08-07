@@ -80,4 +80,5 @@ enum boot_device
 	BOOT_UFS=4,
 };
 
+uint32_t target_override_pll();
 #endif
