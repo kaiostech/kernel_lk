@@ -120,6 +120,9 @@
 #define MDP_REG_SPLIT_DISPLAY_UPPER_PIPE_CTL    REG_MDP(0x3F8)
 #define MDP_REG_SPLIT_DISPLAY_LOWER_PIPE_CTL    REG_MDP(0x4F0)
 
+#define MDP_REG_PPB0_CNTL                       REG_MDP(0x1420)
+#define MDP_REG_PPB0_CONFIG                     REG_MDP(0x1424)
+
 #define MDP_INTF_0_BASE                         REG_MDP(0x12500)
 #define MDP_INTF_1_BASE                         REG_MDP(0x12700)
 #define MDP_INTF_2_BASE                         REG_MDP(0x12900)
@@ -153,6 +156,10 @@
 
 #define MMSS_MDP_SMP_ALLOC_W_BASE               REG_MDP(0x0180)
 #define MMSS_MDP_SMP_ALLOC_R_BASE               REG_MDP(0x0230)
+
+/* source pipe opmode bits for flip */
+#define MDSS_MDP_OP_MODE_FLIP_UD                BIT(14)
+#define MDSS_MDP_OP_MODE_FLIP_LR                BIT(13)
 
 #define MDP_QOS_REMAPPER_CLASS_0                REG_MDP(0x02E0)
 #define MDP_QOS_REMAPPER_CLASS_1                REG_MDP(0x02E4)
