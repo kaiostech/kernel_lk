@@ -344,7 +344,7 @@ bool oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		case HW_PLATFORM_SUBTYPE_SKUI:
 			/* QRD SKUIC*/
 			if ((plat_hw_ver_major >> 4) == 0x1)
-				panel_id = OTM8019A_FWVGA_VIDEO_PANEL;
+				panel_id = HX8379A_FWVGA_VIDEO_PANEL;
 			else
 				panel_id = OTM8019A_FWVGA_VIDEO_PANEL;
 			break;
