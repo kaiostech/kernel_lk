@@ -42,3 +42,6 @@ ENABLE_PON_VIB_SUPPORT := true
 ifeq ($(ENABLE_PON_VIB_SUPPORT),true)
 DEFINES += PON_VIB_SUPPORT=1
 endif
+
+#enable user force reset feature
+DEFINES += USER_FORCE_RESET_SUPPORT=1
