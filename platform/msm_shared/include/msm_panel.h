@@ -110,6 +110,7 @@ struct lcdc_panel_info {
 	uint8_t dual_pipe;
 	uint8_t split_display;
 	uint8_t pipe_swap;
+	uint8_t dst_split;
 };
 
 struct mipi_panel_info {
@@ -194,7 +195,7 @@ struct msm_panel_info {
 	uint32_t type;
 	uint32_t wait_cycle;
 	uint32_t clk_rate;
-	uint32_t rotation;
+	uint32_t orientation;
 	/*  Select pipe type for handoff */
 	uint32_t pipe_type;
 	char     lowpowerstop;
