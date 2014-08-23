@@ -74,6 +74,8 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 		pinfo->lcdc.pipe_swap = 1;
 	if (pstruct->paneldata->panel_operating_mode & SPLIT_DISPLAY_FLAG)
 		pinfo->lcdc.split_display = 1;
+	if (pstruct->paneldata->panel_operating_mode & DST_SPLIT_FLAG)
+		pinfo->lcdc.dst_split = 1;
 
 	/* Color setting*/
 	pinfo->lcdc.border_clr = pstruct->color->border_color;
@@ -106,7 +108,7 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	}
 	pinfo->bpp = pstruct->color->color_format;
 	pinfo->clk_rate = pstruct->paneldata->panel_clockrate;
-	pinfo->rotation = pstruct->paneldata->panel_orientation;
+	pinfo->orientation = pstruct->paneldata->panel_orientation;
 	pinfo->mipi.interleave_mode = pstruct->paneldata->interleave_mode;
 	pinfo->mipi.broadcast = pstruct->paneldata->panel_broadcast_mode;
 	pinfo->mipi.vc = pstruct->paneldata->dsi_virtualchannel_id;
