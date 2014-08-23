@@ -87,6 +87,7 @@ static void mdss_source_pipe_config(struct fbcon_config *fb, struct msm_panel_in
 {
 	uint32_t src_size, out_size, stride, pipe_swap;
 	uint32_t fb_off = 0;
+	uint32_t flip_bits = 0;
 
 	/* write active region size*/
 	src_size = (fb->height << 16) + fb->width;
@@ -119,7 +120,15 @@ static void mdss_source_pipe_config(struct fbcon_config *fb, struct msm_panel_in
 	/* Tight Packing 3bpp 0-Alpha 8-bit R B G */
 	writel(0x0002243F, pipe_base + PIPE_SSPP_SRC_FORMAT);
 	writel(0x00020001, pipe_base + PIPE_SSPP_SRC_UNPACK_PATTERN);
-	writel(0x00, pipe_base + PIPE_SSPP_SRC_OP_MODE);
+
+	/* bit(0) is set if hflip is required.
+	 * bit(1) is set if vflip is required.
+	 */
+	if (pinfo->orientation & 0x1)
+		flip_bits |= MDSS_MDP_OP_MODE_FLIP_LR;
+	if (pinfo->orientation & 0x2)
+		flip_bits |= MDSS_MDP_OP_MODE_FLIP_UD;
+	writel(flip_bits, pipe_base + PIPE_SSPP_SRC_OP_MODE);
 }
 
 static void mdss_vbif_setup()
@@ -310,6 +319,11 @@ void mdss_intf_tg_setup(struct msm_panel_info *pinfo, uint32_t intf_base)
 			writel(0x0, MDP_REG_SPLIT_DISPLAY_UPPER_PIPE_CTL);
 			writel(0x1, MDP_REG_SPLIT_DISPLAY_EN);
 		}
+	}
+
+	if (pinfo->lcdc.dst_split && (intf_base == MDP_INTF_1_BASE)) {
+		writel(BIT(16), MDP_REG_PPB0_CONFIG);
+		writel(BIT(5), MDP_REG_PPB0_CNTL);
 	}
 
 	mdss_mdp_intf_off = intf_base + mdss_mdp_intf_offset();
@@ -516,8 +530,13 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 
 	writel(0x1F20, MDP_CTL_0_BASE + CTL_TOP);
 
+	/*If dst_split is enabled only intf 2 needs to be enabled.
+	CTL_1 path should not be set since CTL_0 itself is going
+	to split after DSPP block*/
+
 	if (pinfo->mipi.dual_dsi) {
-		writel(0x1F30, MDP_CTL_1_BASE + CTL_TOP);
+		if (!pinfo->lcdc.dst_split)
+			writel(0x1F30, MDP_CTL_1_BASE + CTL_TOP);
 		intf_sel |= BIT(16); /* INTF 2 enable */
 	}
 
