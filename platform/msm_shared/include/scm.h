@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -103,10 +103,30 @@ typedef struct{
   uint32 status;
 } ssd_protect_keystore_rsp;
 
+typedef struct {
+	uint64_t el1_x0;
+	uint64_t el1_x1;
+	uint64_t el1_x2;
+	uint64_t el1_x3;
+	uint64_t el1_x4;
+	uint64_t el1_x5;
+	uint64_t el1_x6;
+	uint64_t el1_x7;
+	uint64_t el1_x8;
+	uint64_t el1_elr;
+} el1_system_param;
+
+struct tz_prng_data {
+	uint8_t *out_buf;
+	uint32_t out_buf_size;
+}__packed;
+
 /* Service IDs */
+#define SCM_SVC_BOOT                0x01
 #define TZBSP_SVC_INFO              0x06
 #define SCM_SVC_SSD                 0x07
 #define SVC_MEMORY_PROTECTION       0x0C
+#define TZ_SVC_CRYPTO               0x0A
 
 /*Service specific command IDs */
 #define SSD_DECRYPT_ID              0x01
@@ -114,13 +134,20 @@ typedef struct{
 #define SSD_PROTECT_KEYSTORE_ID     0x05
 #define SSD_PARSE_MD_ID             0x06
 #define SSD_DECRYPT_IMG_FRAG_ID     0x07
-
+#define WDOG_DEBUG_DISABLE          0x09
+#define SCM_DLOAD_CMD               0x10
 
 #define SECURE_DEVICE_MDSS          0x01
 
 #define IOMMU_SECURE_CFG            0x02
 
 #define TZ_INFO_GET_FEATURE_ID      0x03
+
+#define PRNG_CMD_ID                 0x01
+
+/* Download Mode specific arguments to be passed to TZ */
+#define SCM_EDLOAD_MODE 0x02
+#define SCM_DLOAD_MODE  0x10
 
 /* SSD parsing status messages from TZ */
 #define SSD_PMD_ENCRYPTED           0
@@ -177,6 +204,9 @@ int scm_protect_keystore(uint32_t * img_ptr, uint32_t  img_len);
 #define SCM_SVC_PWR                     0x9
 #define SCM_IO_DISABLE_PMIC_ARBITER     0x1
 
+#define SCM_SVC_MILESTONE_32_64_ID      0x1
+#define SCM_SVC_MILESTONE_CMD_ID        0xf
+
 enum ap_ce_channel_type {
 AP_CE_REGISTER_USE = 0,
 AP_CE_ADM_USE = 1
@@ -191,6 +221,10 @@ uint8_t switch_ce_chn_cmd(enum ap_ce_channel_type channel);
 void set_tamper_fuse_cmd();
 
 int scm_halt_pmic_arbiter();
+int scm_call_atomic2(uint32_t svc, uint32_t cmd, uint32_t arg1, uint32_t arg2);
+
+void scm_elexec_call(paddr_t kernel_entry, paddr_t dtb_offset);
+void *get_canary();
 
 /**
  * struct scm_command - one SCM command buffer
@@ -235,7 +269,4 @@ struct scm_response {
 	uint32_t buf_offset;
 	uint32_t is_complete;
 };
-
-
-
 #endif
