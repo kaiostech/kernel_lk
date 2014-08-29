@@ -159,6 +159,36 @@ static int scm_call_atomic(uint32_t svc, uint32_t cmd, uint32_t arg1)
 }
 
 /**
+ * scm_call_atomic2() - Send an atomic SCM command with two arguments
+ * @svc_id: service identifier
+ * @cmd_id: command identifier
+ * @arg1: first argument
+ * @arg2: second argument
+ *
+ * This shall only be used with commands that are guaranteed to be
+ * uninterruptable, atomic and SMP safe.
+ */
+int scm_call_atomic2(uint32_t svc, uint32_t cmd, uint32_t arg1, uint32_t arg2)
+{
+	int context_id;
+	register uint32_t r0 __asm__("r0") = SCM_ATOMIC(svc, cmd, 2);
+	register uint32_t r1 __asm__("r1") = &context_id;
+	register uint32_t r2 __asm__("r2") = arg1;
+	register uint32_t r3 __asm__("r3") = arg2;
+
+	__asm__ volatile(
+		__asmeq("%0", "r0")
+		__asmeq("%1", "r0")
+		__asmeq("%2", "r1")
+		__asmeq("%3", "r2")
+		__asmeq("%4", "r3")
+		"smc	#0	@ switch to secure world\n"
+		: "=r" (r0)
+		: "r" (r0), "r" (r1), "r" (r2), "r" (r3));
+	return r0;
+}
+
+/**
  * scm_call() - Send an SCM command
  * @svc_id: service identifier
  * @cmd_id: command identifier
@@ -604,4 +634,77 @@ int scm_halt_pmic_arbiter()
 	ret = scm_call_atomic(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER, 0);
 
 	return ret;
+}
+
+/* Execption Level exec secure-os call
+ * Jumps to kernel via secure-os and does not return
+ * on successful jump. System parameters are setup &
+ * passed on to secure-os and are utilized to boot the
+ * kernel.
+ *
+ @ kernel_entry	: kernel entry point passed in as link register.
+ @ dtb_offset	: dt blob address passed in as w0.
+ @ svc_id	: indicates direction of switch 32->64 or 64->32
+ *
+ * Assumes all sanity checks have been performed on arguments.
+ */
+
+void scm_elexec_call(paddr_t kernel_entry, paddr_t dtb_offset)
+{
+	uint32_t svc_id = SCM_SVC_MILESTONE_32_64_ID;
+	uint32_t cmd_id = SCM_SVC_MILESTONE_CMD_ID;
+	void *cmd_buf;
+	size_t cmd_len;
+	static el1_system_param param;
+
+	param.el1_x0 = dtb_offset;
+	param.el1_elr = kernel_entry;
+
+	/* Command Buffer */
+	cmd_buf = (void *)&param;
+	cmd_len = sizeof(el1_system_param);
+
+	/* Response Buffer = Null as no response expected */
+	dprintf(INFO, "Jumping to kernel via monitor\n");
+	scm_call(svc_id, cmd_id, cmd_buf, cmd_len, NULL, 0);
+
+	/* Assert if execution ever reaches here */
+	dprintf(CRITICAL, "Failed to jump to kernel\n");
+	ASSERT(0);
+}
+
+/* SCM Random Command */
+int scm_random(uint32_t * rbuf, uint32_t  r_len)
+{
+	int ret;
+	struct tz_prng_data data;
+
+	data.out_buf     = (uint8_t*) rbuf;
+	data.out_buf_size = r_len;
+
+	/*
+	 * random buffer must be flushed/invalidated before and after TZ call.
+	 */
+	arch_clean_invalidate_cache_range((addr_t) rbuf, r_len);
+
+	ret = scm_call(TZ_SVC_CRYPTO, PRNG_CMD_ID, &data, sizeof(data), NULL, 0);
+
+	/* Invalidate the updated random buffer */
+	arch_clean_invalidate_cache_range((addr_t) rbuf, r_len);
+
+	return ret;
+}
+
+void * get_canary()
+{
+	void * canary;
+	if(scm_random(&canary, sizeof(canary))) {
+		dprintf(CRITICAL,"scm_call for random failed !!!");
+		/*
+		* fall back to use lib rand API if scm call failed.
+		*/
+		canary =  (void *)rand();
+	}
+
+	return canary;
 }
