@@ -33,6 +33,7 @@
 #include <baseband.h>
 
 static struct board_data board = {UNKNOWN,
+	0,
 	HW_PLATFORM_UNKNOWN,
 	HW_PLATFORM_SUBTYPE_UNKNOWN,
 	HW_PLATFORM_VERSION_UNKNOWN,
@@ -65,6 +66,7 @@ static void platform_detect()
 			return;
 
 		board.platform = board_info_v6.board_info_v3.msm_id;
+		board.msm_version = board_info_v6.board_info_v3.msm_version;
 		board.platform_hw = board_info_v6.board_info_v3.hw_platform;
 		board.platform_subtype = board_info_v6.platform_subtype;
 		board.platform_version = board_info_v6.platform_version;
@@ -80,6 +82,7 @@ static void platform_detect()
 			return;
 
 		board.platform = board_info_v7.board_info_v3.msm_id;
+		board.msm_version = board_info_v7.board_info_v3.msm_version;
 		board.platform_hw = board_info_v7.board_info_v3.hw_platform;
 		board.platform_subtype = board_info_v7.platform_subtype;
 		board.platform_version = board_info_v7.platform_version;
@@ -128,6 +131,11 @@ uint32_t board_pmic_type()
 uint32_t board_pmic_ver()
 {
 	return board.pmic_version;
+}
+
+uint32_t board_msm_version()
+{
+	return board.msm_version;
 }
 
 uint32_t board_platform_ver()

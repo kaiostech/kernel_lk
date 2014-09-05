@@ -39,7 +39,8 @@ int lvds_chimei_wxga_config(void *pdata)
 {
 	int target_id = board_target_id();
 
-	if (target_id == LINUX_MACHTYPE_8064_ADP_2) {
+	if ((target_id == LINUX_MACHTYPE_8064_ADP_2)||
+		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2)) {
 		fpdlink3_init();
 	}
 

@@ -364,6 +364,7 @@ void target_uart_init(void)
 
 	case LINUX_MACHTYPE_8064_CDP:
 	case LINUX_MACHTYPE_8064_ADP_2:
+	case LINUX_MACHTYPE_8064_ADP_2_ES2:
 	case LINUX_MACHTYPE_8064_MTP:
 	case LINUX_MACHTYPE_8064_LIQUID:
 		if (MPLATFORM())
@@ -397,9 +398,11 @@ void target_detect(struct board_data *board)
 	uint32_t platform;
 	uint32_t platform_hw;
 	uint32_t target_id;
+	uint32_t msm_version;
 
 	platform = board->platform;
 	platform_hw = board->platform_hw;
+	msm_version = board->msm_version;
 
 	/* Detect the board we are running on */
 	if ((platform == MSM8960) || (platform == MSM8960AB) ||
@@ -486,7 +489,14 @@ void target_detect(struct board_data *board)
 			target_id = LINUX_MACHTYPE_8064_LIQUID;
 			break;
 		case HW_PLATFORM_OEM:
-			target_id = LINUX_MACHTYPE_8064_ADP_2;
+			switch(msm_version){
+			case BOARD_SOC_VERSION1:
+				target_id = LINUX_MACHTYPE_8064_ADP_2;
+				break;
+			case BOARD_SOC_VERSION2:
+				target_id = LINUX_MACHTYPE_8064_ADP_2_ES2;
+				break;
+			}
 			break;
 		default:
 			target_id = LINUX_MACHTYPE_8064_CDP;
