@@ -211,6 +211,7 @@ void mdss_hdmi_get_vic(char *buf);
 int target_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo);
 int target_hdmi_regulator_ctrl(uint8_t enable);
 int target_hdmi_gpio_ctrl(uint8_t enable);
+int target_hdmi_pll_clock(uint8_t enable, struct msm_panel_info *pinfo);
 void hdmi_phy_init(void);
 int msm_display_off();
 void display_shutdown(void);
