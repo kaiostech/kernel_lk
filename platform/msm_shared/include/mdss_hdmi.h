@@ -35,7 +35,7 @@
  **********************************************************/
 
 void hdmi_phy_reset(void);
-uint32_t hdmi_pll_config(void);
+uint32_t hdmi_pll_config(uint32_t tmds_clk);
 int hdmi_vco_enable(void);
 int hdmi_vco_disable(void);
 void hdmi_phy_reset(void);
