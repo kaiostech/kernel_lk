@@ -168,7 +168,7 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 	char *default_str;
 	int panel_mode = SPLIT_DISPLAY_FLAG | DUAL_PIPE_FLAG;
 
-	if(panelstruct.paneldata)
+	if(panelstruct.paneldata && target_cont_splash_screen())
 	{
 		dsi_id = panelstruct.paneldata->panel_controller;
 		panel_node = panelstruct.paneldata->panel_node_id;
