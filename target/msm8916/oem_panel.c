@@ -41,6 +41,7 @@
 /*---------------------------------------------------------------------------*/
 /* GCDB Panel Database                                                       */
 /*---------------------------------------------------------------------------*/
+#include "include/panel_esung_720p_video.h"
 #include "include/panel_jdi_1080p_video.h"
 #include "include/panel_nt35590_720p_video.h"
 #include "include/panel_nt35590_720p_cmd.h"
@@ -69,6 +70,7 @@ OTM1283A_720P_VIDEO_PANEL,
 NT35596_1080P_VIDEO_PANEL,
 SHARP_WQXGA_DUALDSI_VIDEO_PANEL,
 HX8379A_FWVGA_VIDEO_PANEL,
+ESUNG_720P_VIDEO_PANEL,
 UNKNOWN_PANEL
 };
 
@@ -77,6 +79,7 @@ UNKNOWN_PANEL
  * Any panel in this list can be selected using fastboot oem command.
  */
 static struct panel_list supp_panels[] = {
+	{"esung_720p_video", ESUNG_720P_VIDEO_PANEL},
 	{"jdi_1080p_video", JDI_1080P_VIDEO_PANEL},
 	{"nt35590_720p_video", NT35590_720P_VIDEO_PANEL},
 	{"nt35590_720p_cmd", NT35590_720P_CMD_PANEL},
@@ -124,6 +127,28 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 	bool ret = true;
 
 	switch (panel_id) {
+	case ESUNG_720P_VIDEO_PANEL:
+		panelstruct->paneldata    = &esung_720p_video_panel_data;
+		panelstruct->paneldata->panel_with_enable_gpio = 1;
+		panelstruct->panelres     = &esung_720p_video_panel_res;
+		panelstruct->color        = &esung_720p_video_color;
+		panelstruct->videopanel   = &esung_720p_video_video_panel;
+		panelstruct->commandpanel = &esung_720p_video_command_panel;
+		panelstruct->state        = &esung_720p_video_state;
+		panelstruct->laneconfig   = &esung_720p_video_lane_config;
+		panelstruct->paneltiminginfo
+			= &esung_720p_video_timing_info;
+		panelstruct->panelresetseq
+					 = &esung_720p_video_panel_reset_seq;
+		panelstruct->backlightinfo = &esung_720p_video_backlight;
+		pinfo->mipi.panel_cmds
+			= esung_720p_video_on_command;
+		pinfo->mipi.num_of_panel_cmds
+			= ESUNG_720P_VIDEO_ON_COMMAND;
+		memcpy(phy_db->timing,
+			esung_720p_video_timings, TIMING_SIZE);
+		pinfo->mipi.signature 	= ESUNG_720P_VIDEO_SIGNATURE;
+		break;
 	case JDI_1080P_VIDEO_PANEL:
 		panelstruct->paneldata    = &jdi_1080p_video_panel_data;
 		panelstruct->paneldata->panel_with_enable_gpio = 1;
@@ -404,6 +429,14 @@ bool oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 				else
 					panel_id = OTM8019A_FWVGA_VIDEO_PANEL;
 				break;
+			case HW_PLATFORM_SUBTYPE_SKUT1:
+				/* qrd SKUT1 */
+				if ((plat_hw_ver_major >> 4) == 0x1)
+					panel_id = ESUNG_720P_VIDEO_PANEL;
+				else
+					panel_id = ESUNG_720P_VIDEO_PANEL;
+				break;
+
 			default:
 				dprintf(CRITICAL, "Invalid subtype id %d for QRD HW\n",
 					hw_subtype);

@@ -42,7 +42,7 @@ static struct gpio_pin reset_gpio = {
 };
 
 static struct gpio_pin enable_gpio = {
-  "msmgpio", 97, 3, 1, 0, 1
+  "msmgpio", 8, 3, 1, 0, 1
 };
 
 static struct gpio_pin bkl_gpio = {
@@ -50,7 +50,7 @@ static struct gpio_pin bkl_gpio = {
 };
 
 static struct gpio_pin enp_gpio = {
-  "msmgpio", 97, 3, 1, 0, 1
+  "msmgpio", 8, 3, 1, 0, 1
 };
 
 static struct gpio_pin enn_gpio = {
@@ -70,7 +70,7 @@ static struct gpio_pin bkl_gpio_skuk = {
 };
 
 static struct gpio_pin enp_gpio_skuk = {
-  "msmgpio", 97, 3, 1, 0, 1
+  "msmgpio", 8, 3, 1, 0, 1
 };
 
 static struct gpio_pin enn_gpio_skuk = {
@@ -126,6 +126,7 @@ enum qrd_subtype
 	HW_PLATFORM_SUBTYPE_SKUH = 4,
 	HW_PLATFORM_SUBTYPE_SKUI = 5, /* msm8916 */
 	HW_PLATFORM_SUBTYPE_SKUK = 5, /* msm8939 */
+	HW_PLATFORM_SUBTYPE_SKUT1 = 0x40,/* argo8 */
 };
 
 #endif
