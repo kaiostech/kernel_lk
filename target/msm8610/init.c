@@ -172,7 +172,10 @@ void target_init(void)
 
 void target_uninit(void)
 {
-        mmc_put_card_to_sleep(dev);
+	mmc_put_card_to_sleep(dev);
+
+	/* Disable HC mode before jumping to kernel */
+	sdhci_mode_disable(&dev->host);
 }
 
 #define SSD_CE_INSTANCE         1
