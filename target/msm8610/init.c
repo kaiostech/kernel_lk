@@ -179,6 +179,9 @@ void target_uninit(void)
 
 	/* wait for the vibrator timer is expried */
 	wait_vib_timeout();
+
+	/* Disable HC mode before jumping to kernel */
+	sdhci_mode_disable(&dev->host);
 }
 
 #define SSD_CE_INSTANCE         1
