@@ -121,7 +121,6 @@ uint32_t mdss_dsi_read_panel_signature(uint32_t panel_signature)
 	uint32_t rec_buf[1];
 	uint32_t *lp = rec_buf, data;
 	int ret = response_value;
-
 #if (DISPLAY_TYPE_MDSS == 1)
 	if (ret && ret != panel_signature)
 		goto exit_read_signature;
@@ -137,10 +136,9 @@ uint32_t mdss_dsi_read_panel_signature(uint32_t panel_signature)
 	response_value = data;
 	if (response_value != panel_signature)
 		ret = response_value;
-
 exit_read_signature:
 	/* Keep the non detectable panel at the end and set panel signature 0xFFFF */
-	if (panel_signature == 0xFFFF)
+	if (panel_signature == 0 || panel_signature == 0xFFFF)
 		ret = 0;
 #endif
 	return ret;
@@ -511,6 +509,7 @@ int mdss_dsi_panel_initialize(struct mipi_dsi_panel_config *pinfo, uint32_t
 			if (!status && target_panel_auto_detect_enabled())
 				status =
 					mdss_dsi_read_panel_signature(pinfo->signature);
+			dprintf(CRITICAL,"Read panel signature status = 0x%x \n", status);
 		}
 	}
 #endif
