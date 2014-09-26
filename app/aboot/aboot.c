@@ -484,8 +484,7 @@ unsigned char *update_cmdline(const char * cmdline)
 		}
 	}
 
-
-	dprintf(INFO, "cmdline: %s\n", cmdline_final);
+	dprintf(INFO, "cmdline: %s\n", cmdline_final ? cmdline_final : "");
 	return cmdline_final;
 }
 
