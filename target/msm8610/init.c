@@ -347,23 +347,31 @@ void reboot_device(unsigned reboot_reason)
 	dprintf(CRITICAL, "Rebooting failed\n");
 }
 
+static uint8_t splash_override;
+
 int target_cont_splash_screen()
 {
-	int ret = 0;
-
-	switch(board_hardware_id())
-	{
-		case HW_PLATFORM_QRD:
-		case HW_PLATFORM_MTP:
-		case HW_PLATFORM_SURF:
-			dprintf(SPEW, "Target_cont_splash=1\n");
-			ret = 1;
-			break;
-		default:
-			dprintf(SPEW, "Target_cont_splash=0\n");
-			ret = 0;
+	uint8_t splash_screen = 0;
+	if(!splash_override) {
+		switch(board_hardware_id())
+		{
+			case HW_PLATFORM_QRD:
+			case HW_PLATFORM_MTP:
+			case HW_PLATFORM_SURF:
+				dprintf(SPEW, "Target_cont_splash=1\n");
+				splash_screen = 1;
+				break;
+			default:
+				dprintf(SPEW, "Target_cont_splash=0\n");
+				splash_screen = 0;
+		}
 	}
-	return ret;
+	return splash_screen;
+}
+
+void target_force_cont_splash_disable(uint8_t override)
+{
+        splash_override = override;
 }
 
 unsigned target_pause_for_battery_charge(void)
