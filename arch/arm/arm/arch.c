@@ -70,11 +70,6 @@ void arch_early_init(void)
 	*REG32(scu_base) |= (1<<0); /* enable SCU */
 #endif
 
-	/* set the vector base to our exception vectors so we dont need to double map at 0 */
-#if ARM_ISA_ARMV7
-	arm_write_vbar(KERNEL_BASE + KERNEL_LOAD_OFFSET);
-#endif
-
 #if ARM_WITH_MMU
 	arm_mmu_init();
 
@@ -192,6 +187,11 @@ static void arm_basic_setup(void)
 
 	/* make sure the fpu starts off disabled */
 	arm_fpu_set_enable(false);
+#endif
+
+	/* set the vector base to our exception vectors so we dont need to double map at 0 */
+#if ARM_ISA_ARMV7
+	arm_write_vbar(KERNEL_BASE + KERNEL_LOAD_OFFSET);
 #endif
 }
 
