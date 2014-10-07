@@ -394,6 +394,9 @@ void target_uninit(void)
 
 	if (crypto_initialized())
 		crypto_eng_cleanup();
+
+	/* Disable HC mode before jumping to kernel */
+	sdhci_mode_disable(&dev->host);
 }
 
 void target_usb_init(void)
