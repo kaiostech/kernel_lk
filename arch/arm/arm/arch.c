@@ -46,6 +46,9 @@
 #if WITH_DEV_INTERRUPT_ARM_GIC
 #include <dev/interrupt/arm_gic.h>
 #endif
+#if WITH_DEV_CACHE_PL310
+#include <dev/cache/pl310.h>
+#endif
 
 /* initial and abort stacks */
 uint8_t abort_stack[ARCH_DEFAULT_STACK_SIZE * SMP_MAX_CPUS] __CPU_ALIGN;
@@ -62,6 +65,9 @@ void arch_early_init(void)
 {
 	/* turn off the cache */
 	arch_disable_cache(UCACHE);
+#if WITH_DEV_CACHE_PL310
+	pl310_set_enable(false);
+#endif
 
 	arm_basic_setup();
 
@@ -78,6 +84,9 @@ void arch_early_init(void)
 #endif
 
 	/* turn the cache back on */
+#if WITH_DEV_CACHE_PL310
+	pl310_set_enable(true);
+#endif
 	arch_enable_cache(UCACHE);
 }
 
@@ -210,7 +219,7 @@ __NO_RETURN void arm_secondary_entry(void)
 {
 	arm_basic_setup();
 
-	/* enable the local cache */
+	/* enable the local L1 cache */
 	arch_enable_cache(UCACHE);
 
 #if WITH_DEV_TIMER_ARM_CORTEX_A9
@@ -306,6 +315,9 @@ void arch_chain_load(void *entry)
 
 	LTRACEF("disabling instruction/data cache\n");
 	arch_disable_cache(UCACHE);
+#if WITH_DEV_CACHE_PL310
+	pl310_set_enable(false);
+#endif
 
 	LTRACEF("branching to physical address of loader\n");
 

@@ -123,6 +123,7 @@ status_t pl310_set_enable(bool enable)
     if (enable) {
         if ((PL310_REG(REG1_CONTROL) & 1) == 0) {
             /* if disabled */
+            pl310_invalidate();
             PL310_REG(REG1_CONTROL) = 1;
         }
     } else {
