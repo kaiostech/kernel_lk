@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2013 Travis Geiselbrecht
+ * Copyright (c) 2008-2014 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -24,6 +24,11 @@
 #include <arch/arm/cores.h>
 #include <arch/arm/mmu.h>
 #include <kernel/vm.h>
+
+/* the delta of the virtual address space to physical address space */
+/* ie: virtual = 0xc0000000, physical = 0x0, delta = 0x40000000 */
+/* virtual + KERNEL_PHYS_DELTA = phys */
+#define KERNEL_PHYS_DELTA (MEMBASE - KERNEL_BASE)
 
 .section ".text.boot"
 .globl _start
@@ -57,21 +62,9 @@ arm_reset:
 	/* mask off the bottom 12 bits to test cluster number:cpu number */
 	ubfx    r0, r0, #0, #12
 
-	/* if we're cpu 0:0, continue on as usual */
+	/* if we're not cpu 0:0, fall into a trap and wait */
 	cmp     r0, #0
-	beq     2f
-
-	/* all other cpus, trap and wait to be released */
-1:
-	wfe
-	ldr     r12, =arm_boot_cpu_lock
-	ldr     r12, [r12]
-	cmp     r12, #0
-	bne     1b
-
-	/* r0 holds the cpu number */
-	b		arm_secondary_setup
-2:
+	bne     arm_secondary_setup
 #endif
 
 #if WITH_CPU_EARLY_INIT
@@ -80,7 +73,6 @@ arm_reset:
 #endif
 
 #if WITH_KERNEL_VM
-__relocate_start:
 	/* see if we need to relocate to our proper location in physical memory */
 	adr		r0, _start                           /* this emits sub r0, pc, #constant */
 	ldr		r1, =(MEMBASE + KERNEL_LOAD_OFFSET)  /* calculate the binary's physical load address */
@@ -103,22 +95,11 @@ __relocate_start:
 	sub		pc, r12
 	nop
 
-__mmu_start:
 .Lsetup_mmu:
 	/* set up the mmu according to mmu_initial_mappings */
 
-	/* calculate our physical to virtual offset */
-	mov		r12, pc
-	ldr		r1, =.Laddr1
-.Laddr1:
-	sub		r12, r1
-
-	/* r12 now holds the offset from virtual to physical:
-	 * virtual + r12 = physical */
-
 	/* load the base of the translation table and clear the table */
-	ldr		r0, =arm_kernel_translation_table
-	add		r0, r12
+	ldr		r0, =(KERNEL_PHYS_DELTA + arm_kernel_translation_table)
 
 	mov		r1, #0
 	mov		r2, #0
@@ -131,8 +112,7 @@ __mmu_start:
 	bne		0b
 
 	/* load the address of the mmu_initial_mappings table and start processing */
-	ldr		r1, =mmu_initial_mappings
-	add		r1, r12
+	ldr		r1, =(KERNEL_PHYS_DELTA + mmu_initial_mappings)
 
 .Linitial_mapping_loop:
 	ldmia	r1!, { r2-r6 }
@@ -174,52 +154,7 @@ __mmu_start:
 .Linitial_mapping_done:
 
 	/* set up the mmu */
-
-	/* Invalidate TLB */
-	mov		r3, #0
-	mcr		p15, 0, r3, c8, c7, 0
-	isb
-
-	/* Write 0 to TTBCR */
-	mcr		p15, 0, r3, c2, c0, 2
-	isb
-
-	/* set cacheable attributes on translation walk */
-	/* (SMP extensions) non-shareable, inner write-back write-allocate */
-	orr		r0, #(1<<6 | 0<<1)
-	/* outer write-back write-allocate */
-	orr		r0, #(1<<3)
-
-	/* Write ttbr with phys addr of the translation table */
-	mcr		p15, 0, r0, c2, c0, 0
-	isb
-
-	/* Write DACR */
-	mov		r3, #0x1
-	mcr		p15, 0, r3, c3, c0, 0
-	isb
-
-	/* Read SCTLR into r3 */
-	mrc		p15, 0, r3, c1, c0, 0
-
-	/* Disable TRE/AFE */
-	bic		r3, r3, #(1<<29 | 1<<28)
-
-	/* Turn on the MMU */
-	orr		r3, r3, #0x1
-
-	/* Write back SCTLR */
-	mcr		p15, 0, r3, c1, c0, 0
-	isb
-
-	/* Jump to virtual code address */
-	ldr		pc, =1f
-1:
-
-	/* Invalidate TLB */
-	mov		r3, #0
-	mcr		p15, 0, r3, c8, c7, 0
-	isb
+	bl		.Lmmu_setup
 
 #else
 	/* see if we need to relocate */
@@ -297,10 +232,76 @@ __mmu_start:
 	bl		lk_main
 	b		.
 
+#if WITH_KERNEL_VM
+	/* per cpu mmu setup, shared between primary and secondary cpus
+	   args:
+	   r0 == translation table physical
+	*/
+.Lmmu_setup:
+	/* Invalidate TLB */
+	mov		r1, #0
+	mcr		p15, 0, r1, c8, c7, 0
+	isb
+
+	/* Write 0 to TTBCR */
+	mcr		p15, 0, r1, c2, c0, 2
+	isb
+
+	/* set cacheable attributes on translation walk */
+	/* (SMP extensions) non-shareable, inner write-back write-allocate */
+	orr		r1, r0, #(1<<6 | 0<<1)
+	/* outer write-back write-allocate */
+	orr		r1, #(1<<3)
+
+	/* Write ttbr with phys addr of the translation table */
+	mcr		p15, 0, r1, c2, c0, 0
+	isb
+
+	/* Write DACR */
+	mov		r1, #0x1
+	mcr		p15, 0, r1, c3, c0, 0
+	isb
+
+	/* Read SCTLR into r1 */
+	mrc		p15, 0, r1, c1, c0, 0
+
+	/* Disable TRE/AFE */
+	bic		r1, r1, #(1<<29 | 1<<28)
+
+	/* Turn on the MMU */
+	orr		r1, r1, #0x1
+
+	/* Write back SCTLR */
+	mcr		p15, 0, r1, c1, c0, 0
+	isb
+
+	/* Jump to virtual code address */
+	ldr		pc, =1f
+1:
+
+	/* Invalidate TLB */
+	mov		r1, #0
+	mcr		p15, 0, r1, c8, c7, 0
+	isb
+
+	/* assume lr was in physical memory, adjust it before returning */
+	ldr		r1, =(KERNEL_BASE - MEMBASE)
+	add		lr, r1
+	bx		lr
+#endif
+
 #if WITH_SMP
 	/* secondary cpu entry point */
 	/* r0 holds cpu number */
 FUNCTION(arm_secondary_setup)
+	/* all other cpus, trap and wait to be released */
+1:
+	wfe
+	ldr     r12, =(KERNEL_PHYS_DELTA + arm_boot_cpu_lock)
+	ldr     r12, [r12]
+	cmp     r12, #0
+	bne     1b
+
 	cmp		r0, #SMP_MAX_CPUS
 	bge		unsupported_cpu_trap
 
@@ -329,7 +330,15 @@ FUNCTION(arm_secondary_setup)
 	cpsid	i,#0x13       /* supervisor */
 	mov		sp, r1
 
-	/* stay in supervisor and call into arm arch code for continuing setup */
+#if WITH_KERNEL_VM
+	/* load the physical base of the translation table and clear the table */
+	ldr		r0, =(KERNEL_PHYS_DELTA + arm_kernel_translation_table)
+
+	/* set up the mmu on this cpu and switch to virtual memory */
+	bl		.Lmmu_setup
+#endif
+
+	/* stay in supervisor and call into arm arch code to continue setup */
 	bl		arm_secondary_entry
 
 	/* cpus above the number we claim to support get trapped here */

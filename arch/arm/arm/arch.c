@@ -55,6 +55,7 @@ static void arm_basic_setup(void);
 #if WITH_SMP
 /* smp boot lock */
 spin_lock_t arm_boot_cpu_lock = 1;
+volatile int secondaries_to_init = 0;
 #endif
 
 void arch_early_init(void)
@@ -71,9 +72,7 @@ void arch_early_init(void)
 #endif
 
 #if ARM_WITH_MMU
-	arm_mmu_init();
-
-	arm_mmu_percpu_init();
+	arm_mmu_early_init();
 
 	platform_init_mmu_mappings();
 #endif
@@ -90,12 +89,17 @@ void arch_init(void)
 	TRACEF("actlr 0x%x\n", arm_read_actlr());
 	TRACEF("cbar 0x%x\n", arm_read_cbar());
 	TRACEF("mpidr 0x%x\n", arm_read_mpidr());
+	TRACEF("ttbcr 0x%x\n", arm_read_ttbcr());
+	TRACEF("ttbr0 0x%x\n", arm_read_ttbr0());
+	TRACEF("dacr 0x%x\n", arm_read_dacr());
 
 	addr_t scu_base = arm_read_cbar();
 	TRACEF("SCU CONTROL 0x%x\n", *REG32(scu_base));
-	TRACEF("SCU CONFIG 0x%x\n", *REG32(scu_base + 4));
+	uint32_t scu_config = *REG32(scu_base + 4);
+	TRACEF("SCU CONFIG 0x%x\n", scu_config);
+	secondaries_to_init = scu_config & 0x3;
 
-	TRACEF("releasing secondary cpus\n");
+	TRACEF("releasing %d secondary cpus\n", secondaries_to_init);
 
 	/* release the secondary cpus */
 	spin_unlock(&arm_boot_cpu_lock);
@@ -103,8 +107,14 @@ void arch_init(void)
 	/* flush the release of the lock, since the secondary cpus are running without cache on */
 	arch_clean_cache_range((addr_t)&arm_boot_cpu_lock, sizeof(arm_boot_cpu_lock));
 
-	spin(250000);
+	/* wait for all of the secondary cpus to boot */
+	while (secondaries_to_init > 0) {
+		__asm__ volatile("wfe");
+	}
 #endif
+
+	/* finish intializing the mmu */
+	arm_mmu_init();
 }
 
 void arch_quiesce(void)
@@ -200,14 +210,6 @@ __NO_RETURN void arm_secondary_entry(void)
 {
 	arm_basic_setup();
 
-	/* set the vector base to our exception vectors so we dont need to double map at 0 */
-#if ARM_ISA_ARMV7
-	arm_write_vbar(MEMBASE);
-#endif
-
-	/* set up the mmu on this cpu */
-	arm_mmu_percpu_init();
-
 	/* enable the local cache */
 	arch_enable_cache(UCACHE);
 
@@ -222,12 +224,21 @@ __NO_RETURN void arm_secondary_entry(void)
 	TRACEF("sctlr 0x%x\n", arm_read_sctlr());
 	TRACEF("actlr 0x%x\n", arm_read_actlr());
 
-	TRACEF("entering scheduler\n");
-	thread_secondary_cpu_entry();
-#if 0
+	addr_t scu_base = arm_read_cbar();
+	TRACEF("SCU CONTROL 0x%x\n", *REG32(scu_base));
+	TRACEF("SCU CONFIG 0x%x\n", *REG32(scu_base + 4));
+
+	/* we're done, tell the main cpu we're up */
+	atomic_add(&secondaries_to_init, -1);
+	__asm__ volatile("sev");
+
+#if 1
 	for (;;) {
 		__asm__ volatile("wfe");
 	}
+#else
+	TRACEF("entering scheduler\n");
+	thread_secondary_cpu_entry();
 #endif
 }
 #endif

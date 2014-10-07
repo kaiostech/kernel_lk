@@ -255,6 +255,12 @@ struct mmu_initial_mapping mmu_initial_mappings[] = {
       .flags = MMU_INITIAL_MAPPING_FLAG_DEVICE,
       .name = "hw-fc000000" },
 
+    /* sram high aperture */
+    { .phys = 0xfff00000,
+      .virt = 0xfff00000,
+      .size = 0x00100000,
+      .flags = MMU_INITIAL_MAPPING_FLAG_DEVICE },
+
     /* identity map to let the boot code run */
     { .phys = SRAM_BASE,
       .virt = SRAM_BASE,
@@ -336,7 +342,7 @@ void platform_early_init(void)
 
     /* start the second cpu */
     /* the boot rom has been holding it in a wfe loop up until now */
-    *REG32(0xfffffff0) = (uint32_t)&arm_reset;
+    *REG32(0xfffffff0) = (uint32_t)(MEMBASE + KERNEL_LOAD_OFFSET);
     __asm__ volatile("sev");
 }
 

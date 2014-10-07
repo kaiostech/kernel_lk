@@ -150,12 +150,18 @@
      MMU_MEMORY_TTBR_IRGN(MMU_MEMORY_WRITE_BACK_ALLOCATE))
 
 /* Section mapping, TEX[2:0]=001, CB=11, S=1, AP[2:0]=001 */
+#if WITH_SMP
+#define MMU_KERNEL_L1_PTE_FLAGS \
+    (MMU_MEMORY_L1_DESCRIPTOR_SECTION | \
+     MMU_MEMORY_L1_TYPE_NORMAL_WRITE_BACK_ALLOCATE | \
+     MMU_MEMORY_L1_AP_P_RW_U_NA | \
+     MMU_MEMORY_L1_SECTION_SHAREABLE)
+#else
 #define MMU_KERNEL_L1_PTE_FLAGS \
     (MMU_MEMORY_L1_DESCRIPTOR_SECTION | \
      MMU_MEMORY_L1_TYPE_NORMAL_WRITE_BACK_ALLOCATE | \
      MMU_MEMORY_L1_AP_P_RW_U_NA)
-/* XXX add with smp to above */
-//     MMU_MEMORY_L1_SECTION_SHAREABLE |
+#endif
 
 #define MMU_INITIAL_MAP_STRONGLY_ORDERED \
     (MMU_MEMORY_L1_DESCRIPTOR_SECTION | \
@@ -178,9 +184,9 @@
 
 __BEGIN_CDECLS
 
+void arm_mmu_early_init(void);
 void arm_mmu_init(void);
 status_t arm_vtop(addr_t va, addr_t *pa);
-void arm_mmu_percpu_init(void);
 
 /* tlb routines */
 static inline void arm_invalidate_tlb_global(void) {

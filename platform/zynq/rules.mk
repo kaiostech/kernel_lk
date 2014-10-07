@@ -10,9 +10,10 @@ MODULE_DEPS := \
 	lib/bio \
 	lib/cbuf \
 	lib/minip \
-	dev/cache/pl310 \
 	dev/interrupt/arm_gic \
 	dev/timer/arm_cortex_a9
+
+#	dev/cache/pl310 \
 
 GLOBAL_INCLUDES += \
 	$(LOCAL_DIR)/include

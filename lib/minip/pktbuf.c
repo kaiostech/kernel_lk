@@ -26,9 +26,11 @@
 #include <string.h>
 
 #include <kernel/thread.h>
+#include <kernel/spinlock.h>
 #include <lib/pktbuf.h>
 
 static struct list_node pb_freelist = LIST_INITIAL_VALUE(pb_freelist);
+static spin_lock_t lock;
 
 void pktbuf_create(void *ptr, u32 phys, size_t size) {
 	pktbuf_t *p = ptr;
@@ -46,9 +48,10 @@ void pktbuf_create(void *ptr, u32 phys, size_t size) {
 pktbuf_t *pktbuf_alloc(void) {
 	pktbuf_t *p;
 
-	enter_critical_section();
+	spin_lock_saved_state_t state;
+	spin_lock_irqsave(&lock, &state);
 	p = list_remove_head_type(&pb_freelist, pktbuf_t, list);
-	exit_critical_section();
+	spin_unlock_irqrestore(&lock, state);
 	p->data = p->buffer + PKTBUF_MAX_HDR;
 	p->dlen = 0;
 
@@ -56,9 +59,10 @@ pktbuf_t *pktbuf_alloc(void) {
 }
 
 void pktbuf_free(pktbuf_t *p) {
-	enter_critical_section();
+	spin_lock_saved_state_t state;
+	spin_lock_irqsave(&lock, &state);
 	list_add_tail(&pb_freelist, &(p->list));
-	exit_critical_section();
+	spin_unlock_irqrestore(&lock, state);
 }
 
 void pktbuf_append_data(pktbuf_t *p, const void *data, size_t sz) {

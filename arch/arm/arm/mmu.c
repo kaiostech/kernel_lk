@@ -55,6 +55,9 @@ static uint32_t mmu_flags_to_l1_arch_flags(uint flags)
     switch (flags & ARCH_MMU_FLAG_CACHE_MASK) {
         case ARCH_MMU_FLAG_CACHED:
             arch_flags |= MMU_MEMORY_L1_TYPE_NORMAL_WRITE_BACK_ALLOCATE;
+#if WITH_SMP
+            arch_flags |= MMU_MEMORY_L1_SECTION_SHAREABLE;
+#endif
             break;
         case ARCH_MMU_FLAG_UNCACHED:
             arch_flags |= MMU_MEMORY_L1_TYPE_STRONGLY_ORDERED;
@@ -94,6 +97,9 @@ static uint32_t mmu_flags_to_l2_arch_flags(uint flags)
     switch (flags & ARCH_MMU_FLAG_CACHE_MASK) {
         case ARCH_MMU_FLAG_CACHED:
             arch_flags |= MMU_MEMORY_L2_TYPE_NORMAL_WRITE_BACK_ALLOCATE;
+#if WITH_SMP
+            arch_flags |= MMU_MEMORY_L2_SHAREABLE;
+#endif
             break;
         case ARCH_MMU_FLAG_UNCACHED:
             arch_flags |= MMU_MEMORY_L2_TYPE_STRONGLY_ORDERED;
@@ -157,23 +163,8 @@ static void arm_mmu_unmap_section(addr_t vaddr)
     arm_invalidate_tlb_mva(vaddr);
 }
 
-void arm_mmu_percpu_init(void)
+void arm_mmu_early_init(void)
 {
-#if 0
-    /* set some mmu specific control bits */
-    arm_write_sctlr(arm_read_sctlr() & ~((1<<29)|(1<<28)|(1<<0))); // access flag disabled, TEX remap disabled, mmu disabled
-
-    /* set up the translation table base */
-    arm_write_ttbr0((uint32_t)arm_kernel_translation_table);
-
-    /* set up the domain access register */
-    arm_write_dacr(0x1 << (MMU_MEMORY_DOMAIN_MEM * 2));
-
-    arm_invalidate_tlb_global();
-
-    /* turn on the mmu */
-    arm_write_sctlr(arm_read_sctlr() | (1<<0));
-#endif
 }
 
 void arm_mmu_init(void)

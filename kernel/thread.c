@@ -753,13 +753,12 @@ void thread_set_priority(int priority)
  */
 void thread_become_idle(void)
 {
+	idle_thread = get_current_thread();
+
 	char name[16];
 	snprintf(name, sizeof(name), "idle %d", arch_curr_cpu_num());
 	thread_set_name(name);
 
-	idle_thread = get_current_thread();
-
-	thread_set_name("idle");
 	thread_set_priority(IDLE_PRIORITY);
 
 	/* mark the idle thread as real time, to avoid running the preemption
@@ -834,7 +833,6 @@ void dump_thread(thread_t *t)
 		dprintf(INFO, " 0x%x", t->tls[i]);
 	}
 	dprintf(INFO, "\n");
-	dprintf(INFO, "arch:\n");
 	arch_dump_thread(t);
 }
 
