@@ -87,7 +87,7 @@ static inline void spin_unlock_restore(
 }
 
 /* hand(ier) routines */
-#define spin_lock_irqsave(lock, statep) spin_lock_save(lock, statep, SPIN_LOCK_FLAG_INTERRUPTS)
+#define spin_lock_irqsave(lock, statep) spin_lock_save(lock, &(statep), SPIN_LOCK_FLAG_INTERRUPTS)
 #define spin_unlock_irqrestore(lock, statep) spin_unlock_restore(lock, statep, SPIN_LOCK_FLAG_INTERRUPTS)
 
 __END_CDECLS

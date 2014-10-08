@@ -77,7 +77,7 @@ size_t cbuf_write(cbuf_t *cbuf, const void *_buf, size_t len, bool canreschedule
 	DEBUG_ASSERT(len < valpow2(cbuf->len_pow2));
 
     spin_lock_saved_state_t state;
-    spin_lock_irqsave(&cbuf->lock, &state);
+    spin_lock_irqsave(&cbuf->lock, state);
 
 	size_t write_len;
 	size_t pos = 0;
@@ -126,7 +126,7 @@ retry:
 		event_wait(&cbuf->event);
 
     spin_lock_saved_state_t state;
-    spin_lock_irqsave(&cbuf->lock, &state);
+    spin_lock_irqsave(&cbuf->lock, state);
 
 	// see if there's data available
 	size_t ret = 0;
@@ -174,7 +174,7 @@ size_t cbuf_write_char(cbuf_t *cbuf, char c, bool canreschedule)
 	DEBUG_ASSERT(cbuf);
 
     spin_lock_saved_state_t state;
-    spin_lock_irqsave(&cbuf->lock, &state);
+    spin_lock_irqsave(&cbuf->lock, state);
 
 	size_t ret = 0;
 	if (cbuf_space_avail(cbuf) > 0) {
@@ -202,7 +202,7 @@ retry:
 		event_wait(&cbuf->event);
 
     spin_lock_saved_state_t state;
-    spin_lock_irqsave(&cbuf->lock, &state);
+    spin_lock_irqsave(&cbuf->lock, state);
 
 	// see if there's data available
 	size_t ret = 0;

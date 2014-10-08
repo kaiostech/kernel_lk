@@ -146,7 +146,7 @@ void set_current_thread(thread_t *);
 /* scheduler lock */
 extern spin_lock_t thread_lock;
 
-#define THREAD_LOCK(state) spin_lock_saved_state_t state; spin_lock_irqsave(&thread_lock, &state)
+#define THREAD_LOCK(state) spin_lock_saved_state_t state; spin_lock_irqsave(&thread_lock, state)
 #define THREAD_UNLOCK(state) spin_unlock_irqrestore(&thread_lock, state)
 
 /* thread local storage */

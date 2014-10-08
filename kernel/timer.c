@@ -107,7 +107,7 @@ static void timer_set(timer_t *timer, lk_time_t delay, lk_time_t period, timer_c
     uint cpu = arch_curr_cpu_num();
 
     spin_lock_saved_state_t state;
-    spin_lock_irqsave(&timer_lock, &state);
+    spin_lock_irqsave(&timer_lock, state);
 
 	insert_timer_in_queue(cpu, timer);
 
@@ -174,7 +174,7 @@ void timer_cancel(timer_t *timer)
     uint cpu = arch_curr_cpu_num();
 
     spin_lock_saved_state_t state;
-    spin_lock_irqsave(&timer_lock, &state);
+    spin_lock_irqsave(&timer_lock, state);
 
 #if PLATFORM_HAS_DYNAMIC_TIMER
 	timer_t *oldhead = list_peek_head_type(&timers[cpu].timer_queue, timer_t, node);

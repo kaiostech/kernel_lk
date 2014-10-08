@@ -49,7 +49,7 @@ pktbuf_t *pktbuf_alloc(void) {
 	pktbuf_t *p;
 
 	spin_lock_saved_state_t state;
-	spin_lock_irqsave(&lock, &state);
+	spin_lock_irqsave(&lock, state);
 	p = list_remove_head_type(&pb_freelist, pktbuf_t, list);
 	spin_unlock_irqrestore(&lock, state);
 	p->data = p->buffer + PKTBUF_MAX_HDR;
@@ -60,7 +60,7 @@ pktbuf_t *pktbuf_alloc(void) {
 
 void pktbuf_free(pktbuf_t *p) {
 	spin_lock_saved_state_t state;
-	spin_lock_irqsave(&lock, &state);
+	spin_lock_irqsave(&lock, state);
 	list_add_tail(&pb_freelist, &(p->list));
 	spin_unlock_irqrestore(&lock, state);
 }

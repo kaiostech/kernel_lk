@@ -342,7 +342,7 @@ static void spinlock_test(void)
 	TRACE_ENTRY;
 
 	spin_lock_saved_state_t state;
-	spin_lock_irqsave(&lock, &state);
+	spin_lock_irqsave(&lock, state);
 
 	TRACEF("cpu0: i have the lock\n");
 	spin(1000000);
@@ -359,7 +359,7 @@ static void spinlock_test_secondary(void)
 
 	spin(500000);
 	spin_lock_saved_state_t state;
-	spin_lock_irqsave(&lock, &state);
+	spin_lock_irqsave(&lock, state);
 
 	TRACEF("cpu1: i have the lock\n");
 	spin(250000);

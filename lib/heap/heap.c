@@ -130,7 +130,7 @@ static void heap_dump(void)
 
 	dprintf(INFO, "\tdelayed free list:\n");
 	spin_lock_saved_state_t state;
-	spin_lock_irqsave(&theheap.delayed_free_lock, &state);
+	spin_lock_irqsave(&theheap.delayed_free_lock, state);
 	list_for_every_entry(&theheap.delayed_free_list, chunk, struct free_heap_chunk, node) {
 		dump_free_chunk(chunk);
 	}
@@ -275,7 +275,7 @@ static void heap_free_delayed_list(void)
 	list_initialize(&list);
 
 	spin_lock_saved_state_t state;
-	spin_lock_irqsave(&theheap.delayed_free_lock, &state);
+	spin_lock_irqsave(&theheap.delayed_free_lock, state);
 
 	struct free_heap_chunk *chunk;
 	while ((chunk = list_remove_head_type(&theheap.delayed_free_list, struct free_heap_chunk, node))) {
@@ -471,7 +471,7 @@ void heap_delayed_free(void *ptr)
 	struct free_heap_chunk *chunk = heap_create_free_chunk(as->ptr, as->size, false);
 
 	spin_lock_saved_state_t state;
-	spin_lock_irqsave(&theheap.delayed_free_lock, &state);
+	spin_lock_irqsave(&theheap.delayed_free_lock, state);
 	list_add_head(&theheap.delayed_free_list, &chunk->node);
 	spin_unlock_irqrestore(&theheap.delayed_free_lock, state);
 }
