@@ -54,6 +54,8 @@
 uint8_t abort_stack[ARCH_DEFAULT_STACK_SIZE * SMP_MAX_CPUS] __CPU_ALIGN;
 
 static void arm_basic_setup(void);
+static void spinlock_test(void);
+static void spinlock_test_secondary(void);
 
 #if WITH_SMP
 /* smp boot lock */
@@ -122,33 +124,51 @@ void arch_init(void)
 	}
 #endif
 
+	spinlock_test();
+
 	/* finish intializing the mmu */
 	arm_mmu_init();
 }
 
-void arch_quiesce(void)
+#if WITH_SMP
+__NO_RETURN void arm_secondary_entry(void)
 {
-#if ENABLE_CYCLE_COUNTER
-#if ARM_ISA_ARMV7
-	/* disable the cycle count and performance counters */
-	uint32_t en;
-	__asm__ volatile("mrc	p15, 0, %0, c9, c12, 0" : "=r" (en));
-	en &= ~1; /* disable all performance counters */
-	__asm__ volatile("mcr	p15, 0, %0, c9, c12, 0" :: "r" (en));
+	arm_basic_setup();
 
-	/* disable cycle counter */
-	en = 0;
-	__asm__ volatile("mcr	p15, 0, %0, c9, c12, 1" :: "r" (en));
+	/* enable the local L1 cache */
+	arch_enable_cache(UCACHE);
+
+#if WITH_DEV_TIMER_ARM_CORTEX_A9
+	arm_cortex_a9_timer_init_percpu();
 #endif
-#if ARM_CPU_ARM1136
-	/* disable the cycle count and performance counters */
-	uint32_t en;
-	__asm__ volatile("mrc	p15, 0, %0, c15, c12, 0" : "=r" (en));
-	en &= ~1; /* disable all performance counters */
-	__asm__ volatile("mcr	p15, 0, %0, c15, c12, 0" :: "r" (en));
+#if WITH_DEV_INTERRUPT_ARM_GIC
+	arm_gic_init_percpu();
 #endif
+
+	TRACEF("cpu num %d\n", arch_curr_cpu_num());
+	TRACEF("sctlr 0x%x\n", arm_read_sctlr());
+	TRACEF("actlr 0x%x\n", arm_read_actlr());
+
+	addr_t scu_base = arm_read_cbar();
+	TRACEF("SCU CONTROL 0x%x\n", *REG32(scu_base));
+	TRACEF("SCU CONFIG 0x%x\n", *REG32(scu_base + 4));
+
+	/* we're done, tell the main cpu we're up */
+	atomic_add(&secondaries_to_init, -1);
+	__asm__ volatile("sev");
+
+	spinlock_test_secondary();
+
+#if 1
+	for (;;) {
+		__asm__ volatile("wfe");
+	}
+#else
+	TRACEF("entering scheduler\n");
+	thread_secondary_cpu_entry();
 #endif
 }
+#endif
 
 static void arm_basic_setup(void)
 {
@@ -214,43 +234,29 @@ static void arm_basic_setup(void)
 #endif
 }
 
-#if WITH_SMP
-__NO_RETURN void arm_secondary_entry(void)
+void arch_quiesce(void)
 {
-	arm_basic_setup();
+#if ENABLE_CYCLE_COUNTER
+#if ARM_ISA_ARMV7
+	/* disable the cycle count and performance counters */
+	uint32_t en;
+	__asm__ volatile("mrc	p15, 0, %0, c9, c12, 0" : "=r" (en));
+	en &= ~1; /* disable all performance counters */
+	__asm__ volatile("mcr	p15, 0, %0, c9, c12, 0" :: "r" (en));
 
-	/* enable the local L1 cache */
-	arch_enable_cache(UCACHE);
-
-#if WITH_DEV_TIMER_ARM_CORTEX_A9
-	arm_cortex_a9_timer_init_percpu();
+	/* disable cycle counter */
+	en = 0;
+	__asm__ volatile("mcr	p15, 0, %0, c9, c12, 1" :: "r" (en));
 #endif
-#if WITH_DEV_INTERRUPT_ARM_GIC
-	arm_gic_init_percpu();
+#if ARM_CPU_ARM1136
+	/* disable the cycle count and performance counters */
+	uint32_t en;
+	__asm__ volatile("mrc	p15, 0, %0, c15, c12, 0" : "=r" (en));
+	en &= ~1; /* disable all performance counters */
+	__asm__ volatile("mcr	p15, 0, %0, c15, c12, 0" :: "r" (en));
 #endif
-
-	TRACEF("cpu num %d\n", arch_curr_cpu_num());
-	TRACEF("sctlr 0x%x\n", arm_read_sctlr());
-	TRACEF("actlr 0x%x\n", arm_read_actlr());
-
-	addr_t scu_base = arm_read_cbar();
-	TRACEF("SCU CONTROL 0x%x\n", *REG32(scu_base));
-	TRACEF("SCU CONFIG 0x%x\n", *REG32(scu_base + 4));
-
-	/* we're done, tell the main cpu we're up */
-	atomic_add(&secondaries_to_init, -1);
-	__asm__ volatile("sev");
-
-#if 1
-	for (;;) {
-		__asm__ volatile("wfe");
-	}
-#else
-	TRACEF("entering scheduler\n");
-	thread_secondary_cpu_entry();
 #endif
 }
-#endif
 
 #if ARM_ISA_ARMV7
 /* virtual to physical translation */
@@ -327,6 +333,39 @@ void arch_chain_load(void *entry)
 #else
 #error handle the non vm path (should be simpler)
 #endif
+}
+
+static spin_lock_t lock = 0;
+
+static void spinlock_test(void)
+{
+	TRACE_ENTRY;
+
+	spin_lock_saved_state_t state;
+	spin_lock_irqsave(&lock, &state);
+
+	TRACEF("cpu0: i have the lock\n");
+	spin(1000000);
+	TRACEF("cpu0: releasing it\n");
+
+	spin_unlock_irqrestore(&lock, state);
+
+	spin(1000000);
+}
+
+static void spinlock_test_secondary(void)
+{
+	TRACE_ENTRY;
+
+	spin(500000);
+	spin_lock_saved_state_t state;
+	spin_lock_irqsave(&lock, &state);
+
+	TRACEF("cpu1: i have the lock\n");
+	spin(250000);
+	TRACEF("cpu1: releasing it\n");
+
+	spin_unlock_irqrestore(&lock, state);
 }
 
 /* vim: set ts=4 sw=4 noexpandtab: */
