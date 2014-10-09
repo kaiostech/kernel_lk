@@ -365,6 +365,7 @@ void target_uart_init(void)
 	case LINUX_MACHTYPE_8064_CDP:
 	case LINUX_MACHTYPE_8064_ADP_2:
 	case LINUX_MACHTYPE_8064_ADP_2_ES2:
+	case LINUX_MACHTYPE_8064_ADP_2_ES2P5:
 	case LINUX_MACHTYPE_8064_MTP:
 	case LINUX_MACHTYPE_8064_LIQUID:
 		if (MPLATFORM())
@@ -495,6 +496,9 @@ void target_detect(struct board_data *board)
 				break;
 			case BOARD_SOC_VERSION2:
 				target_id = LINUX_MACHTYPE_8064_ADP_2_ES2;
+				break;
+			case BOARD_SOC_VERSION2P5:
+				target_id = LINUX_MACHTYPE_8064_ADP_2_ES2P5;
 				break;
 			}
 			break;

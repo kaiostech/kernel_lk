@@ -330,6 +330,7 @@ void display_init(void)
 		break;
 	case LINUX_MACHTYPE_8064_ADP_2:
 	case LINUX_MACHTYPE_8064_ADP_2_ES2:
+	case LINUX_MACHTYPE_8064_ADP_2_ES2P5:
 		lvds_chimei_wxga_init(&(panel.panel_info));
 		panel.clk_func = apq8064_lvds_clock;
 		panel.power_func = apq8064_lvds_panel_power;
@@ -411,7 +412,8 @@ void display_init(void)
 	}
 
 	if ((target_id == LINUX_MACHTYPE_8064_ADP_2)||
-		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2)) {
+		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2) ||
+		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2P5)) {
 		unsigned fb_hdmi_offset = panel.panel_info.xres *
 			panel.panel_info.yres * (panel.panel_info.bpp / 8);
 		hdmi_msm_panel_init(&panel.panel_info);
