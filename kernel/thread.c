@@ -41,6 +41,7 @@
 #include <kernel/thread.h>
 #include <kernel/timer.h>
 #include <kernel/debug.h>
+#include <kernel/mp.h>
 #include <platform.h>
 #include <target.h>
 #include <lib/heap.h>
@@ -75,7 +76,7 @@ static void idle_thread_routine(void) __NO_RETURN;
 
 #if PLATFORM_HAS_DYNAMIC_TIMER
 /* preemption timer */
-static timer_t preempt_timer;
+static timer_t preempt_timer[SMP_MAX_CPUS];
 #endif
 
 /* run queue manipulation */
@@ -160,6 +161,7 @@ thread_t *thread_create_etc(thread_t *t, const char *name, thread_start_routine 
 	t->state = THREAD_SUSPENDED;
 	t->blocking_wait_queue = NULL;
 	t->wait_queue_block_ret = NO_ERROR;
+	t->curr_cpu = -1;
 
 	t->retcode = 0;
 	wait_queue_init(&t->retcode_wait_queue);
@@ -222,7 +224,7 @@ status_t thread_set_real_time(thread_t *t)
 #if PLATFORM_HAS_DYNAMIC_TIMER
 	if (t == get_current_thread()) {
 		/* if we're currently running, cancel the preemption timer. */
-		timer_cancel(&preempt_timer);
+		timer_cancel(&preempt_timer[arch_curr_cpu_num()]);
 	}
 #endif
 	t->flags |= THREAD_FLAG_REAL_TIME;
@@ -464,6 +466,11 @@ void thread_resched(void)
 		newthread->remaining_quantum = 5; // XXX make this smarter
 	}
 
+	/* mark the cpu ownership of the threads */
+	uint cpu = arch_curr_cpu_num();
+	oldthread->curr_cpu = -1;
+	newthread->curr_cpu = cpu;
+
 #if THREAD_STATS
 	THREAD_STATS_INC(context_switches);
 
@@ -483,18 +490,17 @@ void thread_resched(void)
 		if (!thread_is_real_time(oldthread)) {
 			/* if we're switching from a non real time to a real time, cancel
 			 * the preemption timer. */
-			timer_cancel(&preempt_timer);
+			timer_cancel(&preempt_timer[cpu]);
 		}
 	} else if (thread_is_real_time(oldthread)) {
 		/* if we're switching from a real time (or idle thread) to a regular one,
 		 * set up a periodic timer to run our preemption tick. */
-		timer_set_periodic(&preempt_timer, 10, (timer_callback)thread_timer_tick, NULL);
+		timer_set_periodic(&preempt_timer[cpu], 10, (timer_callback)thread_timer_tick, NULL);
 	}
 #endif
 
 	/* set some optional target debug leds */
 	target_set_debug_led(0, newthread != idle_thread);
-
 	/* do the switch */
 	set_current_thread(newthread);
 	arch_context_switch(oldthread, newthread);
@@ -570,6 +576,7 @@ void thread_preempt(void)
 		insert_in_run_queue_head(current_thread);
 	else
 		insert_in_run_queue_tail(current_thread); /* if we're out of quantum, go to the tail of the queue */
+	//mp_mbx_reschedule(MP_CPU_ALL_BUT_LOCAL);
 	thread_resched();
 
     THREAD_UNLOCK(state);
@@ -717,7 +724,9 @@ void thread_init_early(void)
 void thread_init(void)
 {
 #if PLATFORM_HAS_DYNAMIC_TIMER
-	timer_initialize(&preempt_timer);
+	for (uint i = 0; i < SMP_MAX_CPUS; i++) {
+		timer_initialize(&preempt_timer[i]);
+	}
 #endif
 }
 
@@ -765,6 +774,8 @@ void thread_become_idle(void)
 	 * timer when it is scheduled. */
 	thread_set_real_time(idle_thread);
 
+	mp_set_curr_cpu_active(true);
+
 	/* enable interrupts and start the scheduler */
 	arch_enable_ints();
 	thread_yield();
@@ -786,7 +797,7 @@ void thread_secondary_cpu_entry(void)
 	/* half construct this thread, since we're already running */
 	t->priority = IDLE_PRIORITY;
 	t->state = THREAD_RUNNING;
-	t->flags = THREAD_FLAG_DETACHED;
+	t->flags = THREAD_FLAG_DETACHED | THREAD_FLAG_REAL_TIME;
 	wait_queue_init(&t->retcode_wait_queue);
 
 	THREAD_LOCK(state);
@@ -795,6 +806,8 @@ void thread_secondary_cpu_entry(void)
 	set_current_thread(t);
 
 	THREAD_UNLOCK(state);
+
+	mp_set_curr_cpu_active(true);
 
 	/* enable interrupts and start the scheduler on this cpu */
 	arch_enable_ints();
@@ -822,8 +835,8 @@ static const char *thread_state_to_str(enum thread_state state)
 void dump_thread(thread_t *t)
 {
 	dprintf(INFO, "dump_thread: t %p (%s)\n", t, t->name);
-	dprintf(INFO, "\tstate %s, priority %d, remaining quantum %d\n",
-				  thread_state_to_str(t->state), t->priority, t->remaining_quantum);
+	dprintf(INFO, "\tstate %s, curr_cpu %d, priority %d, remaining quantum %d\n",
+				  thread_state_to_str(t->state), t->curr_cpu, t->priority, t->remaining_quantum);
 	dprintf(INFO, "\tstack %p, stack_size %zd\n", t->stack, t->stack_size);
 	dprintf(INFO, "\tentry %p, arg %p, flags 0x%x\n", t->entry, t->arg, t->flags);
 	dprintf(INFO, "\twait queue %p, wait queue ret %d\n", t->blocking_wait_queue, t->wait_queue_block_ret);
@@ -984,8 +997,10 @@ int wait_queue_wake_one(wait_queue_t *wait, bool reschedule, status_t wait_queue
 			insert_in_run_queue_head(current_thread);
 		}
 		insert_in_run_queue_head(t);
-		if (reschedule)
+		if (reschedule) {
+			mp_mbx_reschedule(MP_CPU_ALL_BUT_LOCAL);
 			thread_resched();
+		}
 		ret = 1;
 	}
 
@@ -1047,8 +1062,10 @@ int wait_queue_wake_all(wait_queue_t *wait, bool reschedule, status_t wait_queue
 	ASSERT(wait->count == 0);
 #endif
 
-	if (reschedule && ret > 0)
+	if (reschedule && ret > 0) {
+		mp_mbx_reschedule(MP_CPU_ALL_BUT_LOCAL);
 		thread_resched();
+	}
 
 	return ret;
 }

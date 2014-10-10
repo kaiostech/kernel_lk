@@ -66,6 +66,7 @@ typedef struct thread {
 	enum thread_state state;
 	int remaining_quantum;
 	unsigned int flags;
+	int curr_cpu;
 
 	/* if blocked, a pointer to the wait queue */
 	struct wait_queue *blocking_wait_queue;
@@ -193,3 +194,4 @@ extern struct thread_stats thread_stats;
 
 #endif
 
+/* vim: set ts=4 sw=4 noexpandtab: */

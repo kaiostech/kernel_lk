@@ -32,6 +32,7 @@
 #include <arch/mmu.h>
 #include <arch/arm.h>
 #include <arch/arm/mmu.h>
+#include <arch/mp.h>
 #include <kernel/spinlock.h>
 #include <kernel/thread.h>
 #include <platform.h>
@@ -94,6 +95,9 @@ void arch_early_init(void)
 
 void arch_init(void)
 {
+	// XXX not the right place, should be initialized before the kernel starts on cpu 0
+	arch_mp_init_percpu();
+
 #if WITH_SMP
 	TRACEF("midr 0x%x\n", arm_read_midr());
 	TRACEF("sctlr 0x%x\n", arm_read_sctlr());
@@ -124,7 +128,7 @@ void arch_init(void)
 	}
 #endif
 
-	spinlock_test();
+	//spinlock_test();
 
 	/* finish intializing the mmu */
 	arm_mmu_init();
@@ -145,6 +149,8 @@ __NO_RETURN void arm_secondary_entry(void)
 	arm_gic_init_percpu();
 #endif
 
+	arch_mp_init_percpu();
+
 	TRACEF("cpu num %d\n", arch_curr_cpu_num());
 	TRACEF("sctlr 0x%x\n", arm_read_sctlr());
 	TRACEF("actlr 0x%x\n", arm_read_actlr());
@@ -157,9 +163,10 @@ __NO_RETURN void arm_secondary_entry(void)
 	atomic_add(&secondaries_to_init, -1);
 	__asm__ volatile("sev");
 
-	spinlock_test_secondary();
+	//spinlock_test_secondary();
 
-#if 1
+#if 0
+	arch_enable_ints();
 	for (;;) {
 		__asm__ volatile("wfe");
 	}

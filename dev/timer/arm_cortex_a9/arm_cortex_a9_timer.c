@@ -191,9 +191,6 @@ void arm_cortex_a9_timer_init(addr_t _scu_control_base, uint32_t freq)
 
     arm_cortex_a9_timer_init_percpu();
 
-    /* ack any irqs that may be pending */
-    TIMREG(TIMER_ISR) = 1;
-
     /* save the timer frequency for later calculations */
     timer_freq = freq;
 
@@ -201,9 +198,6 @@ void arm_cortex_a9_timer_init(addr_t _scu_control_base, uint32_t freq)
     fp_32_64_div_32_32(&timer_freq_msec_conversion, timer_freq, 1000);
     fp_32_64_div_32_32(&timer_freq_usec_conversion_inverse, 1000000, timer_freq);
     fp_32_64_div_32_32(&timer_freq_msec_conversion_inverse, 1000, timer_freq);
-
-    register_int_handler(CPU_PRIV_TIMER_INT, &platform_tick, NULL);
-    unmask_interrupt(CPU_PRIV_TIMER_INT);
 }
 
 void arm_cortex_a9_timer_init_percpu(void)
@@ -213,6 +207,13 @@ void arm_cortex_a9_timer_init_percpu(void)
 
     /* kill the watchdog */
     TIMREG(WDOG_CONTROL) = 0;
+
+    /* ack any irqs that may be pending */
+    TIMREG(TIMER_ISR) = 1;
+
+    /* register the platform tick on each cpu */
+    register_int_handler(CPU_PRIV_TIMER_INT, &platform_tick, NULL);
+    unmask_interrupt(CPU_PRIV_TIMER_INT);
 }
 
 /* vim: set ts=4 sw=4 expandtab: */

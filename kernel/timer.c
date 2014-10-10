@@ -71,7 +71,7 @@ static void insert_timer_in_queue(uint cpu, timer_t *timer)
 
     DEBUG_ASSERT(arch_ints_disabled());
 
-	LTRACEF("timer %p, scheduled %lu, periodic %lu\n", timer, timer->scheduled_time, timer->periodic_time);
+	LTRACEF("timer %p, cpu %u, scheduled %lu, periodic %lu\n", timer, cpu, timer->scheduled_time, timer->periodic_time);
 
 	list_for_every_entry(&timers[cpu].timer_queue, entry, timer_t, node) {
 		if (TIME_GT(entry->scheduled_time, timer->scheduled_time)) {
@@ -87,8 +87,9 @@ static void insert_timer_in_queue(uint cpu, timer_t *timer)
 static void timer_set(timer_t *timer, lk_time_t delay, lk_time_t period, timer_callback callback, void *arg)
 {
 	lk_time_t now;
+    uint cpu = arch_curr_cpu_num();
 
-	LTRACEF("timer %p, delay %lu, period %lu, callback %p, arg %p, now %lu\n", timer, delay, period, callback, arg, now);
+	LTRACEF("timer %p, cpu %u, delay %lu, period %lu, callback %p, arg %p\n", timer, cpu, delay, period, callback, arg);
 
 	DEBUG_ASSERT(timer->magic == TIMER_MAGIC);
 
@@ -103,8 +104,6 @@ static void timer_set(timer_t *timer, lk_time_t delay, lk_time_t period, timer_c
 	timer->arg = arg;
 
 	LTRACEF("scheduled time %lu\n", timer->scheduled_time);
-
-    uint cpu = arch_curr_cpu_num();
 
     spin_lock_saved_state_t state;
     spin_lock_irqsave(&timer_lock, state);
@@ -311,4 +310,5 @@ void timer_init(void)
 #endif
 }
 
+/* vim: set noexpandtab */
 

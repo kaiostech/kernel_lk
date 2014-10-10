@@ -248,10 +248,14 @@ arm_reset:
 	isb
 
 	/* set cacheable attributes on translation walk */
-	/* (SMP extensions) non-shareable, inner write-back write-allocate */
+	/* inner write-back write-allocate */
 	orr		r1, r0, #(1<<6 | 0<<1)
 	/* outer write-back write-allocate */
 	orr		r1, #(1<<3)
+#if WITH_SMP
+	/* (SMP extensions) shareable, outer shareable */
+	orr		r1, #(1<<1 | 0<<5)
+#endif
 
 	/* Write ttbr with phys addr of the translation table */
 	mcr		p15, 0, r1, c2, c0, 0
