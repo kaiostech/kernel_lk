@@ -307,8 +307,8 @@ enum handler_return __platform_irq(struct arm_iframe *frame)
 
 	uint cpu = arch_curr_cpu_num();
 
-	printf("platform_irq: iar 0x%x cpu %u spsr 0x%x, pc 0x%x, currthread %p, vector %d\n",
-			iar, cpu, frame->spsr, frame->pc, get_current_thread(), vector);
+//	printf("platform_irq: iar 0x%x cpu %u spsr 0x%x, pc 0x%x, currthread %p, vector %d\n",
+//			iar, cpu, frame->spsr, frame->pc, get_current_thread(), vector);
 
 	// deliver the interrupt
 	enum handler_return ret;

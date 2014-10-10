@@ -156,7 +156,7 @@ void kernel_evlog_add(uintptr_t id, uintptr_t arg0, uintptr_t arg1)
 		uint index = evlog_bump_head(&kernel_evlog);
 
 		kernel_evlog.items[index] = (uintptr_t)current_time_hires();
-		kernel_evlog.items[index+1] = id;
+		kernel_evlog.items[index+1] = (arch_curr_cpu_num() << 16) | id;
 		kernel_evlog.items[index+2] = arg0;
 		kernel_evlog.items[index+3] = arg1;
 	}
@@ -166,24 +166,24 @@ void kernel_evlog_add(uintptr_t id, uintptr_t arg0, uintptr_t arg1)
 
 static void kevdump_cb(const uintptr_t *i)
 {
-	switch (i[1]) {
+	switch (i[1] & 0xffff) {
 		case KERNEL_EVLOG_CONTEXT_SWITCH:
-			printf("%lu: context switch from %p to %p\n", i[0], (void *)i[2], (void *)i[3]);
+			printf("%lu.%u: context switch from %p to %p\n", i[0], i[1] >> 16, (void *)i[2], (void *)i[3]);
 			break;
 		case KERNEL_EVLOG_PREEMPT:
-			printf("%lu: preempt on thread %p\n", i[0], (void *)i[2]);
+			printf("%lu.%u: preempt on thread %p\n", i[0], i[1] >> 16, (void *)i[2]);
 			break;
 		case KERNEL_EVLOG_TIMER_TICK:
-			printf("%lu: timer tick\n", i[0]);
+			printf("%lu.%u: timer tick\n", i[0], i[1] >> 16);
 			break;
 		case KERNEL_EVLOG_TIMER_CALL:
-			printf("%lu: timer call %p, arg %p\n", i[0], (void *)i[2], (void *)i[3]);
+			printf("%lu.%u: timer call %p, arg %p\n", i[0], i[1] >> 16, (void *)i[2], (void *)i[3]);
 			break;
 		case KERNEL_EVLOG_IRQ_ENTER:
-			printf("%lu: irq entry %u\n", i[0], (uint)i[2]);
+			printf("%lu.%u: irq entry %u\n", i[0], i[1] >> 16, (uint)i[2]);
 			break;
 		case KERNEL_EVLOG_IRQ_EXIT:
-			printf("%lu: irq exit  %u\n", i[0], (uint)i[2]);
+			printf("%lu.%u: irq exit  %u\n", i[0], i[1] >> 16, (uint)i[2]);
 			break;
 		default:
 			;
