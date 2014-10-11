@@ -168,22 +168,22 @@ static void kevdump_cb(const uintptr_t *i)
 {
 	switch (i[1] & 0xffff) {
 		case KERNEL_EVLOG_CONTEXT_SWITCH:
-			printf("%lu.%u: context switch from %p to %p\n", i[0], i[1] >> 16, (void *)i[2], (void *)i[3]);
+			printf("%lu.%lu: context switch from %p to %p\n", i[0], i[1] >> 16, (void *)i[2], (void *)i[3]);
 			break;
 		case KERNEL_EVLOG_PREEMPT:
-			printf("%lu.%u: preempt on thread %p\n", i[0], i[1] >> 16, (void *)i[2]);
+			printf("%lu.%lu: preempt on thread %p\n", i[0], i[1] >> 16, (void *)i[2]);
 			break;
 		case KERNEL_EVLOG_TIMER_TICK:
-			printf("%lu.%u: timer tick\n", i[0], i[1] >> 16);
+			printf("%lu.%lu: timer tick\n", i[0], i[1] >> 16);
 			break;
 		case KERNEL_EVLOG_TIMER_CALL:
-			printf("%lu.%u: timer call %p, arg %p\n", i[0], i[1] >> 16, (void *)i[2], (void *)i[3]);
+			printf("%lu.%lu: timer call %p, arg %p\n", i[0], i[1] >> 16, (void *)i[2], (void *)i[3]);
 			break;
 		case KERNEL_EVLOG_IRQ_ENTER:
-			printf("%lu.%u: irq entry %u\n", i[0], i[1] >> 16, (uint)i[2]);
+			printf("%lu.%lu: irq entry %u\n", i[0], i[1] >> 16, (uint)i[2]);
 			break;
 		case KERNEL_EVLOG_IRQ_EXIT:
-			printf("%lu.%u: irq exit  %u\n", i[0], i[1] >> 16, (uint)i[2]);
+			printf("%lu.%lu: irq exit  %u\n", i[0], i[1] >> 16, (uint)i[2]);
 			break;
 		default:
 			;
