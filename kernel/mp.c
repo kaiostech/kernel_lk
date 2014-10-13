@@ -44,6 +44,7 @@ void mp_init(void)
 
 void mp_mbx_reschedule(mp_cpu_num_t target)
 {
+#if WITH_SMP
     uint local_cpu = arch_curr_cpu_num();
 
     LTRACEF("target %d\n", target);
@@ -64,6 +65,7 @@ void mp_mbx_reschedule(mp_cpu_num_t target)
 
 out:
     ;
+#endif
 }
 
 void mp_set_curr_cpu_active(bool active)
@@ -71,9 +73,11 @@ void mp_set_curr_cpu_active(bool active)
     mbx[arch_curr_cpu_num()].active = active;
 }
 
+#if WITH_SMP
 enum handler_return mp_mbx_reschedule_irq(void)
 {
     LTRACEF("cpu %u\n", arch_curr_cpu_num());
     return mbx[arch_curr_cpu_num()].active ? INT_RESCHEDULE : INT_NO_RESCHEDULE;
 }
+#endif
 
