@@ -51,7 +51,7 @@
 #endif
 
 #if THREAD_STATS
-struct thread_stats thread_stats;
+struct thread_stats thread_stats[SMP_MAX_CPUS];
 #endif
 
 /* global thread list */
@@ -476,10 +476,10 @@ void thread_resched(void)
 
 	if (oldthread == idle_thread) {
 		lk_bigtime_t now = current_time_hires();
-		thread_stats.idle_time += now - thread_stats.last_idle_timestamp;
+		thread_stats[cpu].idle_time += now - thread_stats[cpu].last_idle_timestamp;
 	}
 	if (newthread == idle_thread) {
-		thread_stats.last_idle_timestamp = current_time_hires();
+		thread_stats[cpu].last_idle_timestamp = current_time_hires();
 	}
 #endif
 

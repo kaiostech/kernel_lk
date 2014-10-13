@@ -12,6 +12,8 @@ MODULES += \
 	lib/aes/test \
 	lib/bytes \
 	lib/cksum \
-	lib/debugcommands
+	lib/debugcommands \
+    lib/evlog
 
+GLOBAL_DEFINES += WITH_KERNEL_EVLOG=1
 

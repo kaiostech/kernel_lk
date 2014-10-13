@@ -182,9 +182,9 @@ struct thread_stats {
 	int timers; /* timer code increment this */
 };
 
-extern struct thread_stats thread_stats;
+extern struct thread_stats thread_stats[SMP_MAX_CPUS];
 
-#define THREAD_STATS_INC(name) do { thread_stats.name++; } while(0)
+#define THREAD_STATS_INC(name) do { thread_stats[arch_curr_cpu_num()].name++; } while(0)
 
 #else
 
