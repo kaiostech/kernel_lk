@@ -25,6 +25,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <kernel/thread.h>
 
 void mp_init(void);
 
@@ -42,4 +43,30 @@ typedef enum {
 
 /* called from arch code during reschedule irq */
 enum handler_return mp_mbx_reschedule_irq(void);
+
+/* global mp state to track what the cpus are up to */
+struct mp_state {
+    volatile mp_cpu_mask_t active_cpus;
+
+    /* only safely accessible with thread lock held */
+    mp_cpu_mask_t idle_cpus;
+};
+
+extern struct mp_state mp;
+
+/* must be called with the thread lock held */
+static inline void mp_set_cpu_idle(uint cpu)
+{
+    mp.idle_cpus |= 1UL << cpu;
+}
+
+static inline void mp_set_cpu_busy(uint cpu)
+{
+    mp.idle_cpus |= 1UL << cpu;
+}
+
+static inline mp_cpu_mask_t mp_get_idle_mask(void)
+{
+    return mp.idle_cpus;
+}
 

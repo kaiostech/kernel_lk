@@ -64,11 +64,8 @@ spin_lock_t thread_lock = SPIN_LOCK_INITIAL_VALUE;
 static struct list_node run_queue[NUM_PRIORITIES];
 static uint32_t run_queue_bitmap;
 
-/* the bootstrap thread (statically allocated) */
+/* the idle thread(s) (statically allocated) */
 static thread_t idle_threads[SMP_MAX_CPUS];
-
-/* the idle thread */
-static thread_t *idle_thread;
 
 /* local routines */
 static void thread_resched(void);
@@ -236,6 +233,16 @@ status_t thread_set_real_time(thread_t *t)
 static bool thread_is_real_time(thread_t *t)
 {
 	return !!(t->flags & THREAD_FLAG_REAL_TIME);
+}
+
+static bool thread_is_idle(thread_t *t)
+{
+	return !!(t->flags & THREAD_FLAG_IDLE);
+}
+
+static bool thread_is_real_time_or_idle(thread_t *t)
+{
+	return !!(t->flags & (THREAD_FLAG_REAL_TIME | THREAD_FLAG_IDLE));
 }
 
 /**
@@ -471,14 +478,20 @@ void thread_resched(void)
 	oldthread->curr_cpu = -1;
 	newthread->curr_cpu = cpu;
 
+	if (thread_is_idle(newthread)) {
+		mp_set_cpu_idle(cpu);
+	} else {
+		mp_set_cpu_busy(cpu);
+	}
+
 #if THREAD_STATS
 	THREAD_STATS_INC(context_switches);
 
-	if (oldthread == idle_thread) {
+	if (thread_is_idle(oldthread)) {
 		lk_bigtime_t now = current_time_hires();
 		thread_stats[cpu].idle_time += now - thread_stats[cpu].last_idle_timestamp;
 	}
-	if (newthread == idle_thread) {
+	if (thread_is_idle(newthread)) {
 		thread_stats[cpu].last_idle_timestamp = current_time_hires();
 	}
 #endif
@@ -486,13 +499,13 @@ void thread_resched(void)
 	KEVLOG_THREAD_SWITCH(oldthread, newthread);
 
 #if PLATFORM_HAS_DYNAMIC_TIMER
-	if (thread_is_real_time(newthread)) {
-		if (!thread_is_real_time(oldthread)) {
+	if (thread_is_real_time_or_idle(newthread)) {
+		if (!thread_is_real_time_or_idle(oldthread)) {
 			/* if we're switching from a non real time to a real time, cancel
 			 * the preemption timer. */
 			timer_cancel(&preempt_timer[cpu]);
 		}
-	} else if (thread_is_real_time(oldthread)) {
+	} else if (thread_is_real_time_or_idle(oldthread)) {
 		/* if we're switching from a real time (or idle thread) to a regular one,
 		 * set up a periodic timer to run our preemption tick. */
 		timer_set_periodic(&preempt_timer[cpu], 10, (timer_callback)thread_timer_tick, NULL);
@@ -500,7 +513,8 @@ void thread_resched(void)
 #endif
 
 	/* set some optional target debug leds */
-	target_set_debug_led(0, newthread != idle_thread);
+	target_set_debug_led(0, !thread_is_idle(idle_thread));
+
 	/* do the switch */
 	set_current_thread(newthread);
 	arch_context_switch(oldthread, newthread);
@@ -562,7 +576,7 @@ void thread_preempt(void)
 #endif
 
 #if THREAD_STATS
-	if (current_thread != idle_thread)
+	if (!thread_is_idle(current_thread))
 		THREAD_STATS_INC(preempts); /* only track when a meaningful preempt happens */
 #endif
 
@@ -623,7 +637,7 @@ enum handler_return thread_timer_tick(void)
 {
 	thread_t *current_thread = get_current_thread();
 
-	if (thread_is_real_time(current_thread))
+	if (thread_is_real_time_or_idle(current_thread))
 		return INT_NO_RESCHEDULE;
 
 	current_thread->remaining_quantum--;
@@ -761,7 +775,7 @@ void thread_set_priority(int priority)
  */
 void thread_become_idle(void)
 {
-	idle_thread = get_current_thread();
+	thread_t *t = get_current_thread();
 
 	char name[16];
 	snprintf(name, sizeof(name), "idle %d", arch_curr_cpu_num());
@@ -769,9 +783,8 @@ void thread_become_idle(void)
 
 	thread_set_priority(IDLE_PRIORITY);
 
-	/* mark the idle thread as real time, to avoid running the preemption
-	 * timer when it is scheduled. */
-	thread_set_real_time(idle_thread);
+	/* mark ourself as idle */
+	t->flags |= THREAD_FLAG_IDLE;
 
 	mp_set_curr_cpu_active(true);
 
@@ -787,7 +800,7 @@ void thread_secondary_cpu_entry(void)
 {
 	/* construct an idle thread to cover our cpu */
 	uint cpu = arch_curr_cpu_num();
-	thread_t *t = &idle_thread[cpu];
+	thread_t *t = &idle_threads[cpu];
 
 	char name[16];
 	snprintf(name, sizeof(name), "idle %d", cpu);
@@ -796,7 +809,7 @@ void thread_secondary_cpu_entry(void)
 	/* half construct this thread, since we're already running */
 	t->priority = IDLE_PRIORITY;
 	t->state = THREAD_RUNNING;
-	t->flags = THREAD_FLAG_DETACHED | THREAD_FLAG_REAL_TIME;
+	t->flags = THREAD_FLAG_DETACHED | THREAD_FLAG_IDLE;
 	wait_queue_init(&t->retcode_wait_queue);
 
 	THREAD_LOCK(state);

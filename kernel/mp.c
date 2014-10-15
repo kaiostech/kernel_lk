@@ -39,7 +39,8 @@ struct mp_mailbox {
 static struct mp_mailbox mbx[SMP_MAX_CPUS];
 #endif
 
-static volatile mp_cpu_mask_t active_cpus;
+/* a global state structure, aligned on cpu cache line to minimize aliasing */
+struct mp_state mp __CPU_ALIGN;
 
 void mp_init(void)
 {
@@ -53,7 +54,7 @@ void mp_mbx_reschedule(mp_cpu_mask_t target)
     LTRACEF("local %d, target 0x%x\n", local_cpu, target);
 
     /* mask out cpus that are not active and the local cpu */
-    target &= active_cpus;
+    target &= mp.active_cpus;
     target &= ~(1U << local_cpu);
 
     LTRACEF("local %d, post mask target now 0x%x\n", local_cpu, target);
@@ -64,14 +65,14 @@ void mp_mbx_reschedule(mp_cpu_mask_t target)
 
 void mp_set_curr_cpu_active(bool active)
 {
-    atomic_or((volatile int *)&active_cpus, 1U << arch_curr_cpu_num());
+    atomic_or((volatile int *)&mp.active_cpus, 1U << arch_curr_cpu_num());
 }
 
 #if WITH_SMP
 enum handler_return mp_mbx_reschedule_irq(void)
 {
     LTRACEF("cpu %u\n", arch_curr_cpu_num());
-    return (active_cpus & arch_curr_cpu_num()) ? INT_RESCHEDULE : INT_NO_RESCHEDULE;
+    return (mp.active_cpus & arch_curr_cpu_num()) ? INT_RESCHEDULE : INT_NO_RESCHEDULE;
 }
 #endif
 

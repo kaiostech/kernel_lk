@@ -53,6 +53,7 @@ enum thread_tls_list {
 #define THREAD_FLAG_FREE_STACK 0x2
 #define THREAD_FLAG_FREE_STRUCT 0x4
 #define THREAD_FLAG_REAL_TIME 0x8
+#define THREAD_FLAG_IDLE 0x10
 
 #define THREAD_MAGIC 'thrd'
 
