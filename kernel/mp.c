@@ -32,52 +32,46 @@
 
 #define LOCAL_TRACE 0
 
+#if 0
 struct mp_mailbox {
-    bool active;
 };
 
 static struct mp_mailbox mbx[SMP_MAX_CPUS];
+#endif
+
+static volatile mp_cpu_mask_t active_cpus;
 
 void mp_init(void)
 {
 }
 
-void mp_mbx_reschedule(mp_cpu_num_t target)
+void mp_mbx_reschedule(mp_cpu_mask_t target)
 {
 #if WITH_SMP
     uint local_cpu = arch_curr_cpu_num();
 
-    LTRACEF("target %d\n", target);
+    LTRACEF("local %d, target 0x%x\n", local_cpu, target);
 
-    switch (target) {
-        case MP_CPU_ALL:
-        case MP_CPU_ALL_BUT_LOCAL:
-            break;
-        default:
-            if (target >= SMP_MAX_CPUS)
-                goto out;
-            if (target == local_cpu)
-                PANIC_UNIMPLEMENTED;
-            break;
-    }
+    /* mask out cpus that are not active and the local cpu */
+    target &= active_cpus;
+    target &= ~(1U << local_cpu);
+
+    LTRACEF("local %d, post mask target now 0x%x\n", local_cpu, target);
 
     arch_mp_send_ipi(target, MP_IPI_RESCHEDULE);
-
-out:
-    ;
 #endif
 }
 
 void mp_set_curr_cpu_active(bool active)
 {
-    mbx[arch_curr_cpu_num()].active = active;
+    atomic_or((volatile int *)&active_cpus, 1U << arch_curr_cpu_num());
 }
 
 #if WITH_SMP
 enum handler_return mp_mbx_reschedule_irq(void)
 {
     LTRACEF("cpu %u\n", arch_curr_cpu_num());
-    return mbx[arch_curr_cpu_num()].active ? INT_RESCHEDULE : INT_NO_RESCHEDULE;
+    return (active_cpus & arch_curr_cpu_num()) ? INT_RESCHEDULE : INT_NO_RESCHEDULE;
 }
 #endif
 

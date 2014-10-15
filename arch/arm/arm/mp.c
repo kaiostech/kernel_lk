@@ -36,24 +36,18 @@
 
 #define LOCAL_TRACE 0
 
-status_t arch_mp_send_ipi(mp_cpu_num_t target, mp_ipi_t ipi)
+status_t arch_mp_send_ipi(mp_cpu_mask_t target, mp_ipi_t ipi)
 {
     LTRACEF("target 0x%x, ipi %u\n", target, ipi);
 
 #if WITH_DEV_INTERRUPT_ARM_GIC
     uint gic_ipi_num = ipi;
 
-    switch (target) {
-        case MP_CPU_ALL:
-            arm_gic_sgi(gic_ipi_num, ARM_GIC_SGI_FLAG_TARGET_FILTER_SENDER, 0);
-            // fallthrough
-        case MP_CPU_ALL_BUT_LOCAL:
-            arm_gic_sgi(gic_ipi_num, ARM_GIC_SGI_FLAG_TARGET_FILTER_NOT_SENDER, 0);
-            break;
-        default:
-            DEBUG_ASSERT(target < SMP_MAX_CPUS);
-            arm_gic_sgi(gic_ipi_num, ARM_GIC_SGI_FLAG_TARGET_FILTER_MASK, (1 << target));
-            break;
+    /* filter out targets outside of the range of cpus we care about */
+    target &= ((1UL << SMP_MAX_CPUS) - 1);
+    if (target != 0) {
+        LTRACEF("target 0x%x, gic_ipi %u\n", target, gic_ipi_num);
+        arm_gic_sgi(gic_ipi_num, 0, target);
     }
 #endif
 

@@ -24,15 +24,15 @@
 
 #include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 void mp_init(void);
 
-typedef unsigned int mp_cpu_num_t;
+typedef uint32_t mp_cpu_mask_t;
 
-#define MP_CPU_ALL UINT_MAX
-#define MP_CPU_ALL_BUT_LOCAL (UINT_MAX - 1)
+#define MP_CPU_ALL_BUT_LOCAL (UINT32_MAX)
 
-void mp_mbx_reschedule(mp_cpu_num_t target);
+void mp_mbx_reschedule(mp_cpu_mask_t target);
 void mp_set_curr_cpu_active(bool active);
 
 typedef enum {
