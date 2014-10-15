@@ -193,6 +193,8 @@ thread_t *thread_create_etc(thread_t *t, const char *name, thread_start_routine 
 	list_add_head(&thread_list, &t->thread_list_node);
 	THREAD_UNLOCK(state);
 
+	mp_reschedule(MP_CPU_ALL_BUT_LOCAL, 0);
+
 	return t;
 }
 
@@ -230,7 +232,7 @@ status_t thread_set_real_time(thread_t *t)
 	return NO_ERROR;
 }
 
-static bool thread_is_real_time(thread_t *t)
+static bool thread_is_realtime(thread_t *t)
 {
 	return !!(t->flags & THREAD_FLAG_REAL_TIME);
 }
@@ -482,6 +484,12 @@ void thread_resched(void)
 		mp_set_cpu_idle(cpu);
 	} else {
 		mp_set_cpu_busy(cpu);
+	}
+
+	if (thread_is_realtime(newthread)) {
+		mp_set_cpu_realtime(cpu);
+	} else {
+		mp_set_cpu_non_realtime(cpu);
 	}
 
 #if THREAD_STATS
@@ -787,6 +795,7 @@ void thread_become_idle(void)
 	t->flags |= THREAD_FLAG_IDLE;
 
 	mp_set_curr_cpu_active(true);
+	mp_set_cpu_idle(arch_curr_cpu_num());
 
 	/* enable interrupts and start the scheduler */
 	arch_enable_ints();
@@ -820,6 +829,7 @@ void thread_secondary_cpu_entry(void)
 	THREAD_UNLOCK(state);
 
 	mp_set_curr_cpu_active(true);
+	mp_set_cpu_idle(arch_curr_cpu_num());
 
 	/* enable interrupts and start the scheduler on this cpu */
 	arch_enable_ints();
@@ -1009,7 +1019,7 @@ int wait_queue_wake_one(wait_queue_t *wait, bool reschedule, status_t wait_queue
 			insert_in_run_queue_head(current_thread);
 		}
 		insert_in_run_queue_head(t);
-		mp_mbx_reschedule(MP_CPU_ALL_BUT_LOCAL);
+		mp_reschedule(MP_CPU_ALL_BUT_LOCAL, 0);
 		if (reschedule) {
 			thread_resched();
 		}
@@ -1076,7 +1086,7 @@ int wait_queue_wake_all(wait_queue_t *wait, bool reschedule, status_t wait_queue
 #endif
 
 	if (ret > 0) {
-		mp_mbx_reschedule(MP_CPU_ALL_BUT_LOCAL);
+		mp_reschedule(MP_CPU_ALL_BUT_LOCAL, 0);
 		if (reschedule) {
 			thread_resched();
 		}
@@ -1136,7 +1146,7 @@ status_t thread_unblock_from_wait_queue(thread_t *t, status_t wait_queue_error)
 	t->state = THREAD_READY;
 	t->wait_queue_block_ret = wait_queue_error;
 	insert_in_run_queue_head(t);
-	mp_mbx_reschedule(MP_CPU_ALL_BUT_LOCAL);
+	mp_reschedule(MP_CPU_ALL_BUT_LOCAL, 0);
 
 	return NO_ERROR;
 }

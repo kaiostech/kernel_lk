@@ -32,13 +32,6 @@
 
 #define LOCAL_TRACE 0
 
-#if 0
-struct mp_mailbox {
-};
-
-static struct mp_mailbox mbx[SMP_MAX_CPUS];
-#endif
-
 /* a global state structure, aligned on cpu cache line to minimize aliasing */
 struct mp_state mp __CPU_ALIGN;
 
@@ -46,7 +39,7 @@ void mp_init(void)
 {
 }
 
-void mp_mbx_reschedule(mp_cpu_mask_t target)
+void mp_reschedule(mp_cpu_mask_t target, uint flags)
 {
 #if WITH_SMP
     uint local_cpu = arch_curr_cpu_num();
@@ -55,6 +48,11 @@ void mp_mbx_reschedule(mp_cpu_mask_t target)
 
     /* mask out cpus that are not active and the local cpu */
     target &= mp.active_cpus;
+
+    /* mask out cpus that are currently running realtime code */
+    if ((flags & MP_RESCHEDULE_FLAG_REALTIME) == 0) {
+        target &= mp.active_cpus;
+    }
     target &= ~(1U << local_cpu);
 
     LTRACEF("local %d, post mask target now 0x%x\n", local_cpu, target);

@@ -33,7 +33,12 @@ typedef uint32_t mp_cpu_mask_t;
 
 #define MP_CPU_ALL_BUT_LOCAL (UINT32_MAX)
 
-void mp_mbx_reschedule(mp_cpu_mask_t target);
+/* by default, mp_mbx_reschedule does not signal to cpus that are running realtime
+ * threads. Override this behavior.
+ */
+#define MP_RESCHEDULE_FLAG_REALTIME (0x1)
+
+void mp_reschedule(mp_cpu_mask_t target, uint flags);
 void mp_set_curr_cpu_active(bool active);
 
 typedef enum {
@@ -50,6 +55,7 @@ struct mp_state {
 
     /* only safely accessible with thread lock held */
     mp_cpu_mask_t idle_cpus;
+    mp_cpu_mask_t realtime_cpus;
 };
 
 extern struct mp_state mp;
@@ -69,4 +75,20 @@ static inline mp_cpu_mask_t mp_get_idle_mask(void)
 {
     return mp.idle_cpus;
 }
+
+static inline void mp_set_cpu_realtime(uint cpu)
+{
+    mp.realtime_cpus |= 1UL << cpu;
+}
+
+static inline void mp_set_cpu_non_realtime(uint cpu)
+{
+    mp.realtime_cpus |= 1UL << cpu;
+}
+
+static inline mp_cpu_mask_t mp_get_realtime_mask(void)
+{
+    return mp.realtime_cpus;
+}
+
 
