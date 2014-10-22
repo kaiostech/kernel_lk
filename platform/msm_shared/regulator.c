@@ -30,12 +30,6 @@
 #include <regulator.h>
 #include <rpm-smd.h>
 
-#define GENERIC_DISABLE 0
-#define GENERIC_ENABLE  1
-#define SW_MODE_LDO_IPEAK 1
-#define LDOA_RES_TYPE 0x616F646C //aodl
-#define SMPS_RES_TYPE 0x61706D73 //apms
-
 static uint32_t ldo2[][11]=
 {
 	{
