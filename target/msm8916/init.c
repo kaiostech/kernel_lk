@@ -292,3 +292,8 @@ void target_fastboot_init(void)
 	/* Set the BOOT_DONE flag in PM8916 */
 	pm8x41_set_boot_done();
 }
+
+uint32_t target_get_hlos_subtype()
+{
+	return board_hlos_subtype();
+}
