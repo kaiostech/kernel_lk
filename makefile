@@ -58,6 +58,10 @@ ifeq ($(SIGNED_KERNEL),1)
   CFLAGS += -D_SIGNED_KERNEL=1
 endif
 
+ifeq ($(TARGET_BUILD_VARIANT),user)
+  CFLAGS += -DDISABLE_FASTBOOT_CMDS=1
+endif
+
 # When the host arch is ARM, ensure stack protection code is not emitted since
 # it's not supported by the bootloader's libc
 ifneq ($(shell uname -m | grep "arm.*"),)
