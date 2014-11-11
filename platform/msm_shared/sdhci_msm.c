@@ -283,6 +283,24 @@ static void sdhci_msm_init_dll(struct sdhci_host *host)
 		REG_WRITE32(host, (REG_READ32(host, SDCC_DLL_CONFIG_REG) | SDCC_DLL_PWR_SAVE_EN), SDCC_VENDOR_SPECIFIC_FUNC);
 }
 
+void sdhci_msm_toggle_cdr(struct sdhci_host *host, bool enable)
+{
+	uint32_t core_cfg;
+
+	core_cfg = REG_READ32(host, SDCC_DLL_CONFIG_REG);
+
+	if (enable)
+	{
+		core_cfg |= SDCC_DLL_CDR_EN;
+	}
+	else
+	{
+		core_cfg &= ~SDCC_DLL_CDR_EN;
+	}
+
+	REG_WRITE32(host, core_cfg, SDCC_DLL_CONFIG_REG);
+}
+
 /* Configure DLL with delay value based on 'phase' */
 static void sdhci_msm_config_dll(struct sdhci_host *host, uint32_t phase)
 {
