@@ -70,7 +70,7 @@ static pm8921_dev_t pmic;
 static crypto_engine_type platform_ce_type = CRYPTO_ENGINE_TYPE_SW;
 
 static void target_uart_init(void);
-#define DELAY 20
+#define DELAY 1
 void qca6174_init()
 {
 	dprintf(CRITICAL, "%s SDC4 before enabling GPIO 21....\n", __func__);
