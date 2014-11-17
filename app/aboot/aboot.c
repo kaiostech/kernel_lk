@@ -78,6 +78,14 @@ extern int get_target_boot_params(const char *cmdline, const char *part,
 void write_device_info_mmc(device_info *dev);
 void write_device_info_flash(device_info *dev);
 
+/* fastboot command function pointer */
+typedef void (*fastboot_cmd_fn) (const char *, void *, unsigned);
+
+struct fastboot_cmd_desc {
+	char * name;
+	fastboot_cmd_fn cb;
+};
+
 #define EXPAND(NAME) #NAME
 #define TARGET(NAME) EXPAND(NAME)
 
@@ -1530,6 +1538,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	unsigned ramdisk_actual;
 	uint32_t image_actual;
 	uint32_t dt_actual = 0;
+	uint32_t sig_actual = SIGNATURE_SIZE;
 	struct boot_img_hdr *hdr;
 	char *ptr = ((char*) data);
 	int ret = 0;
@@ -1560,9 +1569,12 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	image_actual = ADD_OF(image_actual, ramdisk_actual);
 	image_actual = ADD_OF(image_actual, dt_actual);
 
+	if (target_use_signed_kernel() && (!device.is_unlocked))
+		image_actual = ADD_OF(image_actual, sig_actual);
+
 	/* sz should have atleast raw boot image */
 	if (image_actual > sz) {
-		fastboot_fail("incomplete bootimage");
+		fastboot_fail("bootimage: incomplete or not signed");
 		return;
 	}
 
@@ -1570,7 +1582,10 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	 * device & page_size are initialized in aboot_init
 	 */
 	if (target_use_signed_kernel() && (!device.is_unlocked))
-		verify_signed_bootimg((uint32_t)data, image_actual);
+		/* Pass size excluding signature size, otherwise we would try to
+		 * access signature beyond its length
+		 */
+		verify_signed_bootimg((uint32_t)data, (image_actual - sig_actual));
 
 	/*
 	 * Update the kernel/ramdisk/tags address if the boot image header
@@ -1643,7 +1658,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		   (void*) hdr->ramdisk_addr, hdr->ramdisk_size);
 }
 
-void cmd_erase(const char *arg, void *data, unsigned sz)
+void cmd_erase_nand(const char *arg, void *data, unsigned sz)
 {
 	struct ptentry *ptn;
 	struct ptable *ptable;
@@ -1708,6 +1723,13 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+void cmd_erase(const char *arg, void *data, unsigned sz)
+{
+	if(target_is_emmc_boot())
+		cmd_erase_mmc(arg, data, sz);
+	else
+		cmd_erase_nand(arg, data, sz);
+}
 
 void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 {
@@ -2027,7 +2049,7 @@ void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
 	return;
 }
 
-void cmd_flash(const char *arg, void *data, unsigned sz)
+void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 {
 	struct ptentry *ptn;
 	struct ptable *ptable;
@@ -2073,6 +2095,14 @@ void cmd_flash(const char *arg, void *data, unsigned sz)
 	}
 	dprintf(INFO, "partition '%s' updated\n", ptn->name);
 	fastboot_okay("");
+}
+
+void cmd_flash(const char *arg, void *data, unsigned sz)
+{
+	if(target_is_emmc_boot())
+		cmd_flash_mmc(arg, data, sz);
+	else
+		cmd_flash_nand(arg, data, sz);
 }
 
 void cmd_continue(const char *arg, void *data, unsigned sz)
@@ -2201,16 +2231,16 @@ struct fbimage* splash_screen_flash()
 
 	fb_display = fbcon_display();
 	if (fb_display) {
-		uint8_t *base = (uint8_t *) fb_display->base;
-		if (logo->header.width != fb_display->width || logo->header.height != fb_display->height) {
-				base += LOGO_IMG_OFFSET;
+		if ((logo->header.width != fb_display->width) || (logo->header.height != fb_display->height)) {
+			dprintf(CRITICAL, "Logo config doesn't match with fb config. Fall back to default logo\n");
+			return NULL;
 		}
-
+		uint8_t *base = (uint8_t *) fb_display->base;
 		if (flash_read(ptn + sizeof(logo->header), 0,
 			base,
 			((((logo->header.width * logo->header.height * fb_display->bpp/8) + 511) >> 9) << 9))) {
 			fbcon_clear();
-			dprintf(CRITICAL, "ERROR: Cannot read splash image\n");
+			dprintf(CRITICAL, "ERROR: Cannot read splash image from partition\n");
 			return NULL;
 		}
 		logo->image = base;
@@ -2250,15 +2280,16 @@ struct fbimage* splash_screen_mmc()
 
 	fb_display = fbcon_display();
 	if (fb_display) {
+		if ((logo->header.width != fb_display->width) || (logo->header.height != fb_display->height)) {
+			dprintf(CRITICAL, "Logo config doesn't match with fb config. Fall back default logo\n");
+			return NULL;
+		}
 		uint8_t *base = (uint8_t *) fb_display->base;
-		if (logo->header.width != fb_display->width || logo->header.height != fb_display->height)
-				base += LOGO_IMG_OFFSET;
-
 		if (mmc_read(ptn + sizeof(logo->header),
 			base,
 			((((logo->header.width * logo->header.height * fb_display->bpp/8) + 511) >> 9) << 9))) {
 			fbcon_clear();
-			dprintf(CRITICAL, "ERROR: Cannot read splash image\n");
+			dprintf(CRITICAL, "ERROR: Cannot read splash image from partition\n");
 			return NULL;
 		}
 
@@ -2340,30 +2371,35 @@ static void publish_getvar_partition_info(struct getvar_partition_info *info, ui
 /* register commands and variables for fastboot */
 void aboot_fastboot_register_commands(void)
 {
-	if (target_is_emmc_boot())
-	{
-		fastboot_register("flash:", cmd_flash_mmc);
-		fastboot_register("erase:", cmd_erase_mmc);
-	}
-	else
-	{
-		fastboot_register("flash:", cmd_flash);
-		fastboot_register("erase:", cmd_erase);
-	}
+	int i;
 
-	fastboot_register("boot",              cmd_boot);
-	fastboot_register("continue",          cmd_continue);
-	fastboot_register("reboot",            cmd_reboot);
-	fastboot_register("reboot-bootloader", cmd_reboot_bootloader);
-	fastboot_register("oem unlock",        cmd_oem_unlock);
-	fastboot_register("oem device-info",   cmd_oem_devinfo);
-	fastboot_register("preflash",          cmd_preflash);
-	fastboot_register("oem enable-charger-screen",
-			cmd_oem_enable_charger_screen);
-	fastboot_register("oem disable-charger-screen",
-			cmd_oem_disable_charger_screen);
-	fastboot_register("oem select-display-panel",
-			cmd_oem_select_display_panel);
+	struct fastboot_cmd_desc cmd_list[] = {
+											/* By default the enabled list is empty. */
+											{"", NULL},
+											/* move commands enclosed within the below ifndef to here
+											 * if they need to be enabled in user build.
+											 */
+#ifndef DISABLE_FASTBOOT_CMDS
+											/* Register the following commands only for non-user builds */
+											{"flash:", cmd_flash},
+											{"erase:", cmd_erase},
+											{"boot", cmd_boot},
+											{"continue", cmd_continue},
+											{"reboot", cmd_reboot},
+											{"reboot-bootloader", cmd_reboot_bootloader},
+											{"oem unlock", cmd_oem_unlock},
+											{"oem device-info", cmd_oem_devinfo},
+											{"preflash", cmd_preflash},
+											{"oem enable-charger-screen", cmd_oem_enable_charger_screen},
+											{"oem disable-charger-screen", cmd_oem_disable_charger_screen},
+											{"oem select-display-panel", cmd_oem_select_display_panel},
+#endif
+										  };
+
+	int fastboot_cmds_count = sizeof(cmd_list)/sizeof(cmd_list[0]);
+	for (i = 1; i < fastboot_cmds_count; i++)
+		fastboot_register(cmd_list[i].name,cmd_list[i].cb);
+
 	/* publish variables and their values */
 	fastboot_publish("product",  TARGET(BOARD));
 	fastboot_publish("kernel",   "lk");
