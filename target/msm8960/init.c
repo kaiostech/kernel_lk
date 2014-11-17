@@ -148,6 +148,18 @@ void target_init(void)
 	unsigned base_addr;
 	unsigned char slot;
 	unsigned platform_id = board_platform_id();
+	int rc;
+	struct pm8921_gpio atmel_fw = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = 0,
+		.output_value = 1,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = 2,
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
+		.function = PM_GPIO_FUNC_1,
+		.inv_int_pol = 0,
+		.disable_pin = 0,
+	};
 
 	dprintf(INFO, "target_init()\n");
 	dprintf(INFO, "board platform id is 0x%x\n",  board_platform_id());
@@ -158,6 +170,11 @@ void target_init(void)
 	pmic.write = (pm8921_write_func) & pa1_ssbi2_write_bytes;
 
 	pm8921_init(&pmic);
+	rc = pm8921_gpio_config(PM_GPIO(28), &atmel_fw);
+	if (rc)
+	{
+	dprintf(CRITICAL, "FAIL pm8921_gpio_config() 28: rc=%d.\n", rc);
+	}
 
 	if (MPLATFORM())
 		mobis_qca6574_init();
