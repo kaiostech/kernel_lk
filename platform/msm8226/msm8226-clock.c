@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -226,6 +226,35 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_2_uart1_6_apps_clk[] =
 	F_END
 };
 
+static struct rcg_clk blsp1_uart1_apps_clk_src =
+{
+	.cmd_reg      = (uint32_t *) BLSP1_UART1_APPS_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) BLSP1_UART1_APPS_CFG_RCGR,
+	.m_reg        = (uint32_t *) BLSP1_UART1_APPS_M,
+	.n_reg        = (uint32_t *) BLSP1_UART1_APPS_N,
+	.d_reg        = (uint32_t *) BLSP1_UART1_APPS_D,
+
+	.set_rate     = clock_lib2_rcg_set_rate_mnd,
+	.freq_tbl     = ftbl_gcc_blsp1_2_uart1_6_apps_clk,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "blsp1_uart1_apps_clk",
+		.ops      = &clk_ops_rcg_mnd,
+	},
+};
+
+static struct branch_clk gcc_blsp1_uart1_apps_clk =
+{
+	.cbcr_reg     = (uint32_t *) BLSP1_UART1_APPS_CBCR,
+	.parent       = &blsp1_uart1_apps_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_uart1_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
 static struct rcg_clk blsp1_uart3_apps_clk_src =
 {
 	.cmd_reg      = (uint32_t *) BLSP1_UART3_APPS_CMD_RCGR,
@@ -359,6 +388,17 @@ static struct vote_clk gcc_ce1_axi_clk = {
 	.c = {
 		.dbg_name = "gcc_ce1_axi_clk",
 		.ops      = &clk_ops_vote,
+	},
+};
+
+/* i2C clocks */
+struct branch_clk gcc_blsp1_qup2_i2c_apps_clk = {
+	.cbcr_reg = BLSP1_QUP2_I2C_APPS_CBCR,
+	.parent   = &cxo_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup2_i2c_apps_clk",
+		.ops      = &clk_ops_branch,
 	},
 };
 
@@ -531,9 +571,13 @@ static struct clk_lookup msm_clocks_8226[] =
 	CLK_LOOKUP("sdc2_iface_clk", gcc_sdcc2_ahb_clk.c),
 	CLK_LOOKUP("sdc2_core_clk",  gcc_sdcc2_apps_clk.c),
 
+	CLK_LOOKUP("uart1_iface_clk", gcc_blsp1_ahb_clk.c),
+	CLK_LOOKUP("uart1_core_clk",  gcc_blsp1_uart1_apps_clk.c),
 	CLK_LOOKUP("uart3_iface_clk", gcc_blsp1_ahb_clk.c),
 	CLK_LOOKUP("uart3_core_clk",  gcc_blsp1_uart3_apps_clk.c),
 
+	CLK_LOOKUP("blsp1_ahb_clk",           gcc_blsp1_ahb_clk.c),
+	CLK_LOOKUP("blsp1_qup2_i2c_apps_clk", gcc_blsp1_qup2_i2c_apps_clk.c),
 	CLK_LOOKUP("usb_iface_clk",  gcc_usb_hs_ahb_clk.c),
 	CLK_LOOKUP("usb_core_clk",   gcc_usb_hs_system_clk.c),
 

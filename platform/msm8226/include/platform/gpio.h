@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -70,5 +70,7 @@ void gpio_tlmm_config(uint32_t gpio,
                       uint32_t enable);
 void gpio_set_dir(uint32_t gpio, uint32_t dir);
 void gpio_set_value(uint32_t gpio, uint32_t value);
+
+void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id);
 
 #endif

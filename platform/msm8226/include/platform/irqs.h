@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -62,4 +62,12 @@
 
 #define NR_IRQS                                (NR_MSM_IRQS + NR_GPIO_IRQS + \
                                                NR_BOARD_IRQS)
+
+#define BLSP_QUP_IRQ(blsp_id, qup_id)          ((blsp_id == 1) ? \
+                                               ((GIC_SPI_START + 95) + qup_id):\
+                                               ((GIC_SPI_START + 101) + qup_id))
+
+
+
+
 #endif	/* __IRQS_MSM8226_H */
