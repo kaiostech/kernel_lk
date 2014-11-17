@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -42,6 +42,7 @@ static struct adc_conf adc_data[] = {
 	CHAN_INIT(VADC_USR1_BASE, VADC_BAT_CHAN_ID,     VADC_MODE_NORMAL, VADC_DECIM_RATIO_VAL, HW_SET_DELAY_100US, FAST_AVG_SAMP_1, CALIB_RATIO),
 	CHAN_INIT(VADC_USR1_BASE, VADC_BAT_VOL_CHAN_ID, VADC_MODE_NORMAL, VADC_DECIM_RATIO_VAL, HW_SET_DELAY_100US, FAST_AVG_SAMP_1, CALIB_ABS),
 	CHAN_INIT(VADC_USR1_BASE, MPP_8_CHAN_ID, VADC_MODE_NORMAL, VADC_DECIM_RATIO_VAL, HW_SET_DELAY_100US, FAST_AVG_SAMP_1, CALIB_ABS),
+	CHAN_INIT(VADC_USR1_BASE, MPP_7_CHAN_ID, VADC_MODE_NORMAL, VADC_DECIM_RATIO_VAL, HW_SET_DELAY_100US, FAST_AVG_SAMP_1, CALIB_RATIO),
 };
 
 
