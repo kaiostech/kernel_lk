@@ -125,11 +125,12 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 			$(LOCAL_DIR)/spmi.o \
 			$(LOCAL_DIR)/bam.o \
 			$(LOCAL_DIR)/qpic_nand.o \
-            $(LOCAL_DIR)/certificate.o \
-            $(LOCAL_DIR)/image_verify.o \
-            $(LOCAL_DIR)/crypto_hash.o \
-            $(LOCAL_DIR)/crypto5_eng.o \
-            $(LOCAL_DIR)/crypto5_wrapper.o \
+			$(LOCAL_DIR)/certificate.o \
+			$(LOCAL_DIR)/image_verify.o \
+			$(LOCAL_DIR)/crypto_hash.o \
+			$(LOCAL_DIR)/crypto5_eng.o \
+			$(LOCAL_DIR)/crypto5_wrapper.o \
+			$(LOCAL_DIR)/i2c_qup.o \
 			$(LOCAL_DIR)/dev_tree.o \
 			$(LOCAL_DIR)/gpio.o \
 			$(LOCAL_DIR)/dload_util.o \
