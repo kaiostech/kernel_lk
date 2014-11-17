@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -177,4 +177,9 @@ uint8_t board_pmic_info(struct board_pmic_data *info, uint8_t num_ent)
 uint32_t board_soc_version()
 {
 	return board.platform_version;
+}
+
+void board_set_hardware_subtype(uint32_t hw_subtype)
+{
+	board.platform_subtype = hw_subtype;
 }
