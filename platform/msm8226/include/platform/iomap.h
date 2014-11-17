@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -141,12 +141,27 @@
 
 /* UART */
 #define BLSP1_AHB_CBCR              (CLK_CTL_BASE + 0x5C4)
+#define BLSP1_UART1_APPS_CBCR       (CLK_CTL_BASE + 0x684)
+#define BLSP1_UART1_APPS_CMD_RCGR   (CLK_CTL_BASE + 0x68C)
+#define BLSP1_UART1_APPS_CFG_RCGR   (CLK_CTL_BASE + 0x690)
+#define BLSP1_UART1_APPS_M          (CLK_CTL_BASE + 0x694)
+#define BLSP1_UART1_APPS_N          (CLK_CTL_BASE + 0x698)
+#define BLSP1_UART1_APPS_D          (CLK_CTL_BASE + 0x69C)
 #define BLSP1_UART3_APPS_CBCR       (CLK_CTL_BASE + 0x784)
 #define BLSP1_UART3_APPS_CMD_RCGR   (CLK_CTL_BASE + 0x78C)
 #define BLSP1_UART3_APPS_CFG_RCGR   (CLK_CTL_BASE + 0x790)
 #define BLSP1_UART3_APPS_M          (CLK_CTL_BASE + 0x794)
 #define BLSP1_UART3_APPS_N          (CLK_CTL_BASE + 0x798)
 #define BLSP1_UART3_APPS_D          (CLK_CTL_BASE + 0x79C)
+/* I2c */
+#define BLSP_QUP_BASE(blsp_id, qup_id)   ((blsp_id == 1) ? \
+                                         (PERIPH_SS_BASE + 0x00123000 \
+                                         + (qup_id * 0x1000)) :\
+                                         (PERIPH_SS_BASE + 0x00163000 + \
+                                         (qup_id * 0x1000)))
+#define BLSP1_QUP2_I2C_APPS_CBCR    (CLK_CTL_BASE + 0x6C8)
+
+
 
 /* USB */
 #define USB_HS_SYSTEM_CBCR          (CLK_CTL_BASE + 0x484)

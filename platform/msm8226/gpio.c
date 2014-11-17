@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,6 +30,7 @@
 #include <reg.h>
 #include <platform/iomap.h>
 #include <platform/gpio.h>
+#include <blsp_qup.h>
 
 void gpio_tlmm_config(uint32_t gpio, uint8_t func,
                       uint8_t dir, uint8_t pull,
@@ -75,12 +76,47 @@ uint32_t gpio_status(uint32_t gpio)
 /* Configure gpio for blsp uart 2 */
 void gpio_config_uart_dm(uint8_t id)
 {
-	/* Configure GPIOs for BLSP1 UART3. */
-	/* configure rx gpio */
-	gpio_tlmm_config(9, 2, GPIO_INPUT, GPIO_NO_PULL,
-                         GPIO_8MA, GPIO_DISABLE);
+	if ( id == 0 ) {
+		/* Configure GPIOs for BLSP1 UART0. */
+		/* configure rx gpio */
+		gpio_tlmm_config(1, 2, GPIO_INPUT, GPIO_NO_PULL,
+							GPIO_8MA, GPIO_DISABLE);
+		/* configure tx gpio */
+		gpio_tlmm_config(0, 2, GPIO_OUTPUT, GPIO_NO_PULL,
+							GPIO_8MA, GPIO_DISABLE);
+	} else if (id == 2) {
+		/* Configure GPIOs for BLSP1 UART2. */
+		/* configure rx gpio */
+		gpio_tlmm_config(9, 2, GPIO_INPUT, GPIO_NO_PULL,
+							GPIO_8MA, GPIO_DISABLE);
+		/* configure tx gpio */
+		gpio_tlmm_config(8, 2, GPIO_OUTPUT, GPIO_NO_PULL,
+							GPIO_8MA, GPIO_DISABLE);
+	} else {
+		dprintf(CRITICAL,"Invalid id = %d,for config gpio for uart\n",id);
+		ASSERT(0);
+	}
+}
 
-	/* configure tx gpio */
-	gpio_tlmm_config(8, 2, GPIO_OUTPUT, GPIO_NO_PULL,
-                         GPIO_8MA, GPIO_DISABLE);
+/* Configure GPIOs to be used for I2C */
+void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
+{
+	if (blsp_id == BLSP_ID_1) {
+		switch (qup_id) {
+		case QUP_ID_1:
+			gpio_tlmm_config(6,3,GPIO_OUTPUT,GPIO_NO_PULL,GPIO_6MA,
+							GPIO_DISABLE);
+			gpio_tlmm_config(7,3,GPIO_OUTPUT,GPIO_NO_PULL,GPIO_6MA,
+							GPIO_DISABLE);
+			break;
+		default:
+			dprintf(CRITICAL, "Configure gpios for QUP instance: %u\n",
+					qup_id);
+			ASSERT(0);
+		}
+	} else {
+		dprintf(CRITICAL,
+			"Configure gpios for BLSP instance: %u\n",blsp_id);
+		ASSERT(0);
+	}
 }

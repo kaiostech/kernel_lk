@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -149,17 +149,30 @@ void clock_config_uart_dm(uint8_t id)
 {
 	int ret;
 
-     ret = clk_get_set_enable("uart3_iface_clk", 0, 1);
-    if(ret)
-	{
-		dprintf(CRITICAL, "failed to set uart3_iface_clk ret = %d\n", ret);
-		ASSERT(0);
-	}
-
-    ret = clk_get_set_enable("uart3_core_clk", 7372800, 1);
-	if(ret)
-	{
-		dprintf(CRITICAL, "failed to set uart3_core_clk ret = %d\n", ret);
+	if (id == 0) {
+		ret = clk_get_set_enable("uart1_iface_clk", 0, 1);
+		if (ret) {
+			dprintf(CRITICAL, "failed to set uart1_iface_clk ret = %d\n", ret);
+			ASSERT(0);
+		}
+		ret = clk_get_set_enable("uart1_core_clk", 7372800, 1);
+		if (ret) {
+			dprintf(CRITICAL, "failed to set uart1_core_clk ret = %d\n", ret);
+			ASSERT(0);
+		}
+	} else if (id == 2) {
+		ret = clk_get_set_enable("uart3_iface_clk", 0, 1);
+		if (ret) {
+			dprintf(CRITICAL, "failed to set uart3_iface_clk ret = %d\n", ret);
+			ASSERT(0);
+		}
+		ret = clk_get_set_enable("uart3_core_clk", 7372800, 1);
+		if (ret) {
+			dprintf(CRITICAL, "failed to set uart3_core_clk ret = %d\n", ret);
+			ASSERT(0);
+		}
+	} else {
+		dprintf(CRITICAL, "Invalid uart clock config id = %d\n", id);
 		ASSERT(0);
 	}
 }
@@ -427,5 +440,37 @@ void mmss_dsi_clocks_enable(uint8_t pclk0_m, uint8_t pclk0_n, uint8_t pclk0_d)
 	if (ret) {
 		dprintf(CRITICAL, "failed to set esc0_clk ret = %d\n", ret);
 		ASSERT(0);
+	}
+}
+
+/* Configures clocks for the specified hardware */
+void clock_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
+{
+	uint8_t ret = 0;
+	char clk_name[64];
+	struct clk *qup_clk;
+
+	snprintf(clk_name, sizeof(clk_name), "blsp%u_ahb_clk", blsp_id);
+	ret = clk_get_set_enable(clk_name, 0 , 1);
+
+	if (ret) {
+		dprintf(CRITICAL, "Failed to enable %s clock\n", clk_name);
+		return;
+	}
+
+	snprintf(clk_name, sizeof(clk_name), "blsp%u_qup%u_i2c_apps_clk", blsp_id,
+				(qup_id + 1));
+	qup_clk = clk_get(clk_name);
+
+	if (!qup_clk) {
+		dprintf(CRITICAL, "Failed to get %s\n", clk_name);
+		return;
+	}
+
+	ret = clk_enable(qup_clk);
+
+	if (ret) {
+		dprintf(CRITICAL, "Failed to enable %s\n", clk_name);
+		return;
 	}
 }
