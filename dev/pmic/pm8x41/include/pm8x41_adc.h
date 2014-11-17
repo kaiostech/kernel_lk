@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -103,6 +103,7 @@ struct adc_conf {
 #define VREF_125_CHAN_ID                10
 #define GND_REF_CHAN_ID                 14
 #define VDD_VADC_CHAN_ID                15
+#define MPP_7_CHAN_ID                   22
 #define MPP_8_CHAN_ID                   39
 #define VADC_BAT_CHAN_ID                49
 
