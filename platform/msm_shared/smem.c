@@ -2,6 +2,8 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -34,6 +36,28 @@
 #include "smem.h"
 
 static struct smem *smem = (void *)(MSM_SHARED_BASE);
+
+unsigned smem_save_subtype(uint32_t type)
+{
+	struct smem_alloc_info *ainfo;
+	unsigned src;
+
+	/* make sure its valid */
+	ainfo = &smem->alloc_info[SMEM_BOARD_INFO_LOCATION];
+	if (readl(&ainfo->allocated) == 0)
+		return 1;
+
+	/* point to the board info v8 type */
+	src = MSM_SHARED_BASE + readl(&ainfo->offset);
+
+	/* Point to subtype   smem_board_info_v3 + platform_version + fused_chip */
+	src = src + sizeof(struct smem_board_info_v3) + sizeof(unsigned) + sizeof(unsigned);
+
+	/* Write subtype to memory */
+	writel(type, src);
+
+	return 0;
+}
 
 /* buf MUST be 4byte aligned, and len MUST be a multiple of 8. */
 unsigned smem_read_alloc_entry(smem_mem_type_t type, void *buf, int len)
