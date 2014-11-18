@@ -40,6 +40,7 @@
 #include <platform/gpio.h>
 #include <platform/iomap.h>
 #include <target/display.h>
+#include <target/init.h>
 
 #include "include/panel.h"
 #include "include/display_resource.h"
@@ -366,8 +367,7 @@ int target_ldo_ctrl(uint8_t enable)
 			0x100 * ldo_entry_array[ldocounter].ldo_id),
 			ldo_entry_array[ldocounter].ldo_type);
 
-		dprintf(SPEW, "Setting %s\n",
-				ldo_entry_array[ldocounter].ldo_id);
+		dprintf(SPEW, "Setting %s\n",ldo_entry_array[ldocounter].ldo_id);
 
 		/* Set voltage during power on */
 		if (enable) {
