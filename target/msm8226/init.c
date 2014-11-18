@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -50,6 +50,10 @@
 #include <partition_parser.h>
 #include <shutdown_detect.h>
 #include <vibrator.h>
+#include <pm8x41_adc.h>
+#include <pm8x41_hw.h>
+#include <target/lp55x1.h>
+#include <target/init.h>
 
 extern  bool target_use_signed_kernel(void);
 static void set_sdc_power_ctrl(void);
@@ -71,13 +75,6 @@ static void set_sdc_power_ctrl(void);
 
 #define SSD_CE_INSTANCE         1
 
-enum target_subtype {
-	HW_PLATFORM_SUBTYPE_SKUAA = 1,
-	HW_PLATFORM_SUBTYPE_SKUF = 2,
-	HW_PLATFORM_SUBTYPE_SKUAB = 3,
-	HW_PLATFORM_SUBTYPE_SKUG = 5,
-};
-
 static uint32_t mmc_pwrctl_base[] =
 	{ MSM_SDC1_BASE, MSM_SDC2_BASE, MSM_SDC3_BASE };
 
@@ -88,6 +85,154 @@ static uint32_t mmc_sdc_pwrctl_irq[] =
 	{ SDCC1_PWRCTL_IRQ, SDCC2_PWRCTL_IRQ, SDCC3_PWRCTL_IRQ };
 
 struct mmc_device *dev;
+
+enum target_subtype {
+	HW_PLATFORM_SUBTYPE_SKUAA = 1,
+	HW_PLATFORM_SUBTYPE_SKUF = 2,
+	HW_PLATFORM_SUBTYPE_SKUAB = 3,
+	HW_PLATFORM_SUBTYPE_SKUG = 5,
+};
+
+/* QM8626 Support */
+#define ADC_CHANNEL_SEL_MPP7        22
+#define QM8626_EN_MPP_ADC_INP_MPP7  6
+
+enum qm8626_subtype {
+	QM8626_HW_PLATFORM_UNKNOWN = 0,
+	QM8626_HW_PLATFORM_SUBTYPE_1 = 1,
+	QM8626_HW_PLATFORM_SUBTYPE_2 = 2,
+	QM8626_HW_PLATFORM_SUBTYPE_3 = 3,
+	QM8626_HW_PLATFORM_SUBTYPE_4 = 4,
+	QM8626_HW_PLATFORM_SUBTYPE_5 = 5,
+	QM8626_HW_PLATFORM_SUBTYPE_6 = 6,
+	QM8626_HW_PLATFORM_SUBTYPE_7 = 7,
+};
+
+typedef struct {
+	uint32_t id;
+	uint32_t vadc;
+	uint32_t tblMatch;
+}qm8626_subtype_t;
+
+/* table for supported subtype ADC readings */
+typedef struct {
+	uint32_t maxVolt;
+	uint32_t minVolt;
+	uint32_t id;
+} qm8626_subtypeID_volt_range_t;
+
+qm8626_subtypeID_volt_range_t subtype_tbl[] = {
+	{1700000, 1642600, 1 },
+	{1642500, 1588400, 2 },
+	{1588300, 1534200, 3 },
+	{1534100, 1478800, 4 },
+	{1478700, 1421100, 5 },
+	{1421000, 1358900, 6 },
+	{1358800, 1300000, 7 }
+};
+#define SUBTYPE_TBL_NUM_ELEMS ( sizeof(subtype_tbl)/sizeof(subtype_tbl[0]) )
+
+static qm8626_subtype_t qm8626_hw_subtype = {0,0,0};
+
+static void enable_mpp7_as_adc_input(void)
+{
+	uint32_t val;
+
+	/*
+	 * Sets MPP6_MODE_CTL(0xA540), bits 6:4 to 4 for Analog In and
+	 *  Bits 3:0 to 1 MPP is always enabled
+	 */
+	val = 0x41;
+	REG_WRITE((MPP_REG_BASE + QM8626_EN_MPP_ADC_INP_MPP7 * MPP_REG_RANGE
+				+ Q_REG_MODE_CTL), val);
+
+	/* Sets MPP6_EN_CTL(0xA546) bit 7 to 1 to Enable the MPP */
+	val = 0x80;
+	REG_WRITE((MPP_REG_BASE + QM8626_EN_MPP_ADC_INP_MPP7 * MPP_REG_RANGE
+				+ Q_REG_EN_CTL), val);
+
+	/* Sets the hkadc input required for the selected MPP, MPP3/MPP7 uses
+	 * hkadc7 setting  2
+	 */
+	val = 2;
+	REG_WRITE((MPP_REG_BASE + QM8626_EN_MPP_ADC_INP_MPP7 * MPP_REG_RANGE
+				+ Q_REG_AIN_CTL), val);
+
+}
+
+/*
+ * Determines subtype ID from vadc reading, if its not valid always default to
+ * HW Subtype 1. So that device boots using qm8626 ID:1 Device tree
+ */
+ uint32_t qm8626_determine_hw_subtype_id(uint32_t vadc_result)
+{
+	uint32_t i;
+
+	/* Search array for matching ID */
+	for (i=0; i < SUBTYPE_TBL_NUM_ELEMS; i++) {
+		if ((subtype_tbl[i].maxVolt >= vadc_result)
+			&& (subtype_tbl[i].minVolt <= vadc_result))
+			break;
+	}
+
+	qm8626_hw_subtype.tblMatch = i;
+
+	if (i >= SUBTYPE_TBL_NUM_ELEMS)
+		return( QM8626_HW_PLATFORM_SUBTYPE_1 );
+	else
+		return( subtype_tbl[i].id );
+
+}
+
+void qm8626_update_subtype(void)
+{
+	uint32_t vadc_result = 0;
+
+	enable_mpp7_as_adc_input();
+
+	vadc_result = pm8x41_adc_channel_read(ADC_CHANNEL_SEL_MPP7);
+
+	qm8626_hw_subtype.id = qm8626_determine_hw_subtype_id(vadc_result);
+
+	qm8626_hw_subtype.vadc = vadc_result;
+
+	/* Update the board information for the QM8626 subtype */
+	board_set_hardware_subtype(qm8626_hw_subtype.id);
+	smem_save_subtype(qm8626_hw_subtype.id);
+
+}
+
+void qm8626_enable_mpp6_red_led(void)
+{
+	/* Enable MPP6 as I drain input */
+	REG_WRITE( 0xa540, 0x6a);
+	REG_WRITE( 0xa546, 0x80);
+	/* Configure LPG CHAN6 to drive LED */
+	REG_WRITE( 0x1b641, 0x33);
+	REG_WRITE( 0x1b642, 0x43);
+	REG_WRITE( 0x1b643, 0x20);
+	REG_WRITE( 0x1b644, 0x06);
+	REG_WRITE( 0x1b645, 0x00);
+	REG_WRITE( 0x1b646, 0xE4);
+}
+
+void qm8626_uart_init(uint8_t id, uint32_t gsbi_base, uint32_t uart_dm_base)
+{
+	/* Configure the uart clock */
+	clock_config_uart_dm(id);
+	dsb();
+
+	/* Configure GPIO */
+	gpio_config_uart_dm(id);
+	dsb();
+
+	/* Configure tx and rx clocks for 115.2k baud */
+	writel(UART_DM_CLK_RX_TX_BIT_RATE, MSM_BOOT_UART_DM_CSR(uart_dm_base));
+	dsb();
+
+	/* Intialize UART_DM */
+	msm_boot_uart_dm_init(uart_dm_base);
+}
 
 void target_load_ssd_keystore(void)
 {
@@ -133,9 +278,26 @@ void target_load_ssd_keystore(void)
 
 void target_early_init(void)
 {
+	if (board_hardware_id() == HW_PLATFORM_QM8626)
+		qm8626_update_subtype();
+
 #if WITH_DEBUG_UART
-	uart_dm_init(1, 0, BLSP1_UART2_BASE);
+	if (board_hardware_id() == HW_PLATFORM_QM8626) {
+		if (qm8626_hw_subtype.id == QM8626_HW_PLATFORM_SUBTYPE_1) {
+			uart_dm_init(0, 0, BLSP1_UART0_BASE);
+			qm8626_uart_init(2, 0, BLSP1_UART2_BASE);
+		}
+		else {
+			uart_dm_init(2, 0, BLSP1_UART2_BASE);
+			qm8626_uart_init(0, 0, BLSP1_UART0_BASE);
+		}
+	} else
+		uart_dm_init(2, 0, BLSP1_UART2_BASE);
 #endif
+
+	dprintf(INFO, "HW Subtype detect: id=%ud, vadc = %ud, tblMatch = %ud \n",
+		qm8626_hw_subtype.id, qm8626_hw_subtype.vadc, qm8626_hw_subtype.tblMatch );
+
 }
 
 /* Return 1 if vol_up pressed */
@@ -144,12 +306,9 @@ static int target_volume_up()
 	uint8_t status = 0;
 
 	gpio_tlmm_config(TLMM_VOL_UP_BTN_GPIO, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_2MA, GPIO_ENABLE);
-
 	thread_sleep(10);
-
 	/* Get status of GPIO */
 	status = gpio_status(TLMM_VOL_UP_BTN_GPIO);
-
 	/* Active low signal. */
 	return !status;
 }
@@ -164,7 +323,6 @@ uint32_t target_volume_down()
 static void target_keystatus()
 {
 	keys_init();
-
 	if(target_volume_down())
 		keys_post_event(KEY_VOLUMEDOWN, 1);
 
@@ -248,13 +406,17 @@ void target_init(void)
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
 
 	target_keystatus();
-
 	target_sdc_init();
 
 	shutdown_detect();
 
 	/* turn on vibrator to indicate that phone is booting up to end user */
 	vib_timed_turn_on(VIBRATE_TIME);
+
+	if (board_hardware_id() == HW_PLATFORM_QM8626) {
+		lp55x1_start_leds();
+		qm8626_enable_mpp6_red_led();
+	}
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
@@ -305,6 +467,10 @@ void target_baseband_detect(struct board_data *board)
 	case HW_PLATFORM_SUBTYPE_SKUAB:
 		break;
 	case HW_PLATFORM_SUBTYPE_SKUG:
+		break;
+	case QM8626_HW_PLATFORM_SUBTYPE_4:
+	case QM8626_HW_PLATFORM_SUBTYPE_6:
+	case QM8626_HW_PLATFORM_SUBTYPE_7:
 		break;
 	default:
 		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n", platform_subtype);
@@ -450,8 +616,8 @@ uint8_t target_panel_auto_detect_enabled()
 	uint8_t ret = 0;
 	uint32_t hw_subtype = board_hardware_subtype();
 
-        switch(board_hardware_id())
-        {
+		switch(board_hardware_id())
+		{
 		case HW_PLATFORM_QRD:
 			if (hw_subtype != HW_PLATFORM_SUBTYPE_SKUF
 				&& hw_subtype != HW_PLATFORM_SUBTYPE_SKUG) {
@@ -464,37 +630,39 @@ uint8_t target_panel_auto_detect_enabled()
 			break;
 		case HW_PLATFORM_SURF:
 		case HW_PLATFORM_MTP:
-                default:
-                        ret = 0;
-        }
-        return ret;
+		case HW_PLATFORM_QM8626:
+		default:
+			ret = 0;
+		}
+		return ret;
 }
 
 static uint8_t splash_override;
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
 {
-        uint8_t splash_screen = 0;
-        if(!splash_override) {
-                switch(board_hardware_id())
-                {
-                        case HW_PLATFORM_MTP:
-			case HW_PLATFORM_QRD:
-                        case HW_PLATFORM_SURF:
-                                dprintf(SPEW, "Target_cont_splash=1\n");
-                                splash_screen = 1;
-                                break;
-                        default:
-                                dprintf(SPEW, "Target_cont_splash=0\n");
-                                splash_screen = 0;
-                }
-        }
-        return splash_screen;
+	uint8_t splash_screen = 0;
+	if(!splash_override) {
+		switch(board_hardware_id())
+		{
+		case HW_PLATFORM_MTP:
+		case HW_PLATFORM_QRD:
+		case HW_PLATFORM_SURF:
+		case HW_PLATFORM_QM8626:
+			dprintf(SPEW, "Target_cont_splash=1\n");
+			splash_screen = 1;
+			break;
+		default:
+			dprintf(SPEW, "Target_cont_splash=0\n");
+			splash_screen = 0;
+		}
+	}
+	return splash_screen;
 }
 
 void target_force_cont_splash_disable(uint8_t override)
 {
-        splash_override = override;
+	splash_override = override;
 }
 
 unsigned target_pause_for_battery_charge(void)
