@@ -36,6 +36,7 @@
 
 #include "include/panel.h"
 #include "panel_display.h"
+#include <target/init.h>
 
 /*---------------------------------------------------------------------------*/
 /* GCDB Panel Database                                                       */
@@ -396,6 +397,9 @@ bool oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 			panel_id = JDI_1080P_VIDEO_PANEL;
 		else
 			panel_id = nt35590_panel_id;
+		break;
+	case HW_PLATFORM_QM8626:
+		panel_id = nt35590_panel_id;
 		break;
 	default:
 		dprintf(CRITICAL, "Display not enabled for %d HW type\n"
