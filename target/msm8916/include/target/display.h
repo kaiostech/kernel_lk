@@ -49,6 +49,14 @@ static struct gpio_pin bkl_gpio = {
   "msmgpio", 98, 3, 1, 0, 1
 };
 
+static struct gpio_pin bkl_gpio_1 = {
+  "msmgpio", 75, 3, 1, 0, 1
+};
+
+static struct gpio_pin bkl_gpio_2 = {
+  "msmgpio", 77, 3, 1, 0, 1
+};
+
 static struct gpio_pin enp_gpio = {
   "msmgpio", 97, 3, 1, 0, 1
 };

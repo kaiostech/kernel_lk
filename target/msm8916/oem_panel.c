@@ -91,7 +91,7 @@ static struct panel_list supp_panels[] = {
 	{"jdi_fhd_video", JDI_FHD_VIDEO_PANEL}
 };
 
-static uint32_t panel_id;
+uint32_t panel_id;
 
 int oem_panel_rotation()
 {

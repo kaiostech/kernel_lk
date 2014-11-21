@@ -53,6 +53,20 @@
 #define PWM_DUTY_US 13
 #define PWM_PERIOD_US 27
 
+enum {
+JDI_1080P_VIDEO_PANEL,
+NT35590_720P_VIDEO_PANEL,
+NT35590_720P_CMD_PANEL,
+INNOLUX_720P_VIDEO_PANEL,
+OTM8019A_FWVGA_VIDEO_PANEL,
+OTM1283A_720P_VIDEO_PANEL,
+NT35596_1080P_VIDEO_PANEL,
+SHARP_WQXGA_DUALDSI_VIDEO_PANEL,
+HX8379A_FWVGA_VIDEO_PANEL,
+JDI_FHD_VIDEO_PANEL,
+UNKNOWN_PANEL
+};
+
 static void mdss_dsi_uniphy_pll_sw_reset_8916(uint32_t pll_base)
 {
 	writel(0x01, pll_base + 0x0068); /* PLL TEST CFG */
@@ -317,6 +331,21 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 				bkl_gpio.pin_direction, bkl_gpio.pin_pull,
 				bkl_gpio.pin_strength, bkl_gpio.pin_state);
 			gpio_set_dir(bkl_gpio.pin_id, 2);
+
+			/*JDI incell panel requires twoo addition GPIOs to be enabled*/
+			if (panel_id == JDI_FHD_VIDEO_PANEL) {
+				dprintf(INFO, "panel_id = %d \n", panel_id);
+				gpio_tlmm_config(bkl_gpio_1.pin_id, 0,
+					bkl_gpio_1.pin_direction, bkl_gpio_1.pin_pull,
+					bkl_gpio_1.pin_strength, bkl_gpio_1.pin_state);
+				gpio_set_dir(bkl_gpio_1.pin_id, 2);
+
+				gpio_tlmm_config(bkl_gpio_2.pin_id, 0,
+					bkl_gpio_2.pin_direction, bkl_gpio_2.pin_pull,
+					bkl_gpio_2.pin_strength, bkl_gpio_2.pin_state);
+				gpio_set_dir(bkl_gpio_2.pin_id, 2);
+			}
+
 		}
 
 		gpio_tlmm_config(reset_gpio.pin_id, 0,
