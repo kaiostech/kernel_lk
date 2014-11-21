@@ -63,6 +63,7 @@ endif
 ifneq ($(shell uname -m | grep "arm.*"),)
   CFLAGS += -fno-stack-protector
 endif
+CFLAGS += -fno-strict-overflow
 CPPFLAGS := -fno-exceptions -fno-rtti -fno-threadsafe-statics
 #CPPFLAGS += -Weffc++
 ASMFLAGS := -DASSEMBLY
