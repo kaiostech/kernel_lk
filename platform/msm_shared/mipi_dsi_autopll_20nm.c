@@ -156,6 +156,7 @@ pll_done:
 
 uint32_t mdss_dsi_pll_20nm_sw_reset_st_machine(uint32_t pll_base)
 {
+	writel(0x03, pll_base + MMSS_DSI_PHY_PLL_PLL_VCOTAIL_EN);
 	writel(0x64, pll_base + MMSS_DSI_PHY_PLL_RES_CODE_START_SEG1);
 	writel(0x64, pll_base + MMSS_DSI_PHY_PLL_RES_CODE_START_SEG2);
 	writel(0x15, pll_base + MMSS_DSI_PHY_PLL_RES_TRIM_CONTROL);
@@ -163,6 +164,7 @@ uint32_t mdss_dsi_pll_20nm_sw_reset_st_machine(uint32_t pll_base)
 	writel(0x20, pll_base + MMSS_DSI_PHY_PLL_RESETSM_CNTRL);
 	writel(0x07, pll_base + MMSS_DSI_PHY_PLL_RESETSM_CNTRL2);
 	writel(0x02, pll_base + MMSS_DSI_PHY_PLL_RESETSM_CNTRL3);
+	udelay(1);
 	writel(0x03, pll_base + MMSS_DSI_PHY_PLL_RESETSM_CNTRL3);
 }
 
@@ -188,7 +190,7 @@ static void pll_20nm_phy_loop_bw_config(uint32_t pll_base)
 static void pll_20nm_phy_config(uint32_t pll_base)
 {
 	writel(0x40, pll_base + MMSS_DSI_PHY_PLL_SYS_CLK_CTRL);
-	writel(0x00, pll_base + MMSS_DSI_PHY_PLL_PLL_VCOTAIL_EN);
+	writel(0x82, pll_base + MMSS_DSI_PHY_PLL_PLL_VCOTAIL_EN);
 	writel(0x00, pll_base + MMSS_DSI_PHY_PLL_CMN_MODE);
 	writel(0x0f, pll_base + MMSS_DSI_PHY_PLL_IE_TRIM);
 	writel(0x0f, pll_base + MMSS_DSI_PHY_PLL_IP_TRIM);
