@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014, 2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -389,6 +389,30 @@ static struct vote_clk gcc_ce1_axi_clk = {
 	},
 };
 
+static struct rcg_clk gcc_blsp1_qup1_i2c_apps_clk_src =
+{
+	.cmd_reg      = (uint32_t *) GCC_BLSP1_QUP1_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) GCC_BLSP1_QUP1_CFG_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl     = ftbl_gcc_blsp1_qup2_i2c_apps_clk_src,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup1_i2c_apps_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
+static struct branch_clk gcc_blsp1_qup1_i2c_apps_clk = {
+	.cbcr_reg = GCC_BLSP1_QUP1_APPS_CBCR,
+	.parent   = &gcc_blsp1_qup1_i2c_apps_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup1_i2c_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
 
 static struct rcg_clk gcc_blsp1_qup2_i2c_apps_clk_src =
 {
@@ -412,6 +436,78 @@ static struct branch_clk gcc_blsp1_qup2_i2c_apps_clk = {
 		.dbg_name = "gcc_blsp1_qup2_i2c_apps_clk",
 		.ops      = &clk_ops_branch,
 	},
+};
+
+static struct rcg_clk gcc_blsp1_qup3_i2c_apps_clk_src =
+{
+	.cmd_reg      = (uint32_t *) GCC_BLSP1_QUP3_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) GCC_BLSP1_QUP3_CFG_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl     = ftbl_gcc_blsp1_qup2_i2c_apps_clk_src,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup3_i2c_apps_clk_src",
+		.ops      = &clk_ops_rcg,
+	 },
+};
+
+static struct branch_clk gcc_blsp1_qup3_i2c_apps_clk = {
+	.cbcr_reg = GCC_BLSP1_QUP3_APPS_CBCR,
+	.parent   = &gcc_blsp1_qup3_i2c_apps_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup3_i2c_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct rcg_clk gcc_blsp1_qup4_i2c_apps_clk_src =
+{
+	.cmd_reg      = (uint32_t *) GCC_BLSP1_QUP4_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) GCC_BLSP1_QUP4_CFG_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl     = ftbl_gcc_blsp1_qup2_i2c_apps_clk_src,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup4_i2c_apps_clk_src",
+		.ops      = &clk_ops_rcg,
+	 },
+};
+
+static struct branch_clk gcc_blsp1_qup4_i2c_apps_clk = {
+	.cbcr_reg = GCC_BLSP1_QUP4_APPS_CBCR,
+	.parent   = &gcc_blsp1_qup4_i2c_apps_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup4_i2c_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct rcg_clk gcc_blsp1_qup5_i2c_apps_clk_src =
+{
+	.cmd_reg      = (uint32_t *) GCC_BLSP1_QUP5_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) GCC_BLSP1_QUP5_CFG_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl     = ftbl_gcc_blsp1_qup2_i2c_apps_clk_src,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup5_i2c_apps_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
+static struct branch_clk gcc_blsp1_qup5_i2c_apps_clk = {
+	.cbcr_reg = GCC_BLSP1_QUP5_APPS_CBCR,
+	.parent   = &gcc_blsp1_qup5_i2c_apps_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp1_qup5_i2c_apps_clk",
+		.ops      = &clk_ops_branch,
+	 },
 };
 
 /* Display clocks */
@@ -547,9 +643,21 @@ static struct clk_lookup msm_clocks_msm8909[] =
 	CLK_LOOKUP("ce1_core_clk", gcc_ce1_clk.c),
 	CLK_LOOKUP("ce1_src_clk",  ce1_clk_src.c),
 
+	CLK_LOOKUP("blsp1_qup1_ahb_iface_clk", gcc_blsp1_ahb_clk.c),
 	CLK_LOOKUP("blsp1_qup2_ahb_iface_clk", gcc_blsp1_ahb_clk.c),
+	CLK_LOOKUP("blsp1_qup3_ahb_iface_clk", gcc_blsp1_ahb_clk.c),
+	CLK_LOOKUP("blsp1_qup4_ahb_iface_clk", gcc_blsp1_ahb_clk.c),
+	CLK_LOOKUP("blsp1_qup5_ahb_iface_clk", gcc_blsp1_ahb_clk.c),
+	CLK_LOOKUP("gcc_blsp1_qup1_i2c_apps_clk_src", gcc_blsp1_qup1_i2c_apps_clk_src.c),
+	CLK_LOOKUP("gcc_blsp1_qup1_i2c_apps_clk", gcc_blsp1_qup1_i2c_apps_clk.c),
 	CLK_LOOKUP("gcc_blsp1_qup2_i2c_apps_clk_src", gcc_blsp1_qup2_i2c_apps_clk_src.c),
 	CLK_LOOKUP("gcc_blsp1_qup2_i2c_apps_clk", gcc_blsp1_qup2_i2c_apps_clk.c),
+	CLK_LOOKUP("gcc_blsp1_qup3_i2c_apps_clk_src", gcc_blsp1_qup3_i2c_apps_clk_src.c),
+	CLK_LOOKUP("gcc_blsp1_qup3_i2c_apps_clk", gcc_blsp1_qup3_i2c_apps_clk.c),
+	CLK_LOOKUP("gcc_blsp1_qup4_i2c_apps_clk_src", gcc_blsp1_qup4_i2c_apps_clk_src.c),
+	CLK_LOOKUP("gcc_blsp1_qup4_i2c_apps_clk", gcc_blsp1_qup4_i2c_apps_clk.c),
+	CLK_LOOKUP("gcc_blsp1_qup5_i2c_apps_clk_src", gcc_blsp1_qup5_i2c_apps_clk_src.c),
+	CLK_LOOKUP("gcc_blsp1_qup5_i2c_apps_clk", gcc_blsp1_qup5_i2c_apps_clk.c),
 
 	CLK_LOOKUP("mdp_ahb_clk", mdp_ahb_clk.c),
 	CLK_LOOKUP("mdss_esc0_clk", mdss_esc0_clk.c),
