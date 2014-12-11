@@ -230,6 +230,7 @@ typedef struct
 
 #define PRNG_CMD_ID                 0x01
 #define IS_CALL_AVAIL_CMD           0x01
+#define IS_SECURE_BOOT_ENABLED      0x04
 
 /* Download Mode specific arguments to be passed to TZ */
 #define SCM_EDLOAD_MODE 0x02
