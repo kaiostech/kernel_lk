@@ -57,6 +57,10 @@
 /*---------------------------------------------------------------------------*/
 static uint32_t auto_pan_loop = 0;
 
+uint32_t panel_regulator_settings[] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 enum {
 JDI_1080P_VIDEO_PANEL,
 NT35590_720P_VIDEO_PANEL,
@@ -331,8 +335,6 @@ bool oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		target_id = board_target_id();
 		plat_hw_ver_major = ((target_id >> 16) & 0xFF);
 
-		/* LDO mode */
-		phy_db->regulator_mode = DSI_PHY_REGULATOR_LDO_MODE;
 		switch (hw_subtype) {
 		case HW_PLATFORM_SUBTYPE_SKUH:
 			/* qrd fan-out hw ? */
@@ -361,6 +363,19 @@ bool oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 	}
 
 panel_init:
+	/*
+	 * Update all data structures after 'panel_init' label. Only panel
+	 * selection is supposed to happen before that.
+	 */
+	if (hw_id == HW_PLATFORM_QRD) {
+		phy_db->regulator_mode = DSI_PHY_REGULATOR_LDO_MODE;
+		memcpy(panel_regulator_settings,
+				ldo_regulator_settings, REGULATOR_SIZE);
+	} else {
+		memcpy(panel_regulator_settings,
+				dcdc_regulator_settings, REGULATOR_SIZE);
+	}
+
 	pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
 	return init_panel_data(panelstruct, pinfo, phy_db);
 }
