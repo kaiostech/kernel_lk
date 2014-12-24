@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -425,6 +425,7 @@ static int ssd_image_is_encrypted(uint32_t ** img_ptr, uint32_t * img_len_ptr, u
 			scm_arg.x1 = MAKE_SCM_ARGS(0x2,SMC_PARAM_TYPE_VALUE,SMC_PARAM_TYPE_BUFFER_READWRITE);
 			scm_arg.x2 = parse_req.md_len;
 			scm_arg.x3 = parse_req.md;
+			scm_arg.atomic = true;
 
 			ret = scm_call2(&scm_arg, &scm_ret);
 			parse_rsp.status = scm_ret.x1;
