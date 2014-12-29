@@ -243,5 +243,4 @@ int mdss_dsi_cmds_tx(struct mipi_panel_info *mipi,
 	struct mipi_dsi_cmd *cmds, int count, char dual_dsi);
 int mdss_dsi_cmds_rx(struct mipi_panel_info *mipi, uint32_t **rp, int rp_len,
 	int rdbk_len);
-
 #endif
