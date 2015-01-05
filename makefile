@@ -63,6 +63,11 @@ endif
 ifneq ($(shell uname -m | grep "arm.*"),)
   CFLAGS += -fno-stack-protector
 endif
+
+ifeq ($(TARGET_BUILD_VARIANT),user)
+  CFLAGS += -DDISABLE_FASTBOOT_CMDS=1
+endif
+
 CFLAGS += -fno-strict-overflow
 CPPFLAGS := -fno-exceptions -fno-rtti -fno-threadsafe-statics
 #CPPFLAGS += -Weffc++
