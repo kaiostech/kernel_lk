@@ -43,6 +43,8 @@
 #include "include/panel_hx8379a_fwvga_skua_video.h"
 #include "include/panel_ili9806e_fwvga_video.h"
 #include "include/panel_hx8394d_qhd_video.h"
+#include "include/panel_hx8394d_wvga_video.h"
+#include "include/panel_hx8394d_hvga_video.h"
 #include "include/panel_hx8379c_fwvga_video.h"
 
 #define DISPLAY_MAX_PANEL_DETECTION 0
@@ -66,6 +68,8 @@ enum {
 	ILI9806E_FWVGA_VIDEO_PANEL,
 	HX8394D_QHD_VIDEO_PANEL,
 	HX8379C_FWVGA_VIDEO_PANEL,
+	HX8394D_WVGA_VIDEO_PANEL,
+	HX8394D_HVGA_VIDEO_PANEL,
 	UNKNOWN_PANEL
 };
 
@@ -81,6 +85,8 @@ static struct panel_list supp_panels[] = {
 	{"ili9806e_fwvga_video",ILI9806E_FWVGA_VIDEO_PANEL},
 	{"hx8394d_qhd_video", HX8394D_QHD_VIDEO_PANEL},
 	{"hx8379c_fwvga_video",HX8379C_FWVGA_VIDEO_PANEL},
+	{"hx8394d_wvga_video", HX8394D_WVGA_VIDEO_PANEL},
+	{"hx8394d_hvga_video", HX8394D_HVGA_VIDEO_PANEL},
 };
 
 static uint32_t panel_id;
@@ -237,6 +243,48 @@ static int init_panel_data(struct panel_struct *panelstruct,
 		memcpy(phy_db->timing,
 				hx8394d_qhd_video_timings, TIMING_SIZE);
 		pinfo->mipi.signature = HX8394D_QHD_VIDEO_SIGNATURE;
+		break;
+	case HX8394D_HVGA_VIDEO_PANEL:
+		panelstruct->paneldata	  = &hx8394d_hvga_video_panel_data;
+		panelstruct->panelres	  = &hx8394d_hvga_video_panel_res;
+		panelstruct->color		  = &hx8394d_hvga_video_color;
+		panelstruct->videopanel   = &hx8394d_hvga_video_video_panel;
+		panelstruct->commandpanel = &hx8394d_hvga_video_command_panel;
+		panelstruct->state		  = &hx8394d_hvga_video_state;
+		panelstruct->laneconfig   = &hx8394d_hvga_video_lane_config;
+		panelstruct->paneltiminginfo
+					 = &hx8394d_hvga_video_timing_info;
+		panelstruct->panelresetseq
+					 = &hx8394d_hvga_video_panel_reset_seq;
+		panelstruct->backlightinfo = &hx8394d_hvga_video_backlight;
+		pinfo->mipi.panel_cmds
+					= hx8394d_hvga_video_on_command;
+		pinfo->mipi.num_of_panel_cmds
+					= HX8394D_HVGA_VIDEO_ON_COMMAND;
+		memcpy(phy_db->timing,
+				hx8394d_hvga_video_timings, TIMING_SIZE);
+		pinfo->mipi.signature = HX8394D_HVGA_VIDEO_SIGNATURE;
+		break;
+	case HX8394D_WVGA_VIDEO_PANEL:
+		panelstruct->paneldata	  = &hx8394d_wvga_video_panel_data;
+		panelstruct->panelres	  = &hx8394d_wvga_video_panel_res;
+		panelstruct->color		  = &hx8394d_wvga_video_color;
+		panelstruct->videopanel   = &hx8394d_wvga_video_video_panel;
+		panelstruct->commandpanel = &hx8394d_wvga_video_command_panel;
+		panelstruct->state		  = &hx8394d_wvga_video_state;
+		panelstruct->laneconfig   = &hx8394d_wvga_video_lane_config;
+		panelstruct->paneltiminginfo
+					 = &hx8394d_wvga_video_timing_info;
+		panelstruct->panelresetseq
+					 = &hx8394d_wvga_video_panel_reset_seq;
+		panelstruct->backlightinfo = &hx8394d_wvga_video_backlight;
+		pinfo->mipi.panel_cmds
+					= hx8394d_wvga_video_on_command;
+		pinfo->mipi.num_of_panel_cmds
+					= HX8394D_WVGA_VIDEO_ON_COMMAND;
+		memcpy(phy_db->timing,
+				hx8394d_wvga_video_timings, TIMING_SIZE);
+		pinfo->mipi.signature = HX8394D_WVGA_VIDEO_SIGNATURE;
 		break;
 	case HX8379C_FWVGA_VIDEO_PANEL:
 		panelstruct->paneldata    = &hx8379c_fwvga_video_panel_data;
