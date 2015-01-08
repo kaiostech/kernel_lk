@@ -73,6 +73,16 @@ uint32_t mdss_mdp_intf_offset()
 	return mdss_mdp_intf_off;
 }
 
+static uint32_t mdss_mdp_vbif_qos_remap_get_offset()
+{
+	uint32_t mdss_mdp_rev = readl(MDP_HW_REV);
+
+	if (mdss_mdp_rev == MDSS_MDP_HW_REV_110)
+		return 0xB0020;
+	else
+		return 0xC8020;
+}
+
 void mdp_clk_gating_ctrl(void)
 {
 	writel(0x40000000, MDP_CLK_CTRL0);
@@ -716,6 +726,7 @@ void mdss_vbif_qos_remapper_setup(struct msm_panel_info *pinfo)
 	uint32_t left_pipe_xin_id, right_pipe_xin_id;
 	uint32_t mdp_hw_rev = readl(MDP_HW_REV);
 	uint32_t vbif_qos[4] = {0, 0, 0, 0};
+	uint32_t vbif_offset;
 
 	mdp_select_pipe_xin_id(pinfo,
 			&left_pipe_xin_id, &right_pipe_xin_id);
@@ -737,8 +748,11 @@ void mdss_vbif_qos_remapper_setup(struct msm_panel_info *pinfo)
 		return;
 	}
 
+	vbif_offset = mdss_mdp_vbif_qos_remap_get_offset();
+
 	for (i = 0; i < 4; i++) {
-		reg_val = readl(VBIF_VBIF_QOS_REMAP_00 + i*4);
+		/* VBIF_VBIF_QOS_REMAP_00 */
+		reg_val = readl(REG_MDP(vbif_offset) + i*4);
 		mask = 0x3 << (left_pipe_xin_id * 2);
 		reg_val &= ~(mask);
 		reg_val |= vbif_qos[i] << (left_pipe_xin_id * 2);
@@ -748,7 +762,7 @@ void mdss_vbif_qos_remapper_setup(struct msm_panel_info *pinfo)
 			reg_val &= ~(mask);
 			reg_val |= vbif_qos[i] << (right_pipe_xin_id * 2);
 		}
-		writel(reg_val, VBIF_VBIF_QOS_REMAP_00 + i*4);
+		writel(reg_val, REG_MDP(vbif_offset) + i*4);
 	}
 }
 
