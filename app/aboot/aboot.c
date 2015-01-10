@@ -332,6 +332,10 @@ unsigned char *update_cmdline(const char * cmdline)
 			target_display_panel_node(device.display_panel,
 			display_panel_buf, MAX_PANEL_BUF_SIZE) &&
 			strlen(display_panel_buf)) {
+			char *panel_name = device.display_panel;
+			panel_name += strspn(panel_name, " ");
+			strlcat(display_panel_buf, " androidboot.panelname=", MAX_PANEL_BUF_SIZE);
+			strlcat(display_panel_buf, panel_name, MAX_PANEL_BUF_SIZE);
 			cmdline_len += strlen(display_panel_buf);
 		}
 	}
