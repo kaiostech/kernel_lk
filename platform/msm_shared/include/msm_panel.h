@@ -221,6 +221,7 @@ struct msm_fb_panel_data {
 	int (*pll_clk_func) (int enable, struct msm_panel_info *);
 	int (*post_power_func)(int enable);
 	int (*pre_init_func)(void);
+	int (*update_panel_info) (void);
 };
 
 #endif
