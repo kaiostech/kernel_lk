@@ -471,6 +471,7 @@ void target_display_init(const char *panel_name)
 
 	if (!strcmp(panel_name, HDMI_PANEL_NAME)) {
 		dprintf(INFO, "%s: HDMI is primary\n", __func__);
+		mdss_hdmi_display_init(MDP_REV_50, HDMI_FB_ADDR);
 		return;
 	}
 
