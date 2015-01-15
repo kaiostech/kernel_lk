@@ -577,9 +577,14 @@ static void mdss_hdmi_parse_res(void)
 
 void mdss_hdmi_get_vic(char *buf)
 {
-	struct mdss_hdmi_timing_info tinfo = HDMI_RESOLUTION_DATA;
+	struct mdss_hdmi_timing_info tinfo = {0};
+	uint32_t ret = mdss_hdmi_get_timing_info(&tinfo, mdss_hdmi_video_fmt);
 
-	snprintf(buf, VIC_STR_MAX, "%d", tinfo.video_format);
+	if (ret)
+		snprintf(buf, VIC_STR_MAX, "%d", HDMI_VFRMT_UNKNOWN);
+	else
+		snprintf(buf, VIC_STR_MAX, "%d", tinfo.video_format);
+
 }
 
 static void mdss_hdmi_panel_init(struct msm_panel_info *pinfo)
