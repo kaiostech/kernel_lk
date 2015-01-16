@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -37,7 +37,7 @@
 #include <bits.h>
 #include <debug.h>
 #include <sdhci.h>
-
+#include <sdhci_msm.h>
 
 /*
  * Function: sdhci reset
@@ -263,13 +263,6 @@ void sdhci_set_uhs_mode(struct sdhci_host *host, uint32_t mode)
 	};
 
 	REG_WRITE16(host, ctrl, SDHCI_HOST_CTRL2_REG);
-
-	/*
-	 * SDHC spec does not have matching UHS mode
-	 * So we use Vendor specific registers to enable
-	 * HS400 mode
-	 */
-	sdhci_msm_set_mci_clk(host);
 
 	/* Run the clock back */
 	sdhci_clk_supply(host, clk_val);
@@ -748,7 +741,14 @@ uint32_t sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 		trans_mode |= SDHCI_DMA_EN;
 
 		if (cmd->trans_mode == SDHCI_MMC_READ)
+		{
 			trans_mode |= SDHCI_READ_MODE;
+			sdhci_msm_toggle_cdr(host, true);
+		}
+		else
+		{
+			sdhci_msm_toggle_cdr(host, false);
+		}
 
 		/* Enable auto cmd23 or cmd12 for multi block transfer
 		 * based on what command card supports
@@ -799,7 +799,6 @@ uint32_t sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 void sdhci_init(struct sdhci_host *host)
 {
 	uint32_t caps[2];
-
 
 	/* Read the capabilities register & store the info */
 	caps[0] = REG_READ32(host, SDHCI_CAPS_REG1);
