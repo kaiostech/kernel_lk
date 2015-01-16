@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -592,11 +592,32 @@ int target_cont_splash_screen()
 
 void apq8064_ext_3p3V_enable()
 {
-	/* Configure GPIO for output */
-	gpio_tlmm_config(77, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_ENABLE);
+	int target_id = board_target_id();
+	bool config = false;
 
-	/* Output High */
-	gpio_set(77, 2);
+	switch (target_id) {
+	case LINUX_MACHTYPE_8064_ADP_2:
+	case LINUX_MACHTYPE_8064_ADP_2_ES2:
+	case LINUX_MACHTYPE_8064_ADP_2_ES2P5:
+		if (MPLATFORM()) {
+			config = true;
+		}
+		break;
+	case LINUX_MACHTYPE_8064_MPQ_CDP:
+	case LINUX_MACHTYPE_8064_MPQ_HRD:
+	case LINUX_MACHTYPE_8064_MPQ_DTV:
+		config = true;
+		break;
+	default:
+		break;
+	}
+
+	if (config) {
+		/* Configure GPIO for output */
+		gpio_tlmm_config(77, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA, GPIO_ENABLE);
+		/* Output High */
+		gpio_set(77, 2);
+	}
 }
 
 /* Do target specific usb initialization */
