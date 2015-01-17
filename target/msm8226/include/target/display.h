@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -117,6 +117,7 @@ enum target_subtype {
 	HW_PLATFORM_SUBTYPE_1080P_EXT_BUCK = 3,
 	HW_PLATFORM_SUBTYPE_QVGA = 4,
 	HW_PLATFORM_SUBTYPE_SKUG = 5,
+	HW_PLATFORM_SUBTYPE_G_QVGA = 5,
 };
 
 extern int mdss_dsi_phy_init(struct mipi_dsi_panel_config *, uint32_t ctl_base);

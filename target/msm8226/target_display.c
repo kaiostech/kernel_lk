@@ -350,7 +350,8 @@ void target_display_init(const char *panel_name)
         uint32_t ret = 0;
 	uint32_t fb_addr = MIPI_FB_ADDR;
 
-	if (board_hardware_subtype() == HW_PLATFORM_SUBTYPE_QVGA)
+	if (board_hardware_subtype() == HW_PLATFORM_SUBTYPE_QVGA ||
+		board_hardware_subtype() == HW_PLATFORM_SUBTYPE_G_QVGA)
 		fb_addr = MIPI_FB_ADDR_QVGA;
 
 	do {
