@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-15, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -154,12 +154,16 @@ pll_done:
 	return status;
 }
 
-static void mdss_dsi_pll_20nm_config_common_block(uint32_t pll_base)
+static void mdss_dsi_pll_20nm_config_common_block_1(uint32_t pll_base)
 {
 	writel(0x82, pll_base + MMSS_DSI_PHY_PLL_PLL_VCOTAIL_EN);
 	writel(0x2a, pll_base + MMSS_DSI_PHY_PLL_BIAS_EN_CLKBUFLR_EN);
 	writel(0x2b, pll_base + MMSS_DSI_PHY_PLL_BIAS_EN_CLKBUFLR_EN);
 	writel(0x02, pll_base + MMSS_DSI_PHY_PLL_RESETSM_CNTRL3);
+}
+
+static void mdss_dsi_pll_20nm_config_common_block_2(uint32_t pll_base)
+{
 	writel(0x40, pll_base + MMSS_DSI_PHY_PLL_SYS_CLK_CTRL);
 	writel(0x0f, pll_base + MMSS_DSI_PHY_PLL_IE_TRIM);
 	writel(0x0f, pll_base + MMSS_DSI_PHY_PLL_IP_TRIM);
@@ -187,12 +191,6 @@ static void mdss_dsi_pll_20nm_config_loop_bw(uint32_t pll_base)
 	writel(0x03, pll_base + MMSS_DSI_PHY_PLL_PLL_IP_SETP);
 	writel(0x1f, pll_base + MMSS_DSI_PHY_PLL_PLL_CP_SETP);
 	writel(0x77, pll_base + MMSS_DSI_PHY_PLL_PLL_CRCTRL);
-}
-
-static void mdss_dsi_pll_20nm_phy_config(uint32_t pll_base)
-{
-	mdss_dsi_pll_20nm_config_common_block(pll_base);
-	mdss_dsi_pll_20nm_config_loop_bw(pll_base);
 }
 
 static void mdss_dsi_pll_20nm_config_vco_rate(uint32_t pll_base, struct mdss_dsi_pll_config *pd)
@@ -276,24 +274,24 @@ static void mdss_dsi_pll_20nm_disable(uint32_t pll_base)
 	dmb();
 }
 
-void mdss_dsi_auto_pll_20nm_config(uint32_t pll_base, uint32_t ctl_base,
-				struct mdss_dsi_pll_config *pd)
+void mdss_dsi_auto_pll_20nm_config(uint32_t pll_base,
+	struct mdss_dsi_pll_config *pd)
 {
+	uint32_t pll_base_other;
 
-	mdss_dsi_pll_20nm_phy_config(pll_base);
+	pll_base_other = (pll_base == DSI0_PLL_BASE) ? DSI1_PLL_BASE :
+		DSI0_PLL_BASE;
 
-	/*
-	 * For 20nm PHY, DSI PLL 1 drains some current in its reset state.
-	 * Need to turn off the DSI1 PLL explicitly.
-	 */
-	if (ctl_base == MIPI_DSI0_BASE) {
-		dprintf(SPEW, "Calling disable function for PHY PLL 1 \n");
-		mdss_dsi_pll_20nm_disable(DSI1_PLL_BASE);
-	}
+	/* config the other pll off */
+	mdss_dsi_pll_20nm_config_common_block_1(pll_base_other);
+	mdss_dsi_pll_20nm_disable(pll_base_other);
 
+	mdss_dsi_pll_20nm_config_common_block_1(pll_base);
+	mdss_dsi_pll_20nm_config_common_block_2(pll_base);
+	mdss_dsi_pll_20nm_config_loop_bw(pll_base);
 	mdss_dsi_pll_20nm_config_vco_rate(pll_base, pd);
-
 	mdss_dsi_pll_20nm_config_resetsm(pll_base);
 	mdss_dsi_pll_20nm_config_vco_start(pll_base);
+
 	udelay(1000);
 }
