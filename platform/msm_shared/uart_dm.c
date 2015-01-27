@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -98,7 +98,6 @@ static uint8_t pack_chars_into_words(uint8_t *buffer, uint8_t cnt, uint32_t *wor
 /* Static Function Prototype Declarations */
 static unsigned int msm_boot_uart_calculate_num_chars_to_write(char *data_in,
 							       uint32_t *num_of_chars);
-static unsigned int msm_boot_uart_dm_init(uint32_t base);
 static unsigned int msm_boot_uart_dm_read(uint32_t base,
 	unsigned int *data, int wait);
 static unsigned int msm_boot_uart_dm_write(uint32_t base, char *data,
@@ -156,7 +155,7 @@ static unsigned int msm_boot_uart_dm_reset(uint32_t base)
 /*
  * Initialize UART_DM - configure clock and required registers.
  */
-static unsigned int msm_boot_uart_dm_init(uint32_t uart_dm_base)
+unsigned int msm_boot_uart_dm_init(uint32_t uart_dm_base)
 {
 	/* Configure UART mode registers MR1 and MR2 */
 	/* Hardware flow control isn't supported */
