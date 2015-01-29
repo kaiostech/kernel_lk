@@ -38,7 +38,7 @@ OBJS += \
 	$(LOCAL_DIR)/mmc.o
 endif
 
-ifeq ($(VERIFIED_BOOT),1)
+ifeq ($(ENABLE_VERIFIED_BOOT),1)
 OBJS += \
 	$(LOCAL_DIR)/boot_verifier.o
 endif
