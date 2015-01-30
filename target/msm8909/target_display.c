@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -124,6 +124,17 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 		pm8x41_enable_mpp(&mpp, MPP_DISABLE);
 	}
 	mdelay(20);
+
+	if (enable) {
+		if (hw_id == HW_PLATFORM_SURF || (hw_id == HW_PLATFORM_MTP)) {
+			/* configure backlight gpio for CDP and MTP */
+			gpio_tlmm_config(bkl_gpio.pin_id, 0,
+				bkl_gpio.pin_direction, bkl_gpio.pin_pull,
+				bkl_gpio.pin_strength, bkl_gpio.pin_state);
+				gpio_set(bkl_gpio.pin_id, 2);
+		}
+	}
+
 	return 0;
 }
 
@@ -191,14 +202,6 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 			gpio_set(enable_gpio.pin_id, 2);
 		}
 
-		if (hw_id == HW_PLATFORM_SURF || (hw_id == HW_PLATFORM_MTP)) {
-			/* configure backlight gpio for CDP and MTP */
-			gpio_tlmm_config(bkl_gpio.pin_id, 0,
-				bkl_gpio.pin_direction, bkl_gpio.pin_pull,
-				bkl_gpio.pin_strength, bkl_gpio.pin_state);
-			gpio_set(bkl_gpio.pin_id, 2);
-		}
-
 		gpio_tlmm_config(reset_gpio.pin_id, 0,
 				reset_gpio.pin_direction, reset_gpio.pin_pull,
 				reset_gpio.pin_strength, reset_gpio.pin_state);
@@ -240,8 +243,12 @@ void target_display_init(const char *panel_name)
 	uint32_t panel_loop = 0;
 	uint32_t ret = 0;
 
-	if (!strcmp(panel_name, NO_PANEL_CONFIG)) {
-		dprintf(INFO, "Skip panel configuration\n");
+	panel_name += strspn(panel_name, " ");
+	if (!strcmp(panel_name, NO_PANEL_CONFIG)
+		|| !strcmp(panel_name, SIM_VIDEO_PANEL)
+		|| !strcmp(panel_name, SIM_CMD_PANEL)) {
+		dprintf(INFO, "Selected %s: Skip panel configuration\n",
+				panel_name);
 		return;
 	}
 
