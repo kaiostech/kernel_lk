@@ -320,8 +320,6 @@ int mdss_dsi_phy_init(struct mipi_dsi_panel_config *pinfo, uint32_t ctl_base)
 	/* MMSS_DSI_0_PHY_DSIPHY_CTRL_0 */
 	writel(0x5f, ctl_base + 0x0470);
 
-	/* Strength ctrl 1 */
-	writel(pd->strength[1], ctl_base + 0x0488);
 	dmb();
 	/* 4 lanes + clk lane configuration */
 	/* lane config n * (0 - 4) & DataPath setup */
@@ -358,3 +356,18 @@ int mdss_dsi_phy_init(struct mipi_dsi_panel_config *pinfo, uint32_t ctl_base)
 	dmb();
 
 }
+
+void mdss_dsi_phy_contention_detection(
+		struct mipi_dsi_panel_config *pinfo,
+		uint32_t ctrl_base)
+{
+        struct mdss_dsi_phy_ctrl *pd;
+
+        if (mdp_get_revision() == MDP_REV_304)
+                return;
+
+        pd = (pinfo->mdss_dsi_phy_config);
+	writel(pd->strength[1], ctrl_base + 0x0488);
+	dmb();
+}
+

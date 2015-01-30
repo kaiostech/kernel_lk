@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -842,11 +842,17 @@ static uint32_t mmc_set_hs200_mode(struct sdhci_host *host,
 	sdhci_set_uhs_mode(host, SDHCI_SDR104_MODE);
 
 	/* Run the clock @ 400 Mhz */
-	if (mmc_card_supports_hs400_mode(card))
+	if (host->caps.hs400_support && mmc_card_supports_hs400_mode(card))
 	{
-		clock_config_mmc(host->msm_host->slot, SDHCI_CLK_400MHZ);
 		/* Save the timing value, before changing the clock */
 		MMC_SAVE_TIMING(host, MMC_HS400_TIMING);
+		/*
+		* Set the MCI_CLK divider before changing the sdcc core
+		* core clk to ensure card receives no more than 200 MHZ
+		* clock frequency
+		*/
+		sdhci_msm_set_mci_clk(host);
+		clock_config_mmc(host->msm_host->slot, SDHCI_CLK_400MHZ);
 	}
 	else
 	{
@@ -993,6 +999,10 @@ uint32_t mmc_set_hs400_mode(struct sdhci_host *host,
 	/* Save the timing value, before changing the clock */
 	MMC_SAVE_TIMING(host, MMC_HS400_TIMING);
 	sdhci_set_uhs_mode(host, SDHCI_SDR104_MODE);
+	/*
+	* Enable HS400 mode
+	*/
+	sdhci_msm_set_mci_clk(host);
 
 	/* 7. Execute Tuning for hs400 mode */
 	if ((mmc_ret = sdhci_msm_execute_tuning(host, width)))
@@ -1025,6 +1035,7 @@ static uint8_t mmc_host_init(struct mmc_device *dev)
 
 	host->base = cfg->sdhc_base;
 	host->sdhc_event = &sdhc_event;
+	host->caps.hs400_support = cfg->hs400_support;
 
 	data = (struct sdhci_msm_data *) malloc(sizeof(struct sdhci_msm_data));
 	ASSERT(data);
@@ -1525,7 +1536,7 @@ static uint32_t mmc_card_init(struct mmc_device *dev)
 		 * 2. DDR mode host, if supported by host & card
 		 * 3. Use normal speed mode with supported bus width
 		 */
-		if (mmc_card_supports_hs400_mode(card) && host->caps.sdr104_support)
+		if (host->caps.hs400_support && mmc_card_supports_hs400_mode(card))
 		{
 			mmc_return = mmc_set_hs400_mode(host, card, bus_width);
 			if (mmc_return)
@@ -1535,7 +1546,7 @@ static uint32_t mmc_card_init(struct mmc_device *dev)
 				return mmc_return;
 			}
 		}
-		else if (mmc_card_supports_hs200_mode(card) && host->caps.sdr104_support)
+		else if (host->caps.sdr104_support && mmc_card_supports_hs200_mode(card))
 		{
 			mmc_return = mmc_set_hs200_mode(host, card, bus_width);
 
@@ -1544,7 +1555,7 @@ static uint32_t mmc_card_init(struct mmc_device *dev)
 								  card->rca);
 				return mmc_return;
 			}
-		} else if (mmc_card_supports_ddr_mode(card) && host->caps.ddr_support) {
+		} else if (host->caps.ddr_support && mmc_card_supports_ddr_mode(card)) {
 			mmc_return = mmc_set_ddr_mode(host, card);
 
 			if (mmc_return) {
