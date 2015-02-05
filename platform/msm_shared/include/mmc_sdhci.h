@@ -150,6 +150,7 @@
 #define MMC_CLK_48MHZ                             48000000
 #define MMC_CLK_50MHZ                             49152000
 #define MMC_CLK_96MHZ                             96000000
+#define MMC_CLK_163MHZ                            163400000
 #define MMC_CLK_177MHZ                            177770000
 #define MMC_CLK_200MHZ                            200000000
 #define MMC_CLK_192MHZ                            192000000
