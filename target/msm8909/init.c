@@ -168,7 +168,7 @@ void target_sdc_init()
 	set_sdc_power_ctrl();
 
 	config.bus_width = DATA_BUS_WIDTH_8BIT;
-	config.max_clk_rate = MMC_CLK_177MHZ;
+	config.max_clk_rate = MMC_CLK_163MHZ;
 
 	/* Try slot 1*/
 	config.slot         = 1;
