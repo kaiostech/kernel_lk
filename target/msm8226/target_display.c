@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -206,6 +206,9 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 		dprintf(CRITICAL, "backlight structure is not available\n");
 		return ERR_INVALID_ARGS;
 	}
+
+	if (bl->bl_interface_type == BL_DCS)
+		return 0;
 
 	if (bl->bl_interface_type != BL_WLED) {
 		dprintf(CRITICAL, "backlight type:%d not supported\n",
