@@ -39,7 +39,6 @@
 /* Mux source select values */
 #define cxo_source_val    0
 #define gpll0_source_val  1
-#define gpll1_source_val  2
 #define cxo_mm_source_val 0
 #define gpll0_mm_source_val 1
 #define gpll1_mm_source_val 3
@@ -136,7 +135,6 @@ static struct clk_freq_tbl ftbl_gcc_sdcc1_2_apps_clk[] =
 	F( 25000000,  gpll0,  16,   1,   2),
 	F( 50000000,  gpll0,  16,   0,   0),
 	F(100000000,  gpll0,   8,   0,   0),
-	F(163400000,  gpll1,   7.5,   0,   0),
 	F(177770000,  gpll0, 4.5,   0,   0),
 	F(200000000,  gpll0,   4,   0,   0),
 	F_END
