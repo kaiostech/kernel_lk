@@ -459,7 +459,7 @@ static uint8_t sdhci_cmd_complete(struct sdhci_host *host, struct mmc_command *c
 		}
 
 		retry++;
-		udelay(1);
+		udelay(500);
 		if (retry == SDHCI_MAX_CMD_RETRY) {
 			dprintf(CRITICAL, "Error: Command never completed\n");
 			ret = 1;
@@ -522,7 +522,7 @@ static uint8_t sdhci_cmd_complete(struct sdhci_host *host, struct mmc_command *c
 			}
 
 			retry++;
-			udelay(1);
+			udelay(1000);
 			if (retry == max_trans_retry) {
 				dprintf(CRITICAL, "Error: Transfer never completed\n");
 				ret = 1;
