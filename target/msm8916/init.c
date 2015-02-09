@@ -433,6 +433,7 @@ uint8_t target_panel_auto_detect_enabled()
 
 	switch(board_hardware_id()) {
 	case HW_PLATFORM_SURF:
+	case HW_PLATFORM_MTP:
 		ret = 1;
 		break;
 	default:
