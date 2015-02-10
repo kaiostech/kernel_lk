@@ -353,21 +353,14 @@ static uint32_t sdhci_msm_config_dll(struct sdhci_host *host, uint32_t phase)
 	core_cfg |= (SDCC_DLL_CDR_EXT_EN | SDCC_DLL_EN);
 	REG_WRITE32(host, core_cfg, SDCC_DLL_CONFIG_REG);
 
-	/* Wait until CLK_OUT_EN is 0 */
-	while(REG_READ32(host, SDCC_DLL_CONFIG_REG) & SDCC_DLL_CLK_OUT_EN);
-
-	REG_RMW32(host, SDCC_DLL_CONFIG_REG, SDCC_DLL_GRAY_CODE_START, SDCC_DLL_GRAY_CODE_WIDTH, gray_code[phase]);
-
-	REG_WRITE32(host, (REG_READ32(host, SDCC_DLL_CONFIG_REG) | SDCC_DLL_CLK_OUT_EN), SDCC_DLL_CONFIG_REG);
-
-	/* Wait until CLK_OUT_EN is 1, wait time 50us */
-	while(!(REG_READ32(host, SDCC_DLL_CONFIG_REG) & SDCC_DLL_CLK_OUT_EN))
+	/* Wait for DLL_LOCK in DLL_STATUS register, wait time 50us */
+	while(!((REG_READ32(host, SDCC_REG_DLL_STATUS)) & SDCC_DLL_LOCK_STAT))
 	{
-		timeout--;
 		udelay(1);
+		timeout--;
 		if (!timeout)
 		{
-			dprintf(CRITICAL, "%s: clk_out_en timed out: %08x\n", __func__, REG_READ32(host, SDCC_DLL_CONFIG_REG));
+			dprintf(CRITICAL, "%s: Failed to get DLL lock: 0x%08x\n", __func__, REG_READ32(host, SDCC_REG_DLL_STATUS));
 			return 1;
 		}
 	}
