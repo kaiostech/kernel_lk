@@ -97,6 +97,10 @@ void write_device_info_flash(device_info *dev);
 #define FASTBOOT_HARD_RESET_MODE   0x02
 #define RTC_HARD_RESET_MODE        0x03
 
+#define RECOVERY_HARD_RESET_MODE   0x01
+#define FASTBOOT_HARD_RESET_MODE   0x02
+#define RTC_HARD_RESET_MODE        0x03
+
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 #define ALARM_BOOT      0x77665503
