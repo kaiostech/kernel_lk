@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -44,6 +44,8 @@
 #define DIS_RETENTION                  BIT(18)
 #define QMP_PHY_MAX_TIMEOUT            1000
 #define PHYSTATUS                      BIT(6)
+
+static bool hsonly_mode;
 
 __WEAK uint32_t target_override_pll()
 {
@@ -213,16 +215,22 @@ void usb30_qmp_phy_init()
 	writel(0x00, QMP_PHY_BASE + PCIE_USB3_PHY_SW_RESET);
 	writel(0x03, QMP_PHY_BASE + PCIE_USB3_PHY_START);
 
-	clock_bumpup_pipe3_clk();
-
 	while ((readl(QMP_PHY_BASE + PCIE_USB3_PHY_PCS_STATUS) & PHYSTATUS))
 	{
 		udelay(1);
 		timeout--;
 		if (!timeout)
 		{
-			dprintf(CRITICAL, "QMP phy initialization failed\n");
+			dprintf(CRITICAL, "QMP phy initialization failed, fallback to HighSpeed only mode\n");
+			hsonly_mode = true;
 			return;
 		}
 	}
+
+	clock_bumpup_pipe3_clk();
+}
+
+bool use_hsonly_mode()
+{
+	return hsonly_mode;
 }
