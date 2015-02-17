@@ -115,3 +115,8 @@ __WEAK void hdmi_phy_init(void)
 {
 	return;
 }
+
+__WEAK void hdmi_phy_reset(void)
+{
+	return;
+}
