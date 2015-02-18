@@ -510,7 +510,7 @@ void target_uninit(void)
 void target_fastboot_init(void)
 {
 	/* Set the BOOT_DONE flag in PM8916 */
-	pm8x41_set_boot_done();
+	//pm8x41_set_boot_done();
 
 	if (target_is_ssd_enabled()) {
 		clock_ce_enable(CE1_INSTANCE);
