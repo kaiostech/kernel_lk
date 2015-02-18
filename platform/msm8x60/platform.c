@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2010, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2010, 2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -153,7 +153,7 @@ void display_init(void)
 	hdmi_set_fb_addr(fb_cfg.base);
 	fbcon_setup(fb_cfg);
 	hdmi_dtv_init();
-	hdmi_dtv_on();
+	hdmi_dtv_on(NULL);
 	hdmi_msm_turn_on();
 #endif
 }

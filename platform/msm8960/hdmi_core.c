@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,6 +33,7 @@
 #include <platform/gpio.h>
 #include <platform/clock.h>
 #include <platform/iomap.h>
+#include <err.h>
 
 extern void hdmi_app_clk_init(int);
 extern int hdmi_msm_turn_on();
@@ -298,7 +299,7 @@ void hdmi_pll_enable(void)
 }
 
 
-int hdmi_dtv_on()
+int hdmi_dtv_on(struct msm_panel_info *pinfo)
 {
 	uint32_t ahb_en_reg = readl(AHB_EN_REG);
 	uint32_t ahb_enabled = ahb_en_reg & BIT(4);
@@ -314,21 +315,39 @@ int hdmi_dtv_on()
 	if (hdmi_pll_on)
 		hdmi_pll_disable();
 
-	/* TYPICAL TIMING SETTINGS 69.3 MHz @ 59.94 */
-	writel(0x12, HDMI_PHY_PLL_REFCLK_CFG);
-	writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
-	writel(0x63, HDMI_PHY_PLL_LOOP_FLT_CFG1);
-	writel(0xB5, HDMI_PHY_PLL_VCOCAL_CFG0);
-	writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
-	writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
-	writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
-	writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
-	writel(0x72, HDMI_PHY_PLL_SDM_CFG0);
-	writel(0x72, HDMI_PHY_PLL_SDM_CFG1);
-	writel(0x55, HDMI_PHY_PLL_SDM_CFG2);
-	writel(0x55, HDMI_PHY_PLL_SDM_CFG3);
-	writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
+	if (!pinfo)
+		return ERR_INVALID_ARGS;
 
+	if (pinfo->clk_rate == 37107000) {
+		writel(0x28, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x20, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0xF9, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0xE6, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
+		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
+		writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
+		writel(0x0C, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0x4C, HDMI_PHY_PLL_SDM_CFG1);
+		writel(0xA3, HDMI_PHY_PLL_SDM_CFG2);
+		writel(0xBD, HDMI_PHY_PLL_SDM_CFG3);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
+	}
+	else if (pinfo->clk_rate == 71107200) {
+		writel(0x12, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0x63, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0xB5, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
+		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
+		writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
+		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
+		writel(0x72, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0x72, HDMI_PHY_PLL_SDM_CFG1);
+		writel(0x55, HDMI_PHY_PLL_SDM_CFG2);
+		writel(0x55, HDMI_PHY_PLL_SDM_CFG3);
+		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
+	}
 	udelay(10);
 
 	hdmi_pll_enable();

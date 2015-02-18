@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -160,7 +160,7 @@ static void hdmi_msm_reset_core()
         udelay(5);
 }
 
-int hdmi_dtv_on()
+int hdmi_dtv_on(struct msm_panel_info *pinfo)
 {
 	uint32_t val, pll_mode, ns_val, pll_config;
 
