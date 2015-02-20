@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -50,14 +50,26 @@ void lvds_init(struct msm_panel_info *pinfo)
 		/*1. Configure LVDS PHY PLL through MDP_LVDSPHY_PLL_CTRL_* registers*/
 		/* LVDS PHY PLL configuration */
 		MDP_OUTP(MDP_BASE + 0xc3000, 0x08);
-		MDP_OUTP(MDP_BASE + 0xc3004, 0x87);
-		MDP_OUTP(MDP_BASE + 0xc3008, 0x30);
-		MDP_OUTP(MDP_BASE + 0xc300c, 0x06);
-		MDP_OUTP(MDP_BASE + 0xc3014, 0x20);
-		MDP_OUTP(MDP_BASE + 0xc3018, 0x0F);
-		MDP_OUTP(MDP_BASE + 0xc301c, 0x01);
-		MDP_OUTP(MDP_BASE + 0xc3020, 0x41);
-		MDP_OUTP(MDP_BASE + 0xc3024, 0x0d);
+		if (pinfo->clk_rate == 75000000) {
+			MDP_OUTP(MDP_BASE + 0xc3004, 0x87);
+			MDP_OUTP(MDP_BASE + 0xc3008, 0x30);
+			MDP_OUTP(MDP_BASE + 0xc300c, 0x06);
+			MDP_OUTP(MDP_BASE + 0xc3014, 0x20);
+			MDP_OUTP(MDP_BASE + 0xc3018, 0x0F);
+			MDP_OUTP(MDP_BASE + 0xc301c, 0x01);
+			MDP_OUTP(MDP_BASE + 0xc3020, 0x41);
+			MDP_OUTP(MDP_BASE + 0xc3024, 0x0d);
+		}
+		else if (pinfo->clk_rate == 37100000) {
+			MDP_OUTP(MDP_BASE + 0xc3004, 0x47);
+			MDP_OUTP(MDP_BASE + 0xc3008, 0x30);
+			MDP_OUTP(MDP_BASE + 0xc300c, 0x04);
+			MDP_OUTP(MDP_BASE + 0xc3014, 0x20);
+			MDP_OUTP(MDP_BASE + 0xc3018, 0x08);
+			MDP_OUTP(MDP_BASE + 0xc301c, 0x02);
+			MDP_OUTP(MDP_BASE + 0xc3020, 0x42);
+			MDP_OUTP(MDP_BASE + 0xc3024, 0x14);
+		}
 		MDP_OUTP(MDP_BASE + 0xc3028, 0x07);
 		MDP_OUTP(MDP_BASE + 0xc302c, 0x00);
 		MDP_OUTP(MDP_BASE + 0xc3030, 0x1c);

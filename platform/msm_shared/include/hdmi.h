@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,6 +35,7 @@
 #include <bits.h>
 #include <dev/fbcon.h>
 #include <target/display.h>
+#include <msm_panel.h>
 
 #define MDP_GET_PACK_PATTERN(a,x,y,z,bit) (((a)<<(bit*3))|((x)<<(bit*2))|((y)<<bit)|(z))
 #define DMA_PACK_ALIGN_LSB 0
@@ -61,7 +62,7 @@ void gpio_tlmm_config(uint32_t gpio, uint8_t func,
 		      uint8_t dir, uint8_t pull,
 		      uint8_t drvstr, uint32_t enable);
 
-int  hdmi_dtv_on(void);
+int  hdmi_dtv_on(struct msm_panel_info *pinfo);
 void hdmi_msm_set_mode(int on);
 void hdmi_msm_init_phy(void);
 void hdmi_display_shutdown(void);
@@ -78,6 +79,7 @@ struct hdmi_disp_mode_timing_type {
 	uint32_t vsync_width;
 	uint32_t vsync_porch_bp;
 	uint32_t refresh_rate;
+	uint32_t pclk_rate;
 	uint32_t bpp;
 	void *base;
 };

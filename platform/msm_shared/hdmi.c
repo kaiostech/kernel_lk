@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -36,7 +36,7 @@
 #define MDP4_RGB_BASE           0x40000
 #define MDP4_RGB_OFF            0x10000
 
-struct hdmi_disp_mode_timing_type hdmi_timing_default = {
+static struct hdmi_disp_mode_timing_type hdmi_timing_default = {
 	.width          = 1280,
 	.hsync_porch_fp = 48,
 	.hsync_width    = 32,
@@ -46,6 +46,8 @@ struct hdmi_disp_mode_timing_type hdmi_timing_default = {
 	.vsync_width    = 6,
 	.vsync_porch_bp = 15,
 	.bpp            = 24,
+	.refresh_rate   = 60,
+	.pclk_rate      = 71107200,
 };
 
 static uint8_t hdmi_msm_avi_iframe_lut[][16] = {
@@ -124,6 +126,7 @@ void hdmi_msm_panel_init(struct msm_panel_info *pinfo)
 	pinfo->yres = hdmi_timing_default.height;
 	pinfo->bpp  = hdmi_timing_default.bpp;
 	pinfo->type = HDMI_PANEL;
+	pinfo->clk_rate = hdmi_timing_default.pclk_rate;
 
 	pinfo->hdmi.h_back_porch  = hdmi_timing_default.hsync_porch_bp;
 	pinfo->hdmi.h_front_porch = hdmi_timing_default.hsync_porch_fp;
@@ -131,6 +134,7 @@ void hdmi_msm_panel_init(struct msm_panel_info *pinfo)
 	pinfo->hdmi.v_back_porch  = hdmi_timing_default.vsync_porch_bp;
 	pinfo->hdmi.v_front_porch = hdmi_timing_default.vsync_porch_fp;
 	pinfo->hdmi.v_pulse_width = hdmi_timing_default.vsync_width;
+	pinfo->hdmi.refresh_rate  = hdmi_timing_default.refresh_rate;
 }
 
 void hdmi_frame_ctrl_reg()

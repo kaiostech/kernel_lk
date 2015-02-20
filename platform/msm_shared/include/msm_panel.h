@@ -82,6 +82,7 @@ struct hdmi_panel_info {
 	uint32_t v_back_porch;
 	uint32_t v_front_porch;
 	uint32_t v_pulse_width;
+	uint32_t refresh_rate;
 };
 
 struct lcdc_panel_info {
