@@ -571,6 +571,7 @@ static void mdss_hdmi_audio_playback(void)
 static uint32_t mdss_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 {
 	int ret = NO_ERROR;
+
 	if (hdmi_panel_clock_enabled)
 		return ret;
 
@@ -602,12 +603,6 @@ static int mdss_hdmi_enable_power(uint8_t enable, struct msm_panel_info *pinfo)
 	if (hdmi_power_enabled)
 		return ret;
 
-	ret = target_ldo_ctrl(enable, pinfo);
-	if (ret) {
-		dprintf(CRITICAL, "LDO control enable failed\n");
-		goto bail_ldo_fail;
-	}
-
 	ret = target_hdmi_regulator_ctrl(enable);
 	if (ret) {
 		dprintf(CRITICAL, "hdmi regulator control enable failed\n");
@@ -632,7 +627,6 @@ bail_gpio_fail:
 bail_regulator_fail:
 	target_ldo_ctrl(0, pinfo);
 
-bail_ldo_fail:
 	return ret;
 }
 
