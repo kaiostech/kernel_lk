@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -93,8 +93,13 @@ void write_device_info_flash(device_info *dev);
 
 #define MAX_TAGS_SIZE   1024
 
+#define RECOVERY_HARD_RESET_MODE   0x01
+#define FASTBOOT_HARD_RESET_MODE   0x02
+#define RTC_HARD_RESET_MODE        0x03
+
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
+#define ALARM_BOOT      0x77665503
 
 /* make 4096 as default size to ensure EFS,EXT4's erasing */
 #define DEFAULT_ERASE_SIZE  4096
@@ -113,6 +118,7 @@ static const char *emmc_cmdline = " androidboot.emmc=true";
 #endif
 static const char *usb_sn_cmdline = " androidboot.serialno=";
 static const char *androidboot_mode = " androidboot.mode=";
+static const char *alarmboot_cmdline = " androidboot.alarmboot=true";
 static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
@@ -135,6 +141,7 @@ static unsigned page_mask = 0;
 static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
 static bool boot_into_ffbm;
 static char target_boot_params[64];
+static bool boot_reason_alarm;
 
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
@@ -269,6 +276,8 @@ unsigned char *update_cmdline(const char * cmdline)
 		cmdline_len += strlen(ffbm_mode_string);
 		/* reduce kernel console messages to speed-up boot */
 		cmdline_len += strlen(loglevel);
+	} else if (boot_reason_alarm) {
+		cmdline_len += strlen(alarmboot_cmdline);
 	} else if (device.charger_screen_enabled &&
 			target_pause_for_battery_charge()) {
 		pause_at_bootup = 1;
@@ -392,6 +401,10 @@ unsigned char *update_cmdline(const char * cmdline)
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 			src = loglevel;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		} else if (boot_reason_alarm) {
+			src = alarmboot_cmdline;
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 		} else if (pause_at_bootup) {
@@ -2449,6 +2462,7 @@ void aboot_fastboot_register_commands(void)
 void aboot_init(const struct app_descriptor *app)
 {
 	unsigned reboot_mode = 0;
+	unsigned hard_reboot_mode = 0;
 	bool boot_into_fastboot = false;
 
 	/* Setup page size information for nv storage */
@@ -2516,10 +2530,15 @@ void aboot_init(const struct app_descriptor *app)
 	#endif
 
 	reboot_mode = check_reboot_mode();
-	if (reboot_mode == RECOVERY_MODE) {
+	hard_reboot_mode = check_hard_reboot_mode();
+	if (reboot_mode == RECOVERY_MODE ||
+		hard_reboot_mode == RECOVERY_HARD_RESET_MODE) {
 		boot_into_recovery = 1;
-	} else if(reboot_mode == FASTBOOT_MODE) {
+	} else if(reboot_mode == FASTBOOT_MODE ||
+		hard_reboot_mode == FASTBOOT_HARD_RESET_MODE) {
 		boot_into_fastboot = true;
+	} else if(reboot_mode == ALARM_BOOT) {
+		boot_reason_alarm = true;
 	}
 
 normal_boot:
