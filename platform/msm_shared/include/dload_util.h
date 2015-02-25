@@ -30,6 +30,7 @@
 #define __DLOAD_UTIL_H
 
 #include <sys/types.h>
+#include <platform/iomap.h>
 
 #define DLOAD 1
 
