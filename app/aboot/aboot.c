@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -135,6 +135,13 @@ static const char *baseband_dsda2   = " androidboot.baseband=dsda2";
 static const char *baseband_sglte2  = " androidboot.baseband=sglte2";
 static const char *baseband_auto    = " androidboot.baseband=auto";
 
+#ifdef WITH_SPLASH_SCREEN_MARKER
+#define LK_SPLASH_CMD_SIZE 13
+static const char *lk_splash_cmdline            = " LK_splash=";
+
+static char lk_splash_buf[LK_SPLASH_CMD_SIZE];
+#endif
+
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
 
@@ -183,6 +190,9 @@ unsigned char *update_cmdline(const char * cmdline)
 	int have_cmdline = 0;
 	unsigned char *cmdline_final = NULL;
 	int pause_at_bootup = 0;
+#ifdef WITH_SPLASH_SCREEN_MARKER
+	unsigned int lk_splash_val;
+#endif
 
 	if (cmdline && cmdline[0]) {
 		cmdline_len = strlen(cmdline);
@@ -248,6 +258,13 @@ unsigned char *update_cmdline(const char * cmdline)
 			break;
 	}
 
+#ifdef WITH_SPLASH_SCREEN_MARKER
+	get_lk_splash_val(&lk_splash_val);
+	snprintf((char *)lk_splash_buf, LK_SPLASH_CMD_SIZE, "%d",
+		 lk_splash_val);
+	cmdline_len += strlen(lk_splash_cmdline);
+	cmdline_len += strlen(lk_splash_buf);
+#endif
 	if (cmdline_len > 0) {
 		const char *src;
 		char *dst = malloc((cmdline_len + 4) & (~3));
@@ -349,6 +366,18 @@ unsigned char *update_cmdline(const char * cmdline)
 				while ((*dst++ = *src++));
 				break;
 		}
+
+#ifdef WITH_SPLASH_SCREEN_MARKER
+		src = lk_splash_cmdline;
+		if (have_cmdline) --dst;
+		have_cmdline = 1;
+		while ((*dst++ = *src++));
+
+		src = lk_splash_buf;
+		if (have_cmdline) --dst;
+		have_cmdline = 1;
+		while ((*dst++ = *src++));
+#endif
 	}
 	return cmdline_final;
 }
