@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -50,9 +50,6 @@
 #define ABOOT_FORCE_KERNEL64_ADDR   DDR_START + 0x80000
 #define ABOOT_FORCE_RAMDISK_ADDR    DDR_START + 0x2000000
 #define ABOOT_FORCE_TAGS_ADDR       DDR_START + 0x1E00000
-
-/* 3GB DDR devices consider 0x40000000 as new mem base */
-#define BASE_ADDR_1                 0x40000000
 
 #define MSM_GIC_DIST_BASE           APPS_SS_BASE
 #define MSM_GIC_CPU_BASE            (APPS_SS_BASE + 0x2000)
