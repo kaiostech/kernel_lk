@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2010, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2010,2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,7 +50,7 @@ struct smem_ptable {
 	unsigned magic[2];
 	unsigned version;
 	unsigned len;
-	struct smem_ptn parts[16];
+	struct smem_ptn parts[17];
 } __attribute__ ((__packed__));
 
 /* partition table from SMEM */
@@ -61,7 +61,7 @@ static void dump_smem_ptable(void)
 {
 	int i;
 
-	for (i = 0; i < 16; i++) {
+	for (i = 0; i < 17; i++) {
 		struct smem_ptn *p = &smem_ptable.parts[i];
 		if (p->name[0] == '\0')
 			continue;
@@ -112,7 +112,7 @@ void smem_add_modem_partitions(struct ptable *flash_ptable)
 	    smem_ptable.magic[1] != _SMEM_PTABLE_MAGIC_2)
 		return;
 
-	for (i = 0; i < 16; i++) {
+	for (i = 0; i < 17; i++) {
 		char *token;
 		char *pname = NULL;
 		struct smem_ptn *p = &smem_ptable.parts[i];
