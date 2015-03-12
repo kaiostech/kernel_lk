@@ -2,7 +2,7 @@
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2011, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,8 +35,23 @@
 #include <splash.h>
 #include <platform.h>
 #include <string.h>
+#include <partition_parser.h>
+#include <msm_panel.h>
 
 #include "font5x12.h"
+
+#define SPLASH_PARTITION_NAME 		"splash_image"
+#define SPLASH_HEADER_META_PADDING	14
+#define BLOCKSIZE			512
+#define NAME_LENGTH 			10
+
+#define MMC_READ_ALIGN(a) ((((a) + (BLOCKSIZE-1)) & (~(BLOCKSIZE-1))))
+
+struct single_spl_header {
+	uint32_t width;
+	uint32_t height;
+	uint32_t padding[SPLASH_HEADER_META_PADDING];
+};
 
 struct pos {
 	int x;
@@ -208,53 +223,182 @@ struct fbcon_config* fbcon_display(void)
     return config;
 }
 
-void display_image_on_screen(void)
+void display_image_on_screen(struct msm_panel_info *pinfo)
 {
-    unsigned i = 0;
-    unsigned total_x;
-    unsigned total_y;
-    unsigned bytes_per_bpp;
-    unsigned image_base;
+	unsigned i = 0;
+	unsigned total_x;
+	unsigned total_y;
+	unsigned bytes_per_bpp;
+	unsigned image_base;
 
-    if (!config) {
-       dprintf(CRITICAL,"NULL configuration, image cannot be displayed\n");
-       return;
-    }
+#if EMMC_SPLASH_ENABLED
+	uint64_t ptn = 0;
+	uint64_t size;
+	uint32_t index = INVALID_PTN;
+	uint32_t imageReadSize, headerSize, disp_index;
+	uint32_t spl_height, spl_width;
+	uint32_t disp_count = 0;
+	uint32_t disp_off = 0;
+	uint8_t *spl_img_buf;
+	void * tmp_fheader;
+	struct single_spl_header* s_header;
 
-    fbcon_clear();
+	if (pinfo == NULL) {
+		dprintf(CRITICAL, "ERROR: pinfo is NULL\n");
+		return;
+	}
 
-    total_x = config->width;
-    total_y = config->height;
-    bytes_per_bpp = ((config->bpp) / 8);
-    image_base = ((((total_y/2) - (SPLASH_IMAGE_WIDTH / 2) - 1) *
-		    (config->width)) + (total_x/2 - (SPLASH_IMAGE_HEIGHT / 2)));
+	if (!config) {
+		dprintf(CRITICAL,"ERROR: NULL config, image cannot be displayed\n");
+		return;
+	}
+
+	index = partition_get_index(SPLASH_PARTITION_NAME);
+	if (index < 0) {
+		dprintf(CRITICAL, "ERROR: splash ptn index: %d not found\n", index);
+		return;
+	}
+
+	ptn = partition_get_offset(index);
+	if (ptn < 0) {
+		dprintf(CRITICAL,"ERROR: splash ptn offset: %d not correct\n", ptn);
+		return;
+	}
+
+	size = partition_get_size(index);
+
+	switch (pinfo->type) {
+		case LVDS_PANEL:
+		case LCDC_PANEL:
+			disp_index = 0;
+			break;
+		case HDMI_PANEL:
+			disp_index = 1;
+			break;
+		case MIPI_VIDEO_PANEL:
+		case MIPI_CMD_PANEL:
+			disp_index = 2;
+			break;
+		default:
+			dprintf(CRITICAL,"ERROR: pinfo->type not supported: %d\n",
+								pinfo->type);
+			return;
+	}
+
+	headerSize = BLOCKSIZE;
+	tmp_fheader = malloc(headerSize);
+	if (tmp_fheader == NULL) {
+		dprintf(CRITICAL,"ERROR: spl image header buffer malloc failed\n");
+		return;
+	}
+	mmc_read(ptn, tmp_fheader, headerSize);
+
+	s_header = (struct single_spl_header*)
+			(tmp_fheader + disp_index * sizeof(struct single_spl_header));
+
+	spl_width = s_header->width;
+	spl_height = s_header->height;
+
+	if ((spl_width == 0) || (spl_height == 0))
+		goto ret_error;
+
+	if ((spl_width > config->width) || (spl_height > config->height)) {
+		dprintf(CRITICAL,"ERROR: DispID %d size is invalid, width: %d, height: %d\n",
+			disp_index ,spl_width, spl_height);
+		goto ret_error;
+	}
+
+	fbcon_clear();
+	total_x = config->width;
+	total_y = config->height;
+	bytes_per_bpp = ((config->bpp) / 8);
+
+	if (disp_index > 0) {
+		struct single_spl_header* tmp_header;
+		for (i = 0; i < disp_index; i++) {
+			tmp_header = (struct single_spl_header*)
+				(tmp_fheader + i * sizeof(struct single_spl_header));
+			disp_off += tmp_header->width * tmp_header->height;
+		}
+		disp_off = MMC_READ_ALIGN(disp_off * bytes_per_bpp);
+	}
+
+	imageReadSize = MMC_READ_ALIGN(spl_height * spl_width * bytes_per_bpp);
+	if (imageReadSize > (size - headerSize)) {
+		dprintf(CRITICAL,"ERROR: DispID: %d img_readsize:%d larger than partition\n",
+			disp_index, imageReadSize);
+		goto ret_error;
+	}
+
+	if ((spl_height == total_y) && (spl_width == total_x)) {
+		mmc_read(ptn + headerSize + disp_off, config->base, imageReadSize);
+	} else {
+		image_base = ((((total_y/2) - (spl_height / 2)) *
+			(config->width)) + (total_x/2 - (spl_width / 2)));
+
+		spl_img_buf = malloc(imageReadSize);
+		if (spl_img_buf == NULL) {
+			dprintf(CRITICAL,"ERROR: spl image buffer malloc failed\n");
+			goto ret_error;
+		}
+		mmc_read(ptn + headerSize + disp_off, spl_img_buf, imageReadSize);
+
+		for (i = 0; i < spl_height; i++) {
+			memcpy (
+			config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
+			spl_img_buf + (i * spl_width * bytes_per_bpp),
+			spl_width * bytes_per_bpp);
+		}
+		free(spl_img_buf);
+	}
+	fbcon_flush();
+
+ret_error:
+	if (tmp_fheader != NULL)
+		free(tmp_fheader);
+	return;
+
+#else
+	if (!config) {
+		dprintf(CRITICAL,"NULL configuration, image cannot be displayed\n");
+		return;
+	}
+
+	fbcon_clear();
+
+	total_x = config->width;
+	total_y = config->height;
+	bytes_per_bpp = ((config->bpp) / 8);
+	image_base = ((((total_y/2) - (SPLASH_IMAGE_WIDTH / 2) - 1) *
+		(config->width)) + (total_x/2 - (SPLASH_IMAGE_HEIGHT / 2)));
 
 #if DISPLAY_TYPE_MIPI
-    if (bytes_per_bpp == 3)
-    {
-        for (i = 0; i < SPLASH_IMAGE_WIDTH; i++)
-        {
-            memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
-		    imageBuffer_rgb888 + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
-		    SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
+	if (bytes_per_bpp == 3)
+	{
+		for (i = 0; i < SPLASH_IMAGE_WIDTH; i++)
+		{
+		     memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
+			imageBuffer_rgb888 + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
+			SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
+		}
 	}
-    }
-    fbcon_flush();
+	fbcon_flush();
 #if DISPLAY_MIPI_PANEL_NOVATEK_BLUE
-    if(is_cmd_mode_enabled())
-        mipi_dsi_cmd_mode_trigger();
+	if(is_cmd_mode_enabled())
+		mipi_dsi_cmd_mode_trigger();
 #endif
 
 #else
-    if (bytes_per_bpp == 2)
-    {
-        for (i = 0; i < SPLASH_IMAGE_WIDTH; i++)
-        {
-            memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
-		    imageBuffer + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
-		    SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
+	if (bytes_per_bpp == 2)
+	{
+		for (i = 0; i < SPLASH_IMAGE_WIDTH; i++)
+		{
+		     memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
+			imageBuffer + (i * SPLASH_IMAGE_HEIGHT * bytes_per_bpp),
+			SPLASH_IMAGE_HEIGHT * bytes_per_bpp);
+		}
 	}
-    }
-    fbcon_flush();
+	fbcon_flush();
 #endif
+#endif /* EMMC_SPLASH_ENABLED */
 }

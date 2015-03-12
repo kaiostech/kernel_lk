@@ -236,6 +236,7 @@ msm_display_on_out:
 int msm_display_init(struct msm_fb_panel_data *pdata)
 {
 	int ret = NO_ERROR;
+	struct msm_panel_info *pinfo;
 #ifdef WITH_SPLASH_SCREEN_MARKER
 	unsigned int lk_splash_val;
 #endif
@@ -244,6 +245,7 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 		ret = ERR_INVALID_ARGS;
 		goto msm_display_init_out;
 	}
+	pinfo = &(panel->panel_info);
 
 	/* Enable clock */
 	if (pdata->clk_func)
@@ -270,7 +272,7 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 		set_lk_splash_val(lk_splash_val);
 	}
 #endif
-	display_image_on_screen();
+	display_image_on_screen(pinfo);
 	ret = msm_display_config();
 	if (ret)
 		goto msm_display_init_out;

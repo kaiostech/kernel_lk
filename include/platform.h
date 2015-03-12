@@ -23,6 +23,8 @@
 #ifndef __PLATFORM_H
 #define __PLATFORM_H
 
+#include <msm_panel.h>
+
 #define PA(x) platform_get_virt_to_phys_mapping(x)
 #define VA(x) platform_get_phys_to_virt_mapping(x)
 
@@ -43,7 +45,7 @@ addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr);
 
 void display_init(void);
 void display_shutdown(void);
-void display_image_on_screen(void);
+void display_image_on_screen(struct msm_panel_info *pinfo);
 
 unsigned board_machtype(void);
 unsigned board_platform_id(void);
