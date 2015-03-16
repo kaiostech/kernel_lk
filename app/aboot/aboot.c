@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -92,6 +92,10 @@ void write_device_info_flash(device_info *dev);
 #endif
 
 #define MAX_TAGS_SIZE   1024
+
+#define RECOVERY_HARD_RESET_MODE   0x01
+#define FASTBOOT_HARD_RESET_MODE   0x02
+#define RTC_HARD_RESET_MODE        0x03
 
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
@@ -2449,6 +2453,7 @@ void aboot_fastboot_register_commands(void)
 void aboot_init(const struct app_descriptor *app)
 {
 	unsigned reboot_mode = 0;
+	unsigned hard_reboot_mode = 0;
 	bool boot_into_fastboot = false;
 
 	/* Setup page size information for nv storage */
@@ -2516,9 +2521,12 @@ void aboot_init(const struct app_descriptor *app)
 	#endif
 
 	reboot_mode = check_reboot_mode();
-	if (reboot_mode == RECOVERY_MODE) {
+	hard_reboot_mode = check_hard_reboot_mode();
+	if (reboot_mode == RECOVERY_MODE ||
+		hard_reboot_mode == RECOVERY_HARD_RESET_MODE) {
 		boot_into_recovery = 1;
-	} else if(reboot_mode == FASTBOOT_MODE) {
+	} else if(reboot_mode == FASTBOOT_MODE ||
+		hard_reboot_mode == FASTBOOT_HARD_RESET_MODE) {
 		boot_into_fastboot = true;
 	}
 
