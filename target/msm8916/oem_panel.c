@@ -58,6 +58,8 @@
 #define OTM8019A_FWVGA_VIDEO_PANEL_ON_DELAY 50
 #define NT35590_720P_CMD_PANEL_ON_DELAY 40
 
+#define BOARD_SOC_VERSION3	0x30000
+
 /*---------------------------------------------------------------------------*/
 /* static panel selection variable                                           */
 /*---------------------------------------------------------------------------*/
@@ -502,7 +504,13 @@ panel_init:
 	 * Update all data structures after 'panel_init' label. Only panel
 	 * selection is supposed to happen before that.
 	 */
-	if (platform_is_msm8939() || (hw_id == HW_PLATFORM_QRD)) {
+	if ((platform_is_msm8939() && (board_soc_version() !=
+		BOARD_SOC_VERSION3)) || (hw_id == HW_PLATFORM_QRD)) {
+		phy_db->regulator_mode = DSI_PHY_REGULATOR_LDO_MODE;
+		memcpy(panel_regulator_settings,
+				ldo_regulator_settings, REGULATOR_SIZE);
+	} else if (platform_is_msm8939() && (board_soc_version() ==
+			BOARD_SOC_VERSION3) && (hw_id != HW_PLATFORM_SURF)) {
 		phy_db->regulator_mode = DSI_PHY_REGULATOR_LDO_MODE;
 		memcpy(panel_regulator_settings,
 				ldo_regulator_settings, REGULATOR_SIZE);
