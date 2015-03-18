@@ -416,6 +416,7 @@ void display_init(void)
 		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2P5)) {
 		unsigned fb_hdmi_offset = panel.panel_info.xres *
 			panel.panel_info.yres * (panel.panel_info.bpp / 8);
+		fb_hdmi_offset = (fb_hdmi_offset + 0xFFF) & (~0xFFF);
 		hdmi_msm_panel_init(&panel.panel_info);
 		panel.clk_func   = mpq8064_hdmi_panel_clock;
 		panel.power_func = mpq8064_hdmi_panel_power;
