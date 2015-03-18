@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2012,2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,18 +58,18 @@ unsigned target_msm_id = 0;
 
 /* Partition names for fastboot flash */
 static char *apps_ptn_names[] = { "aboot", "boot", "cache", "misc", "recovery", "fota",
-	"recoveryfs", "system", "userdata" };
+	"recoveryfs", "system", "cnss", "userdata" };
 
 /* Partitions should be in this order */
 static char *ptable_ptn_names[] = { "APPSBL", "APPS", "CACHE", "MISC", "RECOVERY",
-	"FOTA", "RECOVERYFS", "SYSTEM", "USERDATA" };
+	"FOTA", "RECOVERYFS", "SYSTEM", "CNSS", "USERDATA" };
 
-static unsigned ptn_name_count = 9;
+static unsigned ptn_name_count = 10;
 
 /* Apps partition flags to detect the presence of FOTA partitions.
  * Initially, assume that the FOTA partitions are absent.
  */
-static unsigned int apps_ptn_flag[] = {1, 1, 0, 0, 0, 0, 0, 1, 1};
+static unsigned int apps_ptn_flag[] = {1, 1, 0, 0, 0, 0, 0, 1, 1, 1};
 /* Modem partition flags to detect the presence of DSP3 partitions.
  * Initially, assume that the DSP3 partition is absent.
  * The order of modem partiotions -
