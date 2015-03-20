@@ -97,6 +97,18 @@ DEFINES := LK=1
 # Useful for header files that may be included by one or more source files.
 SRCDEPS := $(CONFIGHEADER)
 
+ifeq ($(VERIFIED_BOOT),1)
+  DEFINES += VERIFIED_BOOT=1
+  DEFINES += _SIGNED_KERNEL=1
+  ifeq ($(DEFAULT_UNLOCK),true)
+    DEFINES += DEFAULT_UNLOCK=1
+  endif
+endif
+
+ifeq ($(USER_BUILD_VARIANT),true)
+  DEFINES += USER_BUILD_VARIANT=1
+endif
+
 # these need to be filled out by the project/target/platform rules.mk files
 TARGET :=
 PLATFORM :=

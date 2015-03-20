@@ -156,6 +156,7 @@ static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
 static bool boot_into_ffbm;
 static char target_boot_params[64];
 static bool boot_reason_alarm;
+static bool devinfo_present = true;
 
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
@@ -622,6 +623,16 @@ void boot_linux(void *kernel, unsigned *tags,
 #endif
 
 	free(final_cmdline);
+
+#if VERIFIED_BOOT
+	/* Write protect the device info */
+	if (target_build_variant_user() && devinfo_present && mmc_write_protect("devinfo", 1))
+	{
+		dprintf(INFO, "Failed to write protect dev info\n");
+		ASSERT(0);
+	}
+#endif
+
 	/* Perform target specific cleanup */
 	target_uninit();
 
@@ -699,12 +710,12 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 	if(boot_into_recovery)
 	{
 		ret = boot_verify_image((unsigned char *)bootimg_addr,
-				bootimg_size, "recovery");
+				bootimg_size, "/recovery");
 	}
 	else
 	{
 		ret = boot_verify_image((unsigned char *)bootimg_addr,
-				bootimg_size, "boot");
+				bootimg_size, "/boot");
 	}
 	boot_verify_print_state();
 #else
@@ -1435,8 +1446,13 @@ void write_device_info_mmc(device_info *dev)
 	int index = INVALID_PTN;
 	uint32_t blocksize;
 	uint8_t lun = 0;
+	uint32_t ret = 0;
 
-	index = partition_get_index("aboot");
+	if (devinfo_present)
+		index = partition_get_index("devinfo");
+	else
+		index = partition_get_index("aboot");
+
 	ptn = partition_get_offset(index);
 	if(ptn == 0)
 	{
@@ -1452,7 +1468,19 @@ void write_device_info_mmc(device_info *dev)
 
 	blocksize = mmc_get_device_blocksize();
 
+#if VERIFIED_BOOT
+	if(mmc_write(ptn, blocksize, (void *)info_buf))
+#else
 	if(mmc_write((ptn + size - blocksize), blocksize, (void *)info_buf))
+#endif
+
+	blocksize = mmc_get_device_blocksize();
+
+	if (devinfo_present)
+		ret = mmc_write(ptn, blocksize, (void *)info_buf);
+	else
+		ret = mmc_write((ptn + size - blocksize), blocksize, (void *)info_buf);
+	if (ret)
 	{
 		dprintf(CRITICAL, "ERROR: Cannot write device info\n");
 		return;
@@ -1466,19 +1494,36 @@ void read_device_info_mmc(device_info *dev)
 	unsigned long long size;
 	int index = INVALID_PTN;
 	uint32_t blocksize;
+	uint32_t ret  = 0;
 
-	index = partition_get_index("aboot");
+	if ((index = partition_get_index("devinfo")) < 0)
+	{
+		devinfo_present = false;
+		index = partition_get_index("aboot");
+	}
+
 	ptn = partition_get_offset(index);
 	if(ptn == 0)
 	{
 		return;
 	}
 
+	mmc_set_lun(partition_get_lun(index));
+
 	size = partition_get_size(index);
 
 	blocksize = mmc_get_device_blocksize();
 
+#if VERIFIED_BOOT
+	if(mmc_read(ptn, (void *)info_buf, blocksize))
+#else
 	if(mmc_read((ptn + size - blocksize), (void *)info_buf, blocksize))
+#endif
+	if (devinfo_present)
+		ret = mmc_read(ptn, (void *)info_buf, blocksize);
+	else
+		ret = mmc_read((ptn + size - blocksize), (void *)info_buf, blocksize);
+	if (ret)
 	{
 		dprintf(CRITICAL, "ERROR: Cannot read device info\n");
 		return;

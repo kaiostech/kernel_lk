@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -34,6 +34,7 @@
 #include <ufs.h>
 #include <target.h>
 #include <string.h>
+#include <partition_parser.h>
 
 /*
  * Weak function for UFS.
@@ -585,4 +586,63 @@ void mmc_read_partition_table(uint8_t arg)
 			dprintf(CRITICAL, "Error reading the partition table info\n");
 		}
 	}
+}
+
+uint32_t mmc_write_protect(const char *ptn_name, int set_clr)
+{
+	void *dev = NULL;
+	struct mmc_card *card = NULL;
+	uint32_t block_size;
+	unsigned long long  ptn = 0;
+	uint64_t size;
+	int index = -1;
+#ifdef UFS_SUPPORT
+	int ret = 0;
+#endif
+
+	dev = target_mmc_device();
+	block_size = mmc_get_device_blocksize();
+
+	if (platform_boot_dev_isemmc())
+	{
+		card = &((struct mmc_device *)dev)->card;
+
+		index = partition_get_index(ptn_name);
+
+		ptn = partition_get_offset(index);
+		if(!ptn)
+		{
+			return 1;
+		}
+
+		/* Convert the size to blocks */
+		size = partition_get_size(index) / block_size;
+
+		/*
+		 * For read only partitions the minimum size allocated on the disk is
+		 * 1 WP GRP size. If the size of partition is less than 1 WP GRP size
+		 * protect atleast one WP group.
+		 */
+		if (partition_read_only(index) && size < card->wp_grp_size)
+		{
+			/* Write protect api takes the size in bytes, convert size to bytes */
+			size = card->wp_grp_size * block_size;
+		}
+		/* Set the power on WP bit */
+		return mmc_set_clr_power_on_wp_user((struct mmc_device *)dev, (ptn / block_size), size, set_clr);
+	}
+	else
+	{
+#ifdef UFS_SUPPORT
+		/* Enable the power on WP fo all LUNs which have WP bit is enabled */
+		ret = dme_set_fpoweronwpen((struct ufs_dev*) dev);
+		if (ret < 0)
+		{
+			dprintf(CRITICAL, "Failure to WP UFS partition\n");
+			return 1;
+		}
+#endif
+	}
+
+	return 0;
 }
