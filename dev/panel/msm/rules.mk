@@ -8,7 +8,8 @@ OBJS += \
 	$(LOCAL_DIR)/mipi_tc358764_dsi2lvds.o \
 	$(LOCAL_DIR)/mipi_chimei_video_wxga.o \
 	$(LOCAL_DIR)/mipi_toshiba_video_wsvga.o \
-	$(LOCAL_DIR)/adv7533.o
+	$(LOCAL_DIR)/adv7533.o \
+	$(LOCAL_DIR)/mipi_dsi_i2c_video_wvga.o
 endif
 
 ifeq ($(PLATFORM),msm7x27a)
