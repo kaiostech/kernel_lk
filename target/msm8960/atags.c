@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -41,12 +41,31 @@
 
 #define ATAG_MEM            0x54410002
 
+#ifdef CONFIG_3GB_DDR
+#define PHYS_MEM_START_ADDR  0x40000000
+#define PHYS_MEM_SHARED_ADDR 0x80000000
+#else
 #define PHYS_MEM_START_ADDR 0x80000000
+#endif
 
 typedef struct {
 	uint32_t size;
 	uint32_t start_addr;
 }atag_mem_info;
+
+#ifdef CONFIG_3GB_DDR
+atag_mem_info apq8064_standalone_shared_256M[] = {
+	{	.size = (140 * SIZE_1M),
+		.start_addr = PHYS_MEM_SHARED_ADDR + SIZE_2M
+	},
+	{	.size = (58 * SIZE_1M),
+		.start_addr = PHYS_MEM_SHARED_ADDR + (0xA0 * SIZE_1M)
+	},
+	{	.size = (7 * SIZE_1M),
+		.start_addr = PHYS_MEM_SHARED_ADDR + (0xF7 * SIZE_1M)
+	}
+};
+#endif
 
 atag_mem_info apq8064_standalone_first_256M[] = {
 	{	.size = (140 * SIZE_1M),
@@ -153,9 +172,16 @@ unsigned *target_first_256M_atag(unsigned *ptr)
 							ARRAY_SIZE(apq8064_fusion_first_256M));
 			} else {
 				/* Use 8064 standalone memory map */
+#ifdef CONFIG_3GB_DDR
+				ptr = target_atag(ptr,
+							apq8064_standalone_shared_256M,
+							ARRAY_SIZE(apq8064_standalone_shared_256M));
+
+#else
 				ptr = target_atag(ptr,
 							apq8064_standalone_first_256M,
 							ARRAY_SIZE(apq8064_standalone_first_256M));
+#endif
 			}
 			break;
 
@@ -208,6 +234,34 @@ unsigned *target_atag_mem(unsigned *ptr)
 				(ram_ptable.parts[i].type == SYS_MEMORY) &&
 				(ram_ptable.parts[i].start == PHYS_MEM_START_ADDR))
 			{
+
+#ifdef CONFIG_3GB_DDR
+				ptr = target_mem_atag_create(ptr,
+						(ram_ptable.parts[i].size - SIZE_2M),
+						(ram_ptable.parts[i].start + SIZE_2M));
+#else
+				ASSERT(ram_ptable.parts[i].size >= SIZE_256M);
+
+				ptr = target_first_256M_atag(ptr);
+
+				if (ram_ptable.parts[i].size > SIZE_256M)
+				{
+					ptr = target_mem_atag_create(ptr,
+							(ram_ptable.parts[i].size - SIZE_256M),
+							(ram_ptable.parts[i].start + SIZE_256M));
+				}
+#endif
+			}
+
+			/* Pass along all other usable memory regions to Linux */
+			/* Bypass this step for ADP ES2 H/w to avoid Memory map
+				conflicts with component images */
+#ifdef CONFIG_3GB_DDR
+			if (ram_ptable.parts[i].category == SDRAM &&
+				(ram_ptable.parts[i].type == SYS_MEMORY) &&
+				(ram_ptable.parts[i].start != PHYS_MEM_START_ADDR) &&
+				(platform_id == APQ8064AU))
+			{
 				ASSERT(ram_ptable.parts[i].size >= SIZE_256M);
 
 				ptr = target_first_256M_atag(ptr);
@@ -219,10 +273,7 @@ unsigned *target_atag_mem(unsigned *ptr)
 							(ram_ptable.parts[i].start + SIZE_256M));
 				}
 			}
-
-			/* Pass along all other usable memory regions to Linux */
-			/* Bypass this step for ADP ES2 H/w to avoid Memory map
-				conflicts with component images */
+#else
 			if (ram_ptable.parts[i].category == SDRAM &&
 				(ram_ptable.parts[i].type == SYS_MEMORY) &&
 				(ram_ptable.parts[i].start != PHYS_MEM_START_ADDR) &&
@@ -232,6 +283,7 @@ unsigned *target_atag_mem(unsigned *ptr)
 							ram_ptable.parts[i].size,
 							ram_ptable.parts[i].start);
 			}
+#endif
 		}
 	} else {
 		dprintf(CRITICAL, "ERROR: Unable to read RAM partition\n");
