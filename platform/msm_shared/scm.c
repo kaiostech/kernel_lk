@@ -1183,7 +1183,7 @@ uint32_t scm_call2(scmcall_arg *arg, scmcall_ret *ret)
 	return 0;
 }
 
-uint32_t is_secure_boot_disable()
+uint32_t is_secure_boot_enable()
 {
 	uint32_t ret = 0;
 	uint32_t resp[2];
@@ -1203,10 +1203,10 @@ uint32_t is_secure_boot_disable()
 	* Bit 2 - DEBUG_DISABLE_CHECK
 	*/
 	if(!ret) {
-		if(!(resp[0] & 0x1))
-			ret = (resp[0] & 0x4);
+		if(!((resp[0] & 0x1) && (resp[0] & 0x4)))
+			ret = 1;
 	} else
-		dprintf(CRITICAL, "SCM call is_secure_boot_disable failed\n");
+		dprintf(CRITICAL, "SCM call is_secure_boot_enable failed\n");
 
 	return ret;
 }
@@ -1244,7 +1244,7 @@ int scm_dload_mode(int mode)
 		dprintf(CRITICAL, "Failed to write to boot misc: %d\n", ret);
 
 	/* Make WDOG_DEBUG DISABLE scm call only in non-secure boot */
-	if(is_secure_boot_disable()) {
+	if(!is_secure_boot_enable()) {
 		if(!is_scm_arm_support_available()) {
 			ret = scm_call_atomic2(SCM_SVC_BOOT, WDOG_DEBUG_DISABLE, 1, 0);
 		} else {
