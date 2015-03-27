@@ -204,6 +204,7 @@ void mdp_disable(void);
 void mdp_gdsc_ctrl(uint8_t enable);
 int mdp_get_revision();
 int mdss_hdmi_init(void);
+void mdss_hdmi_display_init(uint32_t rev, void *base);
 int mdss_hdmi_on(struct msm_panel_info *pinfo);
 int mdss_hdmi_config(struct msm_panel_info *pinfo, struct fbcon_config *fb);
 void mdss_hdmi_get_vic(char *buf);
