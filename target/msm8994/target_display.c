@@ -32,6 +32,7 @@
 #include <err.h>
 #include <msm_panel.h>
 #include <mipi_dsi.h>
+#include <mdss_hdmi.h>
 #include <pm8x41.h>
 #include <pm8x41_wled.h>
 #include <qpnp_wled.h>
@@ -141,6 +142,41 @@ int target_hdmi_gpio_ctrl(uint8_t enable)
 	return NO_ERROR;
 }
 
+int target_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
+{
+	uint32_t ret;
+
+	dprintf(SPEW, "%s: target_panel_clock\n", __func__);
+
+	if (enable) {
+		mdp_gdsc_ctrl(enable);
+		mmss_bus_clock_enable();
+		mdp_clock_enable();
+		ret = restore_secure_cfg(SECURE_DEVICE_MDSS);
+		if (ret) {
+			dprintf(CRITICAL,
+				"%s: Failed to restore MDP security configs",
+				__func__);
+			mdp_clock_disable();
+			mmss_bus_clock_disable();
+			mdp_gdsc_ctrl(0);
+			return ret;
+		}
+
+		hdmi_phy_reset();
+		hdmi_pll_config();
+		hdmi_vco_enable();
+		hdmi_clk_enable();
+	} else if(!target_cont_splash_screen()) {
+		hdmi_clk_disable();
+		hdmi_vco_disable();
+		mdp_clock_disable();
+		mmss_bus_clock_disable();
+		mdp_gdsc_ctrl(enable);
+	}
+
+	return NO_ERROR;
+}
 static uint32_t dsi_pll_20nm_enable_seq(uint32_t pll_base)
 {
 	uint32_t pll_locked;
