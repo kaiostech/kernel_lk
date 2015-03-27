@@ -1557,6 +1557,11 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	/* Start processing chunks */
 	for (chunk=0; chunk<sparse_header->total_chunks; chunk++)
 	{
+		/* Make sure the total image size does not exceed the partition size */
+		if(((uint64_t)total_blocks * (uint64_t)sparse_header->blk_sz) >= size) {
+			fastboot_fail("size too large");
+			return;
+		}
 		/* Read and skip over chunk header */
 		chunk_header = (chunk_header_t *) data;
 		data += sizeof(chunk_header_t);
@@ -1575,6 +1580,23 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		}
 
 		chunk_data_sz = sparse_header->blk_sz * chunk_header->chunk_sz;
+
+		/* Make sure multiplication does not overflow uint32 size */
+		if (sparse_header->blk_sz && (chunk_header->chunk_sz != chunk_data_sz / sparse_header->blk_sz))
+		{
+			fastboot_fail("Bogus size sparse and chunk header");
+			return;
+		}
+
+		/* Make sure that the chunk size calculated from sparse image does not
+		 * exceed partition size
+		 */
+		if ((uint64_t)total_blocks * (uint64_t)sparse_header->blk_sz + chunk_data_sz > size)
+		{
+			fastboot_fail("Chunk data size exceeds partition size");
+			return;
+		}
+
 		switch (chunk_header->chunk_type)
 		{
 			case CHUNK_TYPE_RAW:
@@ -1592,11 +1614,19 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				fastboot_fail("flash write failure");
 				return;
 			}
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz)) {
+				fastboot_fail("Bogus size for RAW chunk type");
+				return;
+			}
 			total_blocks += chunk_header->chunk_sz;
 			data += chunk_data_sz;
 			break;
 
 			case CHUNK_TYPE_DONT_CARE:
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz)) {
+				fastboot_fail("bogus size for chunk DONT CARE type");
+				return;
+			}
 			total_blocks += chunk_header->chunk_sz;
 			break;
 
@@ -1604,6 +1634,10 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 			if(chunk_header->total_sz != sparse_header->chunk_hdr_sz)
 			{
 				fastboot_fail("Bogus chunk size for chunk type Dont Care");
+				return;
+			}
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz)) {
+				fastboot_fail("bogus size for chunk CRC type");
 				return;
 			}
 			total_blocks += chunk_header->chunk_sz;
