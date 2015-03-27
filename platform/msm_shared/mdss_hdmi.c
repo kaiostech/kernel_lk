@@ -402,6 +402,11 @@ static uint32_t mdss_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pin
 	return target_hdmi_panel_clock(enable, pinfo);
 }
 
+static uint32_t  mdss_hdmi_pll_clock(uint8_t enable, struct msm_panel_info *pinfo)
+{
+	return target_hdmi_pll_clock(enable, pinfo);
+}
+
 static int mdss_hdmi_enable_power(uint8_t enable, struct msm_panel_info *pinfo)
 {
         int ret = NO_ERROR;
@@ -442,24 +447,12 @@ static void mdss_hdmi_set_mode(bool on)
 {
 	uint32_t val = 0;
 
-	if (on) {
+	if (on)
 		val = 0x3;
-		writel(val, HDMI_CTRL);
-	} else {
-		writel(val, HDMI_CTRL);
-	}
+
+	writel(val, HDMI_CTRL);
 }
 
-void mdss_hdmi_get_vic(char *buf)
-{
-	struct mdss_hdmi_timing_info tinfo = {0};
-	uint32_t ret = mdss_hdmi_get_timing_info(&tinfo, mdss_hdmi_video_fmt);
-
-	if (ret)
-		snprintf(buf, HDMI_VIC_STR_MAX, "%d", 0);
-	else
-		snprintf(buf, HDMI_VIC_STR_MAX, "%d", tinfo.video_format);
-}
 
 static int mdss_hdmi_read_edid(void)
 {
@@ -471,7 +464,7 @@ static int mdss_hdmi_read_edid(void)
 	uint32_t time_out;
 	uint32_t retry = 5;
 
-	dev_addr &= 0xFE;
+	dev_addr &=0xFE;
 
 again:
 	time_out = 10;
@@ -593,6 +586,18 @@ static void mdss_hdmi_parse_res(void)
 		mdss_hdmi_video_fmt = DEFAULT_RESOLUTION;
 }
 
+void mdss_hdmi_get_vic(char *buf)
+{
+	struct mdss_hdmi_timing_info tinfo = {0};
+	uint32_t ret = mdss_hdmi_get_timing_info(&tinfo, mdss_hdmi_video_fmt);
+
+	if (ret)
+		snprintf(buf, HDMI_VIC_STR_MAX, "%d", HDMI_VFRMT_UNKNOWN);
+	else
+		snprintf(buf, HDMI_VIC_STR_MAX, "%d", tinfo.video_format);
+
+}
+
 static void mdss_hdmi_panel_init(struct msm_panel_info *pinfo)
 {
 	struct mdss_hdmi_timing_info tinfo = {0};
@@ -620,18 +625,34 @@ static void mdss_hdmi_panel_init(struct msm_panel_info *pinfo)
 	pinfo->lcdc.dual_pipe  = 0;
 }
 
-void mdss_hdmi_display_init(uint32_t rev, void *base)
+static int mdss_hdmi_update_panel_info(void)
 {
-	mdss_hdmi_panel_init(&(panel.panel_info));
+	mdss_hdmi_set_mode(true);
 
-	panel.clk_func   = mdss_hdmi_panel_clock;
-	panel.power_func = mdss_hdmi_enable_power;
+	if (!mdss_hdmi_read_edid())
+		mdss_hdmi_parse_res();
+	else
+		mdss_hdmi_video_fmt = DEFAULT_RESOLUTION;
+
+	mdss_hdmi_set_mode(false);
+
+	mdss_hdmi_panel_init(&(panel.panel_info));
 
 	panel.fb.width   = panel.panel_info.xres;
 	panel.fb.height  = panel.panel_info.yres;
 	panel.fb.stride  = panel.panel_info.xres;
 	panel.fb.bpp     = panel.panel_info.bpp;
 	panel.fb.format  = FB_FORMAT_RGB888;
+
+	return NO_ERROR;
+}
+
+void mdss_hdmi_display_init(uint32_t rev, void *base)
+{
+	panel.power_func        = mdss_hdmi_enable_power;
+	panel.clk_func          = mdss_hdmi_panel_clock;
+	panel.update_panel_info = mdss_hdmi_update_panel_info;
+	panel.pll_clk_func      = mdss_hdmi_pll_clock;
 
 	panel.fb.base = base;
 	panel.mdp_rev = rev;
@@ -854,14 +875,6 @@ int mdss_hdmi_init(void)
 	mdss_hdmi_set_mode(false);
 
 	hdmi_phy_init();
-
-	/* Enable USEC REF timer */
-	writel(0x0001001B, HDMI_USEC_REFTIMER);
-
-	mdss_hdmi_set_mode(true);
-	mdss_hdmi_read_edid();
-	mdss_hdmi_parse_res();
-	mdss_hdmi_set_mode(false);
 
 	/* Audio settings */
 	mdss_hdmi_audio_playback();
