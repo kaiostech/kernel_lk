@@ -122,6 +122,8 @@ void clock_ce_enable(uint8_t instance);
 void clock_ce_disable(uint8_t instance);
 void clock_usb30_init(void);
 
-void hdmi_clk_enable(void);
-void hdmi_clk_disable(void);
+void hdmi_ahb_core_clk_enable(void);
+void hdmi_pixel_clk_enable(uint32_t rate);
+void hdmi_pixel_clk_disable(void);
+void hdmi_core_ahb_clk_disable(void);
 #endif
