@@ -99,6 +99,7 @@ struct lcdc_panel_info {
 	uint32_t xres_pad;
 	/* Pad height */
 	uint32_t yres_pad;
+	int is_sync_active_high;
 };
 
 struct mipi_panel_info {
