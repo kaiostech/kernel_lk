@@ -66,6 +66,7 @@
 #endif
 
 #define FASTBOOT_MODE           0x77665500
+#define RECOVERY_MODE           0x77665502
 #define PON_SOFT_RB_SPARE       0x88F
 
 #define CE1_INSTANCE            1
@@ -291,7 +292,8 @@ void reboot_device(unsigned reboot_reason)
 	/* For Reboot-bootloader and Dload cases do a warm reset
 	 * For Reboot cases do a hard reset
 	 */
-	if((reboot_reason == FASTBOOT_MODE) || (reboot_reason == DLOAD))
+	if((reboot_reason == FASTBOOT_MODE) || (reboot_reason == DLOAD)
+			|| (reboot_reason == RECOVERY_MODE))
 		reset_type = PON_PSHOLD_WARM_RESET;
 	else
 		reset_type = PON_PSHOLD_HARD_RESET;
