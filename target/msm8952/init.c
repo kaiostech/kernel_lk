@@ -60,23 +60,91 @@
 #define FASTBOOT_MODE           0x77665500
 #define PON_SOFT_RB_SPARE       0x88F
 
-static uint32_t mmc_sdc_base[] =
+#define CE1_INSTANCE            1
+#define CE_EE                   1
+#define CE_FIFO_SIZE            64
+#define CE_READ_PIPE            3
+#define CE_WRITE_PIPE           2
+#define CE_READ_PIPE_LOCK_GRP   0
+#define CE_WRITE_PIPE_LOCK_GRP  0
+#define CE_ARRAY_SIZE           20
+
+struct mmc_device *dev;
+
+static uint32_t mmc_pwrctl_base[] =
 	{ MSM_SDC1_BASE, MSM_SDC2_BASE };
 
+static uint32_t mmc_sdhci_base[] =
+	{ MSM_SDC1_SDHCI_BASE, MSM_SDC2_SDHCI_BASE };
+
+static uint32_t  mmc_sdc_pwrctl_irq[] =
+	{ SDCC1_PWRCTL_IRQ, SDCC2_PWRCTL_IRQ };
 
 void target_early_init(void)
 {
 #if WITH_DEBUG_UART
-	uart_dm_init(1, 0, BLSP1_UART1_BASE);
+	uart_dm_init(2, 0, BLSP1_UART1_BASE);
 #endif
 }
 
-void target_mmc_caps(struct mmc_host *host)
+static void set_sdc_power_ctrl()
 {
-	host->caps.ddr_mode = 0;
-	host->caps.hs200_mode = 0;
-	host->caps.bus_width = MMC_BOOT_BUS_WIDTH_8_BIT;
-	host->caps.hs_clk_rate = MMC_CLK_50MHZ;
+	/* Drive strength configs for sdc pins */
+	struct tlmm_cfgs sdc1_hdrv_cfg[] =
+	{
+		{ SDC1_CLK_HDRV_CTL_OFF,  TLMM_CUR_VAL_16MA, TLMM_HDRV_MASK, 0},
+		{ SDC1_CMD_HDRV_CTL_OFF,  TLMM_CUR_VAL_10MA, TLMM_HDRV_MASK, 0},
+		{ SDC1_DATA_HDRV_CTL_OFF, TLMM_CUR_VAL_10MA, TLMM_HDRV_MASK , 0},
+	};
+
+	/* Pull configs for sdc pins */
+	struct tlmm_cfgs sdc1_pull_cfg[] =
+	{
+		{ SDC1_CLK_PULL_CTL_OFF,  TLMM_NO_PULL, TLMM_PULL_MASK, 0},
+		{ SDC1_CMD_PULL_CTL_OFF,  TLMM_PULL_UP, TLMM_PULL_MASK, 0},
+		{ SDC1_DATA_PULL_CTL_OFF, TLMM_PULL_UP, TLMM_PULL_MASK, 0},
+	};
+
+	/* Set the drive strength & pull control values */
+	tlmm_set_hdrive_ctrl(sdc1_hdrv_cfg, ARRAY_SIZE(sdc1_hdrv_cfg));
+	tlmm_set_pull_ctrl(sdc1_pull_cfg, ARRAY_SIZE(sdc1_pull_cfg));
+}
+
+void target_sdc_init()
+{
+	struct mmc_config_data config;
+
+	/* Set drive strength & pull ctrl values */
+	set_sdc_power_ctrl();
+
+	/* Try slot 1*/
+	config.slot          = 1;
+	config.bus_width     = DATA_BUS_WIDTH_8BIT;
+	config.max_clk_rate  = MMC_CLK_177MHZ;
+	config.sdhc_base     = mmc_sdhci_base[config.slot - 1];
+	config.pwrctl_base   = mmc_pwrctl_base[config.slot - 1];
+	config.pwr_irq       = mmc_sdc_pwrctl_irq[config.slot - 1];
+	config.hs400_support = 1;
+
+	if (!(dev = mmc_init(&config))) {
+	/* Try slot 2 */
+		config.slot          = 2;
+		config.max_clk_rate  = MMC_CLK_200MHZ;
+		config.sdhc_base     = mmc_sdhci_base[config.slot - 1];
+		config.pwrctl_base   = mmc_pwrctl_base[config.slot - 1];
+		config.pwr_irq       = mmc_sdc_pwrctl_irq[config.slot - 1];
+		config.hs400_support = 0;
+
+		if (!(dev = mmc_init(&config))) {
+			dprintf(CRITICAL, "mmc init failed!");
+			ASSERT(0);
+		}
+	}
+}
+
+void *target_mmc_device()
+{
+	return (void *) dev;
 }
 
 /* Return 1 if vol_up pressed */
@@ -144,23 +212,18 @@ void target_init(void)
 
 	target_keystatus();
 
-	/* Trying Slot 1*/
-	slot = 1;
-	base_addr = mmc_sdc_base[slot - 1];
-	if (mmc_boot_main(slot, base_addr))
+	target_sdc_init();
+	if (partition_read_table())
 	{
-
-	/* Trying Slot 2 next */
-	slot = 2;
-	base_addr = mmc_sdc_base[slot - 1];
-	if (mmc_boot_main(slot, base_addr)) {
-		dprintf(CRITICAL, "mmc init failed!");
+		dprintf(CRITICAL, "Error reading the partition table info\n");
 		ASSERT(0);
-		}
 	}
+
 #if LONG_PRESS_POWER_ON
 	shutdown_detect();
 #endif
+	if (target_use_signed_kernel())
+		target_crypto_init_params();
 }
 
 void target_serialno(unsigned char *buf)
@@ -314,8 +377,129 @@ unsigned target_pause_for_battery_charge(void)
 	if (is_cold_boot &&
 			(!(pon_reason & HARD_RST)) &&
 			(!(pon_reason & KPDPWR_N)) &&
-			((pon_reason & USB_CHG) || (pon_reason & DC_CHG) || (pon_reason & CBLPWR_N)))
+			((pon_reason & USB_CHG)))
 		return 1;
 	else
 		return 0;
+}
+
+void target_uninit(void)
+{
+	mmc_put_card_to_sleep(dev);
+	sdhci_mode_disable(&dev->host);
+	if (crypto_initialized())
+		crypto_eng_cleanup();
+
+	if (target_is_ssd_enabled())
+		clock_ce_disable(CE1_INSTANCE);
+}
+
+void target_usb_init(void)
+{
+	uint32_t val;
+
+	/* Select and enable external configuration with USB PHY */
+	ulpi_write(ULPI_MISC_A_VBUSVLDEXTSEL | ULPI_MISC_A_VBUSVLDEXT, ULPI_MISC_A_SET);
+
+	/* Enable sess_vld */
+	val = readl(USB_GENCONFIG_2) | GEN2_SESS_VLD_CTRL_EN;
+	writel(val, USB_GENCONFIG_2);
+
+	/* Enable external vbus configuration in the LINK */
+	val = readl(USB_USBCMD);
+	val |= SESS_VLD_CTRL;
+	writel(val, USB_USBCMD);
+}
+
+void target_usb_stop(void)
+{
+	/* Disable VBUS mimicing in the controller. */
+	ulpi_write(ULPI_MISC_A_VBUSVLDEXTSEL | ULPI_MISC_A_VBUSVLDEXT, ULPI_MISC_A_CLEAR);
+}
+
+/* Do any target specific intialization needed before entering fastboot mode */
+void target_fastboot_init(void)
+{
+	if (target_is_ssd_enabled()) {
+		clock_ce_enable(CE1_INSTANCE);
+		target_load_ssd_keystore();
+	}
+}
+
+void target_load_ssd_keystore(void)
+{
+	uint64_t ptn;
+	int      index;
+	uint64_t size;
+	uint32_t *buffer = NULL;
+
+	if (!target_is_ssd_enabled())
+		return;
+
+	index = partition_get_index("ssd");
+
+	ptn = partition_get_offset(index);
+	if (ptn == 0){
+		dprintf(CRITICAL, "Error: ssd partition not found\n");
+		return;
+	}
+
+	size = partition_get_size(index);
+	if (size == 0) {
+		dprintf(CRITICAL, "Error: invalid ssd partition size\n");
+		return;
+	}
+
+	buffer = memalign(CACHE_LINE, ROUNDUP(size, CACHE_LINE));
+	if (!buffer) {
+		dprintf(CRITICAL, "Error: allocating memory for ssd buffer\n");
+		return;
+	}
+
+	if (mmc_read(ptn, buffer, size)) {
+		dprintf(CRITICAL, "Error: cannot read data\n");
+		free(buffer);
+		return;
+	}
+
+	clock_ce_enable(CE1_INSTANCE);
+	scm_protect_keystore(buffer, size);
+	clock_ce_disable(CE1_INSTANCE);
+	free(buffer);
+}
+
+crypto_engine_type board_ce_type(void)
+{
+	return CRYPTO_ENGINE_TYPE_HW;
+}
+
+/* Set up params for h/w CE. */
+void target_crypto_init_params()
+{
+	struct crypto_init_params ce_params;
+
+	/* Set up base addresses and instance. */
+	ce_params.crypto_instance  = CE1_INSTANCE;
+	ce_params.crypto_base      = MSM_CE1_BASE;
+	ce_params.bam_base         = MSM_CE1_BAM_BASE;
+
+	/* Set up BAM config. */
+	ce_params.bam_ee               = CE_EE;
+	ce_params.pipes.read_pipe      = CE_READ_PIPE;
+	ce_params.pipes.write_pipe     = CE_WRITE_PIPE;
+	ce_params.pipes.read_pipe_grp  = CE_READ_PIPE_LOCK_GRP;
+	ce_params.pipes.write_pipe_grp = CE_WRITE_PIPE_LOCK_GRP;
+
+	/* Assign buffer sizes. */
+	ce_params.num_ce           = CE_ARRAY_SIZE;
+	ce_params.read_fifo_size   = CE_FIFO_SIZE;
+	ce_params.write_fifo_size  = CE_FIFO_SIZE;
+
+	/* BAM is initialized by TZ for this platform.
+	 * Do not do it again as the initialization address space
+	 * is locked.
+	 */
+	ce_params.do_bam_init      = 0;
+
+	crypto_init_params(&ce_params);
 }
