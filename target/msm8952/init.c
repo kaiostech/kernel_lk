@@ -48,6 +48,7 @@
 #include <crypto5_wrapper.h>
 #include <partition_parser.h>
 #include <stdlib.h>
+#include <rpm-smd.h>
 
 #if LONG_PRESS_POWER_ON
 #include <shutdown_detect.h>
@@ -224,6 +225,10 @@ void target_init(void)
 #endif
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
+
+#if SMD_SUPPORT
+	rpm_smd_init();
+#endif
 }
 
 void target_serialno(unsigned char *buf)
@@ -385,6 +390,7 @@ unsigned target_pause_for_battery_charge(void)
 
 void target_uninit(void)
 {
+
 	mmc_put_card_to_sleep(dev);
 	sdhci_mode_disable(&dev->host);
 	if (crypto_initialized())
@@ -392,6 +398,10 @@ void target_uninit(void)
 
 	if (target_is_ssd_enabled())
 		clock_ce_disable(CE1_INSTANCE);
+
+#if SMD_SUPPORT
+	rpm_smd_uninit();
+#endif
 }
 
 void target_usb_init(void)
