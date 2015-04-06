@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -99,7 +99,7 @@ struct lcdc_panel_info {
 	uint32_t xres_pad;
 	/* Pad height */
 	uint32_t yres_pad;
-	int is_sync_active_high;
+	uint32_t is_sync_active_high;
 };
 
 struct mipi_panel_info {
