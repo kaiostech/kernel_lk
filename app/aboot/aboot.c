@@ -668,9 +668,9 @@ int check_aboot_addr_range_overlap(uint32_t start, uint32_t size)
 
 #define ROUND_TO_PAGE(x,y) (((x) + (y)) & (~(y)))
 
-BUF_DMA_ALIGN(buf, 4096); //Equal to max-supported pagesize
+BUF_DMA_ALIGN(buf, BOOT_IMG_MAX_PAGE_SIZE); //Equal to max-supported pagesize
 #if DEVICE_TREE
-BUF_DMA_ALIGN(dt_buf, 4096);
+BUF_DMA_ALIGN(dt_buf, BOOT_IMG_MAX_PAGE_SIZE);
 #endif
 
 static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
@@ -831,6 +831,11 @@ int boot_linux_from_mmc(void)
 	}
 
 	if (hdr->page_size && (hdr->page_size != page_size)) {
+
+		if (hdr->page_size > BOOT_IMG_MAX_PAGE_SIZE) {
+			dprintf(CRITICAL, "ERROR: Invalid page size\n");
+			return -1;
+		}
 		page_size = hdr->page_size;
 		page_mask = page_size - 1;
 	}
@@ -1354,7 +1359,7 @@ continue_boot:
 	return 0;
 }
 
-BUF_DMA_ALIGN(info_buf, 4096);
+BUF_DMA_ALIGN(info_buf, BOOT_IMG_MAX_PAGE_SIZE);
 void write_device_info_mmc(device_info *dev)
 {
 	struct device_info *info = (void*) info_buf;
