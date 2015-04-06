@@ -29,9 +29,12 @@
 #ifndef __ADV7533_H__
 #define __ADV7533_H__
 
-#include <msm_panel.h>
 #include <stdint.h>
-#include <platform/timer.h>
+#include <msm_panel.h>
+
+#define ADV7533_REG_CHIP_REVISION (0x00)
+#define ADV7533_MAIN (0x3d) /* 7a main right shift 1 */
+#define ADV7533_CEC_DSI (0x3c)
 
 struct adv7533_i2c_reg_cfg {
 	uint8_t i2c_addr;
@@ -41,5 +44,8 @@ struct adv7533_i2c_reg_cfg {
 };
 
 int adv7533_init(void);
+void apq8064_adv7533_on(void);
+int adv7533_config_timing(struct msm_panel_info *pinfo);
+void adv7533_dump_regs(void);
 
 #endif	/* __ADV7533_H__ */

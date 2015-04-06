@@ -26,17 +26,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <adv7533.h>
+#include <dev/pm8921.h>
+#include <debug.h>
 #include <reg.h>
 #include <i2c_qup.h>
 #include <gsbi.h>
-#include <err.h>
-#include <debug.h>
-#include <adv7533.h>
-
-
-#define ADV7533_REG_CHIP_REVISION (0x00)
-#define ADV7533_MAIN (0x3d) /* 7a main right shift 1 */
-#define ADV7533_CEC_DSI (0x3c)
+#include <platform/timer.h>
 
 static struct qup_i2c_dev *dev;
 
@@ -62,6 +58,25 @@ static struct adv7533_i2c_reg_cfg setup_cfg[] = {
 	{ADV7533_MAIN, 0x0D, 1 << 6, 0},
 	{ADV7533_CEC_DSI, 0x1C, 0x30, 0},
 };
+
+void apq8064_adv7533_on(void)
+{
+	struct pm8921_gpio pdb_pin = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = 0,
+		.output_value = 0,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = 2,
+		.out_strength = PM_GPIO_STRENGTH_HIGH,
+		.function = PM_GPIO_FUNC_1,
+		.inv_int_pol = 0,
+	};
+	int rc = pm8921_gpio_config(PM_GPIO(23),&pdb_pin);
+	if (rc)
+		dprintf(CRITICAL, "FAIL adv7533 pm8921_gpio_config(): rc=%d.\n", rc);
+	/* this delay is recommended by HW specs for powering up */
+	udelay(5);
+}
 
 static int adv7533_i2c_read(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t len)
 {
@@ -165,10 +180,11 @@ s_err:
 	return ret;
 }
 
-static int adv7533_config_timing(struct msm_panel_info *pinfo)
+int adv7533_config_timing(struct msm_panel_info *pinfo)
 {
+	int ret = 0;
+
 	if (pinfo != NULL) {
-		int ret;
 		uint32_t h_total = (pinfo->xres +
 			pinfo->lcdc.h_back_porch  +
 			pinfo->lcdc.h_pulse_width +
@@ -211,7 +227,7 @@ static int adv7533_config_timing(struct msm_panel_info *pinfo)
 				((pinfo->lcdc.v_pulse_width & 0xFF0) >> 4), 0},
 			{ADV7533_CEC_DSI, 0x33,
 				((pinfo->lcdc.v_pulse_width & 0xF) << 4), 0},
-			/* vfp 0x05 5  */
+			/* vfp 0x05 5 */
 			{ADV7533_CEC_DSI, 0x34,
 				((pinfo->lcdc.v_front_porch & 0xFF0) >> 4), 0},
 			{ADV7533_CEC_DSI, 0x35,
@@ -221,17 +237,54 @@ static int adv7533_config_timing(struct msm_panel_info *pinfo)
 				((pinfo->lcdc.v_back_porch & 0xFF0) >> 4), 0},
 			{ADV7533_CEC_DSI, 0x37,
 				((pinfo->lcdc.v_back_porch & 0xF) << 4), 0},
-			{ADV7533_CEC_DSI, 0x03, 0x09, 0},/* HDMI disabled */
-			{ADV7533_CEC_DSI, 0x03, 0x89, 0},/* HDMI enabled */
+			{ADV7533_CEC_DSI, 0x03, 0x09, 5},/* HDMI disabled */
+			{ADV7533_CEC_DSI, 0x03, 0x89, 5},/* HDMI enabled */
 		};
 
 		ret = adv7533_config_common();
-		if (!ret)
-			ret = adv7533_i2c_write_regs(
-					tg_cfg, ARRAY_SIZE(tg_cfg));
-		return ret;
+		if (ret) {
+			dprintf(CRITICAL, "adv7533 config common failed\n");
+			goto end;
+		}
+
+		ret = adv7533_i2c_write_regs(tg_cfg, ARRAY_SIZE(tg_cfg));
+		if (ret)
+			dprintf(CRITICAL, "adv7533 dsi i2c write regs failed\n");
+	} else {
+		dprintf(CRITICAL, "adv7533 pinfo is null\n");
+		ret = -1;
 	}
-	return -1;
+
+end:
+	return ret;
+}
+
+void adv7533_dump_regs(void)
+{
+	uint8_t rd = 0;
+	mipi_dsi_i2c_read_byte(ADV7533_CEC_DSI, 0x3A,&rd);
+	dprintf(CRITICAL, "adv7533: [0x%x] [0x%x]\n", 0x3A, rd);
+
+	mipi_dsi_i2c_read_byte(ADV7533_CEC_DSI, 0x3B,&rd);
+	dprintf(CRITICAL, "adv7533: [0x%x] [0x%x]\n", 0x3B, rd);
+
+	mipi_dsi_i2c_read_byte(ADV7533_CEC_DSI, 0x40,&rd);
+	dprintf(CRITICAL, "adv7533: [0x%x] [0x%x]\n", 0x40, rd);
+	mipi_dsi_i2c_read_byte(ADV7533_CEC_DSI, 0x03,&rd);
+	dprintf(CRITICAL, "adv7533: [0x%x] [0x%x]\n", 0x03, rd);
+	mipi_dsi_i2c_read_byte(ADV7533_CEC_DSI, 0x39,&rd);
+	dprintf(CRITICAL, "adv7533: [0x%x] [0x%x]\n", 0x39, rd);
+	mipi_dsi_i2c_read_byte(ADV7533_MAIN, 0x42,&rd);
+	dprintf(CRITICAL, "adv7533: MAIN [0x%x] [0x%x]\n", 0x42, rd);
+
+	mipi_dsi_i2c_read_byte(ADV7533_MAIN, 0x9E,&rd);
+	dprintf(CRITICAL, "adv7533: MAIN [0x%x] [0x%x]\n", 0x9E, rd);
+	mipi_dsi_i2c_read_byte(ADV7533_MAIN, 0x16,&rd);
+	dprintf(CRITICAL, "adv7533: MAIN [0x%x] [0x%x]\n", 0x16, rd);
+	mipi_dsi_i2c_read_byte(ADV7533_MAIN, 0x18,&rd);
+	dprintf(CRITICAL, "adv7533: MAIN [0x%x] [0x%x]\n", 0x18, rd);
+	mipi_dsi_i2c_read_byte(ADV7533_MAIN, 0xd5,&rd);
+	dprintf(CRITICAL, "adv7533: MAIN [0x%x] [0x%x]\n", 0xd5, rd);
 }
 
 int adv7533_init(void)
@@ -239,13 +292,14 @@ int adv7533_init(void)
 	int ret = 0;
 	dev = qup_i2c_init(GSBI_ID_3, 384, 24000);
 	if(!dev) {
-		dprintf(INFO, "qup_i2c_init() failed\n");
+		dprintf(INFO, "adv7533 qup_i2c_init() failed\n");
 		return -1;
 	}
 
-	ret = adv7533_read_device_rev();
-	if (ret)
-		dprintf(INFO, "adv7533 read device rev failed\n");
+	pm8921_ldo_set_voltage(LDO_9, LDO_VOLTAGE_2_85V);
+	pm8921_low_voltage_switch_enable(lvs_4);
+	/* this delay is recommended by HW specs for powering up */
+	udelay(5);
 
 	return ret;
 }
