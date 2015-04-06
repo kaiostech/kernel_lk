@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -354,6 +354,13 @@ void gpio_config_i2c(uint8_t id)
 								GPIO_ENABLE);
 		gpio_tlmm_config(1, 4, GPIO_OUTPUT, GPIO_PULL_UP,
 		GPIO_2MA, GPIO_ENABLE);
+		break;
+	case GSBI_ID_3:
+		gpio_tlmm_config(9, 1, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_16MA,
+								GPIO_ENABLE);
+		gpio_tlmm_config(8, 1, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_16MA,
+								GPIO_ENABLE);
+		break;
 	default:
 		dprintf(CRITICAL, "gpio_config_i2c(%hhu)\n", id);
 	}

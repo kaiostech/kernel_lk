@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -48,7 +48,7 @@
 #include <platform/timer.h>
 #include <platform/interrupts.h>
 
-static struct qup_i2c_dev *dev_addr = NULL;
+static struct qup_i2c_dev *dev_addr[GSBI_ID_MAX];
 
 /* QUP Registers */
 enum {
@@ -146,9 +146,9 @@ static inline void qup_print_status(struct qup_i2c_dev *dev)
 }
 #endif
 
-static irqreturn_t qup_i2c_interrupt(void)
+static irqreturn_t qup_i2c_interrupt(uint8_t gsbi_id)
 {
-	struct qup_i2c_dev *dev = dev_addr;
+	struct qup_i2c_dev *dev = dev_addr[gsbi_id];
 	if (!dev) {
 		dprintf(CRITICAL,
 			"dev_addr is NULL, that means i2c_qup_init failed...\n");
@@ -222,8 +222,7 @@ static int qup_i2c_poll_state(struct qup_i2c_dev *dev, unsigned state)
 {
 	unsigned retries = 0;
 
-	dprintf(INFO, "Polling Status for state:0x%x\n", state);
-
+	dprintf(SPEW, "Polling Status for state:0x%x\n", state);
 	while (retries != 2000) {
 		unsigned status = readl(dev->qup_base + QUP_STATE);
 
@@ -241,9 +240,9 @@ static void
 qup_verify_fifo(struct qup_i2c_dev *dev, unsigned val, unsigned addr, int rdwr)
 {
 	if (rdwr)
-		dprintf(INFO, "RD:Wrote 0x%x to out_ff:0x%x\n", val, addr);
+		dprintf(SPEW, "RD:Wrote 0x%x to out_ff:0x%x\n", val, addr);
 	else
-		dprintf(INFO, "WR:Wrote 0x%x to out_ff:0x%x\n", val, addr);
+		dprintf(SPEW, "WR:Wrote 0x%x to out_ff:0x%x\n", val, addr);
 }
 #else
 static inline void
@@ -303,7 +302,7 @@ qup_issue_write(struct qup_i2c_dev *dev, struct i2c_msg *msg, int rem,
 			writel(*carry_over | ((QUP_OUT_START | addr) << 16),
 			       dev->qup_base + QUP_OUT_FIFO_BASE);
 
-			qup_verify_fifo(dev, *carry_over | QUP_OUT_DATA << 16 |
+			qup_verify_fifo(dev, *carry_over | QUP_OUT_START << 16 |
 					addr << 16, (unsigned)dev->qup_base +
 					QUP_OUT_FIFO_BASE + (*idx) - 2, 0);
 		} else
@@ -470,7 +469,7 @@ int qup_i2c_xfer(struct qup_i2c_dev *dev, struct i2c_msg msgs[], int num)
 		int hs_div;
 		unsigned fifo_reg;
 		/* Configure the GSBI Protocol Code for i2c */
-		writel((GSBI_PROTOCOL_CODE_I2C <<
+		writel((GSBI_PROTOCOL_CODE_I2C_UART <<
 			GSBI_CTRL_REG_PROTOCOL_CODE_S),
 		       GSBI_CTRL_REG(dev->gsbi_base));
 
@@ -496,7 +495,7 @@ int qup_i2c_xfer(struct qup_i2c_dev *dev, struct i2c_msg msgs[], int num)
 		    dev->out_blk_sz * (2 << ((fifo_reg & 0x1C) >> 2));
 		dev->in_fifo_sz =
 		    dev->in_blk_sz * (2 << ((fifo_reg & 0x380) >> 7));
-		dprintf(INFO, "QUP IN:bl:%d, ff:%d, OUT:bl:%d, ff:%d\n",
+		dprintf(SPEW, "BLOCK INFO QUP IN:bl:%d, ff:%d, OUT:bl:%d, ff:%d\n",
 			dev->in_blk_sz, dev->in_fifo_sz, dev->out_blk_sz,
 			dev->out_fifo_sz);
 	}
@@ -608,8 +607,6 @@ int qup_i2c_xfer(struct qup_i2c_dev *dev, struct i2c_msg msgs[], int num)
 				ret = err;
 				goto out_err;
 			}
-			dprintf(INFO, "idx:%d, rem:%d, num:%d, mode:%d\n",
-				idx, rem, num, dev->mode);
 
 			qup_print_status(dev);
 			if (dev->err) {
@@ -682,8 +679,14 @@ struct qup_i2c_dev *qup_i2c_init(uint8_t gsbi_id, unsigned clk_freq,
 				 unsigned src_clk_freq)
 {
 	struct qup_i2c_dev *dev;
-	if (dev_addr != NULL) {
-		return dev_addr;
+
+	if (gsbi_id > GSBI_ID_MAX) {
+		dprintf(CRITICAL, "Error GSBI index: %d out of range\n", gsbi_id);
+		return NULL;
+	}
+
+	if (dev_addr[gsbi_id] != NULL) {
+		return dev_addr[gsbi_id];
 	}
 
 	dev = malloc(sizeof(struct qup_i2c_dev));
@@ -699,13 +702,13 @@ struct qup_i2c_dev *qup_i2c_init(uint8_t gsbi_id, unsigned clk_freq,
 	dev->gsbi_number = gsbi_id;
 
 	/* This must be done for qup_i2c_interrupt to work. */
-	dev_addr = dev;
+	dev_addr[gsbi_id] = dev;
 
 	/* Initialize the GPIO for GSBIn as i2c */
 	gpio_config_i2c(dev->gsbi_number);
 
 	/* Configure the GSBI Protocol Code for i2c */
-	writel((GSBI_PROTOCOL_CODE_I2C <<
+	writel((GSBI_PROTOCOL_CODE_I2C_UART <<
 		GSBI_CTRL_REG_PROTOCOL_CODE_S), GSBI_CTRL_REG(dev->gsbi_base));
 
 	/* Set clk_freq and src_clk_freq for i2c. */
@@ -718,7 +721,7 @@ struct qup_i2c_dev *qup_i2c_init(uint8_t gsbi_id, unsigned clk_freq,
 	dev->clk_ctl = 0;
 
 	/* Register the GSBIn QUP IRQ */
-	register_int_handler(dev->qup_irq, (int_handler) qup_i2c_interrupt, 0);
+	register_int_handler(dev->qup_irq, (int_handler) qup_i2c_interrupt, gsbi_id);
 
 	/* Then disable it */
 	mask_interrupt(dev->qup_irq);
