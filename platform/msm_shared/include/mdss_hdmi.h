@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -26,98 +26,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#include <err.h>
-#include <debug.h>
-#include <platform.h>
 
-#include "include/msm_panel.h"
+#ifndef _PLATFORM_MSM_SHARED_MDSS_HDMI_H_
+#define _PLATFORM_MSM_SHARED_MDSS_HDMI_H_
 
-__WEAK int mdp_lcdc_config(void)
-{
-	return 0;
-}
-__WEAK int lvds_on()
-{
-	return 0;
-}
-__WEAK int mdp_lcdc_on()
-{
-	return 0;
-}
-__WEAK int mdp_lcdc_off()
-{
-	return 0;
-}
-__WEAK int target_display_pre_on()
-{
-	return 0;
-}
-__WEAK int target_display_post_on()
-{
-	return 0;
-}
-__WEAK int target_display_pre_off()
-{
-	return 0;
-}
-__WEAK int target_display_post_off()
-{
-	return 0;
-}
-__WEAK int target_display_get_base_offset(uint32_t base)
-{
-	return 0;
-}
-__WEAK int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
-{
-    return 0;
-}
-
-__WEAK void target_edp_panel_init(struct msm_panel_info *pinfo)
-{
-	return;
-}
-
-__WEAK int target_edp_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
-{
-	return 0;
-}
-
-__WEAK int target_edp_panel_enable(void)
-{
-	return 0;
-}
-
-__WEAK int target_edp_panel_disable(void)
-{
-	return 0;
-}
-
-__WEAK int target_edp_bl_ctrl(int enable)
-{
-	return 0;
-}
-
-__WEAK int target_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
-{
-	return 0;
-}
-
-__WEAK int target_hdmi_regulator_ctrl(bool enable)
-{
-	return 0;
-}
-__WEAK int mdss_hdmi_init(void)
-{
-	return 0;
-}
-
-__WEAK int target_hdmi_gpio_ctrl(bool enable)
-{
-	return 0;
-}
-
-__WEAK int target_hdmi_pll_clock(uint8_t enable, struct msm_panel_info *pinfo)
-{
-	return 0;
-}
+void hdmi_phy_reset(void);
+uint32_t hdmi_pll_config(uint32_t tmds_clk_rate);
+int hdmi_vco_enable(void);
+int hdmi_vco_disable(void);
+void mdss_hdmi_display_init(uint32_t rev, void *base);
+#endif
