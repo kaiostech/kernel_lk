@@ -162,7 +162,7 @@ static int target_volume_up()
 	status = gpio_status(TLMM_VOL_UP_BTN_GPIO);
 
 	/* Active high signal. */
-	return status;
+	return !status;
 }
 
 /* Return 1 if vol_down pressed */
