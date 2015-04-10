@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2012, 2015 Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -111,6 +111,7 @@ typedef enum {
 
 #define LDO_2      (2)
 #define LDO_8      (8  | LDO_P_MASK)
+#define LDO_9      (9  | LDO_P_MASK)
 #define LDO_11     (11 | LDO_P_MASK)
 #define LDO_23     (23 | LDO_P_MASK)
 
@@ -118,7 +119,8 @@ enum
 {
 	LDO_VOLTAGE_1_2V = 0,
 	LDO_VOLTAGE_1_8V = 1,
-	LDO_VOLTAGE_3_0V = 2,
+	LDO_VOLTAGE_2_85V = 2,
+	LDO_VOLTAGE_3_0V = 3,
 	LDO_VOLTAGE_ENTRIES
 };
 

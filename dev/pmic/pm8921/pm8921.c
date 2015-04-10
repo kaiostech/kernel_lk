@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013, Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, 2015 Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -45,6 +45,7 @@ static uint8_t ldo_n_voltage_mult[LDO_VOLTAGE_ENTRIES] = {
 static uint8_t ldo_p_voltage_mult[LDO_VOLTAGE_ENTRIES] = {
 	0,
 	6, /* 1.8V */
+	27, /* 2.85V */
 	30, /* 3.0V */
 	};
 
