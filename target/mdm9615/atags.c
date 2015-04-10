@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2011,2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #define SIZE_1M     (1024 * 1024)
 #define SIZE_8M     (8 * SIZE_1M)
 #define SIZE_15M    (15 * SIZE_1M)
+#define SIZE_14M    (14 * SIZE_1M)
 #define SIZE_17M    (17 * SIZE_1M)
 #define SIZE_23M    (23 * SIZE_1M)
 #define SIZE_88M    (11 * SIZE_8M)
@@ -78,7 +79,7 @@ unsigned *target_atag_mem(unsigned *ptr)
 				/*Add additional atag to pass DSP3 memory to kernel*/
 				*ptr++ = 4;
 				*ptr++ = 0x54410002;
-				*ptr++ = SIZE_17M;
+				*ptr++ = SIZE_14M;
 				*ptr++ = ram_ptable.parts[i].start + SIZE_88M + SIZE_23M;
 
 			}
