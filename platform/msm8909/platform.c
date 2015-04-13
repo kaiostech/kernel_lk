@@ -52,12 +52,17 @@
 #define IMEM_MEMORY       (MMU_MEMORY_TYPE_NORMAL_WRITE_THROUGH | \
                            MMU_MEMORY_AP_READ_WRITE | MMU_MEMORY_XN)
 
+/* Scratch memory - Strongly ordered, non-executable */
+#define SCRATCH_MEMORY                        (MMU_MEMORY_TYPE_NORMAL | \
+			                      MMU_MEMORY_AP_READ_WRITE | MMU_MEMORY_XN)
+
 static mmu_section_t mmu_section_table[] = {
 /*           Physical addr,     Virtual addr,     Size (in MB),     Flags */
-	{    MEMBASE,           MEMBASE,          (MEMSIZE / MB),   LK_MEMORY},
+	{     MEMBASE,           MEMBASE,          (MEMSIZE / MB),   LK_MEMORY},
 	{    MSM_IOMAP_BASE,    MSM_IOMAP_BASE,   MSM_IOMAP_SIZE,   IOMAP_MEMORY},
 	{    A7_SS_BASE,        A7_SS_BASE,       A7_SS_SIZE,       IOMAP_MEMORY},
 	{    SYSTEM_IMEM_BASE,  SYSTEM_IMEM_BASE, 1,                IMEM_MEMORY},
+	{    SCRATCH_REGION2,   SCRATCH_REGION2_VIRT_START, SCRATCH_REGION2_SIZE / MB, LK_MEMORY},
 };
 
 static struct smem_ram_ptable ram_ptable;
@@ -157,14 +162,54 @@ void platform_init_mmu_mappings(void)
 
 addr_t platform_get_virt_to_phys_mapping(addr_t virt_addr)
 {
-	/* Using 1-1 mapping on this platform. */
-	return virt_addr;
+	uint32_t paddr;
+	uint32_t table_size = ARRAY_SIZE(mmu_section_table);
+	uint32_t limit;
+
+	for (uint32_t i = 0; i < table_size; i++)
+	{
+		limit = (mmu_section_table[i].num_of_sections * MB) - 0x1;
+
+		if (virt_addr >= mmu_section_table[i].vaddress &&
+			virt_addr <= (mmu_section_table[i].vaddress + limit))
+		{
+				paddr = mmu_section_table[i].paddress + (virt_addr - mmu_section_table[i].vaddress);
+				return paddr;
+		}
+	}
+	/* No special mapping found.
+	* Assume 1-1 mapping.
+	*/
+	paddr = virt_addr;
+
+	return paddr;
 }
 
 addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr)
 {
-	/* Using 1-1 mapping on this platform. */
-	return phys_addr;
+	uint32_t vaddr;
+	uint32_t table_size = ARRAY_SIZE(mmu_section_table);
+	uint32_t limit;
+
+	for (uint32_t i = 0; i < table_size; i++)
+	{
+		limit = (mmu_section_table[i].num_of_sections * MB) - 0x1;
+
+		if (phys_addr >= mmu_section_table[i].paddress &&
+			phys_addr <= (mmu_section_table[i].paddress + limit))
+		{
+			vaddr = mmu_section_table[i].vaddress + (phys_addr - mmu_section_table[i].paddress);
+			return vaddr;
+		}
+	}
+
+	/* No special mapping found.
+	* Assume 1-1 mapping.
+	*/
+	vaddr = phys_addr;
+
+	return vaddr;
+
 }
 
 /* DYNAMIC SMEM REGION feature enables LK to dynamically
