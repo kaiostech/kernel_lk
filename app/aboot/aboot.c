@@ -1278,6 +1278,10 @@ int boot_linux_from_flash(void)
 		}
 #endif
 
+#if VERIFIED_BOOT
+	boot_verifier_init();
+#endif
+
 	/* Authenticate Kernel */
 	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
@@ -1610,7 +1614,11 @@ void read_device_info_flash(device_info *dev)
 	if (memcmp(info->magic, DEVICE_MAGIC, DEVICE_MAGIC_SIZE))
 	{
 		memcpy(info->magic, DEVICE_MAGIC, DEVICE_MAGIC_SIZE);
+#if DEFAULT_UNLOCK
+		info->is_unlocked = 1;
+#else
 		info->is_unlocked = 0;
+#endif
 		info->is_tampered = 0;
 		write_device_info_flash(info);
 	}
