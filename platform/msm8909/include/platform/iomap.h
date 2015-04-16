@@ -47,6 +47,9 @@
 #define MSM_SHARED_BASE             0x87D00000
 
 #define MSM_NAND_BASE               0x79B0000
+
+#define SCRATCH_REGION2_VIRT_START  (SCRATCH_ADDR + SCRATCH_REGION1_SIZE)
+
 /* NAND BAM */
 #define MSM_NAND_BAM_BASE           0x7984000
 
