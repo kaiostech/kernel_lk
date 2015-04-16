@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -83,7 +83,7 @@ static struct ptable flash_ptable;
 
 #define LAST_NAND_PTN_LEN_PATTERN                     0xFFFFFFFF
 
-#define EXT4_CMDLINE  " rootfstype=ext4 root=/dev/mmcblk0p"
+#define EXT4_CMDLINE  " rootwait rootfstype=ext4 root=/dev/mmcblk0p"
 #define UBI_CMDLINE " rootfstype=ubifs rootflags=bulk_read ubi.fm_autoconvert=1"
 
 struct qpic_nand_init_config config;
@@ -143,6 +143,9 @@ void target_init(void)
 			dprintf(CRITICAL, "Error reading the partition table info\n");
 			ASSERT(0);
 		}
+		/* Below setting is to enable EBI2 function selection in TLMM so
+		   that GPIOs can be used for display */
+		writel((readl(TLMM_EBI2_EMMC_GPIO_CFG) | EBI2_BOOT_SELECT), TLMM_EBI2_EMMC_GPIO_CFG);
 	} else {
 		config.pipes.read_pipe = DATA_PRODUCER_PIPE;
 		config.pipes.write_pipe = DATA_CONSUMER_PIPE;
@@ -179,7 +182,10 @@ void reboot_device(unsigned reboot_reason)
 	 * This call should be based on the pmic version
 	 * when PM8019 v2 is available.
 	 */
-	pm8x41_v2_reset_configure(PON_PSHOLD_WARM_RESET);
+	if (reboot_reason)
+		pm8x41_v2_reset_configure(PON_PSHOLD_WARM_RESET);
+	else
+		pm8x41_v2_reset_configure(PON_PSHOLD_HARD_RESET);
 
 	/* Drop PS_HOLD for MSM */
 	writel(0x00, MPM2_MPM_PS_HOLD);
