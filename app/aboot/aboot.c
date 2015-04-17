@@ -135,6 +135,7 @@ static const char *emmc_cmdline = " androidboot.bootdevice=";
 #else
 static const char *emmc_cmdline = " androidboot.emmc=true";
 #endif
+static const char *notemmc_cmdline = " androidboot.emmc=false";
 static const char *usb_sn_cmdline = " androidboot.serialno=";
 static const char *androidboot_mode = " androidboot.mode=";
 static const char *alarmboot_cmdline = " androidboot.alarmboot=true";
@@ -315,6 +316,8 @@ unsigned char *update_cmdline(const char * cmdline)
 		platform_boot_dev_cmdline(boot_dev_buf);
 		cmdline_len += strlen(boot_dev_buf);
 #endif
+	} else {
+		cmdline_len += strlen(notemmc_cmdline);
 	}
 
 	cmdline_len += strlen(usb_sn_cmdline);
@@ -442,6 +445,11 @@ unsigned char *update_cmdline(const char * cmdline)
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 #endif
+		} else {
+			src = notemmc_cmdline;
+			if (have_cmdline) --dst;
+			have_cmdline = 1;
+			while ((*dst++ = *src++));
 		}
 
 #if VERIFIED_BOOT
