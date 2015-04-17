@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -595,7 +595,7 @@ struct fbcon_config *mipi_init(void)
 #if DISPLAY_MIPI_PANEL_TOSHIBA_MDT61
 	mipi_dsi_phy_init(panel_info);
 #else
-	mipi_dsi_phy_ctrl_config(panel_info);
+	mipi_dsi_phy_init(panel_info);
 #endif
 
 	status += mipi_dsi_panel_initialize(panel_info);
@@ -646,6 +646,38 @@ int mipi_config(struct msm_fb_panel_data *panel)
 		pinfo->rotate();
 
 	return ret;
+}
+
+int mipi_dsi_config_480p(void)
+{
+	int i;
+	uint32_t offset = 0x40;
+	uint32_t ln_cfg = 0x300;
+
+	for (i = 0; i < 4; i++) { /* ln_cfg */
+		writel(0xc0, MIPI_DSI_BASE + ln_cfg + 0x00);
+		writel(0x00, MIPI_DSI_BASE + ln_cfg + 0x04);
+		writel(0x00, MIPI_DSI_BASE + ln_cfg + 0x14);
+		writel(0x00, MIPI_DSI_BASE + ln_cfg + 0x18);
+		ln_cfg += offset;
+	}
+
+	writel(0x10000000, MIPI_DSI_BASE + 0x0a8);
+	writel(0x01, MIPI_DSI_BASE + 0x0c8);
+	writel(0x01, MIPI_DSI_BASE + 0x08c);
+	writel(0x13FF3BE0, MIPI_DSI_BASE + 0x108);
+	writel(0x00010002, MIPI_DSI_BASE + 0x10c);
+	writel(0x3f, MIPI_DSI_BASE + 0x118);
+	writel(0x3fd, MIPI_DSI_BASE + 0x11c);
+
+	writel(0x00, MIPI_DSI_BASE + 0x48c);
+	writel(0x00, MIPI_DSI_BASE + 0x490);
+	writel(0x25, MIPI_DSI_BASE + 0x4b0);
+	writel(0x20, MIPI_DSI_BASE + 0x510);
+	writel(0x01, MIPI_DSI_BASE + 0x518);
+	writel(0x00, MIPI_DSI_BASE + 0x51c);
+
+	return 0;
 }
 
 int mipi_dsi_video_mode_config(unsigned short disp_width,
@@ -718,13 +750,13 @@ int mipi_dsi_video_mode_config(unsigned short disp_width,
 	writel(0x00000100, DSI_MISR_VIDEO_CTRL);
 
 	if (mdp_get_revision() >= MDP_REV_41) {
-		writel(low_pwr_stop_mode << 16 |
-				eof_bllp_pwr << 12 | traffic_mode << 8
-				| dst_format << 4 | 0x0, DSI_VIDEO_MODE_CTRL);
+		writel((low_pwr_stop_mode & 1) << 24 | (low_pwr_stop_mode & 1) << 20 |
+		       (low_pwr_stop_mode & 1) << 16 | eof_bllp_pwr << 15 |
+		       dst_format << 4 | 0x0, DSI_VIDEO_MODE_CTRL);
 	} else {
-		writel(1 << 28 | 1 << 24 | 1 << 20 | low_pwr_stop_mode << 16 |
-				eof_bllp_pwr << 12 | traffic_mode << 8
-				| dst_format << 4 | 0x0, DSI_VIDEO_MODE_CTRL);
+		writel((low_pwr_stop_mode & 1) << 24 | (low_pwr_stop_mode & 1) << 20 |
+		       (low_pwr_stop_mode & 1) << 16 | eof_bllp_pwr << 15 |
+		       dst_format << 4 | 0x0, DSI_VIDEO_MODE_CTRL);
 	}
 
 	writel(0x67, DSI_CAL_STRENGTH_CTRL);

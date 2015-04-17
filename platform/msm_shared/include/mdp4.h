@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2012, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -61,6 +61,20 @@
 #define MDP_RGB1_SRC_YSTRIDE1                 REG_MDP(0x40040)
 #define MDP_RGB1_SRC_FORMAT                   REG_MDP(0x40050)
 #define MDP_RGB1_CONSTANT_COLOR               REG_MDP(0x41008)
+
+#define MDP_DMA_P_CONFIG                      REG_MDP(0x90000)
+#define MDP_DMA_P_OUT_XY                      REG_MDP(0x90010)
+#define MDP_DMA_P_SIZE                        REG_MDP(0x90004)
+#define MDP_DMA_P_BUF_ADDR                    REG_MDP(0x90008)
+#define MDP_DMA_P_BUF_Y_STRIDE                REG_MDP(0x9000C)
+#define MDP_DMA_P_OP_MODE                     REG_MDP(0x90070)
+
+#define MDP_DMA_S_CONFIG                      REG_MDP(0xA0000)
+#define MDP_DMA_S_OUT_XY                      REG_MDP(0xA0010)
+#define MDP_DMA_S_SIZE                        REG_MDP(0xA0004)
+#define MDP_DMA_S_BUF_ADDR                    REG_MDP(0xA0008)
+#define MDP_DMA_S_BUF_Y_STRIDE                REG_MDP(0xA000C)
+#define MDP_DMA_S_OP_MODE                     REG_MDP(0xA0028)
 
 #define MDP_DSI_VIDEO_EN                      REG_MDP(0xE0000)
 #define MDP_DSI_VIDEO_HSYNC_CTL               REG_MDP(0xE0004)

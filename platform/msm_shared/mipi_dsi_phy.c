@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,6 +30,8 @@
 #include <reg.h>
 #include <mipi_dsi.h>
 #include <platform/iomap.h>
+#include <clock.h>
+#include <bits.h>
 
 static void mipi_dsi_calibration(void)
 {
@@ -127,6 +129,10 @@ int mipi_dsi_phy_init(struct mipi_dsi_panel_config *pinfo)
 		if (pinfo->lane_swap)
 			writel(pinfo->lane_swap, MIPI_DSI_BASE + 0xac);
 	} else {
+		uint32_t reg = DSI_LANE_CTRL;
+		uint32_t tmp;
+
+		writel(0x050, MIPI_DSI_BASE + 0x0214);	/* loop filter resistor R setting */
 		writel(0x0001, MIPI_DSI_BASE + 0x128);	/* start phy sw reset */
 		writel(0x0000, MIPI_DSI_BASE + 0x128);	/* end phy w reset */
 		writel(0x0003, MIPI_DSI_BASE + 0x500);	/* regulator_ctrl_0 */
@@ -156,6 +162,11 @@ int mipi_dsi_phy_init(struct mipi_dsi_panel_config *pinfo)
 		}
 		mipi_dsi_calibration();
 
+		/* Force DSI-clock ON */
+		tmp = readl_relaxed(reg);
+		tmp |= BIT(28);
+		writel_relaxed(tmp, reg);
+
 		off = 0x0204;		/* pll ctrl 1 - 19, skip 0 */
 		for (i = 1; i < 20; i++) {
 			writel(pd->pll[i], MIPI_DSI_BASE + off);
@@ -170,7 +181,7 @@ int mipi_dsi_phy_init(struct mipi_dsi_panel_config *pinfo)
 		while (!(readl(DSIPHY_PLL_RDY) & 0x01))
 			udelay(1);
 
-		writel(0x202D, DSI_CLKOUT_TIMING_CTRL);
+		writel(0x512, DSI_CLKOUT_TIMING_CTRL);
 
 		off = 0x0440;		/* phy timing ctrl 0 - 11 */
 		for (i = 0; i < 12; i++) {
