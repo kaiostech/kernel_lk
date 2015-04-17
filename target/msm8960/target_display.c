@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,6 +33,11 @@
 #include <mdp4.h>
 #include <target/display.h>
 #include <target/board.h>
+#include <platform/timer.h>
+#include <platform/iomap.h>
+#include <platform/clock.h>
+#include <reg.h>
+#include <bits.h>
 
 static struct msm_fb_panel_data panel;
 
@@ -89,7 +94,8 @@ static int apq8064_lvds_panel_power(int enable)
 	return 0;
 }
 
-static int apq8064_lvds_clock(int enable)
+static int apq8064_lvds_clock(int enable,
+				struct msm_panel_info *pinfo)
 {
 	if (enable)
 		mdp_clock_init();
@@ -115,7 +121,8 @@ static int fusion3_mtp_panel_power(int enable)
 	return 0;
 }
 
-static int fusion3_mtp_clock(int enable)
+static int fusion3_mtp_clock(int enable,
+				struct msm_panel_info *pinfo)
 {
 	if (enable) {
 		mdp_clock_init();
@@ -162,11 +169,19 @@ static void msm8960_mipi_panel_reset(void)
 	pm8921_gpio_config(PM_GPIO(43), &gpio43_param);
 }
 
-static int msm8960_mipi_panel_clock(int enable)
+static int msm8960_mipi_panel_clock(int enable,
+					struct msm_panel_info *pinfo)
 {
 	if (enable) {
+		int target_id = board_target_id();
 		mdp_clock_init();
-		mmss_clock_init();
+		if ((target_id == LINUX_MACHTYPE_8064_ADP_2)||
+			(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2) ||
+			(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2P5)) {
+			adp_mmss_clock_init(pinfo);
+		}
+		else
+			mmss_clock_init();
 	} else if(!target_cont_splash_screen()) {
 			mmss_clock_disable();
 	}
@@ -174,7 +189,8 @@ static int msm8960_mipi_panel_clock(int enable)
 	return 0;
 }
 
-static int mpq8064_hdmi_panel_clock(int enable)
+static int mpq8064_hdmi_panel_clock(int enable,
+					struct msm_panel_info *pinfo)
 {
 	if (MPLATFORM()) {
 		int target_id = board_target_id();
@@ -204,7 +220,8 @@ static int mpq8064_hdmi_panel_power(int enable)
 	return 0;
 }
 
-static int msm8960_liquid_mipi_panel_clock(int enable)
+static int msm8960_liquid_mipi_panel_clock(int enable,
+						struct msm_panel_info *pinfo)
 {
 	if (enable) {
 		mdp_clock_init();
@@ -231,6 +248,23 @@ static int msm8960_mipi_panel_power(int enable)
 		pm8921_ldo_set_voltage(LDO_2, LDO_VOLTAGE_1_2V);
 
 		msm8960_mipi_panel_reset();
+	}
+
+	return 0;
+}
+
+static int apq8064_mipi_panel_power(int enable)
+{
+	if (enable) {
+
+		/* Turn on LVS_7 for mipi vdd */
+		pm8921_low_voltage_switch_enable(lvs_7);
+
+		/* Turn on LDO2 for lcd1 mipi vddio */
+		pm8921_ldo_set_voltage(LDO_2, LDO_VOLTAGE_1_2V);
+
+		/* Turn on LDO11 for vdda_mipi_dsi */
+		pm8921_ldo_set_voltage(LDO_11, LDO_VOLTAGE_3_0V);
 	}
 
 	return 0;
@@ -440,6 +474,38 @@ void display_init(void)
 			}
 		}
 	}
+
+	/* adding dsi panel to auto platform*/
+	if ((target_id == LINUX_MACHTYPE_8064_ADP_2)||
+		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2) ||
+		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2P5)) {
+		uint32_t ahb_en_reg, ahb_enabled;
+		ahb_en_reg = readl(AHB_EN_REG);
+		ahb_enabled = ahb_en_reg & BIT(4);
+		if (!ahb_enabled) {
+			writel(ahb_en_reg | BIT(4), AHB_EN_REG);
+			/* Make sure iface clock is enabled before register access */
+			udelay(10);
+		}
+		unsigned fb_dsi_offset = panel.panel_info.xres *
+			panel.panel_info.yres * (panel.panel_info.bpp / 8);
+		fb_dsi_offset = (fb_dsi_offset + 0xFFF) & (~0xFFF);
+		mipi_dsi_i2c_video_wvga_init(&(panel.panel_info));
+		panel.clk_func   = msm8960_mipi_panel_clock;
+		panel.power_func = apq8064_mipi_panel_power;
+		panel.fb.base = panel.fb.base + fb_dsi_offset;
+		panel.fb.width =  panel.panel_info.xres;
+		panel.fb.height =  panel.panel_info.yres;
+		panel.fb.stride =  panel.panel_info.xres;
+		panel.fb.bpp =  panel.panel_info.bpp;
+		panel.fb.format = FB_FORMAT_RGB888;
+		panel.mdp_rev = MDP_REV_44;
+		if (msm_display_init(&panel)) {
+			dprintf(CRITICAL, "MIPI init failed!\n");
+			return;
+		}
+	}
+
 	if (!MPLATFORM()) {
 		display_enable = 1;
 	}

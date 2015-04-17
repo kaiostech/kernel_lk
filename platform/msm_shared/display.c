@@ -247,7 +247,7 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 
 	/* Enable clock */
 	if (pdata->clk_func)
-		ret = pdata->clk_func(1);
+		ret = pdata->clk_func(1, &pdata->panel_info);
 
 	if (ret)
 		goto msm_display_init_out;
@@ -329,7 +329,7 @@ int msm_display_off()
 
 	/* Disable clock */
 	if (panel->clk_func)
-		ret = panel->clk_func(0);
+		ret = panel->clk_func(0, pinfo);
 
 	if (ret)
 		goto msm_display_off_out;

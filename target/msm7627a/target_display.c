@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -41,7 +41,8 @@ extern int mipi_renesas_panel_dsi_config(int);
 extern int mipi_nt35510_panel_dsi_config(int);
 extern int lcdc_truly_panel_on(int);
 
-static int msm7627a_mdp_clock_init(int enable)
+static int msm7627a_mdp_clock_init(int enable,
+				struct msm_panel_info *pinfo)
 {
 	int ret = 0;
 	unsigned rate = 0;
@@ -55,7 +56,8 @@ static int msm7627a_mdp_clock_init(int enable)
 	return ret;
 }
 
-static int msm7627a_lcdc_clock_init(int enable)
+static int msm7627a_lcdc_clock_init(int enable,
+				struct msm_panel_info *pinfo)
 {
 	int ret = 0;
 	unsigned rate = panel.panel_info.clk_rate;
