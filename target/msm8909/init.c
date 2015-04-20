@@ -367,6 +367,8 @@ void target_serialno(unsigned char *buf)
 	if (target_is_emmc_boot()) {
 		serialno = mmc_get_psn();
 		snprintf((char *)buf, 13, "%x", serialno);
+	} else {
+		snprintf((char *)buf, 13, "nand");
 	}
 }
 
