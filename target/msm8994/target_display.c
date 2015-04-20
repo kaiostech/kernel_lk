@@ -98,6 +98,45 @@ static struct gpio_pin hdmi_hpd_gpio = {       /* HPD, input */
   "msmgpio", 34, 7, 0, 1, 1
 };
 
+
+static void target_hdmi_ldo_enable(uint8_t enable)
+{
+	if (enable)
+		regulator_enable(REG_LDO12);
+	else
+		regulator_disable(REG_LDO12);
+}
+
+static void target_hdmi_mpp4_enable(uint8_t enable)
+{
+	struct pm8x41_mpp mpp;
+
+	/* Enable MPP4 */
+	pmi8994_config_mpp_slave_id(0);
+
+        mpp.base = PM8x41_MMP4_BASE;
+	mpp.vin = MPP_VIN2;
+	mpp.mode = MPP_HIGH;;
+	if (enable) {
+		pm8x41_config_output_mpp(&mpp);
+		pm8x41_enable_mpp(&mpp, MPP_ENABLE);
+	} else {
+		pm8x41_enable_mpp(&mpp, MPP_DISABLE);
+	}
+
+	/* Need delay before power on regulators */
+	mdelay(20);
+}
+
+int target_hdmi_regulator_ctrl(uint8_t enable)
+{
+	target_hdmi_ldo_enable(enable);
+
+	target_hdmi_mpp4_enable(enable);
+
+	return 0;
+}
+
 int target_hdmi_gpio_ctrl(uint8_t enable)
 {
 	gpio_tlmm_config(hdmi_cec_gpio.pin_id, 1,	/* gpio 31, CEC */
@@ -125,6 +164,37 @@ int target_hdmi_gpio_ctrl(uint8_t enable)
 	return NO_ERROR;
 }
 
+int target_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
+{
+	uint32_t ret;
+
+	dprintf(SPEW, "%s: target_panel_clock\n", __func__);
+
+	if (enable) {
+		mdp_gdsc_ctrl(enable);
+		mmss_bus_clock_enable();
+		mdp_clock_enable();
+		ret = restore_secure_cfg(SECURE_DEVICE_MDSS);
+		if (ret) {
+			dprintf(CRITICAL,
+				"%s: Failed to restore MDP security configs",
+				__func__);
+			mdp_clock_disable();
+			mmss_bus_clock_disable();
+			mdp_gdsc_ctrl(0);
+			return ret;
+		}
+
+		hdmi_core_ahb_clk_enable();
+	} else if(!target_cont_splash_screen()) {
+		hdmi_core_ahb_clk_disable();
+		mdp_clock_disable();
+		mmss_bus_clock_disable();
+		mdp_gdsc_ctrl(enable);
+	}
+
+	return NO_ERROR;
+}
 static uint32_t dsi_pll_20nm_enable_seq(uint32_t pll_base)
 {
 	uint32_t pll_locked;
@@ -467,7 +537,8 @@ static void wled_init(struct msm_panel_info *pinfo)
 int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 {
 	if (enable) {
-		regulator_enable();	/* L2, L12, L14, and L28 */
+		regulator_enable(REG_LDO2 | REG_LDO12 |
+			REG_LDO14 | REG_LDO28);
 		mdelay(10);
 		wled_init(pinfo);
 		qpnp_ibb_enable(true);	/* +5V and -5V */
@@ -479,7 +550,8 @@ int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 		if (pinfo->lcd_reg_en)
 			lcd_reg_disable();
 
-		regulator_disable();
+		regulator_disable(REG_LDO2 | REG_LDO12 |
+			REG_LDO14 | REG_LDO28);
 	}
 
 	return NO_ERROR;
@@ -556,6 +628,8 @@ void target_display_init(const char *panel_name)
 			panel_name);
 		return;
 	} else if (!strcmp(panel_name, HDMI_PANEL_NAME)) {
+		dprintf(INFO, "%s: HDMI is primary\n", __func__);
+		mdss_hdmi_display_init(MDP_REV_50, (void *) MIPI_FB_ADDR);
 		return;
 	}
 
