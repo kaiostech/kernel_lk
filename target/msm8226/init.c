@@ -97,17 +97,6 @@ enum target_subtype {
 #define ADC_CHANNEL_SEL_MPP7        22
 #define QM8626_EN_MPP_ADC_INP_MPP7  6
 
-enum qm8626_subtype {
-	QM8626_HW_PLATFORM_UNKNOWN = 0,
-	QM8626_HW_PLATFORM_SUBTYPE_1 = 1,
-	QM8626_HW_PLATFORM_SUBTYPE_2 = 2,
-	QM8626_HW_PLATFORM_SUBTYPE_3 = 3,
-	QM8626_HW_PLATFORM_SUBTYPE_4 = 4,
-	QM8626_HW_PLATFORM_SUBTYPE_5 = 5,
-	QM8626_HW_PLATFORM_SUBTYPE_6 = 6,
-	QM8626_HW_PLATFORM_SUBTYPE_7 = 7,
-};
-
 typedef struct {
 	uint32_t id;
 	uint32_t vadc;
@@ -414,7 +403,10 @@ void target_init(void)
 	vib_timed_turn_on(VIBRATE_TIME);
 
 	if (board_hardware_id() == HW_PLATFORM_QM8626) {
-		lp55x1_start_leds();
+		if (qm8626_hw_subtype.id == QM8626_HW_PLATFORM_SUBTYPE_1
+			|| qm8626_hw_subtype.id == QM8626_HW_PLATFORM_SUBTYPE_4)
+			lp55x1_start_leds(qm8626_hw_subtype.id);
+
 		qm8626_enable_mpp6_red_led();
 	}
 

@@ -48,6 +48,8 @@
 #define LP5521_REG_G_PWM        0x03
 #define LP5521_REG_B_PWM        0x04
 #define LP5521_REG_R_CURRENT    0x05
+#define LP5521_REG_G_CURRENT    0x06
+#define LP5521_REG_B_CURRENT    0x07
 #define LP5521_REG_CONFIG       0x08
 #define LP5521_REG_RESET        0x0D
 #define LP5521_CMD_DIRECT       0x3f
@@ -58,6 +60,6 @@
 #define LP5521_MASTER_ENABLE    0x40
 #define LP5521_REG_R_CURR_DEFAULT 0xAF
 
-void lp55x1_start_leds(void);
+void lp55x1_start_leds(unsigned int hw_subtype);
 
 #endif
