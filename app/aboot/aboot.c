@@ -1575,13 +1575,12 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 
 	/* Read and skip over sparse image header */
 	sparse_header = (sparse_header_t *) data;
-	data += sparse_header->file_hdr_sz;
-	if(sparse_header->file_hdr_sz > sizeof(sparse_header_t))
+
+	data += sizeof(sparse_header_t);
+	if(sparse_header->file_hdr_sz != sizeof(sparse_header_t))
 	{
-		/* Skip the remaining bytes in a header that is longer than
-		 * we expected.
-		 */
-		data += (sparse_header->file_hdr_sz - sizeof(sparse_header_t));
+		fastboot_fail("sparse header size mismatch");
+		return;
 	}
 
 	dprintf (SPEW, "=== Sparse Image Header ===\n");
