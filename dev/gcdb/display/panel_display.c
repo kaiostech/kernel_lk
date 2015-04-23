@@ -212,6 +212,7 @@ int dsi_video_panel_config(struct msm_panel_info *pinfo,
 	int ret = NO_ERROR;
 	uint8_t lane_enable = 0;
 	uint32_t panel_width = pinfo->xres;
+	uint32_t low_pwr_stop;
 
 	if (pinfo->mipi.dual_dsi)
 		panel_width = panel_width / 2;
@@ -224,6 +225,9 @@ int dsi_video_panel_config(struct msm_panel_info *pinfo,
 		lane_enable |= (1 << 2);
 	if (pinfo->mipi.data_lane3)
 		lane_enable |= (1 << 3);
+	low_pwr_stop = (pinfo->mipi.hfp_power_stop << 8) |
+			(pinfo->mipi.hbp_power_stop << 4) |
+			pinfo->mipi.hsa_power_stop;
 
 	ret = mdss_dsi_video_mode_config((panel_width + plcdc->xres_pad),
 			(pinfo->yres + plcdc->yres_pad),
@@ -238,7 +242,8 @@ int dsi_video_panel_config(struct msm_panel_info *pinfo,
 			pinfo->mipi.dst_format,
 			pinfo->mipi.traffic_mode,
 			lane_enable,
-			pinfo->mipi.hsa_power_stop,
+			pinfo->mipi.pulse_mode_hsa_he,
+			low_pwr_stop,
 			pinfo->mipi.eof_bllp_power,
 			pinfo->mipi.interleave_mode,
 			MIPI_DSI0_BASE);
@@ -258,7 +263,8 @@ int dsi_video_panel_config(struct msm_panel_info *pinfo,
 			pinfo->mipi.dst_format,
 			pinfo->mipi.traffic_mode,
 			lane_enable,
-			pinfo->mipi.hsa_power_stop,
+			pinfo->mipi.pulse_mode_hsa_he,
+			low_pwr_stop,
 			pinfo->mipi.eof_bllp_power,
 			pinfo->mipi.interleave_mode,
 			MIPI_DSI1_BASE);
