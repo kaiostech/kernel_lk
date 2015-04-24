@@ -39,6 +39,8 @@
 #include <reg.h>
 #include <bits.h>
 
+#define FRAMEBUFFER_PHY_OFFSET 0x89600000
+
 static struct msm_fb_panel_data panel;
 
 static struct msm_fb_panel_data hdmi_panel;
@@ -371,7 +373,7 @@ void display_init(void)
 		if (MPLATFORM()) {
 			panel.fb.base = 0x8ec00000;
 		} else {
-			panel.fb.base = 0x89000000;
+			panel.fb.base = FRAMEBUFFER_PHY_OFFSET;
 		}
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
@@ -454,12 +456,12 @@ void display_init(void)
 		hdmi_msm_panel_init(&panel.panel_info);
 		panel.clk_func   = mpq8064_hdmi_panel_clock;
 		panel.power_func = mpq8064_hdmi_panel_power;
-		panel.fb.base    = 0x89000000 + fb_hdmi_offset;
+		panel.fb.base    = FRAMEBUFFER_PHY_OFFSET + fb_hdmi_offset;
 		panel.fb.width   = panel.panel_info.xres;
 		panel.fb.height  = panel.panel_info.yres;
 		panel.fb.stride  = panel.panel_info.xres;
 		panel.fb.bpp     = panel.panel_info.bpp;
-		panel.fb.format  = FB_FORMAT_RGB565;
+		panel.fb.format  = FB_FORMAT_RGB888;
 		panel.mdp_rev    = MDP_REV_44;
 		hdmi_set_fb_addr(panel.fb.base);
 		if (MPLATFORM()) {

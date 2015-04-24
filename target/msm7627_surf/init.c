@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2011, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -124,7 +124,7 @@ void target_init(void)
 #if DISPLAY_SPLASH_SCREEN
 	display_init();
 	dprintf(SPEW, "Diplay initialized\n");
-	display_image_on_screen();
+	display_image_on_screen(NULL);
 #endif
 
 #if (!ENABLE_NANDWRITE)
