@@ -32,14 +32,12 @@
 #include <i2c_qup.h>
 #include <blsp_qup.h>
 #include <target/lp55x1.h>
+#include <target/init.h>
 
-/*
- * Initialises I2C bus (BLSP 1 QUP 1 0xF9924000) on GPIO6/7 on MSM8626 and then
- * checks if there is either a LP5521 or a LP55231 connected. If one of these
- * is connected its initilaised and then its Red/Green LEDS are turned on to
- * create Amber.
- */
-void lp55x1_start_leds(void)
+
+
+
+static void start_leds_hw_subtype_1(void)
 {
 	struct qup_i2c_dev  *dev;
 	unsigned char ret[50];
@@ -48,11 +46,11 @@ void lp55x1_start_leds(void)
 	dev = qup_blsp_i2c_init(BLSP_ID_1, QUP_ID_1, 100000, 19200000);
 
 	if (!dev) {
-		dprintf(CRITICAL, "Failed initializing I2c\n");
+		dprintf(CRITICAL, "QM8626 Failed initializing I2c\n");
 		return;
 	}
 
-/* Check if LP5521 is connected if not then try LP55231 */
+/* Check if LP5521 is connected */
 
 /* Resets all registers to default */
 	ret[0] = LP5521_REG_RESET;
@@ -99,12 +97,11 @@ void lp55x1_start_leds(void)
 	if (qup_i2c_xfer(dev, msg_buf, 2) != 2)
 		goto xferErr5521;
 
-	if (ret[10] != LP5521_REG_R_CURR_DEFAULT) {
-		dprintf(CRITICAL, "LP5521 not present, trying LP55231\n");
-		goto try_lp55231;
-	}else{
+	if (ret[10] != LP5521_REG_R_CURR_DEFAULT)
+		goto wrong_device;
+	else
 		dprintf(CRITICAL, "LP5521 Detected\n");
-	}
+
 
 /* Set all PWMs to direct control mode */
 	ret[0] = LP5521_REG_OP_MODE;
@@ -128,9 +125,9 @@ void lp55x1_start_leds(void)
 	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
 		goto xferErr5521;
 
-/* Turn on BLUE LED */
-	ret[0] = LP5521_REG_B_PWM;
-	ret[1] = 0x01;
+/* Modify BLUE LED current */
+	ret[0] = LP5521_REG_B_CURRENT;
+	ret[1] = 0x0A;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -139,9 +136,53 @@ void lp55x1_start_leds(void)
 	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
 		goto xferErr5521;
 
-/* Turn on GREEN LED */
+/* Turn on BLUE LED PWM*/
+	ret[0] = LP5521_REG_B_PWM;
+	ret[1] = 0x02;
+	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr5521;
+
+/* Modify GREEN LED current */
+	ret[0] = LP5521_REG_G_CURRENT;
+	ret[1] = 0x03;
+	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr5521;
+
+/* Turn on GREEN LED PWM*/
 	ret[0] = LP5521_REG_G_PWM;
-	ret[1] = 0x04;
+	ret[1] = 0x02;
+	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr5521;
+
+	/* Modify RED LED current */
+	ret[0] = LP5521_REG_R_CURRENT;
+	ret[1] = 0x0A;
+	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr5521;
+
+	/* Turn on RED LED PWM*/
+	ret[0] = LP5521_REG_R_PWM;
+	ret[1] = 0x02;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -152,9 +193,32 @@ void lp55x1_start_leds(void)
 
 	return;
 
-try_lp55231:
+xferErr5521:
+	dprintf(CRITICAL, "LP5521 I2C Communication Error\n");
+	return;
 
-/*	Reset all LP55231 registers to default  */
+wrong_device:
+	dprintf(CRITICAL, "Wrong device for HW subtype 1\n");
+	return;
+
+}
+
+static void start_leds_hw_subtype_4(void)
+{
+	struct qup_i2c_dev  *dev;
+	unsigned char ret[50];
+	struct i2c_msg msg_buf[3];
+
+	dev = qup_blsp_i2c_init(BLSP_ID_1, QUP_ID_1, 100000, 19200000);
+
+	if (!dev) {
+		dprintf(CRITICAL, "Failed initializing I2c\n");
+		return;
+	}
+
+/* Check if LP55231 is connected */
+
+/* Reset all LP55231 registers to default */
 	ret[0] = LP5523_REG_RESET;
 	ret[1] = 0xff;
 	msg_buf[0].addr = LP55231_HW_I2C_ADDRESS;
@@ -195,12 +259,10 @@ try_lp55231:
 	if (qup_i2c_xfer(dev, msg_buf, 2) != 2)
 		goto xferErr55231;
 
-	if (ret[10] != LP5523_ENABLE) {
-		dprintf(CRITICAL, "Failed to find LP55231\n");
-		return;
-	}else {
+	if (ret[10] != LP5523_ENABLE)
+		goto wrong_device;
+	else
 		dprintf(CRITICAL, "LP55231 Detected\n");
-	}
 
 /* Configure LP55231 */
 	ret[0] = LP5523_REG_CONFIG;
@@ -214,9 +276,11 @@ try_lp55231:
 	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
 		goto xferErr55231;
 
-/* Turn on GREEN LED */
+/* Turn on D1, D2, D3, D7, D8 and D9 */
+
+/* Turn on D1 */
 	ret[0] = LP5523_REG_LED_PWM_BASE;
-	ret[1] = 0x50; /* PWM Fully ON */
+	ret[1] = 0x0A;
 	msg_buf[0].addr = LP55231_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -225,9 +289,53 @@ try_lp55231:
 	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
 		goto xferErr55231;
 
-/* Turn on RED LED */
+/* Turn on D2 */
+	ret[0] = LP5523_REG_LED_PWM_BASE + 1;
+	ret[1] = 0x0A;
+	msg_buf[0].addr = LP55231_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr55231;
+
+/* Turn on D3 */
+	ret[0] = LP5523_REG_LED_PWM_BASE + 2;
+	ret[1] = 0x0A;
+	msg_buf[0].addr = LP55231_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr55231;
+
+/* Turn on D7 */
 	ret[0] = LP5523_REG_LED_PWM_BASE + 6;
-	ret[1] = 0x50; /* PWM Fully ON */
+	ret[1] = 0x0A;
+	msg_buf[0].addr = LP55231_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr55231;
+
+/* Turn on D8 */
+	ret[0] = LP5523_REG_LED_PWM_BASE + 7;
+	ret[1] = 0x0A;
+	msg_buf[0].addr = LP55231_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr55231;
+
+/* Turn on D9 */
+	ret[0] = LP5523_REG_LED_PWM_BASE + 8;
+	ret[1] = 0x0A;
 	msg_buf[0].addr = LP55231_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -242,8 +350,16 @@ xferErr55231:
 	dprintf(CRITICAL, "LP55231 I2C Communication Error\n");
 	return;
 
-xferErr5521:
-	dprintf(CRITICAL, "LP5521 I2C Communication Error\n");
+wrong_device:
+	dprintf(CRITICAL, "Wrong device for HW subtype 4\n");
 	return;
 
+}
+
+void lp55x1_start_leds(unsigned int hw_subtype)
+{
+	if (hw_subtype == QM8626_HW_PLATFORM_SUBTYPE_1)
+		start_leds_hw_subtype_1();
+	else if (hw_subtype == QM8626_HW_PLATFORM_SUBTYPE_4)
+		start_leds_hw_subtype_4();
 }
