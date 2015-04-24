@@ -1729,6 +1729,8 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	unsigned long long ptn = 0;
 	unsigned long long size = 0;
 	int index = INVALID_PTN;
+	/*End of the sparse image address*/
+	uint32_t data_end = (uint32_t)data + sz;
 
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
@@ -1738,19 +1740,27 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	}
 
 	size = partition_get_size(index);
-	if (ROUND_TO_PAGE(sz,511) > size) {
-		fastboot_fail("size too large");
+
+	if (sz < sizeof(sparse_header_t)) {
+		fastboot_fail("size too low");
 		return;
 	}
 
 	/* Read and skip over sparse image header */
 	sparse_header = (sparse_header_t *) data;
+
 	if (((uint64_t)sparse_header->total_blks * (uint64_t)sparse_header->blk_sz) > size) {
 		fastboot_fail("size too large");
 		return;
 	}
 
 	data += sizeof(sparse_header_t);
+
+	if (data_end < (uint32_t)data) {
+		fastboot_fail("buffer overreads occured due to invalid sparse header");
+		return;
+	}
+
 	if(sparse_header->file_hdr_sz != sizeof(sparse_header_t))
 	{
 		fastboot_fail("sparse header size mismatch");
@@ -1779,17 +1789,20 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		chunk_header = (chunk_header_t *) data;
 		data += sizeof(chunk_header_t);
 
+		if (data_end < (uint32_t)data) {
+			fastboot_fail("buffer overreads occured due to invalid sparse header");
+			return;
+		}
+
 		dprintf (SPEW, "=== Chunk Header ===\n");
 		dprintf (SPEW, "chunk_type: 0x%x\n", chunk_header->chunk_type);
 		dprintf (SPEW, "chunk_data_sz: 0x%x\n", chunk_header->chunk_sz);
 		dprintf (SPEW, "total_size: 0x%x\n", chunk_header->total_sz);
 
-		if(sparse_header->chunk_hdr_sz > sizeof(chunk_header_t))
+		if(sparse_header->chunk_hdr_sz != sizeof(chunk_header_t))
 		{
-			/* Skip the remaining bytes in a header that is longer than
-			 * we expected.
-			 */
-			data += (sparse_header->chunk_hdr_sz - sizeof(chunk_header_t));
+			fastboot_fail("chunk header size mismatch");
+			return;
 		}
 
 		chunk_data_sz = sparse_header->blk_sz * chunk_header->chunk_sz;
@@ -1817,6 +1830,11 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 											chunk_data_sz))
 			{
 				fastboot_fail("Bogus chunk size for chunk type Raw");
+				return;
+			}
+
+			if (data_end < (uint32_t)data + chunk_data_sz) {
+				fastboot_fail("buffer overreads occured due to invalid sparse header");
 				return;
 			}
 
@@ -1854,7 +1872,15 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 			total_blocks += chunk_header->chunk_sz;
+			if ((uint32_t)data > UINT_MAX - chunk_data_sz) {
+				fastboot_fail("integer overflow occured");
+				return;
+			}
 			data += chunk_data_sz;
+			if (data_end < (uint32_t)data) {
+				fastboot_fail("buffer overreads occured due to invalid sparse header");
+				return;
+			}
 			break;
 
 			default:
