@@ -838,6 +838,7 @@ int mipi_dsi_cmd_mode_config(unsigned short disp_width,
 
 int mipi_dsi_on()
 {
+#if DEBUG_DSI
 	int ret = NO_ERROR;
 	unsigned long ReadValue;
 	unsigned long count = 0;
@@ -857,6 +858,9 @@ int mipi_dsi_on()
 
 	dprintf(INFO, "Video lane tested successfully\n");
 	return ret;
+#else
+	return NO_ERROR;
+#endif
 }
 
 int mipi_dsi_off()

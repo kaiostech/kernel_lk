@@ -40,7 +40,7 @@ struct adv7533_i2c_reg_cfg {
 	uint8_t i2c_addr;
 	uint8_t reg;
 	uint8_t val;
-	int sleep_in_ms;
+	int sleep_in_us;
 };
 
 int adv7533_init(void);

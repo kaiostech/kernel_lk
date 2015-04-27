@@ -157,8 +157,8 @@ static int adv7533_i2c_write_regs(struct adv7533_i2c_reg_cfg *cfg, int size)
 			dprintf(INFO, "mipi_dsi reg writes failed\n");
 			goto w_regs_fail;
 		}
-		if (cfg[i].sleep_in_ms) {
-			udelay(cfg[i].sleep_in_ms*1000);
+		if (cfg[i].sleep_in_us) {
+			udelay(cfg[i].sleep_in_us);
 		}
 	}
 
@@ -168,16 +168,7 @@ w_regs_fail:
 
 static int adv7533_config_common(void)
 {
-	int ret;
-
-	ret = adv7533_read_device_rev();
-	if (ret)
-		goto s_err;
-
-	ret = adv7533_i2c_write_regs(setup_cfg, ARRAY_SIZE(setup_cfg));
-
-s_err:
-	return ret;
+	return adv7533_i2c_write_regs(setup_cfg, ARRAY_SIZE(setup_cfg));
 }
 
 int adv7533_config_timing(struct msm_panel_info *pinfo)
@@ -237,8 +228,8 @@ int adv7533_config_timing(struct msm_panel_info *pinfo)
 				((pinfo->lcdc.v_back_porch & 0xFF0) >> 4), 0},
 			{ADV7533_CEC_DSI, 0x37,
 				((pinfo->lcdc.v_back_porch & 0xF) << 4), 0},
-			{ADV7533_CEC_DSI, 0x03, 0x09, 5},/* HDMI disabled */
-			{ADV7533_CEC_DSI, 0x03, 0x89, 5},/* HDMI enabled */
+			{ADV7533_CEC_DSI, 0x03, 0x09, 0},/* HDMI disabled */
+			{ADV7533_CEC_DSI, 0x03, 0x89, 0},/* HDMI enabled */
 		};
 
 		ret = adv7533_config_common();
@@ -290,7 +281,7 @@ void adv7533_dump_regs(void)
 int adv7533_init(void)
 {
 	int ret = 0;
-	dev = qup_i2c_init(GSBI_ID_3, 384, 24000);
+	dev = qup_i2c_init(GSBI_ID_3, 384000, 24000000);
 	if(!dev) {
 		dprintf(INFO, "adv7533 qup_i2c_init() failed\n");
 		return -1;
