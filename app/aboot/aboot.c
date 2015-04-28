@@ -93,6 +93,8 @@ struct fastboot_cmd_desc {
 #define EXPAND(NAME) #NAME
 #define TARGET(NAME) EXPAND(NAME)
 
+#define DISPLAY_PANEL_HDMI "hdmi"
+
 #ifdef MEMBASE
 #define EMMC_BOOT_IMG_HEADER_ADDR (0xFF000+(MEMBASE))
 #else
@@ -2729,6 +2731,11 @@ void aboot_init(const struct app_descriptor *app)
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
 	dprintf(SPEW, "Display Init: Start\n");
+#if DISPLAY_HDMI_PRIMARY
+	if (!strlen(device.display_panel))
+		strlcpy(device.display_panel, DISPLAY_PANEL_HDMI,
+			sizeof(device.display_panel));
+#endif
 	target_display_init(device.display_panel);
 	dprintf(SPEW, "Display Init: Done\n");
 #endif
