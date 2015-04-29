@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2012,2015 The Linux Foundation. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -151,6 +151,7 @@ static struct flash_identification supported_flash[] = {
 	{0x6600b3ec, 0xFFFFFFFF, (1024 << 20), 1, 4096, (4096 << 6), 128, 0},	/*Sams */
 	{0x2600482c, 0xFF00FFFF, (2048 << 20), 0, 4096, (4096 << 7), 224, 0},	/*8bit bch ecc */
 	{0x55d1b32c, 0xFFFFFFFF, (1024 << 20), 1, 2048, (2048 << 6), 64, 0},	/*Micr */
+	{0x2690ac2c, 0xFFFFFFFF,  0x20000000,  0, 4096, (4096 << 6), 160, 0},   /*Micr */
 	/* Note: Width flag is 0 for 8 bit Flash and 1 for 16 bit flash   */
 	/* Note: Onenand flag is 0 for NAND Flash and 1 for OneNAND flash       */
 	/* Note: The First row will be filled at runtime during ONFI probe      */
@@ -1822,7 +1823,7 @@ static int flash_nand_read_config(dmov_s * cmdlist, unsigned *ptrlist)
 
 	CFG0_A = (((flash_pagesize >> 9) - 1) << 6)	/* 4/8 cw/pg for 2/4k */
 	    |(516 << 9)		/* 516 user data bytes */
-	    |(10 << 19)		/* 10 parity bytes */
+	    |((enable_bch_ecc ? 13 : 10) << 19)		/* 13 parity for 8bit ECC & 10 parity bytes if not*/
 	    |(5 << 27)		/* 5 address cycles */
 	    |(0 << 30)		/* Do not read status before data */
 	    |(1 << 31)
@@ -1860,7 +1861,7 @@ static int flash_nand_read_config(dmov_s * cmdlist, unsigned *ptrlist)
 	}
 	CFG0_M = (((flash_pagesize >> 9) - 1) << 6)	/* 4/8 cw/pg for 2/4k */
 	    |(512 << 9)		/* 512 user data bytes */
-	    |(10 << 19)		/* 10 parity bytes */
+	    |((enable_bch_ecc ? 13 : 10) << 19)		/* 13 parity for 8bit ECC & 10 parity bytes if not*/
 	    |(5 << 27)		/* 5 address cycles */
 	    |(0 << 30)		/* Do not read status before data */
 	    |(1 << 31)		/* Send read cmd */
@@ -3222,7 +3223,7 @@ static void flash_read_id(dmov_s * cmdlist, unsigned *ptrlist)
 
 		//Look for 8bit BCH ECC Nand, TODO: ECC Correctability >= 8
 		if (((hwinfo == 0x307) || (hwinfo == 0x4030))
-		    && flash_info.id == 0x2600482c) {
+		    && (flash_info.id == 0x2600482c || flash_info.id == 0x2690ac2c)) {
 			enable_bch_ecc = 1;
 		}
 		return;
