@@ -232,6 +232,7 @@ static uint32_t mmc_decode_and_save_csd(struct mmc_card *card)
 	memcpy((struct mmc_csd *)&card->csd,(struct mmc_csd *)&mmc_csd,
 			sizeof(struct mmc_csd));
 
+#if 0
 	/* Calculate the wp grp size */
 	if (card->ext_csd[MMC_ERASE_GRP_DEF])
 		card->wp_grp_size = MMC_HC_ERASE_MULT * card->ext_csd[MMC_HC_ERASE_GRP_SIZE] / MMC_BLK_SZ;
@@ -239,6 +240,7 @@ static uint32_t mmc_decode_and_save_csd(struct mmc_card *card)
 		card->wp_grp_size = (card->csd.wp_grp_size + 1) * (card->csd.erase_grp_size + 1) \
 					  * (card->csd.erase_grp_mult + 1);
 
+#endif
 	dprintf(SPEW, "Decoded CSD fields:\n");
 	dprintf(SPEW, "cmmc_structure: %u\n", mmc_csd.cmmc_structure);
 	dprintf(SPEW, "card_cmd_class: %x\n", mmc_csd.card_cmd_class);
@@ -1450,6 +1452,7 @@ uint32_t mmc_sd_set_hs(struct sdhci_host *host, struct mmc_card *card)
        cmd.data.data_ptr = switch_resp;
        cmd.data.num_blocks = 0x1;
        cmd.data.blk_sz = 0x40;
+
 
        /* send command */
        if (sdhci_send_command(host, &cmd))
