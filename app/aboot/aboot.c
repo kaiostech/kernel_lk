@@ -3627,6 +3627,8 @@ void aboot_init(const struct app_descriptor *app)
 {
 	unsigned reboot_mode = 0;
 
+	dprintf(INFO,"Rescue image for DragonBoard 820c, boot into fastboot mode only\n");
+
 	/* Setup page size information for nv storage */
 	if (target_is_emmc_boot())
 	{
