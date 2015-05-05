@@ -368,7 +368,7 @@ int hdmi_dtv_init()
 	writel((timing->width * timing->bpp / 8), MDP_BASE + 0xb000c);
 	writel(0, MDP_BASE + 0xb0010);
 
-	writel(DMA_PACK_PATTERN_RGB | DMA_DSTC0G_8BITS | DMA_DSTC1B_8BITS |
+	writel(DMA_PACK_PATTERN_BGR | DMA_DSTC0G_8BITS | DMA_DSTC1B_8BITS |
 	       DMA_DSTC2R_8BITS, MDP_BASE + 0xb0000);
 	writel(0xff0000, MDP_BASE + 0xb0070);
 	writel(0xff0000, MDP_BASE + 0xb0074);

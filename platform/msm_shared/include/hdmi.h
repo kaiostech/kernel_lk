@@ -41,6 +41,8 @@
 #define DMA_PACK_ALIGN_LSB 0
 #define DMA_PACK_PATTERN_RGB \
         (MDP_GET_PACK_PATTERN(0,CLR_R,CLR_G,CLR_B,2)<<8)
+#define DMA_PACK_PATTERN_BGR \
+        (MDP_GET_PACK_PATTERN(0,CLR_B,CLR_G,CLR_R,2)<<8)
 #define CLR_G 0x0
 #define CLR_B 0x1
 #define CLR_R 0x2

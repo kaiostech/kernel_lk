@@ -316,18 +316,19 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 	/* Start XY coordinates */
 	writel(0, MDP_DMA_S_OUT_XY);
 
-	if (fb->bpp == 16) {
-		writel(DMA_PACK_ALIGN_LSB | DMA_PACK_PATTERN_RGB |
+	if ((fb->bpp == 16) && (fb->format == FB_FORMAT_RGB565)) {
+		writel(DMA_PACK_ALIGN_LSB | DMA_PACK_PATTERN_BGR |
 			DMA_OUT_SEL_LCDC | DMA_IBUF_FORMAT_RGB565 |
 			DMA_DSTC0G_8BITS | DMA_DSTC1B_8BITS |
 			DMA_DSTC2R_8BITS, MDP_DMA_S_CONFIG);
-	} else if (fb->bpp == 24) {
-		writel(DMA_PACK_ALIGN_LSB | DMA_PACK_PATTERN_RGB |
+	} else if ((fb->bpp == 24) && (fb->format == FB_FORMAT_RGB888)) {
+		writel(DMA_PACK_ALIGN_LSB | DMA_PACK_PATTERN_BGR |
 			DMA_OUT_SEL_LCDC | DMA_IBUF_FORMAT_RGB888 |
 			DMA_DSTC0G_8BITS | DMA_DSTC1B_8BITS |
 			DMA_DSTC2R_8BITS, MDP_DMA_S_CONFIG);
 	} else {
-		dprintf(CRITICAL, "Unsupported bpp detected!\n");
+		dprintf(CRITICAL, "Unsupported DSI bpp: %d or format: %d detected!\n",
+							     fb->bpp, fb->format);
 		return ERR_INVALID_ARGS;
 	}
 
