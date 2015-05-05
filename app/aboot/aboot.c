@@ -3491,7 +3491,9 @@ void aboot_fastboot_register_commands(void)
 void aboot_init(const struct app_descriptor *app)
 {
 	unsigned reboot_mode = 0;
-	bool boot_into_fastboot = false;
+	bool boot_into_fastboot = true;
+
+    dprintf(INFO,"Rescue image for DragonBoard 410c, boot into fastboot mode only\n");
 
 	/* Setup page size information for nv storage */
 	if (target_is_emmc_boot())
