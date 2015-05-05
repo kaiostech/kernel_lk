@@ -163,6 +163,7 @@ static bool devinfo_present = true;
 static int auth_kernel_img = 0;
 
 static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0, 0};
+static bool is_allow_unlock = 0;
 
 struct atag_ptbl_entry
 {
@@ -1593,6 +1594,77 @@ void write_device_info_flash(device_info *dev)
 	}
 }
 
+static int read_allow_oem_unlock(device_info *dev)
+{
+	const char *ptn_name = "frp";
+	unsigned offset;
+	int index;
+	unsigned long long ptn;
+	unsigned long long ptn_size;
+	unsigned blocksize = mmc_get_device_blocksize();
+	char buf[blocksize];
+
+	index = partition_get_index(ptn_name);
+	if (index == INVALID_PTN)
+	{
+		dprintf(CRITICAL, "No '%s' partition found\n", ptn_name);
+		return -1;
+	}
+
+	ptn = partition_get_offset(index);
+	ptn_size = partition_get_size(index);
+	offset = ptn_size - blocksize;
+
+	if (mmc_read(ptn + offset, buf, sizeof(buf)))
+	{
+		dprintf(CRITICAL, "Reading MMC failed\n");
+		return -1;
+	}
+
+	/*is_allow_unlock is a bool value stored at the LSB of last byte*/
+	is_allow_unlock = buf[blocksize-1] & 0x01;
+	return 0;
+}
+
+static int write_allow_oem_unlock(bool allow_unlock)
+{
+	const char *ptn_name = "frp";
+	unsigned offset;
+
+	int index;
+	unsigned long long ptn;
+	unsigned long long ptn_size;
+	unsigned blocksize = mmc_get_device_blocksize();
+	char buf[blocksize];
+
+	index = partition_get_index(ptn_name);
+	if (index == INVALID_PTN)
+	{
+		dprintf(CRITICAL, "No '%s' partition found\n", ptn_name);
+		return -1;
+	}
+
+	ptn = partition_get_offset(index);
+	ptn_size = partition_get_size(index);
+	offset = ptn_size - blocksize;
+
+	if (mmc_read(ptn + offset, buf, sizeof(buf)))
+	{
+		dprintf(CRITICAL, "Reading MMC failed\n");
+		return -1;
+	}
+
+	/*is_allow_unlock is a bool value stored at the LSB of last byte*/
+	buf[blocksize-1] = allow_unlock;
+	if (mmc_write(ptn + offset, blocksize, buf))
+	{
+		dprintf(CRITICAL, "Writing MMC failed\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 void read_device_info_flash(device_info *dev)
 {
 	struct device_info *info = (void*) info_buf;
@@ -1945,6 +2017,22 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 
 void cmd_erase(const char *arg, void *data, unsigned sz)
 {
+#if VERIFIED_BOOT
+	if(!device.is_unlocked && !device.is_verified)
+	{
+		fastboot_fail("device is locked. Cannot erase");
+		return;
+	}
+	if(!device.is_unlocked && device.is_verified)
+	{
+		if(!boot_verify_flash_allowed(arg))
+		{
+			fastboot_fail("cannot flash this partition in verified state");
+			return;
+		}
+	}
+#endif
+
 	if(target_is_emmc_boot())
 		cmd_erase_mmc(arg, data, sz);
 	else
@@ -2094,6 +2182,11 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	/* Start processing chunks */
 	for (chunk=0; chunk<sparse_header->total_chunks; chunk++)
 	{
+		/* Make sure the total image size does not exceed the partition size */
+		if(((uint64_t)total_blocks * (uint64_t)sparse_header->blk_sz) >= size) {
+			fastboot_fail("size too large");
+			return;
+		}
 		/* Read and skip over chunk header */
 		chunk_header = (chunk_header_t *) data;
 		data += sizeof(chunk_header_t);
@@ -2112,6 +2205,23 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		}
 
 		chunk_data_sz = sparse_header->blk_sz * chunk_header->chunk_sz;
+
+		/* Make sure multiplication does not overflow uint32 size */
+		if (sparse_header->blk_sz && (chunk_header->chunk_sz != chunk_data_sz / sparse_header->blk_sz))
+		{
+			fastboot_fail("Bogus size sparse and chunk header");
+			return;
+		}
+
+		/* Make sure that the chunk size calculated from sparse image does not
+		 * exceed partition size
+		 */
+		if ((uint64_t)total_blocks * (uint64_t)sparse_header->blk_sz + chunk_data_sz > size)
+		{
+			fastboot_fail("Chunk data size exceeds partition size");
+			return;
+		}
+
 		switch (chunk_header->chunk_type)
 		{
 			case CHUNK_TYPE_RAW:
@@ -2127,6 +2237,10 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 						(unsigned int*)data))
 			{
 				fastboot_fail("flash write failure");
+				return;
+			}
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz)) {
+				fastboot_fail("Bogus size for RAW chunk type");
 				return;
 			}
 			total_blocks += chunk_header->chunk_sz;
@@ -2159,6 +2273,13 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 
 			for (i = 0; i < chunk_blk_cnt; i++)
 			{
+				/* Make sure that the data written to partition does not exceed partition size */
+				if ((uint64_t)total_blocks * (uint64_t)sparse_header->blk_sz + sparse_header->blk_sz > size)
+				{
+					fastboot_fail("Chunk data size for fill type exceeds partition size");
+					return;
+				}
+
 				if(mmc_write(ptn + ((uint64_t)total_blocks*sparse_header->blk_sz),
 							sparse_header->blk_sz,
 							fill_buf))
@@ -2175,6 +2296,10 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 			break;
 
 			case CHUNK_TYPE_DONT_CARE:
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz)) {
+				fastboot_fail("bogus size for chunk DONT CARE type");
+				return;
+			}
 			total_blocks += chunk_header->chunk_sz;
 			break;
 
@@ -2182,6 +2307,10 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 			if(chunk_header->total_sz != sparse_header->chunk_hdr_sz)
 			{
 				fastboot_fail("Bogus chunk size for chunk type Dont Care");
+				return;
+			}
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz)) {
+				fastboot_fail("bogus size for chunk CRC type");
 				return;
 			}
 			total_blocks += chunk_header->chunk_sz;
@@ -2280,7 +2409,7 @@ void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
 #endif /* SSD_ENABLE */
 
 #if VERIFIED_BOOT
-	if(!device.is_unlocked && !device.is_verified)
+	if(!device.is_unlocked)
 	{
 		fastboot_fail("device is locked. Cannot flash images");
 		return;
@@ -2416,12 +2545,33 @@ void cmd_oem_select_display_panel(const char *arg, void *data, unsigned size)
 
 void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
 {
-	/* TODO: Wipe user data */
+	if(!is_allow_unlock) {
+		fastboot_fail("oem unlock is not allowed");
+		return;
+	}
+	dputs(CRITICAL,"oem unlock is been issued\n");
+	fastboot_fail("Need wipe userdata. Do 'fastboot oem unlock-go'");
+}
+
+void cmd_oem_unlock_go(const char *arg, void *data, unsigned sz)
+{
 	if(!device.is_unlocked || device.is_verified)
 	{
+		if(!is_allow_unlock) {
+			fastboot_fail("oem unlock is not allowed");
+			return;
+		}
+
 		device.is_unlocked = 1;
 		device.is_verified = 0;
 		write_device_info(&device);
+
+		struct recovery_message msg;
+		snprintf(msg.recovery, sizeof(msg.recovery), "recovery\n--wipe_data");
+		write_misc(0, &msg, sizeof(msg));
+
+		fastboot_okay("");
+		reboot_device(RECOVERY_MODE);
 	}
 	fastboot_okay("");
 }
@@ -2669,6 +2819,7 @@ void aboot_fastboot_register_commands(void)
 											{"reboot", cmd_reboot},
 											{"reboot-bootloader", cmd_reboot_bootloader},
 											{"oem unlock", cmd_oem_unlock},
+											{"oem unlock-go", cmd_oem_unlock_go},
 											{"oem lock", cmd_oem_lock},
 											{"oem verified", cmd_oem_verified},
 											{"oem device-info", cmd_oem_devinfo},
@@ -2733,6 +2884,7 @@ void aboot_init(const struct app_descriptor *app)
 	ASSERT((MEMBASE + MEMSIZE) > MEMBASE);
 
 	read_device_info(&device);
+	read_allow_oem_unlock(&device);
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
