@@ -1554,7 +1554,7 @@ void write_device_info_flash(device_info *dev)
 	ptn = ptable_find(ptable, "devinfo");
 	if (ptn == NULL)
 	{
-		dprintf(CRITICAL, "ERROR: No boot partition found\n");
+		dprintf(CRITICAL, "ERROR: No devinfo partition found\n");
 			return;
 	}
 
@@ -1583,7 +1583,7 @@ void read_device_info_flash(device_info *dev)
 	ptn = ptable_find(ptable, "devinfo");
 	if (ptn == NULL)
 	{
-		dprintf(CRITICAL, "ERROR: No boot partition found\n");
+		dprintf(CRITICAL, "ERROR: No devinfo partition found\n");
 			return;
 	}
 
