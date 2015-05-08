@@ -429,7 +429,7 @@ int hdmi_dtv_init()
 	display_v_start =
 	    (timing->vsync_width + timing->vsync_porch_bp) * hsync_period;
 	display_v_end =
-	    vsync_period - (timing->vsync_porch_bp * hsync_period) - 1;
+	    vsync_period - (timing->vsync_porch_fp * hsync_period) - 1;
 
 	dtv_underflow_clr |= 0x80000000;
 	hsync_polarity     = 0;
@@ -444,7 +444,7 @@ int hdmi_dtv_init()
 	                        MDP_BASE + DTV_BASE + 0xc);
 	writel(display_hctl,    MDP_BASE + DTV_BASE + 0x18);
 	writel(display_v_start, MDP_BASE + DTV_BASE + 0x1c);
-	writel(0x25a197,        MDP_BASE + DTV_BASE + 0x20);
+	writel(display_v_end,   MDP_BASE + DTV_BASE + 0x20);
 	writel(dtv_border_clr,  MDP_BASE + DTV_BASE + 0x40);
 	writel(0x8fffffff,      MDP_BASE + DTV_BASE + 0x44);
 	writel(dtv_hsync_skew,  MDP_BASE + DTV_BASE + 0x48);
