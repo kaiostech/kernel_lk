@@ -40,6 +40,7 @@
 #include <board.h>
 #include <smem.h>
 #include <baseband.h>
+#include <regulator.h>
 #include <dev/keys.h>
 #include <pm8x41.h>
 #include <crypto5_wrapper.h>
@@ -56,6 +57,7 @@
 #include <sdhci_msm.h>
 #include <qusb2_phy.h>
 #include <rpmb.h>
+#include <rpm-glink.h>
 
 #define CE_INSTANCE             1
 #define CE_EE                   1
@@ -146,6 +148,9 @@ void target_uninit(void)
 			ASSERT(0);
 		}
 	}
+
+	/* Tear down glink channels */
+	rpm_glink_uninit();
 
 	if (rpmb_uninit() < 0)
 	{
@@ -261,6 +266,9 @@ void target_init(void)
 		dprintf(CRITICAL, "RPMB init failed\n");
 		ASSERT(0);
 	}
+	/* Initialize Glink */
+	rpm_glink_init();
+
 }
 
 unsigned board_machtype(void)
