@@ -318,9 +318,9 @@ void display_image_on_screen(struct msm_panel_info *pinfo)
 		for (i = 0; i < disp_index; i++) {
 			tmp_header = (struct single_spl_header*)
 				(tmp_fheader + i * sizeof(struct single_spl_header));
-			disp_off += tmp_header->width * tmp_header->height;
+			disp_off += MMC_READ_ALIGN(tmp_header->width *
+					tmp_header->height * bytes_per_bpp);
 		}
-		disp_off = MMC_READ_ALIGN(disp_off * bytes_per_bpp);
 	}
 
 	imageReadSize = MMC_READ_ALIGN(spl_height * spl_width * bytes_per_bpp);
