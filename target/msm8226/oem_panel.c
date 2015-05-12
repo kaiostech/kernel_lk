@@ -363,7 +363,7 @@ bool oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 {
 	uint32_t hw_id = board_hardware_id();
 	uint32_t target_id = board_target_id();
-	uint32_t nt35590_panel_id = NT35590_720P_VIDEO_PANEL;
+	uint32_t nt35590_panel_id = NT35590_720P_CMD_PANEL;
 	uint32_t hw_subtype = board_hardware_subtype();
 	bool ret = true;
 	int32_t panel_override_id;
