@@ -32,39 +32,6 @@
 #include <mdp4.h>
 #include <mipi_dsi.h>
 
-#ifdef WITH_SPLASH_SCREEN_MARKER
-#include <reg.h>
-#define MPM_SCLK_COUNT_VAL    0x00200024
-#define TIMER_KHZ 32768
-extern void get_lk_splash_val(unsigned int *val);
-#endif
-
-#ifdef WITH_SPLASH_SCREEN_MARKER
-unsigned int place_marker(char *marker_name)
-{
-	unsigned int marker_value;
-
-	marker_value = readl(MPM_SCLK_COUNT_VAL);
-	dprintf(INFO, "marker name=%s; marker value=%u.%03u seconds\n",
-			marker_name, marker_value/TIMER_KHZ,
-			(((marker_value % TIMER_KHZ)
-			* 1000) / TIMER_KHZ));
-	return marker_value;
-}
-
-static unsigned int update_splash_val;
-
-void get_lk_splash_val(unsigned int *val)
-{
-	*val = update_splash_val;
-}
-
-void set_lk_splash_val(unsigned int val)
-{
-	update_splash_val = val;
-}
-#endif
-
 #ifndef DISPLAY_TYPE_HDMI
 static int hdmi_dtv_init(void)
 {
@@ -237,9 +204,6 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 {
 	int ret = NO_ERROR;
 	struct msm_panel_info *pinfo;
-#ifdef WITH_SPLASH_SCREEN_MARKER
-	unsigned int lk_splash_val;
-#endif
 	panel = pdata;
 	if (!panel) {
 		ret = ERR_INVALID_ARGS;
@@ -266,12 +230,6 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 		goto msm_display_init_out;
 
 	fbcon_setup(&(panel->fb));
-#ifdef WITH_SPLASH_SCREEN_MARKER
-	if (pdata->panel_info.type == LVDS_PANEL) {
-		lk_splash_val = place_marker("splash screen");
-		set_lk_splash_val(lk_splash_val);
-	}
-#endif
 	display_image_on_screen(pinfo);
 	ret = msm_display_config();
 	if (ret)

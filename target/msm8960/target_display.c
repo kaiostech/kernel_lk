@@ -65,6 +65,55 @@ static uint8_t display_enable;
 	static uint32_t ter_display_enable = 0;
 #endif
 
+#ifdef WITH_SPLASH_SCREEN_MARKER
+#include <reg.h>
+#define MPM_SCLK_COUNT_VAL    0x00200024
+#define TIMER_KHZ 32768
+
+static unsigned int lk_splash_val;
+static unsigned int update_splash_val;
+static unsigned int lk_splash_val_set = 0;
+static unsigned int lk_splash_val_en = 1;
+
+extern void get_lk_splash_val(unsigned int *val);
+
+static unsigned int place_marker(char *marker_name)
+{
+	unsigned int marker_value;
+
+	marker_value = readl(MPM_SCLK_COUNT_VAL);
+	dprintf(INFO, "marker name=%s; marker value=%u.%03u seconds\n",
+			marker_name, marker_value/TIMER_KHZ,
+			(((marker_value % TIMER_KHZ)
+			* 1000) / TIMER_KHZ));
+	return marker_value;
+}
+
+void get_lk_splash_val(unsigned int *val)
+{
+	if (val != NULL)
+		*val = update_splash_val;
+}
+
+static void set_lk_splash_val(unsigned int val)
+{
+	update_splash_val = val;
+}
+
+static void write_lk_splash_time(void)
+{
+	if (lk_splash_val_en && !lk_splash_val_set) {
+		lk_splash_val = place_marker("splash screen");
+		set_lk_splash_val(lk_splash_val);
+		lk_splash_val_set = 1;
+	}
+}
+#else
+static void write_lk_splash_time(void)
+{
+}
+#endif
+
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 
@@ -468,6 +517,7 @@ void display_init(void)
 			dprintf(CRITICAL, "Display init failed!\n");
 			return;
 		}
+		write_lk_splash_time();
 	}
 
 	if ((target_id == LINUX_MACHTYPE_8064_ADP_2)||
@@ -499,6 +549,7 @@ void display_init(void)
 					return;
 				}
 			}
+			write_lk_splash_time();
 		}
 	}
 
@@ -532,6 +583,7 @@ void display_init(void)
 				dprintf(CRITICAL, "MIPI init failed!\n");
 				return;
 			}
+			write_lk_splash_time();
 		}
 	}
 
