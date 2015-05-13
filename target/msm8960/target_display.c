@@ -47,6 +47,24 @@ static struct msm_fb_panel_data hdmi_panel;
 
 static uint8_t display_enable;
 
+#if PRI_DISPLAY_ENABLED
+	static uint32_t pri_display_enable = 1;
+#else
+	static uint32_t pri_display_enable = 0;
+#endif
+
+#if SEC_DISPLAY_ENABLED
+	static uint32_t sec_display_enable = 1;
+#else
+	static uint32_t sec_display_enable = 0;
+#endif
+
+#if TER_DISPLAY_ENABLED
+	static uint32_t ter_display_enable = 1;
+#else
+	static uint32_t ter_display_enable = 0;
+#endif
+
 extern int msm_display_init(struct msm_fb_panel_data *pdata);
 extern int msm_display_off();
 
@@ -332,6 +350,7 @@ static int msm8960_liquid_mipi_panel_power(int enable)
 void display_init(void)
 {
 	int target_id = board_target_id();
+	memset(&panel, 0, sizeof(panel));
 
 	dprintf(INFO, "display_init(),target_id=%d.\n", target_id);
 
@@ -367,32 +386,34 @@ void display_init(void)
 	case LINUX_MACHTYPE_8064_ADP_2:
 	case LINUX_MACHTYPE_8064_ADP_2_ES2:
 	case LINUX_MACHTYPE_8064_ADP_2_ES2P5:
-		lvds_chimei_wxga_init(&(panel.panel_info));
-		panel.clk_func = apq8064_lvds_clock;
-		panel.power_func = apq8064_lvds_panel_power;
 		if (MPLATFORM()) {
 			panel.fb.base = 0x8ec00000;
 		} else {
 			panel.fb.base = FRAMEBUFFER_PHY_OFFSET;
 		}
-		panel.fb.width =  panel.panel_info.xres;
-		panel.fb.height =  panel.panel_info.yres;
-		panel.fb.stride =  panel.panel_info.xres;
-		panel.fb.bpp =  panel.panel_info.bpp;
-		panel.fb.format = FB_FORMAT_RGB888;
-		panel.mdp_rev = MDP_REV_44;
-		if (MPLATFORM()) {
-			hdmi_msm_panel_init(&(hdmi_panel.panel_info));
-			hdmi_panel.clk_func = mpq8064_hdmi_panel_clock;
-			hdmi_panel.power_func = mpq8064_hdmi_panel_power;
-			hdmi_panel.fb.base = 0x89000000;
-			hdmi_panel.fb.width = hdmi_panel.panel_info.xres;
-			hdmi_panel.fb.height = hdmi_panel.panel_info.yres;
-			hdmi_panel.fb.stride = hdmi_panel.panel_info.xres;
-			hdmi_panel.fb.bpp = hdmi_panel.panel_info.bpp;
-			hdmi_panel.fb.format = FB_FORMAT_RGB888;
-			hdmi_panel.mdp_rev = MDP_REV_44;
-			hdmi_set_fb_addr(hdmi_panel.fb.base);
+		if (pri_display_enable) {
+			lvds_chimei_wxga_init(&(panel.panel_info));
+			panel.clk_func = apq8064_lvds_clock;
+			panel.power_func = apq8064_lvds_panel_power;
+			panel.fb.width =  panel.panel_info.xres;
+			panel.fb.height =  panel.panel_info.yres;
+			panel.fb.stride =  panel.panel_info.xres;
+			panel.fb.bpp =  panel.panel_info.bpp;
+			panel.fb.format = FB_FORMAT_RGB888;
+			panel.mdp_rev = MDP_REV_44;
+			if (MPLATFORM()) {
+				hdmi_msm_panel_init(&(hdmi_panel.panel_info));
+				hdmi_panel.clk_func = mpq8064_hdmi_panel_clock;
+				hdmi_panel.power_func = mpq8064_hdmi_panel_power;
+				hdmi_panel.fb.base = 0x89000000;
+				hdmi_panel.fb.width = hdmi_panel.panel_info.xres;
+				hdmi_panel.fb.height = hdmi_panel.panel_info.yres;
+				hdmi_panel.fb.stride = hdmi_panel.panel_info.xres;
+				hdmi_panel.fb.bpp = hdmi_panel.panel_info.bpp;
+				hdmi_panel.fb.format = FB_FORMAT_RGB888;
+				hdmi_panel.mdp_rev = MDP_REV_44;
+				hdmi_set_fb_addr(hdmi_panel.fb.base);
+			}
 		}
 		break;
 	case LINUX_MACHTYPE_8064_MTP:
@@ -442,37 +463,41 @@ void display_init(void)
 		return;
 	};
 
-	if (msm_display_init(&panel)) {
-		dprintf(CRITICAL, "Display init failed!\n");
-		return;
+	if (pri_display_enable) {
+		if (msm_display_init(&panel)) {
+			dprintf(CRITICAL, "Display init failed!\n");
+			return;
+		}
 	}
 
 	if ((target_id == LINUX_MACHTYPE_8064_ADP_2)||
 		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2) ||
 		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2P5)) {
-		unsigned fb_hdmi_offset = panel.panel_info.xres *
-			panel.panel_info.yres * (panel.panel_info.bpp / 8);
-		fb_hdmi_offset = (fb_hdmi_offset + 0xFFF) & (~0xFFF);
-		hdmi_msm_panel_init(&panel.panel_info);
-		panel.clk_func   = mpq8064_hdmi_panel_clock;
-		panel.power_func = mpq8064_hdmi_panel_power;
-		panel.fb.base    = FRAMEBUFFER_PHY_OFFSET + fb_hdmi_offset;
-		panel.fb.width   = panel.panel_info.xres;
-		panel.fb.height  = panel.panel_info.yres;
-		panel.fb.stride  = panel.panel_info.xres;
-		panel.fb.bpp     = panel.panel_info.bpp;
-		panel.fb.format  = FB_FORMAT_RGB888;
-		panel.mdp_rev    = MDP_REV_44;
-		hdmi_set_fb_addr(panel.fb.base);
-		if (MPLATFORM()) {
-			if (msm_display_init(&hdmi_panel)) {
-				dprintf(CRITICAL, "HDMI init failed!\n");
-				return;
-			}
-		} else {
-			if (msm_display_init(&panel)) {
-				dprintf(CRITICAL, "HDMI init failed!\n");
-				return;
+		if (sec_display_enable) {
+			unsigned fb_hdmi_offset = panel.panel_info.xres *
+				panel.panel_info.yres * (panel.panel_info.bpp / 8);
+			fb_hdmi_offset = (fb_hdmi_offset + 0xFFF) & (~0xFFF);
+			hdmi_msm_panel_init(&panel.panel_info);
+			panel.clk_func   = mpq8064_hdmi_panel_clock;
+			panel.power_func = mpq8064_hdmi_panel_power;
+			panel.fb.base   += fb_hdmi_offset;
+			panel.fb.width   = panel.panel_info.xres;
+			panel.fb.height  = panel.panel_info.yres;
+			panel.fb.stride  = panel.panel_info.xres;
+			panel.fb.bpp     = panel.panel_info.bpp;
+			panel.fb.format  = FB_FORMAT_RGB888;
+			panel.mdp_rev    = MDP_REV_44;
+			hdmi_set_fb_addr(panel.fb.base);
+			if (MPLATFORM()) {
+				if (msm_display_init(&hdmi_panel)) {
+					dprintf(CRITICAL, "HDMI init failed!\n");
+					return;
+				}
+			} else {
+				if (msm_display_init(&panel)) {
+					dprintf(CRITICAL, "HDMI init failed!\n");
+					return;
+				}
 			}
 		}
 	}
@@ -481,30 +506,32 @@ void display_init(void)
 	if ((target_id == LINUX_MACHTYPE_8064_ADP_2)||
 		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2) ||
 		(target_id == LINUX_MACHTYPE_8064_ADP_2_ES2P5)) {
-		uint32_t ahb_en_reg, ahb_enabled;
-		ahb_en_reg = readl(AHB_EN_REG);
-		ahb_enabled = ahb_en_reg & BIT(4);
-		if (!ahb_enabled) {
-			writel(ahb_en_reg | BIT(4), AHB_EN_REG);
-			/* Make sure iface clock is enabled before register access */
-			udelay(10);
-		}
-		unsigned fb_dsi_offset = panel.panel_info.xres *
-			panel.panel_info.yres * (panel.panel_info.bpp / 8);
-		fb_dsi_offset = (fb_dsi_offset + 0xFFF) & (~0xFFF);
-		mipi_dsi_i2c_video_wvga_init(&(panel.panel_info));
-		panel.clk_func   = msm8960_mipi_panel_clock;
-		panel.power_func = apq8064_mipi_panel_power;
-		panel.fb.base = panel.fb.base + fb_dsi_offset;
-		panel.fb.width =  panel.panel_info.xres;
-		panel.fb.height =  panel.panel_info.yres;
-		panel.fb.stride =  panel.panel_info.xres;
-		panel.fb.bpp =  panel.panel_info.bpp;
-		panel.fb.format = FB_FORMAT_RGB888;
-		panel.mdp_rev = MDP_REV_44;
-		if (msm_display_init(&panel)) {
-			dprintf(CRITICAL, "MIPI init failed!\n");
-			return;
+		if (ter_display_enable) {
+			uint32_t ahb_en_reg, ahb_enabled;
+			ahb_en_reg = readl(AHB_EN_REG);
+			ahb_enabled = ahb_en_reg & BIT(4);
+			if (!ahb_enabled) {
+				writel(ahb_en_reg | BIT(4), AHB_EN_REG);
+				/* Make sure iface clock is enabled before register access */
+				udelay(10);
+			}
+			unsigned fb_dsi_offset = panel.panel_info.xres *
+				panel.panel_info.yres * (panel.panel_info.bpp / 8);
+			fb_dsi_offset = (fb_dsi_offset + 0xFFF) & (~0xFFF);
+			mipi_dsi_i2c_video_wvga_init(&(panel.panel_info));
+			panel.clk_func   = msm8960_mipi_panel_clock;
+			panel.power_func = apq8064_mipi_panel_power;
+			panel.fb.base += fb_dsi_offset;
+			panel.fb.width =  panel.panel_info.xres;
+			panel.fb.height =  panel.panel_info.yres;
+			panel.fb.stride =  panel.panel_info.xres;
+			panel.fb.bpp =  panel.panel_info.bpp;
+			panel.fb.format = FB_FORMAT_RGB888;
+			panel.mdp_rev = MDP_REV_44;
+			if (msm_display_init(&panel)) {
+				dprintf(CRITICAL, "MIPI init failed!\n");
+				return;
+			}
 		}
 	}
 
