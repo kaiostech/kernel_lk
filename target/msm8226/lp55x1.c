@@ -127,7 +127,7 @@ static void start_leds_hw_subtype_1(void)
 
 /* Modify BLUE LED current */
 	ret[0] = LP5521_REG_B_CURRENT;
-	ret[1] = 0x0A;
+	ret[1] = 0x32;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -138,7 +138,7 @@ static void start_leds_hw_subtype_1(void)
 
 /* Turn on BLUE LED PWM*/
 	ret[0] = LP5521_REG_B_PWM;
-	ret[1] = 0x02;
+	ret[1] = 75;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -149,7 +149,7 @@ static void start_leds_hw_subtype_1(void)
 
 /* Modify GREEN LED current */
 	ret[0] = LP5521_REG_G_CURRENT;
-	ret[1] = 0x03;
+	ret[1] = 0x32;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -160,7 +160,7 @@ static void start_leds_hw_subtype_1(void)
 
 /* Turn on GREEN LED PWM*/
 	ret[0] = LP5521_REG_G_PWM;
-	ret[1] = 0x02;
+	ret[1] = 25;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -171,7 +171,7 @@ static void start_leds_hw_subtype_1(void)
 
 	/* Modify RED LED current */
 	ret[0] = LP5521_REG_R_CURRENT;
-	ret[1] = 0x0A;
+	ret[1] = 0x32;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -182,7 +182,7 @@ static void start_leds_hw_subtype_1(void)
 
 	/* Turn on RED LED PWM*/
 	ret[0] = LP5521_REG_R_PWM;
-	ret[1] = 0x02;
+	ret[1] = 70;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
