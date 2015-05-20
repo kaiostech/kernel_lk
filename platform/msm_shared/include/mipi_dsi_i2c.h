@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -9,7 +9,7 @@
  *    copyright notice, this list of conditions and the following
  *    disclaimer in the documentation and/or other materials provided
  *    with the distribution.
- *  * Neither the name of The Linux Foundation nor the names of its
+ *  * Neither the name of The Linux Foundation. nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -26,38 +26,16 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __PLATFORM_MSM8996_GPIO_H
-#define __PLATFORM_MSM8996_GPIO_H
 
-#include <gpio.h>
 
-/* GPIO TLMM: Direction */
-#define GPIO_INPUT      0
-#define GPIO_OUTPUT     1
+#ifndef __MIPI_DSI_I2C_H__
+#define __MIPI_DSI_I2C_H__
 
-/* GPIO TLMM: Pullup/Pulldown */
-#define GPIO_NO_PULL    0
-#define GPIO_PULL_DOWN  1
-#define GPIO_KEEPER     2
-#define GPIO_PULL_UP    3
+#include <stdint.h>
 
-/* GPIO TLMM: Drive Strength */
-#define GPIO_2MA        0
-#define GPIO_4MA        1
-#define GPIO_6MA        2
-#define GPIO_8MA        3
-#define GPIO_10MA       4
-#define GPIO_12MA       5
-#define GPIO_14MA       6
-#define GPIO_16MA       7
+int mipi_dsi_i2c_read_byte(uint8_t addr, uint8_t reg, uint8_t *buf);
+int mipi_dsi_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t val);
+int mipi_dsi_i2c_read(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t len);
+int mipi_dsi_i2c_device_init();
 
-/* GPIO TLMM: Status */
-#define GPIO_ENABLE     0
-#define GPIO_DISABLE    1
-
-void gpio_config_uart_dm(uint8_t id);
-void gpio_config_blsp_i2c(uint8_t, uint8_t);
-void gpio_set(uint32_t gpio, uint32_t dir);
-void gpio_tlmm_config(uint32_t gpio, uint8_t func, uint8_t dir, uint8_t pull,
-		uint8_t drvstr, uint32_t enable);
-#endif
+#endif /* __MIPI_DSI_I2C_H__ */

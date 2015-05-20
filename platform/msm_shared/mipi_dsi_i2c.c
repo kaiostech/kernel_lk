@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -26,108 +26,74 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+
+#include <mipi_dsi_i2c.h>
+#include <blsp_qup.h>
+#include <i2c_qup.h>
+#include <gsbi.h>
 #include <err.h>
 #include <debug.h>
-#include <platform.h>
 
-#include "include/msm_panel.h"
+#define I2C_CLK_FREQ     100000
+#define I2C_SRC_CLK_FREQ 50000000
 
-__WEAK int mdp_lcdc_config(void)
+static struct qup_i2c_dev *i2c_dev;
+
+int mipi_dsi_i2c_read(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t len)
 {
-	return 0;
-}
-__WEAK int lvds_on()
-{
-	return 0;
-}
-__WEAK int mdp_lcdc_on()
-{
-	return 0;
-}
-__WEAK int mdp_lcdc_off()
-{
-	return 0;
-}
-__WEAK int target_display_pre_on()
-{
-	return 0;
-}
-__WEAK int target_display_post_on()
-{
-	return 0;
-}
-__WEAK int target_display_pre_off()
-{
-	return 0;
-}
-__WEAK int target_display_post_off()
-{
-	return 0;
-}
-__WEAK int target_display_get_base_offset(uint32_t base)
-{
-	return 0;
-}
-__WEAK int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
-{
-    return 0;
+	if (!buf)
+		return ERR_INVALID_ARGS;
+
+	if(!i2c_dev)
+		return ERR_NOT_VALID;
+
+	struct i2c_msg rd_buf[] = {
+		{addr, I2C_M_WR, 1, &reg},
+		{addr, I2C_M_RD, len, buf}
+	};
+
+	int err = qup_i2c_xfer(i2c_dev, rd_buf, 2);
+	if (err < 0) {
+		dprintf(CRITICAL, "Read reg %x failed\n", reg);
+		return err;
+	}
+
+	return NO_ERROR;
 }
 
-__WEAK void target_edp_panel_init(struct msm_panel_info *pinfo)
+int mipi_dsi_i2c_read_byte(uint8_t addr, uint8_t reg, uint8_t *buf)
 {
-	return;
+	if (!buf)
+		return ERR_INVALID_ARGS;
+
+	return mipi_dsi_i2c_read(addr, reg, buf, 1);
 }
 
-__WEAK int target_dsi_phy_config(struct mdss_dsi_phy_ctrl *phy_db)
+int mipi_dsi_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t val)
 {
-	return 0;
+	if (!i2c_dev)
+		return ERR_NOT_VALID;
+
+	unsigned char buf[2] = {reg, val};
+	struct i2c_msg msg_buf[] = {
+		{addr, I2C_M_WR, 2, buf},
+	};
+
+	int err = qup_i2c_xfer(i2c_dev, msg_buf, 1);
+	if (err < 0) {
+		dprintf(CRITICAL, "Write reg %x failed\n", reg);
+		return err;
+	}
+	return NO_ERROR;
 }
 
-__WEAK int target_edp_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
+int mipi_dsi_i2c_device_init()
 {
-	return 0;
-}
-
-__WEAK int target_edp_panel_enable(void)
-{
-	return 0;
-}
-
-__WEAK int target_edp_panel_disable(void)
-{
-	return 0;
-}
-
-__WEAK int target_edp_bl_ctrl(int enable)
-{
-	return 0;
-}
-
-__WEAK int target_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
-{
-	return 0;
-}
-
-__WEAK int target_hdmi_regulator_ctrl(bool enable)
-{
-	return 0;
-}
-__WEAK int mdss_hdmi_init(void)
-{
-	return 0;
-}
-
-__WEAK int target_hdmi_gpio_ctrl(bool enable)
-{
-	return 0;
-}
-
-__WEAK int target_hdmi_pll_clock(uint8_t enable, struct msm_panel_info *pinfo)
-{
-	return 0;
-}
-
-__WEAK int target_display_dsi2hdmi_config(struct msm_panel_info *pinfo)
-{
-	return 0;
+	i2c_dev = qup_blsp_i2c_init(BLSP_ID_1, QUP_ID_3,
+				I2C_CLK_FREQ, I2C_SRC_CLK_FREQ);
+	if(!i2c_dev) {
+		dprintf(CRITICAL, "mipi_dsi_i2c_device_init() failed\n");
+		return ERR_NOT_VALID;
+	}
+	return NO_ERROR;
 }

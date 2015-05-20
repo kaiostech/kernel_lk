@@ -33,13 +33,11 @@
 #include <err.h>
 #include <msm_panel.h>
 #include <mipi_dsi.h>
-#include <mdss_hdmi.h>
 #include <pm8x41.h>
 #include <pm8x41_wled.h>
 #include <qpnp_wled.h>
 #include <board.h>
 #include <mdp5.h>
-#include <scm.h>
 #include <endian.h>
 #include <regulator.h>
 #include <qtimer.h>
@@ -48,11 +46,11 @@
 #include <platform/clock.h>
 #include <platform/iomap.h>
 #include <target/display.h>
+#include <mipi_dsi_autopll_thulium.h>
+
 #include "include/panel.h"
 #include "include/display_resource.h"
 #include "gcdb_display.h"
-
-#define HFPLL_LDO_ID 12
 
 #define GPIO_STATE_LOW 0
 #define GPIO_STATE_HIGH 2
@@ -63,172 +61,78 @@
 #define PMIC_WLED_SLAVE_ID 3
 #define PMIC_MPP_SLAVE_ID 2
 
-#define DSI0_BASE_ADJUST -0x4000
-#define DSI1_BASE_ADJUST -0xA000
+#define MAX_POLL_READS 15
+#define POLL_TIMEOUT_US 1000
+
+#define STRENGTH_SIZE_IN_BYTES_8996	10
+#define REGULATOR_SIZE_IN_BYTES_8996	5
+#define LANE_SIZE_IN_BYTES_8996		20
 
 /*---------------------------------------------------------------------------*/
 /* GPIO configuration                                                        */
 /*---------------------------------------------------------------------------*/
 static struct gpio_pin reset_gpio = {
-  "msmgpio", 78, 3, 1, 0, 1
+  "msmgpio", 8, 3, 1, 0, 1
 };
 
 static struct gpio_pin lcd_reg_en = {	/* boost regulator */
-  "pm8994_gpios", 14, 3, 1, 0, 1
+  "pmi8994_gpios", 8, 3, 1, 0, 1
 };
 
 static struct gpio_pin bklt_gpio = {	/* lcd_bklt_reg_en */
-  "pmi8994_gpios", 2, 3, 1, 0, 1
+  "pm8994_gpios", 14, 3, 1, 0, 1
 };
 
-/* gpio name, id, strength, direction, pull, state. */
-static struct gpio_pin hdmi_cec_gpio = {        /* CEC */
-  "msmgpio", 31, 0, 2, 3, 1
-};
-
-static struct gpio_pin hdmi_ddc_clk_gpio = {   /* DDC CLK */
-  "msmgpio", 32, 0, 2, 3, 1
-};
-
-static struct gpio_pin hdmi_ddc_data_gpio = {  /* DDC DATA */
-  "msmgpio", 33, 0, 2, 3, 1
-};
-
-static struct gpio_pin hdmi_hpd_gpio = {       /* HPD, input */
-  "msmgpio", 34, 7, 0, 1, 1
-};
-
-
-static void target_hdmi_ldo_enable(uint8_t enable)
+static uint32_t thulium_dsi_pll_lock_status(uint32_t pll_base, uint32_t off,
+	uint32_t bit)
 {
-	if (enable)
-		regulator_enable(REG_LDO12);
-	else
-		regulator_disable(REG_LDO12);
-}
+	uint32_t cnt, status;
 
-static void target_hdmi_mpp4_enable(uint8_t enable)
-{
-	struct pm8x41_mpp mpp;
-
-	/* Enable MPP4 */
-	pmi8994_config_mpp_slave_id(0);
-
-        mpp.base = PM8x41_MMP4_BASE;
-	mpp.vin = MPP_VIN2;
-	mpp.mode = MPP_HIGH;;
-	if (enable) {
-		pm8x41_config_output_mpp(&mpp);
-		pm8x41_enable_mpp(&mpp, MPP_ENABLE);
-	} else {
-		pm8x41_enable_mpp(&mpp, MPP_DISABLE);
+	/* check pll lock first */
+	for (cnt = 0; cnt < MAX_POLL_READS; cnt++) {
+		status = readl(pll_base + off);
+		dprintf(SPEW, "%s: pll_base=%x cnt=%d status=%x\n",
+				__func__, pll_base, cnt, status);
+		status &= BIT(bit); /* bit 5 */
+		if (status)
+			break;
+		udelay(POLL_TIMEOUT_US);
 	}
 
-	/* Need delay before power on regulators */
-	mdelay(20);
+	return status;
 }
 
-int target_hdmi_regulator_ctrl(uint8_t enable)
-{
-	target_hdmi_ldo_enable(enable);
-
-	target_hdmi_mpp4_enable(enable);
-
-	return 0;
-}
-
-int target_hdmi_gpio_ctrl(uint8_t enable)
-{
-	gpio_tlmm_config(hdmi_cec_gpio.pin_id, 1,	/* gpio 31, CEC */
-		hdmi_cec_gpio.pin_direction, hdmi_cec_gpio.pin_pull,
-		hdmi_cec_gpio.pin_strength, hdmi_cec_gpio.pin_state);
-
-	gpio_tlmm_config(hdmi_ddc_clk_gpio.pin_id, 1,	/* gpio 32, DDC CLK */
-		hdmi_ddc_clk_gpio.pin_direction, hdmi_ddc_clk_gpio.pin_pull,
-		hdmi_ddc_clk_gpio.pin_strength, hdmi_ddc_clk_gpio.pin_state);
-
-
-	gpio_tlmm_config(hdmi_ddc_data_gpio.pin_id, 1,	/* gpio 33, DDC DATA */
-		hdmi_ddc_data_gpio.pin_direction, hdmi_ddc_data_gpio.pin_pull,
-		hdmi_ddc_data_gpio.pin_strength, hdmi_ddc_data_gpio.pin_state);
-
-	gpio_tlmm_config(hdmi_hpd_gpio.pin_id, 1,	/* gpio 34, HPD */
-		hdmi_hpd_gpio.pin_direction, hdmi_hpd_gpio.pin_pull,
-		hdmi_hpd_gpio.pin_strength, hdmi_hpd_gpio.pin_state);
-
-	gpio_set(hdmi_cec_gpio.pin_id,      hdmi_cec_gpio.pin_direction);
-	gpio_set(hdmi_ddc_clk_gpio.pin_id,  hdmi_ddc_clk_gpio.pin_direction);
-	gpio_set(hdmi_ddc_data_gpio.pin_id, hdmi_ddc_data_gpio.pin_direction);
-	gpio_set(hdmi_hpd_gpio.pin_id,      hdmi_hpd_gpio.pin_direction);
-
-	return NO_ERROR;
-}
-
-int target_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
-{
-	uint32_t ret;
-
-	dprintf(SPEW, "%s: target_panel_clock\n", __func__);
-
-	if (enable) {
-		mdp_gdsc_ctrl(enable);
-		mmss_bus_clock_enable();
-		mdp_clock_enable();
-		ret = restore_secure_cfg(SECURE_DEVICE_MDSS);
-		if (ret) {
-			dprintf(CRITICAL,
-				"%s: Failed to restore MDP security configs",
-				__func__);
-			mdp_clock_disable();
-			mmss_bus_clock_disable();
-			mdp_gdsc_ctrl(0);
-			return ret;
-		}
-
-		hdmi_core_ahb_clk_enable();
-	} else if(!target_cont_splash_screen()) {
-		hdmi_core_ahb_clk_disable();
-		mdp_clock_disable();
-		mmss_bus_clock_disable();
-		mdp_gdsc_ctrl(enable);
-	}
-
-	return NO_ERROR;
-}
-static uint32_t dsi_pll_20nm_enable_seq(uint32_t pll_base)
+static uint32_t thulium_dsi_pll_enable_seq(uint32_t phy_base, uint32_t pll_base)
 {
 	uint32_t pll_locked;
-	/* MDSS_DSI_0_PHY_DSIPHY_CTRL_1 */
-	writel(0x00, pll_base + 0x374);
+
+	writel(0x01, phy_base + 0x48);
 	dmb();
-	/* MDSS_DSI_0_PHY_DSIPHY_CTRL_0 */
-	writel(0x7f, pll_base + 0x370);
-	dmb();
-	pll_locked = mdss_dsi_pll_20nm_lock_status(pll_base);
+
+	pll_locked = thulium_dsi_pll_lock_status(pll_base, 0xcc, 5);
+	if (pll_locked)
+		pll_locked = thulium_dsi_pll_lock_status(pll_base, 0xcc, 0);
+
 	if (!pll_locked)
-		dprintf(INFO, "%s: DSI PLL lock failed\n", __func__);
+		dprintf(ERROR, "%s: DSI PLL lock failed\n", __func__);
 	else
-		dprintf(INFO, "%s: DSI PLL lock Success\n", __func__);
+		dprintf(SPEW, "%s: DSI PLL lock Success\n", __func__);
 
 	return  pll_locked;
 }
 
-static int msm8994_wled_backlight_ctrl(uint8_t enable)
+static int thulium_wled_backlight_ctrl(uint8_t enable)
 {
-	uint8_t slave_id = 3;	/* pmi */
-
-	pm8x41_wled_config_slave_id(slave_id);
 	qpnp_wled_enable_backlight(enable);
 	qpnp_ibb_enable(enable);
 	return NO_ERROR;
 }
 
-static int msm8994_pwm_backlight_ctrl(uint8_t enable)
+static int thulium_pwm_backlight_ctrl(uint8_t enable)
 {
 	uint8_t slave_id = 3; /* lpg at pmi */
 
         if (enable) {
-		/* mpp-1 had been configured already */
                 /* lpg channel 4 */
 
 		 /* LPG_ENABLE_CONTROL */
@@ -265,7 +169,7 @@ static int msm8994_pwm_backlight_ctrl(uint8_t enable)
         return NO_ERROR;
 }
 
-void lcd_bklt_reg_enable(void)
+static void lcd_reg_enable(void)
 {
 	uint8_t slave_id = 2;	/* gpio at pmi */
 
@@ -274,37 +178,37 @@ void lcd_bklt_reg_enable(void)
                 .function = PM_GPIO_FUNC_HIGH,
                 .vin_sel = 2,   /* VIN_2 */
                 .output_buffer = PM_GPIO_OUT_CMOS,
-                .out_strength = PM_GPIO_OUT_DRIVE_LOW,
+                .out_strength = PM_GPIO_OUT_DRIVE_MED,
         };
 
-        pm8x41_gpio_config_sid(slave_id, bklt_gpio.pin_id, &gpio);
-	pm8x41_gpio_set_sid(slave_id, bklt_gpio.pin_id, 1);
+        pm8x41_gpio_config_sid(slave_id, lcd_reg_en.pin_id, &gpio);
+	pm8x41_gpio_set_sid(slave_id, lcd_reg_en.pin_id, 1);
 }
 
-void lcd_bklt_reg_disable(void)
+static void lcd_reg_disable(void)
 {
 	uint8_t slave_id = 2;	/* gpio at pmi */
 
-	pm8x41_gpio_set_sid(slave_id, bklt_gpio.pin_id, 0);
+	pm8x41_gpio_set_sid(slave_id, lcd_reg_en.pin_id, 0);
 }
 
-void lcd_reg_enable(void)
+static void lcd_bklt_reg_enable(void)
 {
        struct pm8x41_gpio gpio = {
                 .direction = PM_GPIO_DIR_OUT,
                 .function = PM_GPIO_FUNC_HIGH,
                 .vin_sel = 2,   /* VIN_2 */
                 .output_buffer = PM_GPIO_OUT_CMOS,
-                .out_strength = PM_GPIO_OUT_DRIVE_MED,
+                .out_strength = PM_GPIO_OUT_DRIVE_LOW,
         };
 
-        pm8x41_gpio_config(lcd_reg_en.pin_id, &gpio);
-	pm8x41_gpio_set(lcd_reg_en.pin_id, 1);
+        pm8x41_gpio_config(bklt_gpio.pin_id, &gpio);
+	pm8x41_gpio_set(bklt_gpio.pin_id, 1);
 }
 
-void lcd_reg_disable(void)
+static void lcd_bklt_reg_disable(void)
 {
-	pm8x41_gpio_set(lcd_reg_en.pin_id, 0);
+	pm8x41_gpio_set(bklt_gpio.pin_id, 0);
 }
 
 int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
@@ -342,7 +246,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 		/* Need delay before power on regulators */
 		mdelay(20);
 		/* Enable WLED backlight control */
-		ret = msm8994_wled_backlight_ctrl(enable);
+		ret = thulium_wled_backlight_ctrl(enable);
 		break;
 	case BL_PWM:
 		/* Enable MPP1 */
@@ -358,7 +262,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 		}
 		/* Need delay before power on regulators */
 		mdelay(20);
-		ret = msm8994_pwm_backlight_ctrl(enable);
+		ret = thulium_pwm_backlight_ctrl(enable);
 		break;
 	default:
 		dprintf(CRITICAL, "backlight type:%d not supported\n",
@@ -369,28 +273,11 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 	return ret;
 }
 
-int target_hdmi_pll_clock(uint8_t enable, struct msm_panel_info *pinfo)
-{
-	if (enable) {
-		hdmi_phy_reset();
-		hdmi_pll_config(pinfo->clk_rate);
-		hdmi_vco_enable();
-		hdmi_pixel_clk_enable(pinfo->clk_rate);
-	} else if(!target_cont_splash_screen()) {
-		/* Disable clocks if continuous splash off */
-		hdmi_pixel_clk_disable();
-		hdmi_vco_disable();
-	}
-
-	return NO_ERROR;
-}
-
 int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 {
+	uint32_t flags;
 	uint32_t ret = NO_ERROR;
-	struct mdss_dsi_pll_config *pll_data;
-	uint32_t flags, dsi_phy_pll_out;
-	struct dfps_pll_codes *pll_codes = &pinfo->mipi.pll_codes;
+	uint32_t board_version = board_soc_version();
 
 	if (pinfo->dest == DISPLAY_2) {
 		flags = MMSS_DSI_CLKS_FLAG_DSI1;
@@ -402,57 +289,37 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 			flags |= MMSS_DSI_CLKS_FLAG_DSI1;
 	}
 
-	pll_data = pinfo->mipi.dsi_pll_config;
-
 	if (!enable) {
+		/* stop pll */
+		writel(0x0, pinfo->mipi.phy_base + 0x48);
+		dmb();
+
 		mmss_dsi_clock_disable(flags);
 		goto clks_disable;
 	}
 
-	mdp_gdsc_ctrl(enable);
+	if (board_version == 0x20000 || board_version == 0x20001)
+		video_gdsc_enable();
+	mmss_gdsc_enable();
 	mmss_bus_clock_enable();
 	mdp_clock_enable();
+	mdss_dsi_auto_pll_thulium_config(pinfo);
 
-	ret = restore_secure_cfg(SECURE_DEVICE_MDSS);
-	if (ret) {
-		dprintf(CRITICAL,
-			"%s: Failed to restore MDP security configs",
-			__func__);
-		goto clks_disable;
-	}
-
-	mdss_dsi_auto_pll_20nm_config(pinfo->mipi.pll_base,
-		pinfo->mipi.spll_base, pll_data);
-
-	if (!dsi_pll_20nm_enable_seq(pinfo->mipi.pll_base)) {
+	if (!thulium_dsi_pll_enable_seq(pinfo->mipi.phy_base,
+		pinfo->mipi.pll_base)) {
 		ret = ERROR;
 		dprintf(CRITICAL, "PLL failed to lock!\n");
 		goto clks_disable;
 	}
-
-	pll_codes->codes[0] = readl_relaxed(pinfo->mipi.pll_base +
-		MMSS_DSI_PHY_PLL_CORE_KVCO_CODE);
-	pll_codes->codes[1] = readl_relaxed(pinfo->mipi.pll_base +
-		MMSS_DSI_PHY_PLL_CORE_VCO_TUNE);
-	dprintf(SPEW, "codes %d %d\n", pll_codes->codes[0],
-		pll_codes->codes[1]);
-
-	if (pinfo->mipi.use_dsi1_pll)
-		dsi_phy_pll_out = DSI1_PHY_PLL_OUT;
-	else
-		dsi_phy_pll_out = DSI0_PHY_PLL_OUT;
-
-	mmss_dsi_clock_enable(dsi_phy_pll_out, flags,
-		pll_data->pclk_m,
-		pll_data->pclk_n,
-		pll_data->pclk_d);
-
+	mmss_dsi_clock_enable(DSI0_PHY_PLL_OUT, flags);
 	return NO_ERROR;
 
 clks_disable:
 	mdp_clock_disable();
 	mmss_bus_clock_disable();
-	mdp_gdsc_ctrl(0);
+	mmss_gdsc_disable();
+	if (board_version == 0x20000 || board_version == 0x20001)
+		video_gdsc_disable();
 
 	return ret;
 }
@@ -541,9 +408,10 @@ static void wled_init(struct msm_panel_info *pinfo)
 
 int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 {
+	uint32_t val = BIT(1) | BIT(13) | BIT(27);
+
 	if (enable) {
-		regulator_enable(REG_LDO2 | REG_LDO12 |
-			REG_LDO14 | REG_LDO28);
+		regulator_enable(val);
 		mdelay(10);
 		wled_init(pinfo);
 		qpnp_ibb_enable(true);	/* +5V and -5V */
@@ -555,8 +423,7 @@ int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 		if (pinfo->lcd_reg_en)
 			lcd_reg_disable();
 
-		regulator_disable(REG_LDO2 | REG_LDO12 |
-			REG_LDO14 | REG_LDO28);
+		regulator_disable(val);
 	}
 
 	return NO_ERROR;
@@ -578,31 +445,19 @@ int target_display_pre_on()
 
 int target_dsi_phy_config(struct mdss_dsi_phy_ctrl *phy_db)
 {
-	memcpy(phy_db->regulator, panel_regulator_settings, REGULATOR_SIZE);
-	memcpy(phy_db->ctrl, panel_physical_ctrl, PHYSICAL_SIZE);
-	memcpy(phy_db->strength, panel_strength_ctrl, STRENGTH_SIZE);
-	memcpy(phy_db->bistCtrl, panel_bist_ctrl, BIST_SIZE);
-	memcpy(phy_db->laneCfg, panel_lane_config, LANE_SIZE);
+	memcpy(phy_db->strength, panel_strength_ctrl, STRENGTH_SIZE_IN_BYTES_8996 *
+		sizeof(uint32_t));
+	memcpy(phy_db->regulator, panel_regulator_settings,
+		REGULATOR_SIZE_IN_BYTES_8996 * sizeof(uint32_t));
+	memcpy(phy_db->laneCfg, panel_lane_config, LANE_SIZE_IN_BYTES_8996);
 	return NO_ERROR;
 }
 
-int target_display_get_base_offset(uint32_t base)
-{
-	if(platform_is_msm8992()) {
-		if (base == MIPI_DSI0_BASE)
-			return DSI0_BASE_ADJUST;
-		else if (base == MIPI_DSI1_BASE)
-			return DSI1_BASE_ADJUST;
-	}
-
-	return 0;
-}
 
 bool target_display_panel_node(char *panel_name, char *pbuf, uint16_t buf_size)
 {
 	int prefix_string_len = strlen(DISPLAY_CMDLINE_PREFIX);
 	bool ret = true;
-	char vic_buf[HDMI_VIC_LEN] = "0";
 
 	panel_name += strspn(panel_name, " ");
 
@@ -618,9 +473,6 @@ bool target_display_panel_node(char *panel_name, char *pbuf, uint16_t buf_size)
 		strlcat(pbuf, LK_OVERRIDE_PANEL, buf_size);
 		buf_size -= LK_OVERRIDE_PANEL_LEN;
 		strlcat(pbuf, HDMI_CONTROLLER_STRING, buf_size);
-		buf_size -= strlen(HDMI_CONTROLLER_STRING);
-		mdss_hdmi_get_vic(vic_buf);
-		strlcat(pbuf, vic_buf, buf_size);
 	} else {
 		ret = gcdb_display_cmdline_arg(panel_name, pbuf, buf_size);
 	}
@@ -643,8 +495,6 @@ void target_display_init(const char *panel_name)
 			panel_name);
 		return;
 	} else if (!strcmp(panel_name, HDMI_PANEL_NAME)) {
-		dprintf(INFO, "%s: HDMI is primary\n", __func__);
-		mdss_hdmi_display_init(MDP_REV_50, (void *) MIPI_FB_ADDR);
 		return;
 	}
 
