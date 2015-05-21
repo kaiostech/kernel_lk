@@ -48,6 +48,7 @@ addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr);
 void display_init(void);
 void display_shutdown(void);
 void display_image_on_screen(void);
+void display_fbcon_message(char *str);
 
 unsigned board_machtype(void);
 unsigned board_platform_id(void);
