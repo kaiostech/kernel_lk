@@ -16,6 +16,10 @@ OBJS += \
 	$(LOCAL_DIR)/boot_stats.o \
 	$(LOCAL_DIR)/crc32.o
 
+ifeq ($(ENABLE_SECAPP_LOADER), 1)
+OBJS += $(LOCAL_DIR)/secapp_loader.o
+endif
+
 ifeq ($(ENABLE_SDHCI_SUPPORT),1)
 OBJS += \
 	$(LOCAL_DIR)/sdhci.o \
