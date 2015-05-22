@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -85,22 +85,23 @@ int mdp_lcdc_config(struct msm_panel_info *pinfo,
 	/* Start XY coordinates */
 	writel(0, MDP_DMA_P_OUT_XY);
 
-	if (fb->bpp == 16) {
-		writel(DMA_PACK_ALIGN_LSB | DMA_PACK_PATTERN_RGB |
+	if ((fb->bpp == 16) && (fb->format == FB_FORMAT_RGB565)) {
+		writel(DMA_PACK_ALIGN_LSB | DMA_PACK_PATTERN_BGR |
 			DMA_DITHER_EN |	DMA_OUT_SEL_LCDC |
 			DMA_IBUF_FORMAT_RGB565 | DMA_DSTC0G_6BITS |
 			DMA_DSTC1B_6BITS | DMA_DSTC2R_6BITS,
 			MDP_DMA_P_CONFIG);
 		mdp_rgb_format = MDP_RGB_565_FORMAT;
-	} else if (fb->bpp == 24) {
-		writel(DMA_PACK_ALIGN_LSB | DMA_PACK_PATTERN_RGB |
+	} else if ((fb->bpp == 24) && (fb->format == FB_FORMAT_RGB888)) {
+		writel(DMA_PACK_ALIGN_LSB | DMA_PACK_PATTERN_BGR |
 			DMA_DITHER_EN | DMA_OUT_SEL_LCDC |
 			DMA_IBUF_FORMAT_RGB888 | DMA_DSTC0G_8BITS |
 			DMA_DSTC1B_8BITS | DMA_DSTC2R_8BITS,
 			MDP_DMA_P_CONFIG);
 		mdp_rgb_format = MDP_RGB_888_FORMAT;
 	} else {
-		dprintf(CRITICAL, "Unsupported bpp detected!\n");
+		dprintf(CRITICAL, "Unsupported LVDS bpp: %d or format: %d detected!\n",
+							     fb->bpp, fb->format);
 		return ERR_INVALID_ARGS;
 	}
 

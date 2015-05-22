@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2015 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -80,6 +80,8 @@
 	(((a)<<(bit*3))|((x)<<(bit*2))|((y)<<bit)|(z))
 #define DMA_PACK_PATTERN_RGB \
 	(MDP_GET_PACK_PATTERN(0, CLR_R, CLR_G, CLR_B, 2)<<8)
+#define DMA_PACK_PATTERN_BGR \
+	(MDP_GET_PACK_PATTERN(0, CLR_B, CLR_G, CLR_R, 2)<<8)
 #define MDP_RGB_888_FORMAT \
 	(BIT(17) | (1<<14) | (2<<9) | \
 	(0<<8) | (0<<6) | (3<<4) | \
