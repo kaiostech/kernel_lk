@@ -169,6 +169,7 @@ static bool devinfo_present = true;
 static int auth_kernel_img = 0;
 
 static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0, {0}, {0},{0}};
+static bool is_allow_unlock = 0;
 
 struct atag_ptbl_entry
 {
@@ -755,6 +756,22 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 		auth_kernel_img = 1;
 	}
 
+#ifdef MDTP_SUPPORT
+	{
+		/* Verify MDTP lock.
+		 * For boot & recovery partitions, use aboot's verification result.
+		 */
+		mdtp_ext_partition_verification_t ext_partition;
+		ext_partition.partition = boot_into_recovery ? MDTP_PARTITION_RECOVERY : MDTP_PARTITION_BOOT;
+		ext_partition.integrity_state = device.is_tampered ? MDTP_PARTITION_STATE_INVALID : MDTP_PARTITION_STATE_VALID;
+		ext_partition.page_size = 0; /* Not needed since already validated */
+		ext_partition.image_addr = 0; /* Not needed since already validated */
+		ext_partition.image_size = 0; /* Not needed since already validated */
+		ext_partition.sig_avail = FALSE; /* Not needed since already validated */
+		mdtp_fwlock_verify_lock(&ext_partition);
+	}
+#endif /* MDTP_SUPPORT */
+
 #if USE_PCOM_SECBOOT
 	set_tamper_flag(device.is_tampered);
 #endif
@@ -836,7 +853,6 @@ static bool check_format_bit()
 
 void boot_verifier_init()
 {
-
 	uint32_t boot_state;
 	/* Check if device unlock */
 	if(device.is_unlocked)
@@ -1026,6 +1042,23 @@ int boot_linux_from_mmc(void)
 		#ifdef TZ_SAVE_KERNEL_HASH
 		aboot_save_boot_hash_mmc((uint32_t) image_addr, imagesize_actual);
 		#endif /* TZ_SAVE_KERNEL_HASH */
+
+#ifdef MDTP_SUPPORT
+		{
+			/* Verify MDTP lock.
+			 * For boot & recovery partitions, MDTP will use boot_verifier APIs,
+			 * since verification was skipped in aboot. The signature is not part of the loaded image.
+			 */
+			mdtp_ext_partition_verification_t ext_partition;
+			ext_partition.partition = boot_into_recovery ? MDTP_PARTITION_RECOVERY : MDTP_PARTITION_BOOT;
+			ext_partition.integrity_state = MDTP_PARTITION_STATE_UNSET;
+			ext_partition.page_size = page_size;
+			ext_partition.image_addr = (uint32)image_addr;
+			ext_partition.image_size = imagesize_actual;
+			ext_partition.sig_avail = FALSE;
+			mdtp_fwlock_verify_lock(&ext_partition);
+		}
+#endif /* MDTP_SUPPORT */
 	}
 
 	/*
@@ -1535,6 +1568,77 @@ void write_device_info_flash(device_info *dev)
 	}
 }
 
+static int read_allow_oem_unlock(device_info *dev)
+{
+	const char *ptn_name = "frp";
+	unsigned offset;
+	int index;
+	unsigned long long ptn;
+	unsigned long long ptn_size;
+	unsigned blocksize = mmc_get_device_blocksize();
+	char buf[blocksize];
+
+	index = partition_get_index(ptn_name);
+	if (index == INVALID_PTN)
+	{
+		dprintf(CRITICAL, "No '%s' partition found\n", ptn_name);
+		return -1;
+	}
+
+	ptn = partition_get_offset(index);
+	ptn_size = partition_get_size(index);
+	offset = ptn_size - blocksize;
+
+	if (mmc_read(ptn + offset, (void *)buf, sizeof(buf)))
+	{
+		dprintf(CRITICAL, "Reading MMC failed\n");
+		return -1;
+	}
+
+	/*is_allow_unlock is a bool value stored at the LSB of last byte*/
+	is_allow_unlock = buf[blocksize-1] & 0x01;
+	return 0;
+}
+
+static int write_allow_oem_unlock(bool allow_unlock)
+{
+	const char *ptn_name = "frp";
+	unsigned offset;
+
+	int index;
+	unsigned long long ptn;
+	unsigned long long ptn_size;
+	unsigned blocksize = mmc_get_device_blocksize();
+	char buf[blocksize];
+
+	index = partition_get_index(ptn_name);
+	if (index == INVALID_PTN)
+	{
+		dprintf(CRITICAL, "No '%s' partition found\n", ptn_name);
+		return -1;
+	}
+
+	ptn = partition_get_offset(index);
+	ptn_size = partition_get_size(index);
+	offset = ptn_size - blocksize;
+
+	if (mmc_read(ptn + offset, (void *)buf, sizeof(buf)))
+	{
+		dprintf(CRITICAL, "Reading MMC failed\n");
+		return -1;
+	}
+
+	/*is_allow_unlock is a bool value stored at the LSB of last byte*/
+	buf[blocksize-1] = allow_unlock;
+	if (mmc_write(ptn + offset, blocksize, buf))
+	{
+		dprintf(CRITICAL, "Writing MMC failed\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 void read_device_info_flash(device_info *dev)
 {
 	struct device_info *info = (void*) info_buf;
@@ -1749,13 +1853,6 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	unsigned int kernel_size = 0;
 	unsigned int scratch_offset = 0;
 
-
-#ifdef MDTP_SUPPORT
-	/* Go through Firmware Lock verification before continue with boot process */
-	mdtp_fwlock_verify_lock();
-	display_image_on_screen();
-#endif /* MDTP_SUPPORT */
-
 #if VERIFIED_BOOT
 	if(!device.is_unlocked)
 	{
@@ -1806,6 +1903,24 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		 * access signature beyond its length
 		 */
 		verify_signed_bootimg((uint32_t)data, (image_actual - sig_actual));
+
+#ifdef MDTP_SUPPORT
+	else
+	{
+		/* Verify MDTP lock before continue with boot process.
+		 * For boot & recovery partitions, MDTP will use boot_verifier APIs,
+		 * since verification was skipped in aboot. The signarue is already part of the loaded image.
+		 */
+		mdtp_ext_partition_verification_t ext_partition;
+		ext_partition.partition = boot_into_recovery ? MDTP_PARTITION_RECOVERY : MDTP_PARTITION_BOOT;
+		ext_partition.integrity_state = MDTP_PARTITION_STATE_UNSET;
+		ext_partition.page_size = page_size;
+		ext_partition.image_addr = (uint32_t)data;
+		ext_partition.image_size = image_actual - sig_actual;
+		ext_partition.sig_avail = TRUE;
+		mdtp_fwlock_verify_lock(&ext_partition);
+	}
+#endif /* MDTP_SUPPORT */
 
 	/*
 	 * Check if the kernel image is a gzip package. If yes, need to decompress it.
@@ -2016,12 +2131,13 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 	int index = INVALID_PTN;
 	char *token = NULL;
 	char *pname = NULL;
+	char *sp;
 	uint8_t lun = 0;
 	bool lun_set = false;
 
-	token = strtok((char *)arg, ":");
+	token = strtok_r((char *)arg, ":", &sp);
 	pname = token;
-	token = strtok(NULL, ":");
+	token = strtok_r(NULL, ":", &sp);
 	if(token)
 	{
 		lun = atoi(token);
@@ -2421,7 +2537,7 @@ void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
 #endif /* SSD_ENABLE */
 
 #if VERIFIED_BOOT
-	if(!device.is_unlocked && !device.is_verified)
+	if(!device.is_unlocked)
 	{
 		fastboot_fail("device is locked. Cannot flash images");
 		return;
@@ -2536,12 +2652,6 @@ void cmd_continue(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 	fastboot_stop();
 
-#ifdef MDTP_SUPPORT
-	/* Go through Firmware Lock verification before continue with boot process */
-	mdtp_fwlock_verify_lock();
-	display_image_on_screen();
-#endif /* MDTP_SUPPORT */
-
 	if (target_is_emmc_boot())
 	{
 		boot_linux_from_mmc();
@@ -2594,12 +2704,34 @@ void cmd_oem_select_display_panel(const char *arg, void *data, unsigned size)
 
 void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
 {
-	/* TODO: Wipe user data */
+	if(!is_allow_unlock) {
+		fastboot_fail("oem unlock is not allowed");
+		return;
+	}
+
+	display_fbcon_message("Oem Unlock requested");
+	fastboot_fail("Need wipe userdata. Do 'fastboot oem unlock-go'");
+}
+
+void cmd_oem_unlock_go(const char *arg, void *data, unsigned sz)
+{
 	if(!device.is_unlocked || device.is_verified)
 	{
+		if(!is_allow_unlock) {
+			fastboot_fail("oem unlock is not allowed");
+			return;
+		}
+
 		device.is_unlocked = 1;
 		device.is_verified = 0;
 		write_device_info(&device);
+
+		struct recovery_message msg;
+		snprintf(msg.recovery, sizeof(msg.recovery), "recovery\n--wipe_data");
+		write_misc(0, &msg, sizeof(msg));
+
+		fastboot_okay("");
+		reboot_device(RECOVERY_MODE);
 	}
 	fastboot_okay("");
 }
@@ -2874,6 +3006,7 @@ void aboot_fastboot_register_commands(void)
 											{"reboot", cmd_reboot},
 											{"reboot-bootloader", cmd_reboot_bootloader},
 											{"oem unlock", cmd_oem_unlock},
+											{"oem unlock-go", cmd_oem_unlock_go},
 											{"oem lock", cmd_oem_lock},
 											{"oem verified", cmd_oem_verified},
 											{"oem device-info", cmd_oem_devinfo},
@@ -2940,6 +3073,7 @@ void aboot_init(const struct app_descriptor *app)
 	ASSERT((MEMBASE + MEMSIZE) > MEMBASE);
 
 	read_device_info(&device);
+	read_allow_oem_unlock(&device);
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
@@ -3010,12 +3144,6 @@ void aboot_init(const struct app_descriptor *app)
 normal_boot:
 	if (!boot_into_fastboot)
 	{
-#ifdef MDTP_SUPPORT
-			/* Go through Firmware Lock verification before continue with boot process */
-			mdtp_fwlock_verify_lock();
-			display_image_on_screen();
-#endif /* MDTP_SUPPORT */
-
 		if (target_is_emmc_boot())
 		{
 			if(emmc_recovery_init())
