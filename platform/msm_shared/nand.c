@@ -1865,14 +1865,16 @@ static int flash_nand_read_config(dmov_s * cmdlist, unsigned *ptrlist)
 	    |(5 << 27)		/* 5 address cycles */
 	    |(0 << 30)		/* Do not read status before data */
 	    |(1 << 31)		/* Send read cmd */
-	    |((nand_cfg1 & CFG1_WIDE_FLASH) ? (4 << 23) : (5 << 23));
+	    |((nand_cfg1 & CFG1_WIDE_FLASH) ? (4 << 23) : (enable_bch_ecc ? (6 << 23) : (5 << 23)));
 	CFG1_M = (0 << 0)	/* Enable ecc */
 	    |(7 << 2)		/* 8 recovery cycles */
 	    |(0 << 5)		/* Allow CS deassertion */
-	    |((flash_pagesize - (528 * ((flash_pagesize >> 9) - 1)) + 1) << 6)	/* Bad block marker location */
+	    |((flash_pagesize - ((enable_bch_ecc ? 532 : 528) * ((flash_pagesize >> 9) - 1)) + 1) << 6)	/* Bad block marker location */
 	    |(0 << 16)		/* Bad block in user data area */
 	    |(2 << 17)		/* 6 cycle tWB/tRB */
 	    |(nand_cfg1 & CFG1_WIDE_FLASH);	/* preserve wide flash flag */
+	if (enable_bch_ecc)
+		CFG1_M |= (1 << 27);	/* Enable BCH engine */
 	dprintf(INFO, "nandcfg(Modem): %x %x (used)\n", CFG0_M, CFG1_M);
 	return 0;
 }
