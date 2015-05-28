@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -136,17 +136,6 @@ static void start_leds_hw_subtype_1(void)
 	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
 		goto xferErr5521;
 
-/* Turn on BLUE LED PWM*/
-	ret[0] = LP5521_REG_B_PWM;
-	ret[1] = 75;
-	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
-	msg_buf[0].flags = I2C_M_WR;
-	msg_buf[0].len = 2;
-	msg_buf[0].buf = (unsigned char*)(&ret[0]);
-
-	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
-		goto xferErr5521;
-
 /* Modify GREEN LED current */
 	ret[0] = LP5521_REG_G_CURRENT;
 	ret[1] = 0x32;
@@ -158,9 +147,9 @@ static void start_leds_hw_subtype_1(void)
 	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
 		goto xferErr5521;
 
-/* Turn on GREEN LED PWM*/
-	ret[0] = LP5521_REG_G_PWM;
-	ret[1] = 25;
+/* Modify RED LED current */
+	ret[0] = LP5521_REG_R_CURRENT;
+	ret[1] = 0x32;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
@@ -169,9 +158,20 @@ static void start_leds_hw_subtype_1(void)
 	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
 		goto xferErr5521;
 
-	/* Modify RED LED current */
-	ret[0] = LP5521_REG_R_CURRENT;
-	ret[1] = 0x32;
+/* Turn on BLUE LED PWM*/
+	ret[0] = LP5521_REG_B_PWM;
+	ret[1] = 75;
+	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
+	msg_buf[0].flags = I2C_M_WR;
+	msg_buf[0].len = 2;
+	msg_buf[0].buf = (unsigned char*)(&ret[0]);
+
+	if (qup_i2c_xfer(dev, msg_buf, 1) != 1)
+		goto xferErr5521;
+
+/* Turn on GREEN LED PWM*/
+	ret[0] = LP5521_REG_G_PWM;
+	ret[1] = 25;
 	msg_buf[0].addr = LP5521_HW_I2C_ADDRESS;
 	msg_buf[0].flags = I2C_M_WR;
 	msg_buf[0].len = 2;
