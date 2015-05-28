@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, 2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -149,9 +149,14 @@ int32_t mdss_dsi_auto_pll_config(uint32_t ctl_base,
 	cal_cfg11 = gen_vco_clk / 256000000;
 	cal_cfg10 = (gen_vco_clk % 256000000) / 1000000;
 
-	writel(sdm_cfg1 , ctl_base + 0x023c); /* SDM CFG1 */
-	writel(sdm_cfg2 , ctl_base + 0x0240); /* SDM CFG2 */
-	writel(sdm_cfg3 , ctl_base + 0x0244); /* SDM CFG3 */
+	writel(0x02, ctl_base + 0x0208); /* PUMP CFG */
+	writel(0x2b, ctl_base + 0x0278); /* CAL CFG3 */
+	writel(0x66, ctl_base + 0x027c); /* CAL CFG4 */
+	writel(0x0d, ctl_base + 0x0264); /* LKDetect CFG2 */
+
+	writel(sdm_cfg1 & 0xff , ctl_base + 0x023c); /* SDM CFG1 */
+	writel(sdm_cfg2 & 0xff , ctl_base + 0x0240); /* SDM CFG2 */
+	writel(sdm_cfg3 & 0xff, ctl_base + 0x0244); /* SDM CFG3 */
 	writel(0x00, ctl_base + 0x0248); /* SDM CFG4 */
 
 	udelay(10);
@@ -162,7 +167,7 @@ int32_t mdss_dsi_auto_pll_config(uint32_t ctl_base,
 	writel(pd->directpath, ctl_base + 0x0210); /* VREG CFG */
 	writel(sdm_cfg0, ctl_base + 0x0238); /* SDM CFG0 */
 
-	writel(0x0a, ctl_base + 0x026c); /* CAL CFG0 */
+	writel(0x12, ctl_base + 0x026c); /* CAL CFG0 */
 	writel(0x30, ctl_base + 0x0284); /* CAL CFG6 */
 	writel(0x00, ctl_base + 0x0288); /* CAL CFG7 */
 	writel(0x60, ctl_base + 0x028c); /* CAL CFG8 */

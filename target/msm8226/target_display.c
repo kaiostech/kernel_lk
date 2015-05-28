@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,6 +46,7 @@
 #include "include/display_resource.h"
 
 #define HFPLL_LDO_ID 8
+#define MAX_M_SEQ_COUNTER 7
 
 static struct pm8x41_wled_data wled_ctrl = {
 	.mod_scheme      = 0x00,
@@ -68,22 +69,23 @@ static uint32_t dsi_pll_enable_seq_m(uint32_t ctl_base)
 	 * the updates to take effect. These delays are necessary for the
 	 * PLL to successfully lock
 	 */
+	writel(0x34, ctl_base + 0x00270); /* CAL CFG1*/
 	writel(0x01, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-	udelay(1000);
+	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
 	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
-	for (i = 0; (i < 4) && !pll_locked; i++) {
-		writel(0x07, ctl_base + 0x0220); /* GLB CFG */
-		if (i != 0)
-			writel(0x34, ctl_base + 0x00270); /* CAL CFG1*/
-		udelay(1);
+	for (i = 0; (i < MAX_M_SEQ_COUNTER) && !pll_locked; i++) {
+		writel(0x00, ctl_base + 0x0214); /* PWRGEN CFG */
+		udelay(50);
+		writel(0x05, ctl_base + 0x0220); /* GLB CFG */
+		udelay(100);
 		writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-		udelay(1000);
+		udelay(600);
 		mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
 		pll_locked = readl(ctl_base + 0x02c0) & 0x01;
 	}
@@ -102,6 +104,8 @@ static uint32_t dsi_pll_enable_seq_d(uint32_t ctl_base)
 	 * the updates to take effect. These delays are necessary for the
 	 * PLL to successfully lock
 	 */
+	writel(0x00, ctl_base + 0x0214); /* PWRGEN CFG */
+	udelay(50);
 	writel(0x01, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
@@ -113,7 +117,7 @@ static uint32_t dsi_pll_enable_seq_d(uint32_t ctl_base)
 	writel(0x07, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-	udelay(1000);
+	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
 	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
@@ -132,6 +136,8 @@ static uint32_t dsi_pll_enable_seq_f1(uint32_t ctl_base)
 	 * the updates to take effect. These delays are necessary for the
 	 * PLL to successfully lock
 	 */
+	writel(0x00, ctl_base + 0x0214); /* PWRGEN CFG */
+	udelay(50);
 	writel(0x01, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
@@ -141,7 +147,7 @@ static uint32_t dsi_pll_enable_seq_f1(uint32_t ctl_base)
 	writel(0x0d, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-	udelay(1000);
+	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
 	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
@@ -160,12 +166,14 @@ static uint32_t dsi_pll_enable_seq_c(uint32_t ctl_base)
 	 * the updates to take effect. These delays are necessary for the
 	 * PLL to successfully lock
 	 */
+	writel(0x00, ctl_base + 0x0214); /* PWRGEN CFG */
+	udelay(50);
 	writel(0x01, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-	udelay(1000);
+	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
 	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
@@ -184,6 +192,8 @@ static uint32_t dsi_pll_enable_seq_e(uint32_t ctl_base)
 	 * the updates to take effect. These delays are necessary for the
 	 * PLL to successfully lock
 	 */
+	writel(0x00, ctl_base + 0x0214); /* PWRGEN CFG */
+	udelay(50);
 	writel(0x01, ctl_base + 0x0220); /* GLB CFG */
 	udelay(200);
 	writel(0x05, ctl_base + 0x0220); /* GLB CFG */
@@ -191,7 +201,7 @@ static uint32_t dsi_pll_enable_seq_e(uint32_t ctl_base)
 	writel(0x0d, ctl_base + 0x0220); /* GLB CFG */
 	udelay(1);
 	writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
-	udelay(1000);
+	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
 	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
@@ -274,6 +284,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 static void dsi_pll_enable_seq(uint32_t ctl_base)
 {
 	if (dsi_pll_enable_seq_m(ctl_base)) {
+	} else if (dsi_pll_enable_seq_m(ctl_base)) {
 	} else if (dsi_pll_enable_seq_d(ctl_base)) {
 	} else if (dsi_pll_enable_seq_d(ctl_base)) {
 	} else if (dsi_pll_enable_seq_f1(ctl_base)) {
