@@ -312,8 +312,11 @@ uint32_t target_volume_down()
 static void target_keystatus()
 {
 	keys_init();
-	if(target_volume_down())
-		keys_post_event(KEY_VOLUMEDOWN, 1);
+
+	if (qm8626_hw_subtype.id != QM8626_HW_PLATFORM_SUBTYPE_4) {
+		if(target_volume_down())
+			keys_post_event(KEY_VOLUMEDOWN, 1);
+	}
 
 	if(target_volume_up())
 		keys_post_event(KEY_VOLUMEUP, 1);
