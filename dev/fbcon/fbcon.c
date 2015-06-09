@@ -2,7 +2,7 @@
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -315,12 +315,15 @@ void fbcon_putImage(struct fbimage *fbimg, bool flag)
 		image_base = ((((total_y/2) - (height / 2) ) *
 				(config->width)) + (total_x/2 - (width / 2)));
 
-		for (i = 0; i < header->width; i++)
+		if (fbimg && header)
 		{
-			memcpy (config->base +
-				((image_base + (i * (config->width))) * bytes_per_bpp),
-				(fbimg->image + (i * header->height * bytes_per_bpp)),
-				(header->height * bytes_per_bpp));
+			for (i = 0; i < header->width; i++)
+			{
+				memcpy (config->base +
+					((image_base + (i * (config->width))) * bytes_per_bpp),
+					(fbimg->image + (i * header->height * bytes_per_bpp)),
+					(header->height * bytes_per_bpp));
+			}
 		}
 	}
 	fbcon_flush();
