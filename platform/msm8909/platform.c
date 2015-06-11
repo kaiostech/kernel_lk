@@ -41,8 +41,8 @@
 #define MSM_IOMAP_SIZE ((MSM_IOMAP_END - MSM_IOMAP_BASE)/MB)
 #define A7_SS_SIZE    ((A7_SS_END - A7_SS_BASE)/MB)
 
-/* LK memory - cacheable, write back */
-#define LK_MEMORY         (MMU_MEMORY_TYPE_NORMAL_WRITE_BACK_ALLOCATE | \
+/* LK memory - cacheable, write through */
+#define LK_MEMORY         (MMU_MEMORY_TYPE_NORMAL_WRITE_THROUGH | \
                                         MMU_MEMORY_AP_READ_WRITE)
 
 
@@ -67,7 +67,6 @@ static mmu_section_t mmu_section_table[] = {
 	{    MSM_IOMAP_BASE,    MSM_IOMAP_BASE,   MSM_IOMAP_SIZE,   IOMAP_MEMORY},
 	{    A7_SS_BASE,        A7_SS_BASE,       A7_SS_SIZE,       IOMAP_MEMORY},
 	{    SYSTEM_IMEM_BASE,  SYSTEM_IMEM_BASE, 1,                IMEM_MEMORY},
-	{    MSM_SHARED_BASE,   MSM_SHARED_BASE,  1,                COMMON_MEMORY},
 	{    MIPI_FB_ADDR,      MIPI_FB_ADDR,     10,              COMMON_MEMORY},
         {    RPMB_SND_RCV_BUF,      RPMB_SND_RCV_BUF,        RPMB_SND_RCV_BUF_SZ,    IOMAP_MEMORY},
 	{    SCRATCH_REGION2,   SCRATCH_REGION2_VIRT_START, SCRATCH_REGION2_SIZE / MB, LK_MEMORY},
@@ -144,7 +143,7 @@ void platform_init_mmu_mappings(void)
 										sections * MB,
 										ptn_entry.start +
 										sections * MB,
-										(MMU_MEMORY_TYPE_NORMAL_WRITE_BACK_ALLOCATE | \
+										(MMU_MEMORY_TYPE_NORMAL_WRITE_THROUGH | \
 										MMU_MEMORY_AP_READ_WRITE | MMU_MEMORY_XN));
 				}
 			}
