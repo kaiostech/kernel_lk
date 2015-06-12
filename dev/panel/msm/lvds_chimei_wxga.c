@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -86,19 +86,19 @@ void lvds_chimei_wxga_init(struct msm_panel_info *pinfo)
 		pinfo->on = lvds_chimei_wxga_on;
 		pinfo->off = lvds_chimei_wxga_off;
 	} else {
-		pinfo->xres = 1364;
+		pinfo->xres = 1366;
 		pinfo->yres = 768;
 		pinfo->type = LVDS_PANEL;
 		pinfo->wait_cycle = 0;
 		pinfo->bpp = 24;
-		pinfo->clk_rate = 75000000;
+		pinfo->clk_rate = 74958000;
 
 		pinfo->lcdc.h_back_porch = 0;
-		pinfo->lcdc.h_front_porch = 194;
-		pinfo->lcdc.h_pulse_width = 40;
+		pinfo->lcdc.h_front_porch = 164;
+		pinfo->lcdc.h_pulse_width = 20;
 		pinfo->lcdc.v_back_porch = 0;
-		pinfo->lcdc.v_front_porch = 38;
-		pinfo->lcdc.v_pulse_width = 20;
+		pinfo->lcdc.v_front_porch = 28;
+		pinfo->lcdc.v_pulse_width = 10;
 		pinfo->lcdc.underflow_clr = 0xff;
 		pinfo->lcdc.hsync_skew = 0;
 		pinfo->lvds.channel_mode = LVDS_SINGLE_CHANNEL_MODE;
