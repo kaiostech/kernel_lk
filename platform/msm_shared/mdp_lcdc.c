@@ -174,6 +174,7 @@ int mdp_lcdc_config(struct msm_panel_info *pinfo,
 		writel(0x00, MDP_RGB1_CONSTANT_COLOR);
 		writel(mdp_rgb_format, MDP_RGB1_SRC_FORMAT);
 		writel(0x1, MDP_OVERLAYPROC0_CFG);
+		writel(mdp_rgb_size, MDP_OVERLAYPROC0_OUT_SIZE);
 		if (fb->bpp == 16)
 			writel(0x1, MDP_OVERLAYPROC0_OPMODE);
 		else if (fb->bpp == 24)

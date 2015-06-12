@@ -47,6 +47,7 @@
 #define MDP_DSI_CMD_MODE_ID_MAP               REG_MDP(0x000A0)
 #define MDP_DSI_CMD_MODE_TRIGGER_EN           REG_MDP(0x000A4)
 #define MDP_OVERLAYPROC0_CFG                  REG_MDP(0x10004)
+#define MDP_OVERLAYPROC0_OUT_SIZE             REG_MDP(0x10008)
 #define MDP_OVERLAYPROC0_OPMODE               REG_MDP(0x10014)
 #define MDP_LAYERMIXER_IN_CFG                 REG_MDP(0x10100)
 #define MDP_OVERLAY_REG_FLUSH                 REG_MDP(0x18000)
