@@ -59,8 +59,16 @@ void lvds_init(struct msm_panel_info *pinfo)
 			MDP_OUTP(MDP_BASE + 0xc301c, 0x01);
 			MDP_OUTP(MDP_BASE + 0xc3020, 0x41);
 			MDP_OUTP(MDP_BASE + 0xc3024, 0x0d);
-		}
-		else if (pinfo->clk_rate == 37100000) {
+		} else if (pinfo->clk_rate == 74958000) {
+			MDP_OUTP(MDP_BASE + 0xc3004, 0x60);
+			MDP_OUTP(MDP_BASE + 0xc3008, 0x30);
+			MDP_OUTP(MDP_BASE + 0xc300c, 0xC4);
+			MDP_OUTP(MDP_BASE + 0xc3014, 0x10);
+			MDP_OUTP(MDP_BASE + 0xc3018, 0x06);
+			MDP_OUTP(MDP_BASE + 0xc301c, 0x02);
+			MDP_OUTP(MDP_BASE + 0xc3020, 0x41);
+			MDP_OUTP(MDP_BASE + 0xc3024, 0x0d);
+		} else if (pinfo->clk_rate == 37100000) {
 			MDP_OUTP(MDP_BASE + 0xc3004, 0x47);
 			MDP_OUTP(MDP_BASE + 0xc3008, 0x30);
 			MDP_OUTP(MDP_BASE + 0xc300c, 0x04);
