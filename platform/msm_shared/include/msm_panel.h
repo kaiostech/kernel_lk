@@ -100,6 +100,7 @@ struct lcdc_panel_info {
 	/* Pad height */
 	uint32_t yres_pad;
 	uint32_t is_sync_active_high;
+	uint32_t is_den_active_high;   /* data enable polarity */
 };
 
 struct mipi_panel_info {

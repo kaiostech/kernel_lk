@@ -50,6 +50,10 @@ int mdp_lcdc_config(struct msm_panel_info *pinfo,
 	int active_x, active_y;
 	int active_hstart_x, active_hend_x;
 	int active_vstart, active_vend;
+	int ctrl_polarity;
+	int hsync_polarity;
+	int vsync_polarity;
+	int data_en_polarity;
 	int mdp_rev;
 
 	struct lcdc_panel_info *lcdc = NULL;
@@ -138,6 +142,17 @@ int mdp_lcdc_config(struct msm_panel_info *pinfo,
 			+ lcdc->hsync_skew;
 	active_vend = active_vstart + (fb->height * hsync_period) - 1;
 
+	if (lcdc->is_sync_active_high) {
+		hsync_polarity = 0;
+		vsync_polarity = 0;
+	} else {
+		hsync_polarity = 1;
+		vsync_polarity = 1;
+	}
+	data_en_polarity = lcdc->is_den_active_high ? 0 : 1;
+	ctrl_polarity =
+	    (data_en_polarity << 2) | (vsync_polarity << 1) | (hsync_polarity);
+
 
 	/* LCDC specific initalizations */
 	writel((hsync_period << 16) | lcdc->h_pulse_width,
@@ -160,7 +175,7 @@ int mdp_lcdc_config(struct msm_panel_info *pinfo,
 		writel(0xff, MDP_LCDC_UNDERFLOW_CTL);
 		writel(lcdc->hsync_skew,
 				MDP_LCDC_HSYNC_SKEW);
-		writel(0x3, MDP_LCDC_CTL_POLARITY);
+		writel(ctrl_polarity, MDP_LCDC_CTL_POLARITY);
 		writel(0, MDP_LCDC_ACTIVE_HCTL);
 		writel(0, MDP_LCDC_ACTIVE_V_START);
 		writel(0, MDP_LCDC_ACTIVE_V_END);
