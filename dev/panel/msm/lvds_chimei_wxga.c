@@ -108,6 +108,9 @@ void lvds_chimei_wxga_init(struct msm_panel_info *pinfo)
 		pinfo->lcdc.xres_pad = 0;
 		pinfo->lcdc.yres_pad = 0;
 
+		pinfo->lcdc.is_den_active_high = true;
+		pinfo->lcdc.is_sync_active_high = true;
+
 		pinfo->on = lvds_chimei_wxga_on;
 		pinfo->off = lvds_chimei_wxga_off;
 		pinfo->config = lvds_chimei_wxga_config;
