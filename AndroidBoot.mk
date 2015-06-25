@@ -1,5 +1,13 @@
 #Android makefile to build lk bootloader as a part of Android Build
-
+ifeq ($(BOOTLOADER_GCC_VERSION),)
+ifndef $(2ND_TARGET_GCC_VERSION)
+CROSS_COMPILE := ../../../prebuilts/gcc/linux-x86/arm/arm-eabi-$(TARGET_GCC_VERSION)/bin/arm-eabi-
+else
+CROSS_COMPILE := ../../../prebuilts/gcc/linux-x86/arm/arm-eabi-$(2ND_TARGET_GCC_VERSION)/bin/arm-eabi-
+endif
+else # BOOTLOADER_GCC_VERSION defined
+CROSS_COMPILE := ../../../prebuilts/gcc/linux-x86/arm/$(BOOTLOADER_GCC_VERSION)/bin/arm-eabi-
+endif
 # Set flags if we need to include security libs
 ifeq ($(TARGET_BOOTIMG_SIGNED),true)
   SIGNED_KERNEL := SIGNED_KERNEL=1
@@ -47,7 +55,7 @@ $(TARGET_NAND_BOOTLOADER): appsbootldr_clean | $(NAND_BOOTLOADER_OUT)
 
 # Top level for eMMC variant targets
 $(TARGET_EMMC_BOOTLOADER): emmc_appsbootldr_clean | $(EMMC_BOOTLOADER_OUT)
-	$(MAKE) -C bootable/bootloader/lk BOOTLOADER_OUT=../../../$(EMMC_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) EMMC_BOOT=1 $(SIGNED_KERNEL) $(CONFIG_3GB_DDR)
+	$(MAKE) -C bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../$(EMMC_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) EMMC_BOOT=1 $(SIGNED_KERNEL) $(CONFIG_3GB_DDR)
 
 # Keep build NAND & eMMC as default for targets still using TARGET_BOOTLOADER
 TARGET_BOOTLOADER := $(PRODUCT_OUT)/EMMCBOOT.MBN
