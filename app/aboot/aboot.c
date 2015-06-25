@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -1706,12 +1706,13 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 	int index = INVALID_PTN;
 	char *token = NULL;
 	char *pname = NULL;
+	char *sp;
 	uint8_t lun = 0;
 	bool lun_set = false;
 
-	token = strtok(arg, ":");
+	token = strtok_r((char *)arg, ":", &sp);
 	pname = token;
-	token = strtok(NULL, ":");
+	token = strtok_r(NULL, ":", &sp);
 	if(token)
 	{
 		lun = atoi(token);
