@@ -334,18 +334,18 @@ int hdmi_dtv_on(struct msm_panel_info *pinfo)
 		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
 	}
 	else if (pinfo->clk_rate == 71107200) {
-		writel(0x12, HDMI_PHY_PLL_REFCLK_CFG);
-		writel(0x01, HDMI_PHY_PLL_LOOP_FLT_CFG0);
-		writel(0x63, HDMI_PHY_PLL_LOOP_FLT_CFG1);
-		writel(0xB5, HDMI_PHY_PLL_VCOCAL_CFG0);
+		writel(0x18, HDMI_PHY_PLL_REFCLK_CFG);
+		writel(0x20, HDMI_PHY_PLL_LOOP_FLT_CFG0);
+		writel(0xF9, HDMI_PHY_PLL_LOOP_FLT_CFG1);
+		writel(0xC7, HDMI_PHY_PLL_VCOCAL_CFG0);
 		writel(0x02, HDMI_PHY_PLL_VCOCAL_CFG1);
 		writel(0x3B, HDMI_PHY_PLL_VCOCAL_CFG2);
 		writel(0x86, HDMI_PHY_PLL_VCOCAL_CFG4);
 		writel(0x00, HDMI_PHY_PLL_VCOCAL_CFG5);
-		writel(0x72, HDMI_PHY_PLL_SDM_CFG0);
-		writel(0x72, HDMI_PHY_PLL_SDM_CFG1);
-		writel(0x55, HDMI_PHY_PLL_SDM_CFG2);
-		writel(0x55, HDMI_PHY_PLL_SDM_CFG3);
+		writel(0x0C, HDMI_PHY_PLL_SDM_CFG0);
+		writel(0x4C, HDMI_PHY_PLL_SDM_CFG1);
+		writel(0xFF, HDMI_PHY_PLL_SDM_CFG2);
+		writel(0x2A, HDMI_PHY_PLL_SDM_CFG3);
 		writel(0x00, HDMI_PHY_PLL_SDM_CFG4);
 	}
 	udelay(10);
