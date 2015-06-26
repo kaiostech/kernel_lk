@@ -138,6 +138,7 @@ static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
 static const char *auth_kernel = " androidboot.authorized_kernel=true";
 static const char *secondary_gpt_enable = " gpt";
+static const char *mdtp_activated_flag = " mdtp";
 
 static const char *baseband_apq     = " androidboot.baseband=apq";
 static const char *baseband_msm     = " androidboot.baseband=msm";
@@ -242,6 +243,11 @@ unsigned char *update_cmdline(const char * cmdline)
 	bool gpt_exists = partition_gpt_exists();
 	int have_target_boot_params = 0;
 	char *boot_dev_buf = NULL;
+	bool is_mdtp_activated = 0;
+
+#ifdef MDTP_SUPPORT
+	mdtp_activated(&is_mdtp_activated);
+#endif /* MDTP_SUPPORT */
 
 	if (cmdline && cmdline[0]) {
 		cmdline_len = strlen(cmdline);
@@ -262,6 +268,9 @@ unsigned char *update_cmdline(const char * cmdline)
 
 	if (boot_into_recovery && gpt_exists)
 		cmdline_len += strlen(secondary_gpt_enable);
+
+	if(is_mdtp_activated)
+		cmdline_len += strlen(mdtp_activated_flag);
 
 	if (boot_into_ffbm) {
 		cmdline_len += strlen(androidboot_mode);
@@ -387,6 +396,12 @@ unsigned char *update_cmdline(const char * cmdline)
 
 		if (boot_into_recovery && gpt_exists) {
 			src = secondary_gpt_enable;
+			if (have_cmdline) --dst;
+			while ((*dst++ = *src++));
+		}
+
+		if (is_mdtp_activated) {
+			src = mdtp_activated_flag;
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 		}
@@ -2054,13 +2069,11 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		return;
 	}
 
-	data += sparse_header->file_hdr_sz;
-	if(sparse_header->file_hdr_sz > sizeof(sparse_header_t))
+	data += sizeof(sparse_header_t);
+	if(sparse_header->file_hdr_sz != sizeof(sparse_header_t))
 	{
-		/* Skip the remaining bytes in a header that is longer than
-		 * we expected.
-		 */
-		data += (sparse_header->file_hdr_sz - sizeof(sparse_header_t));
+		fastboot_fail("sparse header size mismatch");
+		return;
 	}
 
 	dprintf (SPEW, "=== Sparse Image Header ===\n");
@@ -2856,6 +2869,12 @@ void aboot_init(const struct app_descriptor *app)
 normal_boot:
 	if (!boot_into_fastboot)
 	{
+#ifdef MDTP_SUPPORT
+			/* Go through Firmware Lock verification before continue with boot process */
+			mdtp_fwlock_verify_lock();
+			display_image_on_screen();
+#endif /* MDTP_SUPPORT */
+
 		if (target_is_emmc_boot())
 		{
 			if(emmc_recovery_init())
@@ -2872,12 +2891,6 @@ normal_boot:
 				#endif
 				}
 			}
-
-#ifdef MDTP_SUPPORT
-			/* Go through Firmware Lock verification before continue with boot process */
-			mdtp_fwlock_verify_lock();
-			display_image_on_screen();
-#endif /* MDTP_SUPPORT */
 
 			boot_linux_from_mmc();
 		}
