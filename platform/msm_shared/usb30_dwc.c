@@ -489,8 +489,9 @@ void dwc_event_handler_ep_ctrl(dwc_dev_t *dev, uint32_t *event)
 	uint8_t                 event_status = DWC_EVENT_EP_EVENT_STATUS(*event);
 	uint16_t                event_param  = DWC_EVENT_EP_EVENT_PARAM(*event);
 
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
-#endif
+	ASSERT(ep != NULL);
 
 	DBG("\n\n\n++EP_EVENT: %s in ctrl_state: %s ep_state[%d]: %s",
 		event_lookup_ep[event_id],
@@ -501,7 +502,7 @@ void dwc_event_handler_ep_ctrl(dwc_dev_t *dev, uint32_t *event)
 	DBG("\n ep_phy_num = %d param = 0x%x status = 0x%x", ep_phy_num,
 														 event_param,
 														 event_status);
-
+#endif
 
 	/* call the handler for the current control state */
 	switch (dev->ctrl_state)
@@ -549,11 +550,13 @@ void dwc_event_handler_ep_ctrl(dwc_dev_t *dev, uint32_t *event)
 		ASSERT(0);
 	}
 
+#ifdef DEBUG_USB
 	DBG("\n--EP_EVENT: %s in ctrl_state: %s ep_state[%d]: %s",
 		event_lookup_ep[event_id],
 		dev_ctrl_state_lookup[dev->ctrl_state],
 		ep_phy_num,
 		ep_state_lookup[ep->state]);
+#endif
 }
 
 /* check status of transfer:
@@ -638,7 +641,9 @@ static void dwc_event_handler_ep_ctrl_state_setup(dwc_dev_t *dev,
 	dwc_event_ep_event_id_t event_id   = DWC_EVENT_EP_EVENT_ID(*event);
 	uint8_t event_status               = DWC_EVENT_EP_EVENT_STATUS(*event);
 
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
+	ASSERT(ep != NULL);
 
 	switch (event_id)
 	{
@@ -752,7 +757,9 @@ static void dwc_event_handler_ep_ctrl_state_data(dwc_dev_t *dev,
 	uint8_t event_ctrl_stage           = DWC_EVENT_EP_EVENT_CTRL_STAGE(*event);
 	uint8_t event_status               = DWC_EVENT_EP_EVENT_STATUS(*event);
 
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
+	ASSERT(ep != NULL);
 
 	switch (event_id)
 	{
@@ -989,7 +996,9 @@ static void dwc_event_handler_ep_ctrl_state_status_2(dwc_dev_t *dev,
 	dwc_event_ep_event_id_t event_id   = DWC_EVENT_EP_EVENT_ID(*event);
 	uint8_t event_status               = DWC_EVENT_EP_EVENT_STATUS(*event);
 
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
+	ASSERT(ep != NULL);
 
 	switch (event_id)
 	{
@@ -1062,7 +1071,9 @@ static void dwc_event_handler_ep_ctrl_state_status_3(dwc_dev_t *dev,
 	dwc_event_ep_event_id_t event_id   = DWC_EVENT_EP_EVENT_ID(*event);
 	uint8_t event_status               = DWC_EVENT_EP_EVENT_STATUS(*event);
 
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
+	ASSERT(ep != NULL);
 
 	switch (event_id)
 	{
@@ -1140,7 +1151,9 @@ static void dwc_event_handler_ep_ctrl_state_stall(dwc_dev_t *dev,
 	uint8_t ep_phy_num                 = DWC_EVENT_EP_EVENT_EP_NUM(*event);
 	dwc_event_ep_event_id_t event_id   = DWC_EVENT_EP_EVENT_ID(*event);
 
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
+	ASSERT(ep != NULL);
 
 	switch (event_id)
 	{
@@ -1175,10 +1188,8 @@ static void dwc_event_handler_ep_ctrl_state_stall(dwc_dev_t *dev,
 static void dwc_event_handler_ep_bulk_state_inactive(dwc_dev_t *dev,
 													 uint32_t *event)
 {
-#ifdef DEBUG_USB
 	uint8_t ep_phy_num                 = DWC_EVENT_EP_EVENT_EP_NUM(*event);
 	dwc_dep_cmd_id_t cmd               = DWC_EVENT_EP_EVENT_CMD_TYPE(*event);
-#endif
 	dwc_event_ep_event_id_t event_id   = DWC_EVENT_EP_EVENT_ID(*event);
 
 	switch (event_id)
@@ -1216,7 +1227,9 @@ static void dwc_event_handler_ep_bulk_state_start_transfer(dwc_dev_t *dev,
 	dwc_event_ep_event_id_t event_id   = DWC_EVENT_EP_EVENT_ID(*event);
 	uint8_t event_status               = DWC_EVENT_EP_EVENT_STATUS(*event);
 
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
+	ASSERT(ep != NULL);
 
 	switch (event_id)
 	{
@@ -1265,7 +1278,9 @@ static void dwc_event_handler_ep_bulk_state_xfer_in_prog(dwc_dev_t *dev,
 	uint8_t ep_phy_num                 = DWC_EVENT_EP_EVENT_EP_NUM(*event);
 	dwc_event_ep_event_id_t event_id   = DWC_EVENT_EP_EVENT_ID(*event);
 
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
+	ASSERT(ep != NULL);
 
 	switch (event_id)
 	{
@@ -1348,9 +1363,11 @@ void dwc_event_handler_ep_bulk(dwc_dev_t *dev, uint32_t *event)
 	uint16_t                event_param  = DWC_EVENT_EP_EVENT_PARAM(*event);
 #endif
 
-
+	ASSERT(ep_phy_num < DWC_MAX_NUM_OF_EP);
 	dwc_ep_t *ep = &dev->ep[DWC_EP_PHY_TO_INDEX(ep_phy_num)];
+	ASSERT(ep != NULL);
 
+#ifdef DEBUG_USB
 	DBG("\n\n\n++EP_EVENT: %s in ctrl_state: %s ep_state[%d]: %s",
 		event_lookup_ep[event_id],
 		dev_ctrl_state_lookup[dev->ctrl_state],
@@ -1359,6 +1376,7 @@ void dwc_event_handler_ep_bulk(dwc_dev_t *dev, uint32_t *event)
 
 	DBG("\n ep_phy_num = %d param = 0x%x status = 0x%x",
 			ep_phy_num, event_param, event_status);
+#endif
 
 	switch (ep->state)
 	{
@@ -1384,11 +1402,13 @@ void dwc_event_handler_ep_bulk(dwc_dev_t *dev, uint32_t *event)
 		ASSERT(0);
 	}
 
+#ifdef DEBUG_USB
 	DBG("\n--EP_EVENT: %s in ctrl_state: %s ep_state[%d]: %s",
 		event_lookup_ep[event_id],
 		dev_ctrl_state_lookup[dev->ctrl_state],
 		ep_phy_num,
 		ep_state_lookup[ep->state]);
+#endif
 }
 
 
