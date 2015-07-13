@@ -15,10 +15,14 @@ DEFINES += DISPLAY_SPLASH_SCREEN=1
 DEFINES += DISPLAY_TYPE_MIPI=1
 DEFINES += DISPLAY_TYPE_DSI6G=1
 
+DEFINES += PMI_CONFIGURED=1
+
 MODULES += \
 	dev/keys \
 	lib/ptable \
 	dev/pmic/pm8x41 \
+	dev/qpnp_haptic \
+	dev/vib \
 	lib/libfdt \
 	dev/qpnp_wled \
 	dev/gcdb/display
