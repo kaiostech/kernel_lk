@@ -177,4 +177,5 @@ bool boot_verify_validate_keystore(unsigned char * user_addr);
 bool boot_verify_flash_allowed(const char * entry);
 /* Function to send root of trust to trust zone */
 bool send_rot_command(uint32_t is_unlocked);
+unsigned char* get_boot_fingerprint(unsigned int* buf_size);
 #endif
