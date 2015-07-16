@@ -15,7 +15,8 @@ OBJS += \
 	$(LOCAL_DIR)/jtag.o \
 	$(LOCAL_DIR)/nand.o \
 	$(LOCAL_DIR)/mmc.o \
-	$(LOCAL_DIR)/partition_parser.o
+	$(LOCAL_DIR)/partition_parser.o \
+	$(LOCAL_DIR)/crc32.o
 
 ifeq ($(PLATFORM),msm8x60)
 	OBJS += $(LOCAL_DIR)/mipi_dsi.o \
