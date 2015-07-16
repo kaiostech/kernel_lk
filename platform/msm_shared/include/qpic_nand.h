@@ -52,6 +52,7 @@
 #define NAND_SFLASHC_EXEC_CMD                              NAND_REG(0x003C)
 #define NAND_READ_ID                                       NAND_REG(0x0040)
 #define NAND_READ_STATUS                                   NAND_REG(0x0044)
+#define NAND_READ_ID2                                      NAND_REG(0x0048)
 #define NAND_CONFIG_DATA                                   NAND_REG(0x0050)
 #define NAND_CONFIG                                        NAND_REG(0x0054)
 #define NAND_CONFIG_MODE                                   NAND_REG(0x0058)
@@ -121,6 +122,8 @@
 #define NAND_ERASED_CW_DETECT_STATUS_CODEWORD_ALL_ERASED   6
 #define NAND_ERASED_CW_DETECT_STATUS_CODEWORD_ERASED       4
 
+#define NAND_ERASED_CW                                     (BIT(NAND_ERASED_CW_DETECT_STATUS_CODEWORD_ERASED) | \
+                                                            BIT(NAND_ERASED_CW_DETECT_STATUS_CODEWORD_ALL_ERASED))
 #define NAND_ERASED_CW_DETECT_CFG_RESET_CTRL               1
 #define NAND_ERASED_CW_DETECT_CFG_ACTIVATE_CTRL            0
 #define NAND_ERASED_CW_DETECT_ERASED_CW_ECC_MASK           (1 << 1)
@@ -310,7 +313,9 @@ struct onfi_probe_params
 struct flash_id
 {
 	unsigned flash_id;
+	unsigned flash_id2;
 	unsigned mask;
+	unsigned mask2;
 	unsigned density;
 	unsigned widebus;
 	unsigned pagesize;

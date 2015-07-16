@@ -84,7 +84,7 @@ static struct ptable flash_ptable;
 #define LAST_NAND_PTN_LEN_PATTERN                     0xFFFFFFFF
 
 #define EXT4_CMDLINE  " rootwait rootfstype=ext4 root=/dev/mmcblk0p"
-#define UBI_CMDLINE " rootfstype=ubifs rootflags=bulk_read ubi.fm_autoconvert=1"
+#define UBI_CMDLINE " rootfstype=ubifs rootflags=bulk_read"
 
 struct qpic_nand_init_config config;
 
@@ -322,7 +322,7 @@ void target_sdc_init()
 
 	config.slot = 1;
 	config.bus_width = DATA_BUS_WIDTH_8BIT;
-	config.max_clk_rate = MMC_CLK_200MHZ;
+	config.max_clk_rate = MMC_CLK_171MHZ;
 	config.sdhc_base    = MSM_SDC1_SDHCI_BASE;
 	config.pwrctl_base  = MSM_SDC1_BASE;
 	config.pwr_irq      = SDCC1_PWRCTL_IRQ;

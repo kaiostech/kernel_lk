@@ -72,7 +72,6 @@
 #include "devinfo.h"
 #include "board.h"
 #include "scm.h"
-#include "mdtp.h"
 
 extern  bool target_use_signed_kernel(void);
 extern void platform_uninit(void);
@@ -1554,7 +1553,7 @@ void write_device_info_flash(device_info *dev)
 	ptn = ptable_find(ptable, "devinfo");
 	if (ptn == NULL)
 	{
-		dprintf(CRITICAL, "ERROR: No boot partition found\n");
+		dprintf(CRITICAL, "ERROR: No devinfo partition found\n");
 			return;
 	}
 
@@ -1583,7 +1582,7 @@ void read_device_info_flash(device_info *dev)
 	ptn = ptable_find(ptable, "devinfo");
 	if (ptn == NULL)
 	{
-		dprintf(CRITICAL, "ERROR: No boot partition found\n");
+		dprintf(CRITICAL, "ERROR: No devinfo partition found\n");
 			return;
 	}
 
@@ -1713,12 +1712,6 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	char *ptr = ((char*) data);
 	int ret = 0;
 	uint8_t dtb_copied = 0;
-
-#ifdef MDTP_SUPPORT
-	/* Go through Firmware Lock verification before continue with boot process */
-	mdtp_fwlock_verify_lock();
-	fbcon_clear();
-#endif /* MDTP_SUPPORT */
 
 #if VERIFIED_BOOT
 	if(!device.is_unlocked)
@@ -1934,12 +1927,13 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 	int index = INVALID_PTN;
 	char *token = NULL;
 	char *pname = NULL;
+	char *sp;
 	uint8_t lun = 0;
 	bool lun_set = false;
 
-	token = strtok((char *)arg, ":");
+	token = strtok_r((char *)arg, ":", &sp);
 	pname = token;
-	token = strtok(NULL, ":");
+	token = strtok_r(NULL, ":", &sp);
 	if(token)
 	{
 		lun = atoi(token);
@@ -2024,6 +2018,8 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	int index = INVALID_PTN;
 	uint32_t i;
 	uint8_t lun = 0;
+	/*End of the sparse image address*/
+	uint32_t data_end = (uint32_t)data + sz;
 
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
@@ -2033,28 +2029,34 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	}
 
 	size = partition_get_size(index);
-	if (ROUND_TO_PAGE(sz,511) > size) {
-		fastboot_fail("size too large");
-		return;
-	}
 
 	lun = partition_get_lun(index);
 	mmc_set_lun(lun);
 
+	if (sz < sizeof(sparse_header_t)) {
+		fastboot_fail("size too low");
+		return;
+	}
+
 	/* Read and skip over sparse image header */
 	sparse_header = (sparse_header_t *) data;
+
 	if (((uint64_t)sparse_header->total_blks * (uint64_t)sparse_header->blk_sz) > size) {
 		fastboot_fail("size too large");
 		return;
 	}
 
-	data += sparse_header->file_hdr_sz;
-	if(sparse_header->file_hdr_sz > sizeof(sparse_header_t))
+	data += sizeof(sparse_header_t);
+
+	if (data_end < (uint32_t)data) {
+		fastboot_fail("buffer overreads occured due to invalid sparse header");
+		return;
+	}
+
+	if(sparse_header->file_hdr_sz != sizeof(sparse_header_t))
 	{
-		/* Skip the remaining bytes in a header that is longer than
-		 * we expected.
-		 */
-		data += (sparse_header->file_hdr_sz - sizeof(sparse_header_t));
+		fastboot_fail("sparse header size mismatch");
+		return;
 	}
 
 	dprintf (SPEW, "=== Sparse Image Header ===\n");
@@ -2079,17 +2081,20 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		chunk_header = (chunk_header_t *) data;
 		data += sizeof(chunk_header_t);
 
+		if (data_end < (uint32_t)data) {
+			fastboot_fail("buffer overreads occured due to invalid sparse header");
+			return;
+		}
+
 		dprintf (SPEW, "=== Chunk Header ===\n");
 		dprintf (SPEW, "chunk_type: 0x%x\n", chunk_header->chunk_type);
 		dprintf (SPEW, "chunk_data_sz: 0x%x\n", chunk_header->chunk_sz);
 		dprintf (SPEW, "total_size: 0x%x\n", chunk_header->total_sz);
 
-		if(sparse_header->chunk_hdr_sz > sizeof(chunk_header_t))
+		if(sparse_header->chunk_hdr_sz != sizeof(chunk_header_t))
 		{
-			/* Skip the remaining bytes in a header that is longer than
-			 * we expected.
-			 */
-			data += (sparse_header->chunk_hdr_sz - sizeof(chunk_header_t));
+			fastboot_fail("chunk header size mismatch");
+			return;
 		}
 
 		chunk_data_sz = sparse_header->blk_sz * chunk_header->chunk_sz;
@@ -2117,6 +2122,11 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 											chunk_data_sz))
 			{
 				fastboot_fail("Bogus chunk size for chunk type Raw");
+				return;
+			}
+
+			if (data_end < (uint32_t)data + chunk_data_sz) {
+				fastboot_fail("buffer overreads occured due to invalid sparse header");
 				return;
 			}
 
@@ -2150,6 +2160,10 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 
+			if (data_end < (uint32_t)data + sizeof(uint32_t)) {
+				fastboot_fail("buffer overreads occured due to invalid sparse header");
+				return;
+			}
 			fill_val = *(uint32_t *)data;
 			data = (char *) data + sizeof(uint32_t);
 			chunk_blk_cnt = chunk_data_sz / sparse_header->blk_sz;
@@ -2202,7 +2216,15 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 			total_blocks += chunk_header->chunk_sz;
+			if ((uint32_t)data > UINT_MAX - chunk_data_sz) {
+				fastboot_fail("integer overflow occured");
+				return;
+			}
 			data += chunk_data_sz;
+			if (data_end < (uint32_t)data) {
+				fastboot_fail("buffer overreads occured due to invalid sparse header");
+				return;
+			}
 			break;
 
 			default:
@@ -2382,12 +2404,6 @@ void cmd_continue(const char *arg, void *data, unsigned sz)
 {
 	fastboot_okay("");
 	fastboot_stop();
-
-#ifdef MDTP_SUPPORT
-	/* Go through Firmware Lock verification before continue with boot process */
-	mdtp_fwlock_verify_lock();
-	fbcon_clear();
-#endif /* MDTP_SUPPORT */
 
 	if (target_is_emmc_boot())
 	{
@@ -2860,13 +2876,6 @@ normal_boot:
 				#endif
 				}
 			}
-
-#ifdef MDTP_SUPPORT
-			/* Go through Firmware Lock verification before continue with boot process */
-			mdtp_fwlock_verify_lock();
-			fbcon_clear();
-#endif /* MDTP_SUPPORT */
-
 			boot_linux_from_mmc();
 		}
 		else

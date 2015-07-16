@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -28,6 +28,7 @@
 #include <debug.h>
 #include <mmc.h>
 #include <ufs.h>
+#include <board.h>
 #include <platform/iomap.h>
 #include <boot_device.h>
 #include <qpic_nand.h>
@@ -37,6 +38,7 @@ static uint32_t boot_device;
 void platform_read_boot_config()
 {
 	boot_device = BOOT_DEVICE_MASK(readl(BOOT_CONFIG_REG));
+	board_update_boot_dev(boot_device);
 }
 
 uint32_t platform_get_boot_dev()
@@ -76,14 +78,14 @@ void platform_boot_dev_cmdline(char *buf)
 	{
 #if !USE_MDM_BOOT_CFG
 		case BOOT_DEFAULT:
-			sprintf(buf, "%x.sdhci", ((struct mmc_device *)dev)->host.base);
+			snprintf(buf, ((sizeof((struct mmc_device *)dev)->host.base)*2) + 7,"%x.sdhci", ((struct mmc_device *)dev)->host.base);
 			break;
 		case BOOT_UFS:
-			sprintf(buf, "%x.ufshc", ((struct ufs_dev *)dev)->base);
+			snprintf(buf, ((sizeof((struct ufs_dev *)dev)->base)*2) + 7, "%x.ufshc", ((struct ufs_dev *)dev)->base);
 			break;
 #endif
 		case BOOT_EMMC:
-			sprintf(buf, "%x.sdhci", ((struct mmc_device *)dev)->host.base);
+			snprintf(buf, ((sizeof((struct mmc_device *)dev)->host.base)*2) + 7,"%x.sdhci", ((struct mmc_device *)dev)->host.base);
 			break;
 		default:
 			dprintf(CRITICAL,"ERROR: Unexpected boot_device val=%x",val);
