@@ -30,7 +30,9 @@
 #include <string.h>
 #include "mmc.h"
 #include "partition_parser.h"
-
+#define GPT_HEADER_SIZE 92
+#define GPT_LBA 1
+#define PARTITION_ENTRY_SIZE 128
 __WEAK void mmc_set_lun(uint8_t lun)
 {
 }
@@ -278,7 +280,6 @@ static unsigned int mmc_boot_read_gpt(uint32_t block_size)
 		dprintf(CRITICAL, "GPT: Could not read primary gpt from mmc\n");
 		goto end;
 	}
-
 	ret = partition_parse_gpt_header(data, &first_usable_lba,
 					 &partition_entry_size, &header_size,
 					 &max_partition_count);
@@ -1035,20 +1036,107 @@ partition_parse_gpt_header(unsigned char *buffer,
 			   unsigned int *header_size,
 			   unsigned int *max_partition_count)
 {
+	uint32_t crc_val_org = 0;
+	uint32_t crc_val = 0;
+	int ret = -1;
+	unsigned char *new_buffer = NULL;
+	unsigned long long last_usable_lba = 0;
+	unsigned long long partition_0 = 0;
+	unsigned long long current_lba = 0;
+	uint32_t block_size = mmc_get_device_blocksize();
+	/* Get the density of the mmc device */
+	uint64_t device_density = mmc_get_device_capacity();
+
 	/* Check GPT Signature */
 	if (((uint32_t *) buffer)[0] != GPT_SIGNATURE_2 ||
 	    ((uint32_t *) buffer)[1] != GPT_SIGNATURE_1)
 		return 1;
 
 	*header_size = GET_LWORD_FROM_BYTE(&buffer[HEADER_SIZE_OFFSET]);
+	/*check for header size too small*/
+	if (*header_size < GPT_HEADER_SIZE) {
+		dprintf(CRITICAL,"GPT Header size is too small\n");
+		return ret;
+	}
+	/*check for header size too large*/
+	if (*header_size > block_size) {
+		dprintf(CRITICAL,"GPT Header size is too large\n");
+		return ret;
+	}
+
+	crc_val_org = GET_LWORD_FROM_BYTE(&buffer[HEADER_CRC_OFFSET]);
+	crc_val = 0;
+	/*Write CRC to 0 before we calculate the crc of the GPT header*/
+	PUT_LONG(&buffer[HEADER_CRC_OFFSET], crc_val);
+
+	crc_val  = calculate_crc32(buffer, *header_size);
+	if (crc_val != crc_val_org) {
+		dprintf(CRITICAL,"Header crc mismatch crc_val = %u with crc_val_org = %u\n", crc_val,crc_val_org);
+		return ret;
+	}
+	else
+		PUT_LONG(&buffer[HEADER_CRC_OFFSET], crc_val);
+
+	current_lba =
+	    GET_LLWORD_FROM_BYTE(&buffer[PRIMARY_HEADER_OFFSET]);
 	*first_usable_lba =
 	    GET_LLWORD_FROM_BYTE(&buffer[FIRST_USABLE_LBA_OFFSET]);
 	*max_partition_count =
 	    GET_LWORD_FROM_BYTE(&buffer[PARTITION_COUNT_OFFSET]);
 	*partition_entry_size =
 	    GET_LWORD_FROM_BYTE(&buffer[PENTRY_SIZE_OFFSET]);
+	last_usable_lba =
+	    GET_LLWORD_FROM_BYTE(&buffer[LAST_USABLE_LBA_OFFSET]);
 
-	return 0;
+	/*current lba and GPT lba should be same*/
+	if (current_lba != GPT_LBA) {
+		dprintf(CRITICAL,"GPT first usable LBA mismatch\n");
+		return ret;
+	}
+	/*check for first lba should be with in the valid range*/
+	if (*first_usable_lba > (device_density/block_size)) {
+		dprintf(CRITICAL,"Invalid first_usable_lba\n");
+		return ret;
+	}
+	/*check for last lba should be with in the valid range*/
+	if (last_usable_lba > (device_density/block_size)) {
+		dprintf(CRITICAL,"Invalid last_usable_lba\n");
+		return ret;
+	}
+	/*check for partition entry size*/
+	if (*partition_entry_size != PARTITION_ENTRY_SIZE) {
+		dprintf(CRITICAL,"Invalid parition entry size\n");
+		return ret;
+	}
+
+	partition_0 = GET_LLWORD_FROM_BYTE(&buffer[PARTITION_ENTRIES_OFFSET]);
+
+	new_buffer = (uint8_t *)memalign(CACHE_LINE, ROUNDUP((*max_partition_count) * (*partition_entry_size), CACHE_LINE));
+
+	if (!new_buffer)
+	{
+		dprintf(CRITICAL, "Failed to Allocate memory to read partition table\n");
+		return ret;
+	}
+	/*read the partition entries to new_buffer*/
+	ret = mmc_read((partition_0) * (block_size), (unsigned int *)new_buffer, (*max_partition_count) * (*partition_entry_size));
+	if (ret)
+	{
+		dprintf(CRITICAL, "GPT: Could not read primary gpt from mmc\n");
+		goto fail;
+	}
+
+	crc_val_org = GET_LWORD_FROM_BYTE(&buffer[PARTITION_CRC_OFFSET]);
+
+	crc_val  = calculate_crc32(new_buffer,((*max_partition_count) * (*partition_entry_size)));
+	if (crc_val != crc_val_org) {
+		dprintf(CRITICAL,"Partition entires crc mismatch crc_val= %u with crc_val_org= %u\n",crc_val,crc_val_org);
+		ret = -1;
+	}
+
+fail:
+	free(new_buffer);
+	return ret;
 }
 
 bool partition_gpt_exists()
