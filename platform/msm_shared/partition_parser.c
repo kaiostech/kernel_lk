@@ -300,7 +300,7 @@ static unsigned int mmc_boot_read_gpt(uint32_t block_size)
 				"GPT: Could not read backup gpt from mmc\n");
 			goto end;
 		}
-
+		parse_secondary_gpt = 1;
 		ret = partition_parse_gpt_header(data, &first_usable_lba,
 						 &partition_entry_size,
 						 &header_size,
@@ -310,6 +310,7 @@ static unsigned int mmc_boot_read_gpt(uint32_t block_size)
 				"GPT: Primary and backup signatures invalid\n");
 			goto end;
 		}
+		parse_secondary_gpt = 0;
 	}
 	partition_0 = GET_LLWORD_FROM_BYTE(&data[PARTITION_ENTRIES_OFFSET]);
 	/* Read GPT Entries */
