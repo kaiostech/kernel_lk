@@ -13,8 +13,7 @@ OBJS += \
 	$(LOCAL_DIR)/jtag_hook.o \
 	$(LOCAL_DIR)/jtag.o \
 	$(LOCAL_DIR)/partition_parser.o \
-	$(LOCAL_DIR)/boot_stats.o \
-	$(LOCAL_DIR)/crc32.o
+	$(LOCAL_DIR)/boot_stats.o
 
 ifeq ($(ENABLE_SDHCI_SUPPORT),1)
 OBJS += \
