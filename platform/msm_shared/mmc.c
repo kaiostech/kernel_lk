@@ -3020,6 +3020,15 @@ void mmc_boot_mci_clk_enable()
 	mmc_mclk_reg_wr_delay();
 }
 
+uint64_t mmc_get_device_capacity()
+{
+	struct mmc_boot_card *card;
+
+	card = get_mmc_card();
+
+	return card->capacity;
+}
+
 #if MMC_BOOT_BAM
 
 void mmc_boot_dml_init()
