@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -96,6 +96,12 @@ enum dt_err_codes
 {
 	DT_OP_SUCCESS,
 	DT_OP_FAILURE = -1,
+};
+
+struct board_dt_entry
+{
+	uint32_t target_variant_id;
+	uint32_t platform_variant_id;
 };
 
 int dev_tree_validate(struct dt_table *table, unsigned int page_size, uint32_t *dt_hdr_size);

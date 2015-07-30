@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -177,7 +177,7 @@ struct smem_board_info_v8 {
 	 * Need for 8 bytes alignment
 	 * while reading from shared memory
 	 */
-	unsigned buffer_align;
+	uint32_t foundry_id; /* Used as foundry_id only for v9 and used as an alignment field for v8 */
 };
 
 typedef struct {
