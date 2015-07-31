@@ -293,7 +293,7 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		break;
 	case HW_PLATFORM_QRD:
 	//	panel_id = TRULY_1080P_VIDEO_PANEL;
-		panel_id = BYD_1200P_VIDEO_PANEL    //for polaris board
+		panel_id = BYD_1200P_VIDEO_PANEL;    //for polaris board
 		break;
 	default:
 		dprintf(CRITICAL, "Display not enabled for %d HW type\n",
@@ -306,6 +306,8 @@ panel_init:
 	 * Update all data structures after 'panel_init' label. Only panel
 	 * selection is supposed to happen before that.
 	 */
+	phy_db->regulator_mode = DSI_PHY_REGULATOR_LDO_MODE;
+
 	memcpy(panel_regulator_settings,
 			dcdc_regulator_settings, REGULATOR_SIZE);
 	pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;

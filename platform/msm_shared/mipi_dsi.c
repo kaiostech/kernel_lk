@@ -402,10 +402,11 @@ int mdss_dsi_host_init(struct mipi_panel_info *mipi, uint32_t
 	writel(broadcast << 31 | EMBED_MODE1 << 28 | POWER_MODE2 << 26
 	       | PACK_TYPE1 << 24 | VC1 << 22 | DT1 << 16 | WC1,
 	       mipi->ctl_base + COMMAND_MODE_DMA_CTRL);
-
+	writel(1 << 28, MIPI_DSI0_BASE+ LANE_SWAP_CTL); //Set mipi HS mode
 	writel(lane_swap, mipi->ctl_base + LANE_SWAP_CTL);
 	writel(timing_ctl, mipi->ctl_base + TIMING_CTL);
-
+	
+	mipi->force_clk_lane_hs = 1;
 	if (mipi->force_clk_lane_hs) {
 		uint32_t tmp;
 
