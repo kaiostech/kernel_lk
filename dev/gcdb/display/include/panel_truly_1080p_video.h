@@ -48,7 +48,7 @@ static struct panel_config truly_1080p_video_panel_data = {
 /* Panel resolution                                                          */
 /*---------------------------------------------------------------------------*/
 static struct panel_resolution truly_1080p_video_panel_res = {
-  1080, 1920, 96, 64, 16, 0, 4, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  1200, 1920, 96, 64, 16, 0, 4, 16, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 /*---------------------------------------------------------------------------*/
@@ -287,7 +287,7 @@ static struct panel_timing truly_1080p_video_timing_info = {
 };
 
 static struct panel_reset_sequence truly_1080p_video_panel_reset_seq = {
-{ 1, 0, 1, }, { 200, 200, 200, }, 2
+{ 0, 1, 0, }, { 200, 200, 200, }, 2
 };
 
 /*---------------------------------------------------------------------------*/

@@ -47,7 +47,7 @@
 #include "include/panel_truly_1080p_cmd.h"
 #include "include/panel_otm1906c_1080p_cmd.h"
 #include "include/panel_sharp_1080p_cmd.h"
-
+#include "include/panel_byd_1200p_video.h"
 /*---------------------------------------------------------------------------*/
 /* static panel selection variable                                           */
 /*---------------------------------------------------------------------------*/
@@ -56,6 +56,7 @@ enum {
 	TRULY_1080P_CMD_PANEL,
 	OTM1906C_1080P_CMD_PANEL,
 	SHARP_1080P_CMD_PANEL,
+	BYD_1200P_VIDEO_PANEL,
 	UNKNOWN_PANEL
 };
 
@@ -71,6 +72,7 @@ static struct panel_list supp_panels[] = {
 	{"truly_1080p_video", TRULY_1080P_VIDEO_PANEL},
 	{"truly_1080p_cmd", TRULY_1080P_CMD_PANEL},
 	{"sharp_1080p_cmd", SHARP_1080P_CMD_PANEL},
+	{"byd_1200p_video", BYD_1200P_VIDEO_PANEL},
 };
 
 static uint32_t panel_id;
@@ -216,6 +218,32 @@ static int init_panel_data(struct panel_struct *panelstruct,
 		memcpy(phy_db->timing,
 				sharp_1080p_cmd_timings, TIMING_SIZE);
 		break;
+	 case BYD_1200P_VIDEO_PANEL:
+		panelstruct->paneldata    = &byd_1200p_video_panel_data;
+		panelstruct->paneldata->panel_with_enable_gpio = 1;
+		panelstruct->panelres     = &byd_1200p_video_panel_res;
+		panelstruct->color        = &byd_1200p_video_color;
+		panelstruct->videopanel   = &byd_1200p_video_video_panel;
+		panelstruct->commandpanel = &byd_1200p_video_command_panel;
+		panelstruct->state        = &byd_1200p_video_state;
+		panelstruct->laneconfig   = &byd_1200p_video_lane_config;
+		panelstruct->paneltiminginfo
+			= &byd_1200p_video_timing_info;
+		panelstruct->panelresetseq
+					 = &byd_1200p_video_panel_reset_seq;
+		panelstruct->backlightinfo = &byd_1200p_video_backlight;
+		pinfo->mipi.panel_on_cmds
+			= byd_1200p_video_on_command;
+		pinfo->mipi.num_of_panel_on_cmds
+			= BYD_1200P_VIDEO_ON_COMMAND;
+		pinfo->mipi.panel_off_cmds
+			= byd_1200p_video_off_command;
+		pinfo->mipi.num_of_panel_off_cmds
+			= TRULY_1080P_VIDEO_OFF_COMMAND;
+		memcpy(phy_db->timing,
+			byd_1200p_video_timings, TIMING_SIZE);
+		pinfo->mipi.signature 	= TRULY_1080P_VIDEO_SIGNATURE;
+		break;
 	case UNKNOWN_PANEL:
 	default:
 		memset(panelstruct, 0, sizeof(struct panel_struct));
@@ -264,7 +292,8 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		panel_id = TRULY_1080P_VIDEO_PANEL;
 		break;
 	case HW_PLATFORM_QRD:
-		panel_id = OTM1906C_1080P_CMD_PANEL;
+	//	panel_id = TRULY_1080P_VIDEO_PANEL;
+		panel_id = BYD_1200P_VIDEO_PANEL    //for polaris board
 		break;
 	default:
 		dprintf(CRITICAL, "Display not enabled for %d HW type\n",
