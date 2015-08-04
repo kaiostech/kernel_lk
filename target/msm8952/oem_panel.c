@@ -48,6 +48,7 @@
 #include "include/panel_otm1906c_1080p_cmd.h"
 #include "include/panel_sharp_1080p_cmd.h"
 #include "include/panel_hx8399a_1080p_video.h"
+#include "include/panel_byd_1200p_video.h"
 
 /*---------------------------------------------------------------------------*/
 /* static panel selection variable                                           */
@@ -58,6 +59,7 @@ enum {
 	OTM1906C_1080P_CMD_PANEL,
 	SHARP_1080P_CMD_PANEL,
 	HX8399A_1080P_VIDEO_PANEL,
+	BYD_1200P_VIDEO_PANEL,
 	UNKNOWN_PANEL
 };
 
@@ -73,6 +75,7 @@ static struct panel_list supp_panels[] = {
 	{"truly_1080p_video", TRULY_1080P_VIDEO_PANEL},
 	{"truly_1080p_cmd", TRULY_1080P_CMD_PANEL},
 	{"sharp_1080p_cmd", SHARP_1080P_CMD_PANEL},
+	{"byd_1200p_video", BYD_1200P_VIDEO_PANEL},
 };
 
 static uint32_t panel_id;
@@ -243,6 +246,32 @@ static int init_panel_data(struct panel_struct *panelstruct,
 		memcpy(phy_db->timing,
 				hx8399a_1080p_video_timings, TIMING_SIZE);
 		pinfo->mipi.signature = HX8399A_1080P_VIDEO_SIGNATURE;
+	case BYD_1200P_VIDEO_PANEL:
+		panelstruct->paneldata    = &byd_1200p_video_panel_data;
+		panelstruct->paneldata->panel_with_enable_gpio = 1;
+		panelstruct->panelres     = &byd_1200p_video_panel_res;
+		panelstruct->color        = &byd_1200p_video_color;
+		panelstruct->videopanel   = &byd_1200p_video_video_panel;
+		panelstruct->commandpanel = &byd_1200p_video_command_panel;
+		panelstruct->state        = &byd_1200p_video_state;
+		panelstruct->laneconfig   = &byd_1200p_video_lane_config;
+		panelstruct->paneltiminginfo
+			= &byd_1200p_video_timing_info;
+		panelstruct->panelresetseq
+					 = &byd_1200p_video_panel_reset_seq;
+		panelstruct->backlightinfo = &byd_1200p_video_backlight;
+		pinfo->mipi.panel_on_cmds
+			= byd_1200p_video_on_command;
+		pinfo->mipi.num_of_panel_on_cmds
+			= BYD_1200P_VIDEO_ON_COMMAND;
+		pinfo->mipi.panel_off_cmds
+			= byd_1200p_video_off_command;
+		pinfo->mipi.num_of_panel_off_cmds
+			= BYD_1200P_VIDEO_OFF_COMMAND;
+		memcpy(phy_db->timing,
+			byd_1200p_video_timings, TIMING_SIZE);
+		pinfo->mipi.signature 	= BYD_1200P_VIDEO_SIGNATURE;
+		phy_db->regulator_mode = DSI_PHY_REGULATOR_LDO_MODE;
 		break;
 	case UNKNOWN_PANEL:
 	default:
@@ -265,6 +294,7 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 			struct mdss_dsi_phy_ctrl *phy_db)
 {
 	uint32_t hw_id = board_hardware_id();
+	uint32_t hw_subtype = board_hardware_subtype();
 	int32_t panel_override_id;
 	uint32_t target_id, plat_hw_ver_major;
 
@@ -300,6 +330,10 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 			panel_id = HX8399A_1080P_VIDEO_PANEL;
 		else
 			panel_id = OTM1906C_1080P_CMD_PANEL;
+
+		if (hw_subtype == HW_PLATFORM_SUBTYPE_POLARIS) {
+			panel_id = BYD_1200P_VIDEO_PANEL;
+		}
 		break;
 	default:
 		dprintf(CRITICAL, "Display not enabled for %d HW type\n",
