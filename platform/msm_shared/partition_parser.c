@@ -736,7 +736,6 @@ static unsigned int write_gpt(uint32_t size, uint8_t *gptImage, uint32_t block_s
 			"GPT: Failure to re- read the GPT Partition table\n");
 		goto end;
 	}
-	partition_count = 0;
 	flashing_gpt = 0;
 	partition_dump();
 	dprintf(CRITICAL, "GPT: Partition Table written\n");
