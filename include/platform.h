@@ -79,4 +79,5 @@ void get_bootloader_version(unsigned char *buf);
 void get_baseband_version(unsigned char *buf);
 bool is_device_locked();
 bool platform_is_mdmcalifornium();
+unsigned int place_marker(char *);
 #endif

@@ -217,6 +217,20 @@ int target_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 	return NO_ERROR;
 }
 
+#define TIMER_KHZ 32768
+
+unsigned int place_marker(char *marker_name)
+{
+        unsigned int marker_value;
+
+        marker_value = readl(MPM2_MPM_SLEEP_TIMETICK_COUNT_VAL);
+        dprintf(INFO, "marker name=%s; marker value=%u.%03u seconds\n",
+                        marker_name, marker_value/TIMER_KHZ,
+                        (((marker_value % TIMER_KHZ)
+                        * 1000) / TIMER_KHZ));
+        return marker_value;
+}
+
 static uint32_t thulium_dsi_pll_lock_status(uint32_t pll_base, uint32_t off,
 	uint32_t bit)
 {

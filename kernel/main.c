@@ -29,12 +29,15 @@
 #include <arch.h>
 #include <platform.h>
 #include <target.h>
+#include <reg.h>
 #include <lib/heap.h>
 #include <kernel/thread.h>
 #include <kernel/timer.h>
 #include <kernel/dpc.h>
 #include <boot_stats.h>
+#include <platform/iomap.h>
 
+#define TIMER_KHZ 32768
 extern void *__ctor_list;
 extern void *__ctor_end;
 extern int __bss_start;
@@ -65,6 +68,9 @@ static void call_constructors(void)
 void kmain(void) __NO_RETURN __EXTERNALLY_VISIBLE;
 void kmain(void)
 {
+
+        unsigned int marker_value = readl(MPM2_MPM_SLEEP_TIMETICK_COUNT_VAL);
+
 	// get us into some sort of thread context
 	thread_init_early();
 
@@ -76,6 +82,11 @@ void kmain(void)
 
 	// do any super early target initialization
 	target_early_init();
+
+        dprintf(INFO, "marker name=LK:Start; marker value=%u.%03u seconds\n",
+                        marker_value/TIMER_KHZ,
+                        (((marker_value % TIMER_KHZ)
+                        * 1000) / TIMER_KHZ));
 
 	dprintf(INFO, "welcome to lk\n\n");
 	bs_set_timestamp(BS_BL_START);
