@@ -78,6 +78,8 @@ THUMBINTERWORK :=
 ifeq ($(ENABLE_THUMB),true)
 THUMBCFLAGS := -mthumb -D__thumb__
 THUMBINTERWORK := -mthumb-interwork
+else
+CFLAGS += -marm
 endif
 
 INCLUDES += \

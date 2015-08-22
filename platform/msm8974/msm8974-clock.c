@@ -324,6 +324,36 @@ static struct vote_clk gcc_blsp1_ahb_clk = {
 	},
 };
 
+/* BLSP 2 */
+static struct rcg_clk blsp2_uart6_apps_clk_src =
+{
+      .cmd_reg      = (uint32_t *) BLSP2_UART6_APPS_CMD_RCGR,
+      .cfg_reg      = (uint32_t *) BLSP2_UART6_APPS_CFG_RCGR,
+      .m_reg        = (uint32_t *) BLSP2_UART6_APPS_M,
+      .n_reg        = (uint32_t *) BLSP2_UART6_APPS_N,
+      .d_reg        = (uint32_t *) BLSP2_UART6_APPS_D,
+
+      .set_rate     = clock_lib2_rcg_set_rate_mnd,
+      .freq_tbl     = ftbl_gcc_blsp1_2_uart1_6_apps_clk,
+      .current_freq = &rcg_dummy_freq,
+
+      .c = {
+              .dbg_name = "blsp2_uart6_apps_clk",
+              .ops      = &clk_ops_rcg_mnd,
+      },
+};
+
+static struct branch_clk gcc_blsp2_uart6_apps_clk =
+{
+      .cbcr_reg     = (uint32_t *) BLSP2_UART6_APPS_CBCR,
+      .parent       = &blsp2_uart6_apps_clk_src.c,
+
+      .c = {
+              .dbg_name = "gcc_blsp2_uart6_apps_clk",
+              .ops      = &clk_ops_branch,
+      },
+};
+
 static struct vote_clk gcc_blsp2_ahb_clk = {
 	.cbcr_reg     = (uint32_t *) BLSP2_AHB_CBCR,
 	.vote_reg     = (uint32_t *) APCS_CLOCK_BRANCH_ENA_VOTE,
@@ -823,8 +853,8 @@ static struct clk_lookup msm_clocks_8974[] =
 	CLK_LOOKUP("sdc2_iface_clk", gcc_sdcc2_ahb_clk.c),
 	CLK_LOOKUP("sdc2_core_clk",  gcc_sdcc2_apps_clk.c),
 
-	CLK_LOOKUP("uart2_iface_clk", gcc_blsp1_ahb_clk.c),
-	CLK_LOOKUP("uart2_core_clk",  gcc_blsp1_uart2_apps_clk.c),
+	CLK_LOOKUP("uart12_iface_clk", gcc_blsp2_ahb_clk.c),
+	CLK_LOOKUP("uart12_core_clk",  gcc_blsp2_uart6_apps_clk.c),
 
 	CLK_LOOKUP("usb_iface_clk",  gcc_usb_hs_ahb_clk.c),
 	CLK_LOOKUP("usb_core_clk",   gcc_usb_hs_system_clk.c),

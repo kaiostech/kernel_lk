@@ -103,7 +103,7 @@ static uint32_t mmc_sdc_pwrctl_irq[] =
 void target_early_init(void)
 {
 #if WITH_DEBUG_UART
-	uart_dm_init(1, 0, BLSP1_UART1_BASE);
+	uart_dm_init(12, 0, BLSP2_UART5_BASE);
 #endif
 }
 
@@ -131,6 +131,7 @@ static int target_is_8974()
 /* Return 1 if vol_up pressed */
 static int target_volume_up()
 {
+#if 0
 	uint8_t status = 0;
 	struct pm8x41_gpio gpio;
 
@@ -156,16 +157,45 @@ static int target_volume_up()
 	pm8x41_gpio_get(5, &status);
 
 	return !status; /* active low */
+#else
+        /* No vol up on eagle */
+        return 0;
+#endif
 }
 
 /* Return 1 if vol_down pressed */
 uint32_t target_volume_down()
 {
-	/* Volume down button is tied in with RESIN on MSM8974. */
-	if (target_is_8974() && (pmic_ver == PM8X41_VERSION_V2))
-		return pm8x41_v2_resin_status();
-	else
-		return pm8x41_resin_status();
+        uint8_t status = 0;
+        // ATL-TODO: Replace with Eagle platform ID
+        if (1) 
+        {
+                struct pm8x41_gpio gpio;
+
+                /* Configure the GPIO */
+                gpio.direction = PM_GPIO_DIR_IN;
+                gpio.function  = 0;
+                gpio.pull      = PM_GPIO_PULL_UP_30;
+                gpio.vin_sel   = 2;
+
+                pm8x41_gpio_config(2, &gpio);
+
+                /* Wait for the pmic gpio config to take effect */
+                thread_sleep(1);
+
+                /* Get status of P_GPIO_2 */
+                pm8x41_gpio_get(2, &status);
+
+                status = !status; /* active low */
+        } else {
+                /* Volume down button is tied in with RESIN on MSM8974. */
+                if (target_is_8974() && (pmic_ver == PM8X41_VERSION_V2))
+                        status = pm8x41_v2_resin_status();
+                else
+                        status = pm8x41_resin_status();
+        }
+
+        return status;
 }
 
 static void target_keystatus()

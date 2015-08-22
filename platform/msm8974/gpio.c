@@ -56,11 +56,11 @@ void gpio_set(uint32_t gpio, uint32_t dir)
 void gpio_config_uart_dm(uint8_t id)
 {
     /* configure rx gpio */
-	gpio_tlmm_config(5, 2, GPIO_INPUT, GPIO_NO_PULL,
+	gpio_tlmm_config(86, 2, GPIO_INPUT, GPIO_NO_PULL,
 				GPIO_8MA, GPIO_DISABLE);
 
     /* configure tx gpio */
-	gpio_tlmm_config(4, 2, GPIO_OUTPUT, GPIO_NO_PULL,
+	gpio_tlmm_config(85, 2, GPIO_OUTPUT, GPIO_NO_PULL,
 				GPIO_8MA, GPIO_DISABLE);
 }
 
