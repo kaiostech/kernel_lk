@@ -607,4 +607,5 @@ struct mmc_boot_card *get_mmc_card(void);
 void mmc_mclk_reg_wr_delay();
 void mmc_boot_mci_clk_enable();
 void mmc_boot_mci_clk_disable();
+uint64_t mmc_get_device_capacity();
 #endif
