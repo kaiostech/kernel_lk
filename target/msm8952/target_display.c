@@ -267,6 +267,13 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 						struct msm_panel_info *pinfo)
 {
 	int ret = NO_ERROR;
+	uint32_t hw_id = board_hardware_id();
+	uint32_t hw_subtype = board_hardware_subtype();
+
+	if ((hw_id == HW_PLATFORM_QRD) &&
+		   (hw_subtype == HW_PLATFORM_SUBTYPE_POLARIS)) {
+		enable_gpio.pin_id = 19;
+	}
 
 	if (enable) {
 		if (pinfo->mipi.use_enable_gpio) {
