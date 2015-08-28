@@ -127,9 +127,6 @@ static void platform_detect()
 		dprintf(CRITICAL, "Unsupported board info format\n");
 		ASSERT(0);
 	}
-
-	board.platform_hw = HW_PLATFORM_EAGLE;
-	board.target = HW_PLATFORM_EAGLE;
 }
 
 void board_init()
