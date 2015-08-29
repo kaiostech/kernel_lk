@@ -163,3 +163,12 @@ __WEAK uint8_t target_is_edp()
 {
 	return 0;
 }
+/* Return Build variant */
+__WEAK bool target_build_variant_user()
+{
+#if USER_BUILD_VARIANT
+	return true;
+#else
+	return false;
+#endif
+}
