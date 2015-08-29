@@ -127,6 +127,7 @@ struct tz_prng_data {
 #define IOMMU_SECURE_CFG            0x02
 
 #define TZ_INFO_GET_FEATURE_ID      0x03
+#define IS_SECURE_BOOT_ENABLED      0x04
 
 #define PRNG_CMD_ID                 0x01
 
@@ -184,6 +185,8 @@ int scm_protect_keystore(uint32_t * img_ptr, uint32_t  img_len);
 
 #define SCM_SVC_PWR                     0x9
 #define SCM_IO_DISABLE_PMIC_ARBITER     0x1
+
+#define SCM_SVC_TZSCHEDULER             0xFC
 
 enum ap_ce_channel_type {
 AP_CE_REGISTER_USE = 0,

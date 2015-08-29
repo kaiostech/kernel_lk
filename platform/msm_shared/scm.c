@@ -142,7 +142,7 @@ static int scm_call_atomic(uint32_t svc, uint32_t cmd, uint32_t arg1)
 {
 	uint32_t context_id;
 	register uint32_t r0 __asm__("r0") = SCM_ATOMIC(svc, cmd, 1);
-	register uint32_t r1 __asm__("r1") = &context_id;
+	register uint32_t r1 __asm__("r1") = (uint32_t)&context_id;
 	register uint32_t r2 __asm__("r2") = arg1;
 
 	__asm__ volatile(
@@ -640,4 +640,31 @@ void * get_canary()
 	}
 
 	return canary;
+}
+static bool secure_boot_enabled = true;
+static bool wdog_debug_fuse_disabled = true;
+
+void scm_check_boot_fuses()
+{
+	uint32_t ret = 0;
+	uint32_t resp;
+
+	ret = scm_call(TZBSP_SVC_INFO, IS_SECURE_BOOT_ENABLED, NULL, 0, &resp, sizeof(resp));
+
+	/* Parse Bit 0 and Bit 2 of the response */
+	if(!ret) {
+		/* Bit 0 - SECBOOT_ENABLE_CHECK */
+		if(resp & 0x1)
+			secure_boot_enabled = false;
+		/* Bit 2 - DEBUG_DISABLE_CHECK */
+		if(resp & 0x4)
+			wdog_debug_fuse_disabled = false;
+	} else
+		dprintf(CRITICAL, "scm call to check secure boot fuses failed\n");
+}
+
+bool is_secure_boot_enable()
+{
+	scm_check_boot_fuses();
+	return secure_boot_enabled;
 }
