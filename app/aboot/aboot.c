@@ -68,6 +68,11 @@
 #include "board.h"
 #include "scm.h"
 
+#if VERIFIED_BOOT
+#include "boot_verifier.h"
+#include "secapp_loader.h"
+#endif
+
 extern  bool target_use_signed_kernel(void);
 extern void platform_uninit(void);
 extern void target_uninit(void);
@@ -101,6 +106,12 @@ struct fastboot_cmd_desc {
 #define RECOVERY_MODE   0x77665502
 #define FASTBOOT_MODE   0x77665500
 
+#if VERIFIED_BOOT
+#define DM_VERITY_LOGGING    0x77665508
+#define DM_VERITY_ENFORCING  0x77665509
+#define DM_VERITY_KEYSCLEAR  0x7766550A
+#endif
+
 /* make 4096 as default size to ensure EFS,EXT4's erasing */
 #define DEFAULT_ERASE_SIZE  4096
 #define MAX_PANEL_BUF_SIZE 128
@@ -126,6 +137,26 @@ static const char *baseband_dsda    = " androidboot.baseband=dsda";
 static const char *baseband_dsda2   = " androidboot.baseband=dsda2";
 static const char *baseband_sglte2  = " androidboot.baseband=sglte2";
 
+#if VERIFIED_BOOT
+static const char *verity_mode = " androidboot.veritymode=";
+static const char *verified_state= " androidboot.verifiedbootstate=";
+
+//indexed based on enum values, green is 0 by default
+
+struct verified_boot_verity_mode vbvm[] =
+{
+	{false, "logging"},
+	{true, "enforcing"},
+};
+struct verified_boot_state_name vbsn[] =
+{
+	{GREEN, "green"},
+	{ORANGE, "orange"},
+	{YELLOW,"yellow"},
+	{RED,"red" },
+};
+#endif
+
 static unsigned page_size = 0;
 static unsigned page_mask = 0;
 static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
@@ -134,7 +165,11 @@ static bool boot_into_ffbm;
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
 
+#if VERIFIED_BOOT
+static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0, 1};
+#else
 static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0};
+#endif
 
 struct atag_ptbl_entry
 {
@@ -209,6 +244,10 @@ unsigned char *update_cmdline(const char * cmdline)
 	unsigned char *cmdline_final = NULL;
 	int pause_at_bootup = 0;
 	bool gpt_exists = partition_gpt_exists();
+#if VERIFIED_BOOT
+    uint32_t boot_state = boot_verify_get_state();
+#endif
+
 
 	if (cmdline && cmdline[0]) {
 		cmdline_len = strlen(cmdline);
@@ -220,6 +259,12 @@ unsigned char *update_cmdline(const char * cmdline)
 
 	cmdline_len += strlen(usb_sn_cmdline);
 	cmdline_len += strlen(sn_buf);
+
+#if VERIFIED_BOOT
+	cmdline_len += strlen(verified_state) + strlen(vbsn[boot_state].name);
+	cmdline_len += strlen(verity_mode) + strlen(vbvm[device.verity_mode].name);
+#endif
+
 
 	if (boot_into_recovery && gpt_exists)
 		cmdline_len += strlen(secondary_gpt_enable);
@@ -303,7 +348,22 @@ unsigned char *update_cmdline(const char * cmdline)
 			have_cmdline = 1;
 			while ((*dst++ = *src++));
 		}
+#if VERIFIED_BOOT
+		src = verified_state;
+		if(have_cmdline) --dst;
+		have_cmdline = 1;
+		while ((*dst++ = *src++));
+		src = vbsn[boot_state].name;
+		if(have_cmdline) --dst;
+		while ((*dst++ = *src++));
 
+		src = verity_mode;
+		if(have_cmdline) --dst;
+		while ((*dst++ = *src++));
+		src = vbvm[device.verity_mode].name;
+		if(have_cmdline) -- dst;
+		while ((*dst++ = *src++));
+#endif
 		src = usb_sn_cmdline;
 		if (have_cmdline) --dst;
 		have_cmdline = 1;
@@ -585,17 +645,36 @@ BUF_DMA_ALIGN(dt_buf, 4096);
 static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 {
 	int ret;
+#if !VERIFIED_BOOT
+#if IMAGE_VERIF_ALGO_SHA1
+	uint32_t auth_algo = CRYPTO_AUTH_ALG_SHA1;
+#else
+	uint32_t auth_algo = CRYPTO_AUTH_ALG_SHA256;
+#endif
+#endif
 
 	/* Assume device is rooted at this time. */
 	device.is_tampered = 1;
 
 	dprintf(INFO, "Authenticating boot image (%d): start\n", bootimg_size);
-
+#if VERIFIED_BOOT
+	if(boot_into_recovery)
+	{
+		ret = boot_verify_image((unsigned char *)bootimg_addr,
+				bootimg_size, "/recovery");
+	}
+	else
+	{
+		ret = boot_verify_image((unsigned char *)bootimg_addr,
+				bootimg_size, "/boot");
+	}
+	boot_verify_print_state();
+#else
 	ret = image_verify((unsigned char *)bootimg_addr,
 					   (unsigned char *)(bootimg_addr + bootimg_size),
 					   bootimg_size,
 					   CRYPTO_AUTH_ALG_SHA256);
-
+#endif
 	dprintf(INFO, "Authenticating boot image: done return value = %d\n", ret);
 
 	if (ret)
@@ -607,7 +686,24 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 #if USE_PCOM_SECBOOT
 	set_tamper_flag(device.is_tampered);
 #endif
-
+#if VERIFIED_BOOT
+	switch(boot_verify_get_state())
+	{
+		case RED:
+				dprintf(CRITICAL,
+						"Your device has failed verification and may not work properly.\nWait for 5 seconds before proceeding\n");
+				mdelay(5000);
+				break;
+		case YELLOW:
+				dprintf(CRITICAL,
+						"Your device has loaded a different operating system.\nWait for 5 seconds before proceeding\n");
+				mdelay(5000);
+				break;
+		default:
+				break;
+	}
+#endif
+#if !VERIFIED_BOOT
 	if(device.is_tampered)
 	{
 		write_device_info_mmc(&device);
@@ -619,6 +715,7 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 		ASSERT(0);
 	#endif
 	}
+#endif
 }
 
 static bool check_format_bit()
@@ -663,6 +760,27 @@ static bool check_format_bit()
 	free(buf);
 	return ret;
 }
+#if VERIFIED_BOOT
+void boot_verifier_init()
+{
+	uint32_t boot_state;
+	/* Check if device unlock */
+	if(device.is_unlocked)
+	{
+		boot_verify_send_event(DEV_UNLOCK);
+		boot_verify_print_state();
+		dprintf(CRITICAL, "Device is unlocked! Skipping verification...\n");
+		return;
+	}
+	else
+	{
+		boot_verify_send_event(BOOT_INIT);
+	}
+
+	/* Initialize keystore */
+	boot_state = boot_verify_keystore_init();
+}
+#endif
 
 int boot_linux_from_mmc(void)
 {
@@ -768,6 +886,11 @@ int boot_linux_from_mmc(void)
 		return -1;
 	}
 #endif
+
+#if VERIFIED_BOOT
+	boot_verifier_init();
+#endif
+
 
 	/* Authenticate Kernel */
 	dprintf(INFO, "use_signed_kernel=%d, is_unlocked=%d, is_tampered=%d.\n",
@@ -985,6 +1108,19 @@ int boot_linux_from_mmc(void)
 		}
 		#endif
 	}
+#if VERIFIED_BOOT
+	if(boot_verify_get_state() == ORANGE)
+	{
+		dprintf(CRITICAL,
+				"Your device has been unlocked and can't be trusted.\nWait for 5 seconds before proceeding\n");
+		mdelay(5000);
+	}
+
+	// send root of trust
+	if(!send_rot_command((uint32_t)device.is_unlocked))
+		ASSERT(0);
+#endif
+
 
 	if (boot_into_recovery && !device.is_unlocked && !device.is_tampered)
 		target_load_ssd_keystore();
@@ -1311,7 +1447,9 @@ void read_device_info_mmc(device_info *dev)
 		info->is_unlocked = 0;
 		info->is_tampered = 0;
 		info->charger_screen_enabled = 0;
-
+#if VERIFIED_BOOT
+		info->verity_mode = 1;
+#endif
 		write_device_info_mmc(info);
 	}
 	memcpy(dev, info, sizeof(device_info));
@@ -1664,11 +1802,25 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 		return;
 	}
 #endif
+#if VERIFIED_BOOT
+	if(!(strncmp(arg, "userdata", 8)))
+		if(send_delete_keys_to_tz())
+			ASSERT(0);
+#endif
 	fastboot_okay("");
 }
 
 void cmd_erase(const char *arg, void *data, unsigned sz)
 {
+
+#if VERIFIED_BOOT
+	if(!device.is_unlocked)
+	{
+		fastboot_fail("device is locked. Cannot erase");
+		return;
+	}
+#endif
+
 	if(target_is_emmc_boot())
 		cmd_erase_mmc(arg, data, sz);
 	else
@@ -1973,11 +2125,29 @@ void cmd_flash_mmc(const char *arg, void *data, unsigned sz)
 	}
 #endif /* SSD_ENABLE */
 
+#if VERIFIED_BOOT
+	if(!device.is_unlocked)
+	{
+		fastboot_fail("device is locked. Cannot flash images");
+		return;
+	}
+#endif
+
 	sparse_header = (sparse_header_t *) data;
 	if (sparse_header->magic != SPARSE_HEADER_MAGIC)
 		cmd_flash_mmc_img(arg, data, sz);
 	else
 		cmd_flash_mmc_sparse_img(arg, data, sz);
+
+#if VERIFIED_BOOT
+	if((!strncmp(arg, "system", 6)) && !device.verity_mode)
+	{
+		// reset dm_verity mode to enforcing
+		device.verity_mode = 1;
+		write_device_info(&device);
+	}
+#endif
+
 	return;
 }
 
@@ -2089,12 +2259,35 @@ void cmd_oem_select_display_panel(const char *arg, void *data, unsigned size)
 	fastboot_okay("");
 }
 
+void cmd_oem_lock(const char *arg, void *data, unsigned sz)
+{
+	struct recovery_message msg;
+	if(device.is_unlocked)
+	{
+		device.is_unlocked = 0;
+		write_device_info(&device);
+		// upon oem lock, reboot to recovery to wipe user data
+		snprintf(msg.recovery, sizeof(msg.recovery), "recovery\n--wipe_data");
+		write_misc(0, &msg, sizeof(msg));
+		fastboot_okay("");
+		reboot_device(RECOVERY_MODE);
+	}
+	fastboot_okay("");
+}
+
+
 void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
 {
 	if(!device.is_unlocked)
 	{
 		device.is_unlocked = 1;
 		write_device_info(&device);
+		struct recovery_message msg;
+		snprintf(msg.recovery, sizeof(msg.recovery), "recovery\n--wipe_data");
+		write_misc(0, &msg, sizeof(msg));
+
+		fastboot_okay("");
+		reboot_device(RECOVERY_MODE);
 	}
 	fastboot_okay("");
 }
@@ -2318,6 +2511,7 @@ void aboot_fastboot_register_commands(void)
 											{"reboot", cmd_reboot},
 											{"reboot-bootloader", cmd_reboot_bootloader},
 											{"oem unlock", cmd_oem_unlock},
+											{"oem lock", cmd_oem_lock},
 											{"oem device-info", cmd_oem_devinfo},
 											{"preflash", cmd_preflash},
 											{"oem enable-charger-screen", cmd_oem_enable_charger_screen},
@@ -2426,6 +2620,17 @@ void aboot_init(const struct app_descriptor *app)
 		boot_into_recovery = 1;
 	} else if(reboot_mode == FASTBOOT_MODE) {
 		boot_into_fastboot = true;
+#if VERIFIED_BOOT
+	} else if(reboot_mode == DM_VERITY_ENFORCING) {
+		device.verity_mode = 1;
+		write_device_info(&device);
+	} else if(reboot_mode == DM_VERITY_LOGGING) {
+		device.verity_mode = 0;
+		write_device_info(&device);
+	} else if(reboot_mode == DM_VERITY_KEYSCLEAR) {
+		if(send_delete_keys_to_tz())
+			ASSERT(0);
+#endif
 	}
 
 	if (!boot_into_fastboot)
