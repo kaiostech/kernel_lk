@@ -691,14 +691,13 @@ write_gpt(unsigned size, unsigned char *gptImage,
 
 	/* Re-read the GPT partition table */
 	dprintf(INFO, "Re-reading the GPT Partition Table\n");
-	partition_count = 0;
-	flashing_gpt = 0;
 	ret = mmc_boot_read_gpt(mmc_host, mmc_card);
 	if (ret) {
 		dprintf(CRITICAL,
 			"GPT: Failure to re- read the GPT Partition table\n");
 		goto end;
 	}
+	flashing_gpt = 0;
 
 	partition_dump();
 	dprintf(CRITICAL, "GPT: Partition Table written\n");
