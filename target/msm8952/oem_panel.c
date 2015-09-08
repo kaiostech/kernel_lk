@@ -246,6 +246,7 @@ static int init_panel_data(struct panel_struct *panelstruct,
 		memcpy(phy_db->timing,
 				hx8399a_1080p_video_timings, TIMING_SIZE);
 		pinfo->mipi.signature = HX8399A_1080P_VIDEO_SIGNATURE;
+		break;
 	case BYD_1200P_VIDEO_PANEL:
 		panelstruct->paneldata    = &byd_1200p_video_panel_data;
 		panelstruct->paneldata->panel_with_enable_gpio = 1;
