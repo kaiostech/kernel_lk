@@ -213,7 +213,7 @@
 #define MMSS_DSI_PHY_PLL_CORE_KVCO_CODE 0x0168
 
 #define MDP_BASE                    (0x900000)
-
+#define REG_MDP(off)                (MDP_BASE + (off))
 
 #ifdef MDP_PP_0_BASE
 #undef MDP_PP_0_BASE
@@ -225,7 +225,8 @@
 #endif
 #define MDP_PP_1_BASE               REG_MDP(0x71800)
 
-#define REG_MDP(off)                (MDP_BASE + (off))
+#define MDP_DSC_0_BASE			REG_MDP(0x81000)
+#define MDP_DSC_1_BASE			REG_MDP(0x81400)
 
 #ifdef MDP_HW_REV
 #undef MDP_HW_REV
@@ -522,9 +523,28 @@
 #define VIDEO_MODE_VSYNC            0x034
 #define VIDEO_MODE_VSYNC_VPOS       0x038
 
+#define VIDEO_COMPRESSION_MODE_CTRL		0x2A0
+#define VIDEO_COMPRESSION_MODE_CTRL_2		0x2A4
+#define CMD_COMPRESSION_MODE_CTRL		0x2A8
+#define CMD_COMPRESSION_MODE_CTRL_2		0x2Ac
+#define CMD_COMPRESSION_MODE_CTRL_3		0x2B0
+
 #define QPNP_LED_CTRL_BASE          0xD000
 #define QPNP_BLUE_LPG_CTRL_BASE     0xB100
 #define QPNP_GREEN_LPG_CTRL_BASE    0xB200
 #define QPNP_RED_LPG_CTRL_BASE      0xB300
 
+#define APSS_WDOG_BASE              0x9830000
+#define APPS_WDOG_BARK_VAL_REG      (APSS_WDOG_BASE + 0x10)
+#define APPS_WDOG_BITE_VAL_REG      (APSS_WDOG_BASE + 0x14)
+#define APPS_WDOG_RESET_REG         (APSS_WDOG_BASE + 0x04)
+#define APPS_WDOG_CTL_REG           (APSS_WDOG_BASE + 0x08)
+
+#define DDR_START                    platform_get_ddr_start()
+#define ABOOT_FORCE_KERNEL_ADDR      DDR_START + 0x8000
+#define ABOOT_FORCE_RAMDISK_ADDR     DDR_START + 0x2200000
+#define ABOOT_FORCE_TAGS_ADDR        DDR_START + 0x2000000
+#define ABOOT_FORCE_KERNEL64_ADDR    DDR_START + 0x80000
+
+#define QFPROM_PTE_PART_ADDR    0x0007013C
 #endif
