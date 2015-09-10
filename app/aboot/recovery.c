@@ -58,6 +58,7 @@ unsigned boot_into_recovery = 0;
 extern uint32_t get_page_size();
 extern void reset_device_info();
 extern void set_device_root();
+extern uint32_t gpio_get();
 
 int get_recovery_message(struct recovery_message *out)
 {
@@ -439,6 +440,17 @@ int _emmc_recovery_init(void)
 	if (msg.command[0] != 0 && msg.command[0] != 255) {
 		dprintf(INFO,"Recovery command: %d %s\n",
 			sizeof(msg.command), msg.command);
+	}
+
+	if (board_hardware_id() == HW_PLATFORM_RRP && !gpio_get(141)) {
+		dprintf(INFO, "Detected factory reset key\n");
+		strlcpy(msg.recovery,
+			"recovery\n--update_package=/factory/eagle8074-factory.zip",
+			sizeof(msg.recovery));
+		boot_into_recovery = 1;
+		strlcpy(msg.command, "", sizeof(msg.command));
+		emmc_set_recovery_msg(&msg);
+		return 0;
 	}
 
 	if (!strncmp(msg.command, "boot-recovery", strlen("boot-recovery"))) {

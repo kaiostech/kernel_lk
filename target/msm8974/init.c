@@ -89,6 +89,8 @@ struct mmc_device *dev;
 
 #define BOARD_SOC_VERSION1(soc_rev) (soc_rev >= 0x10000 && soc_rev < 0x20000)
 
+#define TLMM_FACTORY_RESET_BTN_GPIO    141
+
 #if MMC_SDHCI_SUPPORT
 static uint32_t mmc_sdhci_base[] =
 	{ MSM_SDC1_SDHCI_BASE, MSM_SDC2_SDHCI_BASE, MSM_SDC3_SDHCI_BASE, MSM_SDC4_SDHCI_BASE };
@@ -131,9 +133,12 @@ static int target_is_8974()
 /* Return 1 if vol_up pressed */
 static int target_volume_up()
 {
-#if 0
 	uint8_t status = 0;
 	struct pm8x41_gpio gpio;
+
+	/* RRP does not have a volume up key */
+	if (board_hardware_id() == HW_PLATFORM_RRP)
+		return 0;
 
 	/* CDP vol_up seems to be always grounded. So gpio status is read as 0,
 	 * whether key is pressed or not.
@@ -157,45 +162,41 @@ static int target_volume_up()
 	pm8x41_gpio_get(5, &status);
 
 	return !status; /* active low */
-#else
-        /* No vol up on eagle */
-        return 0;
-#endif
 }
 
 /* Return 1 if vol_down pressed */
 uint32_t target_volume_down()
 {
-        uint8_t status = 0;
-        // ATL-TODO: Replace with Eagle platform ID
-        if (1) 
-        {
-                struct pm8x41_gpio gpio;
+	uint8_t status = 0;
 
-                /* Configure the GPIO */
-                gpio.direction = PM_GPIO_DIR_IN;
-                gpio.function  = 0;
-                gpio.pull      = PM_GPIO_PULL_UP_30;
-                gpio.vin_sel   = 2;
+	/* RRP uses a different gpio for volume down. */
+	if (board_hardware_id() == HW_PLATFORM_RRP) {
+		struct pm8x41_gpio gpio;
 
-                pm8x41_gpio_config(2, &gpio);
+		/* Configure the GPIO */
+		gpio.direction = PM_GPIO_DIR_IN;
+		gpio.function  = 0;
+		gpio.pull      = PM_GPIO_PULL_UP_30;
+		gpio.vin_sel   = 2;
 
-                /* Wait for the pmic gpio config to take effect */
-                thread_sleep(1);
+		pm8x41_gpio_config(2, &gpio);
 
-                /* Get status of P_GPIO_2 */
-                pm8x41_gpio_get(2, &status);
+		/* Wait for the pmic gpio config to take effect */
+		thread_sleep(1);
 
-                status = !status; /* active low */
-        } else {
-                /* Volume down button is tied in with RESIN on MSM8974. */
-                if (target_is_8974() && (pmic_ver == PM8X41_VERSION_V2))
-                        status = pm8x41_v2_resin_status();
-                else
-                        status = pm8x41_resin_status();
-        }
+		/* Get status of P_GPIO_2 */
+		pm8x41_gpio_get(2, &status);
 
-        return status;
+		status = !status; /* active low */
+	} else {
+		/* Volume down button is tied in with RESIN on MSM8974. */
+		if (target_is_8974() && (pmic_ver == PM8X41_VERSION_V2))
+			status = pm8x41_v2_resin_status();
+		else
+			status = pm8x41_resin_status();
+	}
+
+	return status;
 }
 
 static void target_keystatus()
@@ -376,6 +377,11 @@ void target_init(void)
 
 	/* Save PM8941 version info. */
 	pmic_ver = pm8x41_get_pmic_rev();
+
+	/* Configure gpio for factory reset on RRP. */
+	if (board_hardware_id() == HW_PLATFORM_RRP)
+		gpio_tlmm_config(TLMM_FACTORY_RESET_BTN_GPIO, 0, GPIO_INPUT,
+				 GPIO_PULL_UP, GPIO_2MA, GPIO_ENABLE);
 
 	target_keystatus();
 
