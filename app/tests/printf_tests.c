@@ -121,13 +121,12 @@ void printf_tests(void)
 
 void printf_tests_float(void)
 {
-#if !WITH_NO_FP
     printf("floating point printf tests\n");
 
     for (size_t i = 0; i < float_test_vec_size; i++) {
         PRINT_FLOAT;
     }
-#endif
+
 }
 
 
