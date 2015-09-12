@@ -52,6 +52,7 @@ __NO_INLINE static void bench_set_overhead(void)
     free(buf);
 }
 
+#if 0
 __NO_INLINE static void bench_memset(void)
 {
     void *buf = malloc(BUFSIZE);
@@ -132,6 +133,7 @@ __NO_INLINE static void bench_memcpy(void)
 
     free(buf);
 }
+#endif
 
 #if ARCH_ARM
 __NO_INLINE static void arm_bench_cset_stm(void)
@@ -181,6 +183,7 @@ __NO_INLINE static void arm_bench_multi_issue(void)
 }
 #endif // ARCH_ARM
 
+#if 0
 #if WITH_LIB_LIBM
 #include <math.h>
 
@@ -221,9 +224,11 @@ __NO_INLINE static void bench_sincos(void)
 }
 
 #endif // WITH_LIB_LIBM
+#endif
 
 void benchmarks(void)
 {
+#if 0
     bench_set_overhead();
     bench_memset();
     bench_memcpy();
@@ -233,6 +238,7 @@ void benchmarks(void)
     bench_cset_uint32_t();
     bench_cset_uint64_t();
     bench_cset_wide();
+#endif
 
 #if ARCH_ARM
     arm_bench_cset_stm();
@@ -240,7 +246,7 @@ void benchmarks(void)
     arm_bench_multi_issue();
 #endif
 #if WITH_LIB_LIBM
-    bench_sincos();
+    //bench_sincos();
 #endif
 }
 
