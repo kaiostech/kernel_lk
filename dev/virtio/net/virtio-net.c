@@ -453,7 +453,7 @@ status_t virtio_net_get_mac_addr(uint8_t mac_addr[6])
 
 status_t virtio_net_send_minip_pkt(pktbuf_t *p)
 {
-    LTRACEF("p %p, dlen %zu, eof %u\n", p, p->dlen, p->eof);
+    LTRACEF("p %p, dlen %u, eof %u\n", p, p->dlen, p->eof);
 
     DEBUG_ASSERT(p && p->dlen);
 
