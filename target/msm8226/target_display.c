@@ -46,6 +46,7 @@
 #include "include/display_resource.h"
 
 #define HFPLL_LDO_ID 8
+#define DSI_PLL_POLL_MAX_READS 10
 
 static struct pm8x41_wled_data wled_ctrl = {
 	.mod_scheme      = 0x00,
