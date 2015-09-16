@@ -105,7 +105,7 @@ int32_t mdss_dsi_auto_pll_config(uint32_t ctl_base,
 
 	writel(0x2b, ctl_base + 0x0278); /* Cal CFG3 */
 	writel(0x66, ctl_base + 0x027c); /* Cal CFG4 */
-	writel(0x05, ctl_base + 0x0264); /* LKDetect CFG2 */
+	writel(0x0d, ctl_base + 0x0264); /* LKDetect CFG2 */
 
 	rem = pd->vco_clock % VCO_REF_CLOCK_RATE;
 	if (rem) {
