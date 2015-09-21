@@ -53,6 +53,7 @@
 #include "include/panel_hx8399a_1080p_video.h"
 #include "include/panel_nt35597_wqxga_dsc_video.h"
 #include "include/panel_nt35597_wqxga_dsc_cmd.h"
+#include "include/panel_nt35523_wqxga_dualdsi_video.h"
 
 /*---------------------------------------------------------------------------*/
 /* static panel selection variable                                           */
@@ -67,6 +68,7 @@ enum {
 	HX8399A_1080P_VIDEO_PANEL,
 	NT35597_WQXGA_DSC_VIDEO_PANEL,
 	NT35597_WQXGA_DSC_CMD_PANEL,
+	NT35523_WQXGA_DUALDSI_VIDEO_PANEL,
 	UNKNOWN_PANEL
 };
 
@@ -88,6 +90,7 @@ static struct panel_list supp_panels[] = {
 	{"hx8399a_1080p_video", HX8399A_1080P_VIDEO_PANEL},
 	{"nt35597_wqxga_dsc_video", NT35597_WQXGA_DSC_VIDEO_PANEL},
 	{"nt35597_wqxga_dsc_cmd", NT35597_WQXGA_DSC_CMD_PANEL},
+	{"nt35523_wqxga_dualdsi_video", NT35523_WQXGA_DUALDSI_VIDEO_PANEL},
 };
 
 static uint32_t panel_id;
@@ -403,6 +406,38 @@ static int init_panel_data(struct panel_struct *panelstruct,
 		pinfo->dsc.dsi_dsc_config = mdss_dsc_dsi_config;
 		pinfo->dsc.mdp_dsc_config = mdss_dsc_mdp_config;
 		break;
+	case NT35523_WQXGA_DUALDSI_VIDEO_PANEL:
+		panelstruct->paneldata    = &nt35523_wqxga_dualdsi_video_panel_data;
+		panelstruct->paneldata->panel_operating_mode = DST_SPLIT_FLAG |
+					SPLIT_DISPLAY_FLAG | DUAL_DSI_FLAG;
+		panelstruct->paneldata->panel_with_enable_gpio = 0;
+
+		panelstruct->panelres     = &nt35523_wqxga_dualdsi_video_panel_res;
+		panelstruct->color        = &nt35523_wqxga_dualdsi_video_color;
+		panelstruct->videopanel   = &nt35523_wqxga_dualdsi_video_video_panel;
+		panelstruct->commandpanel = &nt35523_wqxga_dualdsi_video_command_panel;
+		panelstruct->state        = &nt35523_wqxga_dualdsi_video_state;
+		panelstruct->laneconfig   = &nt35523_wqxga_dualdsi_video_lane_config;
+		panelstruct->paneltiminginfo
+					= &nt35523_wqxga_dualdsi_video_timing_info;
+		panelstruct->panelresetseq
+					= &nt35523_wqxga_dualdsi_video_reset_seq;
+		panelstruct->backlightinfo = &nt35523_wqxga_dualdsi_video_backlight;
+		pinfo->labibb = &nt35523_wqxga_dualdsi_video_labibb;
+
+		pinfo->mipi.panel_on_cmds
+			= nt35523_wqxga_dualdsi_video_on_command;
+		pinfo->mipi.num_of_panel_on_cmds
+			= NT35523_WQXGA_DUALDSI_VIDEO_ON_COMMAND;
+		pinfo->mipi.panel_off_cmds
+			= nt35523_wqxga_dualdsi_video_off_command;
+		pinfo->mipi.num_of_panel_off_cmds
+			= NT35523_WQXGA_DUALDSI_VIDEO_OFF_COMMAND;
+		memcpy(phy_db->timing, nt35523_wqxga_dualdsi_video_timings,
+			TIMING_SIZE);
+		pinfo->mipi.tx_eot_append = true;
+		dprintf(CRITICAL, "panel_id=%d,\n",panel_id);
+		break;
 	case UNKNOWN_PANEL:
 	default:
 		memset(panelstruct, 0, sizeof(struct panel_struct));
@@ -434,7 +469,8 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 {
 	uint32_t hw_id = board_hardware_id();
 	int32_t panel_override_id;
-
+	dprintf(CRITICAL, "Display not enabled for %d HW type\n",
+			hw_id);
 	if (panel_name) {
 		panel_override_id = panel_name_to_id(supp_panels,
 				ARRAY_SIZE(supp_panels), panel_name);
@@ -455,7 +491,7 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 	switch (hw_id) {
 	case HW_PLATFORM_MTP:
 		if (platform_is_msm8956())
-			panel_id = NT35597_WQXGA_DUALDSI_VIDEO_PANEL;
+			panel_id = NT35523_WQXGA_DUALDSI_VIDEO_PANEL;
 		else
 			panel_id = TRULY_1080P_VIDEO_PANEL;
 		break;
@@ -488,6 +524,11 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 
 		break;
 	default:
+		if (platform_is_msm8956())
+			panel_id = NT35523_WQXGA_DUALDSI_VIDEO_PANEL;
+		else
+			panel_id = TRULY_1080P_VIDEO_PANEL;
+		break;
 		dprintf(CRITICAL, "Display not enabled for %d HW type\n",
 			hw_id);
 		return PANEL_TYPE_UNKNOWN;
