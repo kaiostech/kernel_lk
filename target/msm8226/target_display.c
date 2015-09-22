@@ -46,6 +46,7 @@
 
 #define HFPLL_LDO_ID 8
 #define MAX_M_SEQ_COUNTER 7
+#define DSI_PLL_POLL_MAX_READS 10
 
 static struct pm8x41_wled_data wled_ctrl = {
 	.mod_scheme      = 0x00,
@@ -55,6 +56,20 @@ static struct pm8x41_wled_data wled_ctrl = {
 	.full_current_scale = 0x19,
 	.fdbck = 0x1
 };
+
+static int mdss_dsi_pll_lock_status(uint32_t ctl_base)
+{
+	int pll_locked = 0, i = 0;
+
+	while (i < DSI_PLL_POLL_MAX_READS) {
+		pll_locked = (readl(ctl_base + 0x02c0) & 0x01);
+		if (pll_locked)
+			break;
+		udelay(50);
+		i++;
+	}
+	return pll_locked;
+}
 
 static uint32_t dsi_pll_enable_seq_m(uint32_t ctl_base)
 {
@@ -77,7 +92,7 @@ static uint32_t dsi_pll_enable_seq_m(uint32_t ctl_base)
 	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
-	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
+	pll_locked = mdss_dsi_pll_lock_status(ctl_base);
 	for (i = 0; (i < MAX_M_SEQ_COUNTER) && !pll_locked; i++) {
 		writel(0x00, ctl_base + 0x0214); /* PWRGEN CFG */
 		udelay(50);
@@ -86,7 +101,7 @@ static uint32_t dsi_pll_enable_seq_m(uint32_t ctl_base)
 		writel(0x0f, ctl_base + 0x0220); /* GLB CFG */
 		udelay(600);
 		mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
-		pll_locked = readl(ctl_base + 0x02c0) & 0x01;
+		pll_locked = mdss_dsi_pll_lock_status(ctl_base);
 	}
 
 	return pll_locked;
@@ -119,7 +134,7 @@ static uint32_t dsi_pll_enable_seq_d(uint32_t ctl_base)
 	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
-	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
+	pll_locked = mdss_dsi_pll_lock_status(ctl_base);
 
 	return pll_locked;
 }
@@ -149,7 +164,7 @@ static uint32_t dsi_pll_enable_seq_f1(uint32_t ctl_base)
 	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
-	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
+	pll_locked = mdss_dsi_pll_lock_status(ctl_base);
 
 	return pll_locked;
 }
@@ -175,7 +190,7 @@ static uint32_t dsi_pll_enable_seq_c(uint32_t ctl_base)
 	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
-	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
+	pll_locked = mdss_dsi_pll_lock_status(ctl_base);
 
 	return pll_locked;
 }
@@ -203,7 +218,7 @@ static uint32_t dsi_pll_enable_seq_e(uint32_t ctl_base)
 	udelay(600);
 
 	mdss_dsi_uniphy_pll_lock_detect_setting(ctl_base);
-	pll_locked = readl(ctl_base + 0x02c0) & 0x01;
+	pll_locked = mdss_dsi_pll_lock_status(ctl_base);
 
 	return pll_locked;
 }

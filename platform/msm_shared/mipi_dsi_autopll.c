@@ -105,7 +105,7 @@ int32_t mdss_dsi_auto_pll_config(uint32_t ctl_base,
 
 	writel(0x2b, ctl_base + 0x0278); /* Cal CFG3 */
 	writel(0x66, ctl_base + 0x027c); /* Cal CFG4 */
-	writel(0x05, ctl_base + 0x0264); /* LKDetect CFG2 */
+	writel(0x0d, ctl_base + 0x0264); /* LKDetect CFG2 */
 
 	rem = pd->vco_clock % VCO_REF_CLOCK_RATE;
 	if (rem) {
@@ -148,11 +148,6 @@ int32_t mdss_dsi_auto_pll_config(uint32_t ctl_base,
 
 	cal_cfg11 = gen_vco_clk / 256000000;
 	cal_cfg10 = (gen_vco_clk % 256000000) / 1000000;
-
-	writel(0x02, ctl_base + 0x0208); /* PUMP CFG */
-	writel(0x2b, ctl_base + 0x0278); /* CAL CFG3 */
-	writel(0x66, ctl_base + 0x027c); /* CAL CFG4 */
-	writel(0x0d, ctl_base + 0x0264); /* LKDetect CFG2 */
 
 	writel(sdm_cfg1 & 0xff , ctl_base + 0x023c); /* SDM CFG1 */
 	writel(sdm_cfg2 & 0xff , ctl_base + 0x0240); /* SDM CFG2 */
