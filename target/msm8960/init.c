@@ -390,8 +390,7 @@ void target_uart_init(void)
 		if (MPLATFORM())
 			uart_dm_init(1, 0x12440000, 0x12450000);
 		else
-			uart_dm_init(4, 0x16300000, 0x16340000);
-
+			uart_dm_init(3, 0x16200000, 0x16240000);
 		break;
 
 	case LINUX_MACHTYPE_8064_MPQ_CDP:
