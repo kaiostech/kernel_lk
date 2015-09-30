@@ -3625,6 +3625,7 @@ void aboot_init(const struct app_descriptor *app)
 	{
 		boot_reason_alarm = true;
 	}
+#if VERIFIED_BOOT
 	else if (reboot_mode == DM_VERITY_ENFORCING)
 	{
 		device.verity_mode = 1;
@@ -3640,6 +3641,7 @@ void aboot_init(const struct app_descriptor *app)
 		if(send_delete_keys_to_tz())
 			ASSERT(0);
 	}
+#endif
 
 normal_boot:
 	if (!boot_into_fastboot)
