@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,16 +42,25 @@ unsigned smem_save_subtype(uint32_t type)
 	struct smem_alloc_info *ainfo;
 	unsigned src;
 
-	/* make sure its valid */
+	/* Get pointer to the Board Information META data */
 	ainfo = &smem->alloc_info[SMEM_BOARD_INFO_LOCATION];
+
+	/* Check if memory is allocated smem->alloc_info[info loc].allocated
+	 *  for board information
+	 */
 	if (readl(&ainfo->allocated) == 0)
 		return 1;
 
-	/* point to the board info v8 type */
+	/* Board Information address is the base + offset from META data */
 	src = MSM_SHARED_BASE + readl(&ainfo->offset);
 
-	/* Point to subtype   smem_board_info_v3 + platform_version + fused_chip */
-	src = src + sizeof(struct smem_board_info_v3) + sizeof(unsigned) + sizeof(unsigned);
+	/* Platform subtype is after fused chip in the struture so we add the first
+	 * 3 locations to get the offset to the platform subtype
+	 * smem_board_info_v3 + platform_version + fused_chip
+	 */
+	src = src + sizeof(struct smem_board_info_v3)
+				+ sizeof(((struct smem_board_info_v8){0}).platform_version)
+				+ sizeof(((struct smem_board_info_v8){0}).fused_chip);
 
 	/* Write subtype to memory */
 	writel(type, src);
