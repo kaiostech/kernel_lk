@@ -122,6 +122,20 @@ qm8626_subtypeID_volt_range_t subtype_tbl[] = {
 
 static qm8626_subtype_t qm8626_hw_subtype = {0,0,0};
 
+static void qm8626_enable_mpp6_red_led(void)
+{
+	/* Enable MPP6 as I drain input */
+	REG_WRITE( 0xa540, 0x6a);
+	REG_WRITE( 0xa546, 0x80);
+	/* Configure LPG CHAN6 to drive LED */
+	REG_WRITE( 0x1b641, 0x33);
+	REG_WRITE( 0x1b642, 0x43);
+	REG_WRITE( 0x1b643, 0x20);
+	REG_WRITE( 0x1b644, 0x06);
+	REG_WRITE( 0x1b645, 0x00);
+	REG_WRITE( 0x1b646, 0xE4);
+}
+
 static void enable_mpp7_as_adc_input(void)
 {
 	uint32_t val;
@@ -148,6 +162,18 @@ static void enable_mpp7_as_adc_input(void)
 
 }
 
+static void qm8626_boot_error_detected(void)
+{
+	/* QM8626 RED LED ON For 500ms */
+	qm8626_enable_mpp6_red_led();
+	for (;;) {
+		mdelay(500);
+		REG_WRITE( 0xa546, 0x00);
+		mdelay(500);
+		REG_WRITE( 0xa546, 0x80);
+	}
+}
+
 /*
  * Determines subtype ID from vadc reading, if its not valid always default to
  * HW Subtype 1. So that device boots using qm8626 ID:1 Device tree
@@ -165,10 +191,11 @@ static uint32_t qm8626_determine_hw_subtype_id(uint32_t vadc_result)
 
 	qm8626_hw_subtype.tblMatch = i;
 
-	if (i >= SUBTYPE_TBL_NUM_ELEMS)
-		return( QM8626_HW_PLATFORM_SUBTYPE_1 );
-	else
+	if (i >= SUBTYPE_TBL_NUM_ELEMS) {
+		qm8626_boot_error_detected();
+	} else {
 		return( subtype_tbl[i].id );
+	}
 
 }
 
@@ -210,20 +237,6 @@ static uint8_t qm8626_is_subtype(uint32_t platform_subtype)
 	};
 
 	return(ret);
-}
-
-static void qm8626_enable_mpp6_red_led(void)
-{
-	/* Enable MPP6 as I drain input */
-	REG_WRITE( 0xa540, 0x6a);
-	REG_WRITE( 0xa546, 0x80);
-	/* Configure LPG CHAN6 to drive LED */
-	REG_WRITE( 0x1b641, 0x33);
-	REG_WRITE( 0x1b642, 0x43);
-	REG_WRITE( 0x1b643, 0x20);
-	REG_WRITE( 0x1b644, 0x06);
-	REG_WRITE( 0x1b645, 0x00);
-	REG_WRITE( 0x1b646, 0xE4);
 }
 
 static void qm8626_uart_init(uint8_t id, uint32_t gsbi_base, uint32_t uart_dm_base)
