@@ -127,14 +127,14 @@ static void enable_mpp7_as_adc_input(void)
 	uint32_t val;
 
 	/*
-	 * Sets MPP6_MODE_CTL(0xA540), bits 6:4 to 4 for Analog In and
+	 * Sets MPP7_MODE_CTL(0xA540), bits 6:4 to 4 for Analog In and
 	 *  Bits 3:0 to 1 MPP is always enabled
 	 */
 	val = 0x41;
 	REG_WRITE((MPP_REG_BASE + QM8626_EN_MPP_ADC_INP_MPP7 * MPP_REG_RANGE
 				+ Q_REG_MODE_CTL), val);
 
-	/* Sets MPP6_EN_CTL(0xA546) bit 7 to 1 to Enable the MPP */
+	/* Sets MPP7_EN_CTL(0xA546) bit 7 to 1 to Enable the MPP */
 	val = 0x80;
 	REG_WRITE((MPP_REG_BASE + QM8626_EN_MPP_ADC_INP_MPP7 * MPP_REG_RANGE
 				+ Q_REG_EN_CTL), val);
@@ -152,7 +152,7 @@ static void enable_mpp7_as_adc_input(void)
  * Determines subtype ID from vadc reading, if its not valid always default to
  * HW Subtype 1. So that device boots using qm8626 ID:1 Device tree
  */
- uint32_t qm8626_determine_hw_subtype_id(uint32_t vadc_result)
+static uint32_t qm8626_determine_hw_subtype_id(uint32_t vadc_result)
 {
 	uint32_t i;
 
@@ -172,7 +172,7 @@ static void enable_mpp7_as_adc_input(void)
 
 }
 
-void qm8626_update_subtype(void)
+static void qm8626_update_subtype(void)
 {
 	uint32_t vadc_result = 0;
 
@@ -190,7 +190,29 @@ void qm8626_update_subtype(void)
 
 }
 
-void qm8626_enable_mpp6_red_led(void)
+static uint8_t qm8626_is_subtype(uint32_t platform_subtype)
+{
+	uint8_t ret;
+
+	switch(platform_subtype)
+	{
+	case QM8626_HW_PLATFORM_SUBTYPE_1:
+	case QM8626_HW_PLATFORM_SUBTYPE_2:
+	case QM8626_HW_PLATFORM_SUBTYPE_3:
+	case QM8626_HW_PLATFORM_SUBTYPE_4:
+	case QM8626_HW_PLATFORM_SUBTYPE_5:
+	case QM8626_HW_PLATFORM_SUBTYPE_6:
+	case QM8626_HW_PLATFORM_SUBTYPE_7:
+		ret = 1;
+		break;
+	default:
+		ret = 0;
+	};
+
+	return(ret);
+}
+
+static void qm8626_enable_mpp6_red_led(void)
 {
 	/* Enable MPP6 as I drain input */
 	REG_WRITE( 0xa540, 0x6a);
@@ -204,7 +226,7 @@ void qm8626_enable_mpp6_red_led(void)
 	REG_WRITE( 0x1b646, 0xE4);
 }
 
-void qm8626_uart_init(uint8_t id, uint32_t gsbi_base, uint32_t uart_dm_base)
+static void qm8626_uart_init(uint8_t id, uint32_t gsbi_base, uint32_t uart_dm_base)
 {
 	/* Configure the uart clock */
 	clock_config_uart_dm(id);
@@ -462,13 +484,12 @@ void target_baseband_detect(struct board_data *board)
 		break;
 	case HW_PLATFORM_SUBTYPE_SKUG:
 		break;
-	case QM8626_HW_PLATFORM_SUBTYPE_4:
-	case QM8626_HW_PLATFORM_SUBTYPE_6:
-	case QM8626_HW_PLATFORM_SUBTYPE_7:
-		break;
 	default:
-		dprintf(CRITICAL, "Platform Subtype : %u is not supported\n", platform_subtype);
-		ASSERT(0);
+		if (qm8626_is_subtype(platform_subtype))
+			break;
+		else
+			dprintf(CRITICAL, "Platform Subtype : %u is not supported\n", platform_subtype);
+			ASSERT(0);
 	};
 
 	switch(platform)
