@@ -94,7 +94,6 @@ enum target_subtype {
 };
 
 /* QM8626 Support */
-#define ADC_CHANNEL_SEL_MPP7        22
 #define QM8626_EN_MPP_ADC_INP_MPP7  6
 
 typedef struct {
@@ -179,7 +178,7 @@ void qm8626_update_subtype(void)
 
 	enable_mpp7_as_adc_input();
 
-	vadc_result = pm8x41_adc_channel_read(ADC_CHANNEL_SEL_MPP7);
+	vadc_result = pm8x41_adc_channel_read(MPP_7_CHAN_ID);
 
 	qm8626_hw_subtype.id = qm8626_determine_hw_subtype_id(vadc_result);
 
