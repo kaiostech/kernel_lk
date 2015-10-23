@@ -29,7 +29,7 @@
 #include <lib/fs.h>
 #include "ext2_priv.h"
 
-#define LOCAL_TRACE 1
+#define LOCAL_TRACE 0
 
 static void endian_swap_superblock(struct ext2_super_block *sb)
 {
