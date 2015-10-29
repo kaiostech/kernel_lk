@@ -64,6 +64,7 @@ static void platform_detect()
 			return;
 
 		board.platform = board_info_v6.board_info_v3.msm_id;
+		board.platform_version = board_info_v6.board_info_v3.msm_version;
 		board.platform_hw = board_info_v6.board_info_v3.hw_platform;
 		board.platform_subtype = board_info_v6.platform_subtype;
 	}
@@ -78,6 +79,7 @@ static void platform_detect()
 			return;
 
 		board.platform = board_info_v7.board_info_v3.msm_id;
+		board.platform_version = board_info_v7.board_info_v3.msm_version;
 		board.platform_hw = board_info_v7.board_info_v3.hw_platform;
 		board.platform_subtype = board_info_v7.platform_subtype;
 		board.pmic_type = board_info_v7.pmic_type;
@@ -105,6 +107,21 @@ uint32_t board_platform_id(void)
 uint32_t board_target_id()
 {
 	return board.target;
+}
+
+uint32_t board_soc_version()
+{
+        return board.platform_version;
+}
+
+uint32_t board_foundry_id(void)
+{
+        return -1;
+}
+
+uint32_t board_hardware_subtype(void)
+{
+        return board.platform_subtype;
 }
 
 uint32_t board_baseband()

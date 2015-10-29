@@ -46,6 +46,7 @@ ifeq ($(PLATFORM),msm8960)
 			$(LOCAL_DIR)/crypto_hash.o \
 			$(LOCAL_DIR)/certificate.o \
 			$(LOCAL_DIR)/image_verify.o \
+			$(LOCAL_DIR)/dev_tree.o \
 			$(LOCAL_DIR)/scm.o \
 			$(LOCAL_DIR)/interrupts.o \
 			$(LOCAL_DIR)/clock-local.o \

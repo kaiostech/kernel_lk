@@ -29,11 +29,13 @@
 
 #ifndef __BOARD_H
 #define __BOARD_H
+#include <smem.h>
 
 #define LINUX_MACHTYPE_UNKNOWN 0
 
 struct board_data {
 	uint32_t platform;
+	uint32_t platform_version;
 	uint32_t platform_hw;
 	uint32_t platform_subtype;
 	uint32_t target;
@@ -48,8 +50,16 @@ void target_baseband_detect(struct board_data *);
 uint32_t board_platform_id();
 uint32_t board_target_id();
 uint32_t board_baseband();
+uint32_t board_soc_version();
+uint32_t board_hardware_subtype(void);
+uint32_t board_get_ddr_subtype(void);
+uint32_t board_hlos_subtype(void);
 uint32_t board_hardware_id();
 uint32_t board_pmic_type();
 uint32_t board_pmic_ver();
 
+#define DDR_512MB      (512 * MB)
+enum subtype_ddr {
+	SUBTYPE_512MB = 1,
+};
 #endif

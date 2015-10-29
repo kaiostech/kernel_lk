@@ -292,9 +292,15 @@ typedef enum {
 
 	SMEM_AARM_PARTITION_TABLE = 9,
 
+	SMEM_CHANNEL_ALLOC_TBL = 13,
+
+	SMEM_SMD_BASE_ID = 14,
+
 	SMEM_APPS_BOOT_MODE = 106,
 
 	SMEM_BOARD_INFO_LOCATION = 137,
+
+	SMEM_SMD_FIFO_BASE_ID = 338,
 
 	SMEM_USABLE_RAM_PARTITION_TABLE = 402,
 
@@ -359,23 +365,23 @@ struct smem {
 
 struct smem_ram_ptn {
 	char name[16];
-	unsigned start;
-	unsigned size;
+	uint32_t start;
+	uint32_t size;
 
 	/* RAM Partition attribute: READ_ONLY, READWRITE etc.  */
-	unsigned attr;
+	uint32_t attr;
 
 	/* RAM Partition category: EBI0, EBI1, IRAM, IMEM */
-	unsigned category;
+	uint32_t category;
 
 	/* RAM Partition domain: APPS, MODEM, APPS & MODEM (SHARED) etc. */
-	unsigned domain;
+	uint32_t domain;
 
 	/* RAM Partition type: system, bootloader, appsboot, apps etc. */
-	unsigned type;
+	uint32_t type;
 
 	/* reserved for future expansion without changing version number */
-	unsigned reserved2, reserved3, reserved4, reserved5;
+	uint32_t reserved2, reserved3, reserved4, reserved5;
 } __attribute__ ((__packed__));
 
 struct smem_ram_ptable {
@@ -419,5 +425,6 @@ struct smem_ptable {
 
 unsigned smem_read_alloc_entry_offset(smem_mem_type_t type, void *buf, int len, int offset);
 int smem_ram_ptable_init(struct smem_ram_ptable *smem_ram_ptable);
-
+uint32_t smem_get_ram_ptable_version(void);
+uint32_t smem_get_ram_ptable_len(void);
 #endif				/* __PLATFORM_MSM_SHARED_SMEM_H */

@@ -41,6 +41,7 @@
 /* partition table from SMEM */
 static struct smem_ptable smem_ptable;
 static unsigned smem_apps_flash_start = 0xFFFFFFFF;
+//static ram_partition_table ptable;
 
 static void dump_smem_ptable(void)
 {
@@ -122,6 +123,11 @@ unsigned smem_get_apps_flash_start(void)
 {
 	return smem_apps_flash_start;
 }
+
+//uint32_t smem_get_ram_ptable_version(void)
+//{
+//	return ptable.hdr.version;
+//}
 
 void smem_add_modem_partitions(struct ptable *flash_ptable)
 {
