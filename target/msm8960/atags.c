@@ -239,6 +239,35 @@ unsigned *target_atag_mem(unsigned *ptr)
 	return ptr;
 }
 
+uint32_t target_dev_tree_mem(void *fdt, uint32_t memory_node_offset)
+{
+	struct smem_ram_ptable ram_ptable;
+	uint8_t i = 0, ret=0;
+
+	if (smem_ram_ptable_init(&ram_ptable))
+	{
+		for (i = 0; i < ram_ptable.len; i++)
+		{
+			if (ram_ptable.parts[i].category == SDRAM &&
+					(ram_ptable.parts[i].type == SYS_MEMORY))
+			{
+				/* Pass along all other usable memory regions to Linux */
+				ret = dev_tree_add_mem_info(fdt,
+								memory_node_offset,
+								ram_ptable.parts[i].start,
+								ram_ptable.parts[i].size);
+				if (ret)
+				{
+					dprintf(CRITICAL, "Failed to add secondary banks memory addresses\n");
+					goto target_dev_tree_mem_err;
+				}
+			}
+		}
+	}
+	target_dev_tree_mem_err:
+		return ret;
+}
+
 void *target_get_scratch_address(void)
 {
 	return ((void *) SCRATCH_ADDR);

@@ -26,6 +26,7 @@ MODULES += \
 	dev/ssbi \
 	lib/ptable \
 	dev/panel/msm \
+	lib/libfdt
 
 DEFINES += \
 	MEMSIZE=$(MEMSIZE) \
