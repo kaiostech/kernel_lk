@@ -68,4 +68,19 @@
 #define GPIO_SW102 GPIO(GPIO_PORT_J, 14)
 #define GPIO_SW103 GPIO(GPIO_PORT_J, 15)
 
+/**
+ *  Definitions for sensor bus signals. Includes
+ *   nrf51, accelerometer, and gyroscope
+ */
+
+#define GPIO_NRF_CS         GPIO(GPIO_PORT_K, 0)
+#define GPIO_NRF_INT        GPIO(GPIO_PORT_K, 1)
+#define GPIO_GYRO_nCS       GPIO(GPIO_PORT_K, 4)
+#define GPIO_GYRO_INT       GPIO(GPIO_PORT_K, 5)
+#define GPIO_ACC_nCS        GPIO(GPIO_PORT_K, 2)
+#define GPIO_ACC_INT        GPIO(GPIO_PORT_K, 3)
+#define GPIO_SPI5_SCK       GPIO(GPIO_PORT_F, 7)
+#define GPIO_SPI5_MISO      GPIO(SPIO_PORT_F, 8)
+#define GPIO_SPI5_MOSI      GPIO(SPIO_PORT_F, 9)
+
 #endif
