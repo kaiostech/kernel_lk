@@ -12,15 +12,15 @@ typedef struct {
         uint32_t    I2SPR;      //I2S Prescaler Register 0x20
 } SPI_Type;
 
-#define SPI1_BASE 0x40013000;
-#define I2S1_BASE 0x40013000;
-#define SPI2_BASE 0x40003800;
-#define I2S2_BASE 0x40003800;
-#define SPI3_BASE 0x40003C00;
-#define I2S3_BASE 0x40003C00;
-#define SPI4_BASE 0x40014000;
-#define SPI5_BASE 0x40015000;
-#define SPI6_BASE 0x40015400;
+#define SPI1_BASE 0x40013000
+#define I2S1_BASE 0x40013000
+#define SPI2_BASE 0x40003800
+#define I2S2_BASE 0x40003800
+#define SPI3_BASE 0x40003C00
+#define I2S3_BASE 0x40003C00
+#define SPI4_BASE 0x40014000
+#define SPI5_BASE 0x40015000
+#define SPI6_BASE 0x40015400
 
 #define SPI1        ((SPI_Type *) SPI1_BASE)
 #define I2S1        ((SPI_Type *) I2S1_BASE)
@@ -107,4 +107,6 @@ typedef struct {
 #define     I2SPR_ODD       8
 #define     I2SPR_I2SDIV    0
 
+#define     SPI_ENA(spi)    (spi->CR1 = spi->CR1 | (1 << CR1_SPE))
+#define     SPI_DIS(spi)    (spi->CR1 = spi->CR1 & ( 0xFFFF ^ (1 << CR1_SPE)))
 

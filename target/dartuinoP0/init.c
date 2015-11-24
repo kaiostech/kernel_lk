@@ -118,6 +118,37 @@ static uint8_t* gen_mac_address(void) {
     mac_addr[0] |= (1<<1);
     return mac_addr;
 }
+/**
+ * @brief Initiale SPI5 module and IO for control of spi bus linking nrf51, accelerometer, and gyroscope.
+ *
+ */
+void sensor_bus_init(void)
+{
+    gpio_config(GPIO_SPI5_SCK,  GPIO_STM32_AF | GPIO_STM32_AFn(GPIO_AF5_SPI5) | GPIO_PULLUP);
+    gpio_config(GPIO_SPI5_MISO, GPIO_STM32_AF | GPIO_STM32_AFn(GPIO_AF5_SPI5) | GPIO_PULLUP);
+    gpio_config(GPIO_SPI5_MOSI, GPIO_STM32_AF | GPIO_STM32_AFn(GPIO_AF5_SPI5) | GPIO_PULLUP);
+
+    gpio_config(GPIO_NRF_CS,    GPIO_OUTPUT );
+    gpio_config(GPIO_NRF_INT,   GPIO_INPUT   | GPIO_PULLUP);
+
+    gpio_config(GPIO_GYRO_nCS,  GPIO_OUTPUT );
+    gpio_config(GPIO_GYRO_INT,  GPIO_INPUT   | GPIO_PULLUP);
+
+    gpio_config(GPIO_ACC_nCS,   GPIO_OUTPUT );
+    gpio_config(GPIO_ACC_INT,   GPIO_INPUT   | GPIO_PULLUP);
+
+    gpio_set(GPIO_NRF_CS, GPIO_PIN_RESET);
+    gpio_set(GPIO_GYRO_nCS, GPIO_PIN_SET);
+    gpio_set(GPIO_ACC_nCS, GPIO_PIN_SET);
+
+    SPI5->CR1 =     0x06    <<  3  |\
+                    1       <<  2;           //Master mode enabled
+    SPI3->CR2 =     0xF     <<  8;             //16 bit transfer mode
+
+    SPI_ENA(SPI3);
+
+}
+
 
 void target_init(void)
 {
@@ -144,28 +175,6 @@ void target_init(void)
     // start usb
     target_usb_setup();
 }
-
-/*
-void target_init(void)
-{
-    uint8_t* mac_addr = gen_mac_address();
-    stm32_debug_init();
-
-    eth_init(mac_addr, PHY_KSZ8721);
-#if WITH_LIB_MINIP
-    minip_set_macaddr(mac_addr);
-
-    uint32_t ip_addr = IPV4(192, 168, 0, 98);
-    uint32_t ip_mask = IPV4(255, 255, 255, 0);
-    uint32_t ip_gateway = IPV4_NONE;
-    minip_init(stm32_eth_send_minip_pkt, NULL, ip_addr, ip_mask, ip_gateway);
-#endif
-
-    // start usb
-    target_usb_setup();
-
-}
-*/
 
 /**
   * @brief  Initializes SDRAM GPIO.

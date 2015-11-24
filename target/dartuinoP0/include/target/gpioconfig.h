@@ -80,7 +80,7 @@
 #define GPIO_ACC_nCS        GPIO(GPIO_PORT_K, 2)
 #define GPIO_ACC_INT        GPIO(GPIO_PORT_K, 3)
 #define GPIO_SPI5_SCK       GPIO(GPIO_PORT_F, 7)
-#define GPIO_SPI5_MISO      GPIO(SPIO_PORT_F, 8)
-#define GPIO_SPI5_MOSI      GPIO(SPIO_PORT_F, 9)
+#define GPIO_SPI5_MISO      GPIO(GPIO_PORT_F, 8)
+#define GPIO_SPI5_MOSI      GPIO(GPIO_PORT_F, 9)
 
 #endif
