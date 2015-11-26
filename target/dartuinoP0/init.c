@@ -124,6 +124,9 @@ static uint8_t* gen_mac_address(void) {
  */
 void sensor_bus_init(void)
 {
+    __HAL_SENSOR_BUS_GPIO_CLK_ENABLE();
+    __HAL_RCC_SPI5_CLK_ENABLE();
+
     gpio_config(GPIO_SPI5_SCK,  GPIO_STM32_AF | GPIO_STM32_AFn(GPIO_AF5_SPI5) | GPIO_PULLUP);
     gpio_config(GPIO_SPI5_MISO, GPIO_STM32_AF | GPIO_STM32_AFn(GPIO_AF5_SPI5) | GPIO_PULLUP);
     gpio_config(GPIO_SPI5_MOSI, GPIO_STM32_AF | GPIO_STM32_AFn(GPIO_AF5_SPI5) | GPIO_PULLUP);
@@ -145,7 +148,7 @@ void sensor_bus_init(void)
                     1       <<  2;           //Master mode enabled
     SPI3->CR2 =     0xF     <<  8;             //16 bit transfer mode
 
-    SPI_ENA(SPI3);
+    //SPI_ENA(SPI3);
 
 }
 

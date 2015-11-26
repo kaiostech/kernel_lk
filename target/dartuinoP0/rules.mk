@@ -18,9 +18,10 @@ GLOBAL_DEFINES += \
     PLL_M_VALUE=8 \
     PLL_N_VALUE=336 \
     PLL_P_VALUE=2 \
-\
     PKTBUF_POOL_SIZE=16
 
+MODULES += \
+    dev/sensor/bmi055 \
 
 GLOBAL_INCLUDES += $(LOCAL_DIR)/include
 
