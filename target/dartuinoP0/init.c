@@ -85,9 +85,9 @@ void target_early_init(void)
     HAL_GPIO_Init(GPIOJ, &gpio_init_structure);
 
     // Configure momentary switches
-    gpio_init_structure.Mode        = GPIO_MODE_INPUT;
-    gpio_init_structure.Pin          = GPIO_TO_PIN_MASK(GPIO_SW100) | GPIO_TO_PIN_MASK(GPIO_SW101) |\
-                                      GPIO_TO_PIN_MASK(GPIO_SW102) | GPIO_TO_PIN_MASK(GPIO_SW103);
+    gpio_init_structure.Mode            =   GPIO_MODE_INPUT;
+    gpio_init_structure.Pin             =   GPIO_TO_PIN_MASK(GPIO_SW100) | GPIO_TO_PIN_MASK(GPIO_SW101) |\
+                                            GPIO_TO_PIN_MASK(GPIO_SW102) | GPIO_TO_PIN_MASK(GPIO_SW103);
     HAL_GPIO_Init(GPIOJ, &gpio_init_structure);
 
     // Initialize to a pattern just so we know we have something
