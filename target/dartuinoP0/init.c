@@ -50,7 +50,7 @@ const sdram_config_t target_sdram_config = {
     .col_bits_num = SDRAM_COLUMN_BITS_8
 };
 
-
+static SPI_HandleTypeDef spi_handle;
 
 void target_early_init(void)
 {
@@ -144,11 +144,22 @@ void sensor_bus_init(void)
     gpio_set(GPIO_GYRO_nCS, GPIO_PIN_SET);
     gpio_set(GPIO_ACC_nCS, GPIO_PIN_SET);
 
-    SPI5->CR1 =     0x06    <<  3  |\
-                    1       <<  2;           //Master mode enabled
-    SPI3->CR2 =     0xF     <<  8;             //16 bit transfer mode
+	spi_handle.Instance               = SPI2;
+	spi_handle.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
+	spi_handle.Init.Direction         = SPI_DIRECTION_2LINES;
+	spi_handle.Init.CLKPhase          = SPI_PHASE_1EDGE;
+	spi_handle.Init.CLKPolarity       = SPI_POLARITY_HIGH;
+	spi_handle.Init.DataSize          = SPI_DATASIZE_16BIT;
+	spi_handle.Init.FirstBit          = SPI_FIRSTBIT_MSB;
+	spi_handle.Init.TIMode            = SPI_TIMODE_DISABLE;
+	spi_handle.Init.CRCCalculation    = SPI_CRCCALCULATION_DISABLE;
+	spi_handle.Init.CRCPolynomial     = 7;
+	spi_handle.Init.NSS               = SPI_NSS_SOFT;
+	spi_handle.Init.Mode              = SPI_MODE_MASTER;
 
-    //SPI_ENA(SPI3);
+	if (HAL_SPI_Init(&spi_handle) != HAL_OK) {
+		return ERR_GENERIC;
+	}
 
 }
 

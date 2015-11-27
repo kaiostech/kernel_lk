@@ -25,8 +25,11 @@
 #include <sys/types.h>
 #include <dev/bmi055.h>
 
-uint32_t bmi055_init(BMI055_Handle_Type *handle)
+static SPI_HandleTypeDef spi_handle;
+
+uint32_t bmi055_init(SPI_Type * handle)
 {
+    spi_handle = handle;
 
 }
 
