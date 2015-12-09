@@ -679,6 +679,10 @@ int boot_linux_from_flash(void)
 		image_addr = (unsigned char *)target_get_scratch_address();
 		offset = 0;
 
+		if (UINT_MAX < ((uint64_t)kernel_actual + (uint64_t)ramdisk_actual+ page_size)) {
+			dprintf(CRITICAL, "Integer overflow detected in bootimage header fields\n");
+			return -1;
+		}
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
 
 		/* Read image without signature */
