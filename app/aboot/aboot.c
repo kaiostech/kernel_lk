@@ -120,6 +120,9 @@ int update_device_tree(const void *, char *, void *, unsigned);
 #define ADD_OF(a, b) (UINT_MAX - b > a) ? (a + b) : UINT_MAX
 /* make 4096 as default size to ensure EFS,EXT4's erasing */
 #define DEFAULT_ERASE_SIZE  4096
+#define MAX_GPT_NAME_SIZE 72
+#define MAX_RSP_SIZE 64
+#define MAX_GET_VAR_NAME_SIZE   256
 
 static const char *emmc_cmdline = " androidboot.emmc=true";
 static const char *usb_sn_cmdline = " androidboot.serialno=";
@@ -169,6 +172,28 @@ char sn_buf[13];
 
 extern int emmc_recovery_init(void);
 
+/*
+ * Partition info, required to be published
+ * for fastboot
+ */
+struct getvar_partition_info {
+	const char part_name[MAX_GPT_NAME_SIZE]; /* Partition name */
+	char getvar_size[MAX_GET_VAR_NAME_SIZE]; /* fastboot get var name for size */
+	char getvar_type[MAX_GET_VAR_NAME_SIZE]; /* fastboot get var name for type */
+	char size_response[MAX_RSP_SIZE];        /* fastboot response for size */
+	char type_response[MAX_RSP_SIZE];        /* fastboot response for type */
+};
+
+/*
+ * Right now, we are publishing the info for only
+ * three partitions
+ */
+struct getvar_partition_info part_info[] =
+{
+	{ "system"  , "partition-size:", "partition-type:", "", "ext4" },
+	{ "userdata", "partition-size:", "partition-type:", "", "ext4" },
+	{ "cache"   , "partition-size:", "partition-type:", "", "ext4" },
+};
 #if NO_KEYPAD_DRIVER
 extern int fastboot_trigger(void);
 #endif
@@ -1909,6 +1934,66 @@ void splash_screen ()
 	}
 }
 
+/* Get the size from partiton name */
+static void get_partition_size(const char *arg, char *response)
+{
+	uint64_t ptn = 0;
+	uint64_t size;
+	int index = INVALID_PTN;
+
+	index = partition_get_index(arg);
+
+	if (index == INVALID_PTN)
+	{
+		dprintf(CRITICAL, "Invalid partition index\n");
+		return;
+	}
+
+	 ptn = partition_get_offset(index);
+
+	if(!ptn)
+	{
+		dprintf(CRITICAL, "Invalid partition name %s\n", arg);
+		return;
+	}
+
+	size = partition_get_size(index);
+
+	snprintf(response, MAX_RSP_SIZE, "\t 0x%llx", size);
+	return;
+}
+
+
+/*
+ * Publish the partition type & size info
+ * fastboot getvar will publish the required information.
+ * fastboot getvar partition_size:<partition_name>: partition size in hex
+ * fastboot getvar partition_type:<partition_name>: partition type (ext/fat)
+ */
+static void publish_getvar_partition_info(struct getvar_partition_info *info, uint8_t num_parts)
+{
+	uint8_t i;
+
+	for (i = 0; i < num_parts; i++) {
+		get_partition_size(info[i].part_name, info[i].size_response);
+
+		if (strlcat(info[i].getvar_size, info[i].part_name, MAX_GET_VAR_NAME_SIZE) >= MAX_GET_VAR_NAME_SIZE)
+		{
+			dprintf(CRITICAL, "partition size name truncated\n");
+			return;
+		}
+		if (strlcat(info[i].getvar_type, info[i].part_name, MAX_GET_VAR_NAME_SIZE) >= MAX_GET_VAR_NAME_SIZE)
+		{
+			dprintf(CRITICAL, "partition type name truncated\n");
+			return;
+		}
+
+		/* publish partition size & type info */
+		fastboot_publish((const char *) info[i].getvar_size, (const char *) info[i].size_response);
+		fastboot_publish((const char *) info[i].getvar_type, (const char *) info[i].type_response);
+	}
+}
+
 /* register commands and variables for fastboot */
 void aboot_fastboot_register_commands(void)
 {
@@ -1936,6 +2021,14 @@ void aboot_fastboot_register_commands(void)
         for (i = 1; i < fastboot_cmds_count; i++)
                 fastboot_register(cmd_list[i].name,cmd_list[i].cb);
 
+	/*
+	* partition info is supported only for emmc partitions
+	* Calling this for NAND prints some error messages which
+	* is harmless but misleading. Avoid calling this for NAND
+	* devices.
+	*/
+	if (target_is_emmc_boot())
+		publish_getvar_partition_info(part_info, ARRAY_SIZE(part_info));
 	fastboot_publish("product", TARGET(BOARD));
 	fastboot_publish("kernel", "lk");
 	fastboot_publish("serialno", sn_buf);
