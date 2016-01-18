@@ -1188,7 +1188,6 @@ int boot_linux_from_mmc(void)
 #else
 		dprintf(CRITICAL,
 			"Your device has been unlocked and can't be trusted.\nWait for 5 seconds before proceeding\n");
-		mdelay(5000);
 #endif
 	}
 #endif
