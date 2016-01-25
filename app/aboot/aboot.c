@@ -433,6 +433,10 @@ unsigned char *update_cmdline(const char * cmdline)
 		cmdline_len += strlen(warmboot_cmdline);
 	}
 
+#if defined(MULTIPLE_BOOT_SLOT)
+	cmdline_len += boot_slot_cmdline_strlen();
+#endif // MULTIPLE_BOOT_SLOT
+
 	if (cmdline_len > 0) {
 		const char *src;
 		unsigned char *dst;
@@ -606,6 +610,12 @@ unsigned char *update_cmdline(const char * cmdline)
 			src = target_boot_params;
 			while ((*dst++ = *src++));
 		}
+
+#if defined(MULTIPLE_BOOT_SLOT)
+		src = boot_slot_suffix_str();
+		if (have_cmdline) --dst;
+		while ((*dst++ = *src++));
+#endif // MULTIPLE_BOOT_SLOT
 	}
 
 
@@ -1039,34 +1049,53 @@ int boot_linux_from_mmc(void)
 		hdr = uhdr;
 		goto unified_boot;
 	}
-	if (!boot_into_recovery) {
-		index = partition_get_index("boot");
-		ptn = partition_get_offset(index);
-		if(ptn == 0) {
-			dprintf(CRITICAL, "ERROR: No boot partition found\n");
-                    return -1;
-		}
-	}
-	else {
-		index = partition_get_index("recovery");
-		ptn = partition_get_offset(index);
-		if(ptn == 0) {
-			dprintf(CRITICAL, "ERROR: No recovery partition found\n");
-                    return -1;
-		}
-	}
-	/* Set Lun for boot & recovery partitions */
-	mmc_set_lun(partition_get_lun(index));
 
-	if (mmc_read(ptn + offset, (uint32_t *) buf, page_size)) {
-		dprintf(CRITICAL, "ERROR: Cannot read boot image header\n");
-                return -1;
-	}
+	do {
+		if (!boot_into_recovery) {
+#if defined(MULTIPLE_BOOT_SLOT)
+			index = partition_get_bootable_index();
+#else
+			index = partition_get_index("boot");
+#endif // MULTIPLE_BOOT_SLOT
+			ptn = partition_get_offset(index);
+			if(ptn == 0) {
+				dprintf(CRITICAL, "ERROR: No boot partition found\n");
+				return -1;
+			}
+		} else {
+			index = partition_get_index("recovery");
+			ptn = partition_get_offset(index);
+			if(ptn == 0) {
+				dprintf(CRITICAL, "ERROR: No recovery partition found\n");
+				return -1;
+			}
+		}
 
-	if (memcmp(hdr->magic, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
-		dprintf(CRITICAL, "ERROR: Invalid boot image header\n");
-                return -1;
-	}
+		/* Set Lun for boot & recovery partitions */
+		mmc_set_lun(partition_get_lun(index));
+
+		if (mmc_read(ptn + offset, (unsigned int *) buf, page_size)) {
+			dprintf(CRITICAL, "ERROR: Cannot read boot image header\n");
+#if defined(MULTIPLE_BOOT_SLOT)
+			partition_clear_attribute(index, FLAG_TYPE_PRIORITY);
+			partition_clear_attribute(index, FLAG_TYPE_TRIES);
+			ptn = 0;
+#else
+			return -1;
+#endif // MULTIPLE_BOOT_SLOT
+		}
+
+		if (memcmp(hdr->magic, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
+			dprintf(CRITICAL, "ERROR: Invalid boot image header\n");
+#if defined(MULTIPLE_BOOT_SLOT)
+			partition_clear_attribute(index, FLAG_TYPE_PRIORITY);
+			partition_clear_attribute(index, FLAG_TYPE_TRIES);
+			ptn = 0;
+#else
+			return -1;
+#endif // MULTIPLE_BOOT_SLOT
+		}
+	} while(!ptn);
 
 	if (hdr->page_size && (hdr->page_size != page_size)) {
 

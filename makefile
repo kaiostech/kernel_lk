@@ -64,6 +64,10 @@ ifeq ($(TARGET_BUILD_VARIANT),user)
   CFLAGS += -DDISABLE_FASTBOOT_CMDS=1
 endif
 
+ifeq ($(MULTIPLE_BOOT_SLOT),1)
+  CFLAGS += -DMULTIPLE_BOOT_SLOT
+endif
+
 # setup toolchain prefix
 TOOLCHAIN_PREFIX ?= arm-eabi-
 CFLAGS += -fstack-protector-all

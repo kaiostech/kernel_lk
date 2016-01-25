@@ -75,6 +75,16 @@
 #define NUM_PARTITIONS             128
 #define PART_ATT_READONLY_OFFSET   60
 
+#if defined(MULTIPLE_BOOT_SLOT)
+#define PART_ATT_SUCCESS_OFFSET    56
+#define PART_ATT_TRIES_OFFSET      52
+#define PART_ATT_PRIORITY_OFFSET   48
+
+#define PART_ATT_SUCCESS_MASK      ((uint64_t)0x1 << PART_ATT_SUCCESS_OFFSET)
+#define PART_ATT_TRIES_MASK        ((uint64_t)0xF << PART_ATT_TRIES_OFFSET)
+#define PART_ATT_PRIORITY_MASK     ((uint64_t)0xF << PART_ATT_PRIORITY_OFFSET)
+#endif // MULTIPLE_BOOT_SLOT
+
 /* Some useful define used to access the MBR/EBR table */
 #define BLOCK_SIZE                0x200
 #define TABLE_ENTRY_0             0x1BE
@@ -146,6 +156,54 @@
      *((x)+6) = (((y) >> 48) & 0xff);   \
      *((x)+7) = (((y) >> 56) & 0xff);
 
+#if defined(MULTIPLE_BOOT_SLOT)
+typedef enum {
+	FLAG_TYPE_SUCCESS = 1,
+	FLAG_TYPE_TRIES,
+	FLAG_TYPE_PRIORITY,
+} partition_flag_type;
+
+struct gpt_header_t {
+	uint64_t signature;
+	uint32_t rev;
+	uint32_t hdr_size;
+	uint32_t hdr_crc32;
+	uint32_t reserved;
+	uint64_t curr_lba;
+	uint64_t backup_lba;
+	uint64_t first_usable_lba;
+	uint64_t last_usable_lba;
+	uint8_t  disk_guid[PARTITION_TYPE_GUID_SIZE];
+	uint64_t start_lba_part_array;
+	uint32_t num_parts;
+	uint32_t part_size;
+	uint32_t part_arr_crc32;
+	uint8_t  reserved_zeros[420];
+} __attribute__((packed)) gpt_header_t;
+#endif // MULTIPLE_BOOT_SLOT
+
+#if defined(MULTIPLE_BOOT_SLOT)
+/* Unified mbr and gpt entry types */
+struct partition_entry {
+	unsigned char type_guid[PARTITION_TYPE_GUID_SIZE];
+	unsigned char unique_partition_guid[UNIQUE_PARTITION_GUID_SIZE];
+	unsigned long long first_lba;
+	unsigned long long last_lba;
+	unsigned long long attribute_flag;
+	unsigned char name[MAX_GPT_NAME_SIZE];
+	unsigned dtype;
+	unsigned long long size;
+	uint8_t lun;
+} __attribute__ ((packed));
+
+typedef struct
+{
+	uint32_t data1;
+	uint16_t data2;
+	uint16_t data3;
+	uint8_t  data4[8];
+} __attribute__((packed)) guid_t;
+#else
 /* Unified mbr and gpt entry types */
 struct partition_entry {
 	unsigned char type_guid[PARTITION_TYPE_GUID_SIZE];
@@ -158,6 +216,7 @@ struct partition_entry {
 	unsigned char name[MAX_GPT_NAME_SIZE];
 	uint8_t lun;
 };
+#endif //MULTIPLE_BOOT_SLOT
 
 /* Partition info requested by app layer */
 struct partition_info {
@@ -182,4 +241,11 @@ struct partition_info partition_get_info(const char *name);
 void partition_dump(void);
 /* Read only attribute for partition */
 int partition_read_only(int index);
+
+#if defined(MULTIPLE_BOOT_SLOT)
+int partition_get_bootable_index();
+uint16_t boot_slot_cmdline_strlen();
+char *boot_slot_suffix_str();
+int partition_clear_attribute(int index, partition_flag_type flag);
+#endif // MULTIPLE_BOOT_SLOT
 #endif
