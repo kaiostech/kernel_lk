@@ -68,6 +68,10 @@ ifeq ($(MULTIPLE_BOOT_SLOT),1)
   CFLAGS += -DMULTIPLE_BOOT_SLOT
 endif
 
+ifeq ($(DISABLE_CHARGER_DETECTION),1)
+  CFLAGS += -DDISABLE_CHARGER_DETECTION
+endif
+
 # setup toolchain prefix
 TOOLCHAIN_PREFIX ?= arm-eabi-
 CFLAGS += -fstack-protector-all

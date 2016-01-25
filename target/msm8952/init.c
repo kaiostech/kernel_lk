@@ -478,6 +478,7 @@ unsigned target_pause_for_battery_charge(void)
 				pm8x41_reg_read(SMBCHG_USB_RT_STS));
 	dprintf(INFO, "%s : pon_reason is:0x%x cold_boot:%d usb_sts:%d\n", __func__,
 		pon_reason, is_cold_boot, usb_present_sts);
+#if !defined(DISABLE_CHARGER_DETECTION)
 	/* In case of fastboot reboot,adb reboot or if we see the power key
 	* pressed we do not want go into charger mode.
 	* fastboot reboot is warm boot with PON hard reset bit not set
@@ -489,6 +490,7 @@ unsigned target_pause_for_battery_charge(void)
 			usb_present_sts)
 		return 1;
 	else
+#endif
 		return 0;
 }
 
