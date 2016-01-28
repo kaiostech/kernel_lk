@@ -624,7 +624,7 @@ int write_misc(unsigned page_offset, void *buf, unsigned size)
 
 int get_ffbm(char *ffbm, unsigned size)
 {
-	const char *ffbm_cmd = "ffbm-";
+	const char *ffbm_cmd = "init=/etc/mmi/init";
 	uint32_t page_size = get_page_size();
 	char *ffbm_page_buffer = NULL;
 	int retval = 0;
@@ -655,14 +655,8 @@ int get_ffbm(char *ffbm, unsigned size)
 	}
 	else
 	{
-		if (strlcpy(ffbm, ffbm_page_buffer, size) <
-				FFBM_MODE_BUF_SIZE -1)
-		{
-			dprintf(CRITICAL, "Invalid string in misc partition\n");
-			retval = -1;
-		}
-		else
-			retval = 1;
+		strlcpy(ffbm, ffbm_page_buffer, size);
+		retval = 1;
 	}
 cleanup:
 	if(ffbm_page_buffer)

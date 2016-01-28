@@ -32,7 +32,7 @@
 #define UPDATE_MAGIC         "MSM-RADIO-UPDATE"
 #define UPDATE_MAGIC_SIZE    16
 #define UPDATE_VERSION       0x00010000
-#define FFBM_MODE_BUF_SIZE   8
+#define FFBM_MODE_BUF_SIZE   32
 #define BOOTSELECT_SIGNATURE ('B' | ('S' << 8) | ('e' << 16) | ('l' << 24))
 #define BOOTSELECT_VERSION   0x00010001
 #define BOOTSELECT_FORMAT    (1 << 31)

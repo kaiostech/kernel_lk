@@ -102,7 +102,7 @@ void write_device_info_flash(device_info *dev);
 
 static const char *emmc_cmdline = " androidboot.emmc=true";
 static const char *usb_sn_cmdline = " androidboot.serialno=";
-static const char *androidboot_mode = " androidboot.mode=";
+static const char *androidboot_mode = " ";
 static const char *display_cmdline = " mdss_mdp.panel=";
 static const char *loglevel         = " quiet";
 static const char *battchg_pause = " androidboot.mode=charger";
