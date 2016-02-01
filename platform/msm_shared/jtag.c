@@ -27,7 +27,7 @@
 
 volatile unsigned _jtag_cmd = 0;
 volatile unsigned _jtag_msg = 0;
-unsigned char _jtag_cmd_buffer[128];
+unsigned char _jtag_cmd_buffer[256];
 unsigned char _jtag_msg_buffer[128];
 
 volatile unsigned _jtag_arg0 = 0;
