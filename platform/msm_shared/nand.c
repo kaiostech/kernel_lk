@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -3326,6 +3326,12 @@ void flash_init(void)
 	flash_data = memalign(32, 4096 + 128);
 	flash_spare = memalign(32, 128);
 
+	if( (flash_ptrlist == NULL ) || ( flash_cmdlist == NULL ) )
+	{
+		dprintf(CRITICAL,"Error in allocating memory in flash init \n");
+		ASSERT(0);
+	}
+
 	flash_read_id(flash_cmdlist, flash_ptrlist);
 	if ((FLASH_8BIT_NAND_DEVICE == flash_info.type)
 	    || (FLASH_16BIT_NAND_DEVICE == flash_info.type)) {
@@ -3339,6 +3345,13 @@ void flash_init(void)
 	bbtbl =
 	    (unsigned int *)malloc(sizeof(unsigned int) *
 				   flash_info.num_blocks);
+
+	if( bbtbl == NULL )
+	{
+		dprintf(CRITICAL,"Error in allocating bad block table \n");
+		ASSERT(0);
+	}
+
 	for (i = 0; i < flash_info.num_blocks; i++)
 		bbtbl[i] = -1;
 }
