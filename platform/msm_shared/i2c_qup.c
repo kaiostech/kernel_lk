@@ -680,7 +680,7 @@ struct qup_i2c_dev *qup_i2c_init(uint8_t gsbi_id, unsigned clk_freq,
 {
 	struct qup_i2c_dev *dev;
 
-	if (gsbi_id > GSBI_ID_MAX) {
+	if (gsbi_id >= GSBI_ID_MAX) {
 		dprintf(CRITICAL, "Error GSBI index: %d out of range\n", gsbi_id);
 		return NULL;
 	}
