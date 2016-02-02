@@ -1898,10 +1898,15 @@ void aboot_init(const struct app_descriptor *app)
 
 	if (target_is_emmc_boot())
 	{
+goto fastboot;
 		if(emmc_recovery_init())
 			dprintf(ALWAYS,"error in emmc_recovery_init\n");
 		if(target_use_signed_kernel())
 		{
+			if ((target_use_signed_kernel() && !((device.is_unlocked)^(device.is_tampered))))
+				if (!((device.is_unlocked) && (device.is_tampered)))
+				goto fastboot;
+
 			if((device.is_unlocked) || (device.is_tampered))
 			{
 			#ifdef TZ_TAMPER_FUSE
@@ -1928,6 +1933,7 @@ void aboot_init(const struct app_descriptor *app)
 
 fastboot:
 
+	dprintf(ALWAYS, "Board going in fastboot !!\n");
 	target_fastboot_init();
 
 	if(!usb_init)
