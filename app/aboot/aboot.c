@@ -1521,6 +1521,11 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 		size = DEFAULT_ERASE_SIZE;
 
 	out = malloc(size);
+	if( out == NULL )
+	{
+		fastboot_fail("failed to allocate memory for erasing mmc.");
+		return;
+	}
 	memset(out, 0 ,size);
 
 	/* Simple inefficient version of erase. Just writing
