@@ -248,15 +248,34 @@ struct getvar_partition_info {
 };
 
 /*
- * Right now, we are publishing the info for only
+ * Right now, for Android we are publishing the info for only
  * three partitions
  */
+#if !defined(MULTIPLE_BOOT_SLOT)
 struct getvar_partition_info part_info[] =
 {
 	{ "system"  , "partition-size:", "partition-type:", "", "ext4" },
 	{ "userdata", "partition-size:", "partition-type:", "", "ext4" },
+#if !defined(NO_CACHE_PARTITON)
 	{ "cache"   , "partition-size:", "partition-type:", "", "ext4" },
+#endif // NO_CACHE_PARTITON
 };
+#else
+struct getvar_partition_info part_info[] =
+{
+	{ "system_a"  , "partition-size:", "partition-type:", "", "ext4" },
+	{ "system_b"  , "partition-size:", "partition-type:", "", "ext4" },
+	{ "userdata", "partition-size:", "partition-type:", "", "ext4" },
+#if !defined(NO_CACHE_PARTITON)
+	{ "cache"   , "partition-size:", "partition-type:", "", "ext4" },
+#endif //NO_CACHE_PARTITON
+};
+#endif //MULTIPLE_BOOT_SLOT
+
+#if defined(GETVAR_DYNAMIC_GETTERS)
+static char *slot_suffix_list[] = {"_a", "_b", NULL};
+static char *part_basename_list[] = {"boot", "system", "oem", NULL};
+#endif //GETVAR_DYNAMIC_GETTERS
 
 char max_download_size[MAX_RSP_SIZE];
 char charger_screen_enabled[MAX_RSP_SIZE];
@@ -3227,6 +3246,67 @@ void cmd_preflash(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+#if defined(MULTIPLE_BOOT_SLOT)
+void cmd_set_active(const char *arg, void *data, unsigned sz)
+{
+	char target_slot[16] = {0};
+	int target_slot_index;
+	unsigned long long target_slot_attributes;
+
+	char other_slot[16] = {0};
+	int other_slot_index;
+	unsigned long long other_slot_attributes;
+
+	int is_valid_slot = 0;
+
+	strcpy(target_slot, "boot");
+	strcat(target_slot, arg);
+
+	if (!strcmp(target_slot,"boot_a")) {
+		strcpy(other_slot,"boot_b");
+		is_valid_slot = 1;
+	}
+
+	if (!strcmp(target_slot,"boot_b")) {
+		strcpy(other_slot,"boot_a");
+		is_valid_slot = 1;
+	}
+
+	if (!is_valid_slot)
+		fastboot_fail("");
+
+	target_slot_index = partition_get_index(target_slot);
+	other_slot_index = partition_get_index(other_slot);
+
+	if(target_slot_index == INVALID_PTN || other_slot_index == INVALID_PTN)
+		fastboot_fail("");
+
+	target_slot_attributes = partition_getall_attributes(target_slot_index);
+	other_slot_attributes = partition_getall_attributes(other_slot_index);
+
+	/* Set priority = 15, try count = 7 success = 0 for the target slot */
+	target_slot_attributes &= ~PART_ATT_SUCCESS_TRY_PRIORITY;
+	target_slot_attributes |=
+		((15ULL << PART_ATT_PRIORITY_OFFSET) & PART_ATT_PRIORITY_MASK) |
+		((7ULL << PART_ATT_TRIES_OFFSET) & PART_ATT_TRIES_MASK);
+
+	/* Modify priority for other slot if it has a non-zero priority */
+	if (other_slot_attributes & PART_ATT_PRIORITY_MASK) {
+		other_slot_attributes &= ~PART_ATT_PRIORITY_MASK;
+		other_slot_attributes |=
+		    ((14ULL << PART_ATT_PRIORITY_OFFSET) & PART_ATT_PRIORITY_MASK) |
+		    ((7ULL << PART_ATT_TRIES_OFFSET) & PART_ATT_TRIES_MASK);
+	}
+
+	partition_setall_attributes(target_slot_index, target_slot_attributes);
+	partition_setall_attributes(other_slot_index, other_slot_attributes);
+
+	partition_table_sync();
+
+	fastboot_okay("");
+}
+#endif //MULTIPLE_BOOT_SLOT
+
 static uint8_t logo_header[LOGO_IMG_HEADER_SIZE];
 
 int splash_screen_check_header(logo_img_header *header)
@@ -3521,6 +3601,9 @@ void aboot_fastboot_register_commands(void)
 						{"oem disable-charger-screen", cmd_oem_disable_charger_screen},
 						{"oem off-mode-charge", cmd_oem_off_mode_charger},
 						{"oem select-display-panel", cmd_oem_select_display_panel},
+#if defined(MULTIPLE_BOOT_SLOT)
+						{"set_active:", cmd_set_active},
+#endif //MULTIPLE_BOOT_SLOT
 #endif
 						};
 
@@ -3569,6 +3652,16 @@ void aboot_fastboot_register_commands(void)
 	fastboot_publish("battery-voltage", (const char *) battery_voltage);
 	fastboot_publish("battery-soc-ok", target_battery_soc_ok()? "yes":"no");
 #endif
+#if defined(MULTIPLE_BOOT_SLOT)
+	fastboot_publish("slot-suffixes", "_a,_b");
+#if defined(GETVAR_DYNAMIC_GETTERS)
+	fastboot_publish_ex("current-slot", cmd_current_slot, NULL);
+	fastboot_publish_ex("has-slot", cmd_has_slot, part_basename_list);
+	fastboot_publish_ex("slot-successful", cmd_slot_success, slot_suffix_list);
+	fastboot_publish_ex("slot-unbootable", cmd_slot_unbootable, slot_suffix_list);
+	fastboot_publish_ex("slot-retry-count", cmd_slot_retry_count, slot_suffix_list);
+#endif //GETVAR_DYNAMIC_GETTERS
+#endif //MULTIPLE_BOOT_SLOT
 }
 
 void aboot_init(const struct app_descriptor *app)

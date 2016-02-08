@@ -47,6 +47,10 @@ void fastboot_register(const char *prefix,
 
 /* publish a variable readable by the built-in getvar command */
 void fastboot_publish(const char *name, const char *value);
+#if defined(GETVAR_DYNAMIC_GETTERS)
+void fastboot_publish_ex(const char *name, char* (*func)(const char *),
+			 char **p_args);
+#endif // GETVAR_DYNAMIC_GETTERS
 
 /* only callable from within a command handler */
 void fastboot_okay(const char *result);

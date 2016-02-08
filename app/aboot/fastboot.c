@@ -124,6 +124,10 @@ struct fastboot_var {
 	struct fastboot_var *next;
 	const char *name;
 	const char *value;
+#if defined(GETVAR_DYNAMIC_GETTERS)
+	char* (*func)(const char *);
+	char **p_default_args;
+#endif // GETVAR_DYNAMIC_GETTERS
 };
 
 static struct fastboot_cmd *cmdlist;
@@ -153,9 +157,28 @@ void fastboot_publish(const char *name, const char *value)
 		var->value = value;
 		var->next = varlist;
 		varlist = var;
+#if defined(GETVAR_DYNAMIC_GETTERS)
+		var->func = NULL;
+#endif //GETVAR_DYNAMIC_GETTERS
 	}
 }
 
+#if defined(GETVAR_DYNAMIC_GETTERS)
+void fastboot_publish_ex(const char *name, char* (*func)(const char *),
+			 char **p_args)
+{
+	struct fastboot_var *var;
+	var = malloc(sizeof(*var));
+	if (var) {
+		var->name = name;
+		var->value = NULL;
+		var->func = func;
+		var->p_default_args = p_args;
+		var->next = varlist;
+		varlist = var;
+	}
+}
+#endif //GETVAR_DYNAMIC_GETTERS
 
 static event_t usb_online;
 static event_t txn_done;
@@ -428,6 +451,81 @@ void fastboot_okay(const char *info)
 	fastboot_ack("OKAY", info);
 }
 
+#if defined(GETVAR_DYNAMIC_GETTERS)
+static void getvar_all()
+{
+	struct fastboot_var *var;
+	char getvar_all[64];
+
+	for (var = varlist; var; var = var->next)
+	{
+		if(!var->func) {
+			snprintf(getvar_all, sizeof(getvar_all), "%s:%s",
+				 var->name, var->value);
+			fastboot_info(getvar_all);
+			memset((void *) getvar_all, '\0', sizeof(getvar_all));
+		} else if (var->func && !var->p_default_args) {
+			snprintf(getvar_all, sizeof(getvar_all), "%s:%s",
+				 var->name, var->func(NULL));
+			fastboot_info(getvar_all);
+			memset((void *) getvar_all, '\0', sizeof(getvar_all));
+		} else {
+			char **arg = var->p_default_args;
+			int i = 0;
+			while (arg[i]) {
+				snprintf(getvar_all, sizeof(getvar_all), "%s:%s:%s",
+					 var->name, arg[i], var->func(arg[i]));
+				fastboot_info(getvar_all);
+				memset((void *) getvar_all, '\0', sizeof(getvar_all));
+				i++;
+			}
+		}
+	}
+	fastboot_okay("");
+}
+
+static void cmd_getvar(const char *arg, void *data, unsigned sz)
+{
+	struct fastboot_var *var;
+	char *p_delim;
+	size_t var_len = 0;
+
+	if (!strncmp("all", arg, strlen(arg)))
+	{
+		getvar_all();
+		return;
+	}
+
+	if(!strncmp("partition-type:", arg, strlen("partition-type:")) ||
+	   !strncmp("partition-size:", arg, strlen("partition-size:"))) {
+		p_delim = NULL;
+		var_len = strlen(arg);
+	} else {
+		p_delim = strchr(arg,':');
+		var_len = p_delim?(size_t)(p_delim - arg):strlen(arg);
+	}
+
+	for (var = varlist; var; var = var->next) {
+		if ((strlen(var->name) == var_len) &&
+		    !strncmp(var->name, arg, var_len)) {
+			if(!var->func)
+				fastboot_okay(var->value);
+			else {
+				char *response = NULL;
+				if(var->func)
+					response = var->func(p_delim?p_delim + 1:NULL);
+
+				if(response)
+					fastboot_okay(response);
+				else
+					fastboot_fail("");
+			}
+			return;
+		}
+	}
+	fastboot_okay("");
+}
+#else
 static void getvar_all()
 {
 	struct fastboot_var *var;
@@ -462,6 +560,7 @@ static void cmd_getvar(const char *arg, void *data, unsigned sz)
 	}
 	fastboot_okay("");
 }
+#endif // GETVAR_DYNAMIC_GETTERS
 
 static void cmd_download(const char *arg, void *data, unsigned sz)
 {

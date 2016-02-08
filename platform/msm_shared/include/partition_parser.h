@@ -83,6 +83,9 @@
 #define PART_ATT_SUCCESS_MASK      ((uint64_t)0x1 << PART_ATT_SUCCESS_OFFSET)
 #define PART_ATT_TRIES_MASK        ((uint64_t)0xF << PART_ATT_TRIES_OFFSET)
 #define PART_ATT_PRIORITY_MASK     ((uint64_t)0xF << PART_ATT_PRIORITY_OFFSET)
+#define PART_ATT_SUCCESS_TRY_PRIORITY  (PART_ATT_SUCCESS_MASK | \
+					PART_ATT_TRIES_MASK | \
+					PART_ATT_PRIORITY_MASK)
 #endif // MULTIPLE_BOOT_SLOT
 
 /* Some useful define used to access the MBR/EBR table */
@@ -247,5 +250,13 @@ int partition_get_bootable_index();
 uint16_t boot_slot_cmdline_strlen();
 char *boot_slot_suffix_str();
 int partition_clear_attribute(int index, partition_flag_type flag);
+unsigned long long partition_getall_attributes(int index);
+void partition_setall_attributes(int index, unsigned long long attr);
+uint32_t partition_table_sync();
+char* cmd_current_slot(const char* arg);
+char* cmd_has_slot(const char *arg);
+char* cmd_slot_success(const char *arg);
+char* cmd_slot_unbootable(const char *arg);
+char* cmd_slot_retry_count(const char *arg);
 #endif // MULTIPLE_BOOT_SLOT
 #endif

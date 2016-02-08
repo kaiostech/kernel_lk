@@ -72,6 +72,14 @@ ifeq ($(DISABLE_CHARGER_DETECTION),1)
   CFLAGS += -DDISABLE_CHARGER_DETECTION
 endif
 
+ifeq ($(NO_CACHE_PARTITON),1)
+  CFLAGS += -DNO_CACHE_PARTITON
+endif
+
+ifeq ($(GETVAR_DYNAMIC_GETTERS),1)
+  CFLAGS += -DGETVAR_DYNAMIC_GETTERS
+endif
+
 # setup toolchain prefix
 TOOLCHAIN_PREFIX ?= arm-eabi-
 CFLAGS += -fstack-protector-all

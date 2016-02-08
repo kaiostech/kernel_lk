@@ -920,7 +920,7 @@ mbr_fill_name(struct partition_entry *partition_ent, unsigned int type)
 int partition_get_index(const char *name)
 {
 	unsigned int input_string_length = strlen(name);
-	int n;
+	unsigned n;
 
 	if( partition_count >= NUM_PARTITIONS)
 	{
@@ -1001,11 +1001,12 @@ void partition_dump()
 	unsigned i = 0;
 	for (i = 0; i < partition_count; i++) {
 		dprintf(SPEW,
-			"ptn[%d]:Name[%s] Size[%llu] Type[%u] First[%llu] Last[%llu]\n",
+			"ptn[%d]:Name[%s] Size[%llu] Type[%u] First[%llu] Last[%llu] Attr[%llx]\n",
 			i, partition_entries[i].name, partition_entries[i].size,
 			partition_entries[i].dtype,
 			partition_entries[i].first_lba,
-			partition_entries[i].last_lba);
+			partition_entries[i].last_lba,
+			partition_entries[i].attribute_flag);
 	}
 }
 
@@ -1226,47 +1227,63 @@ int partition_read_only(int index)
 }
 
 #if defined(MULTIPLE_BOOT_SLOT)
-static uint32_t partition_table_sync()
+uint32_t partition_table_sync()
 {
-	int i;
+	unsigned i;
 	uint32_t ret;
-	struct gpt_header_t *primary_hdr;
 	uint32_t block_size = mmc_get_device_blocksize();
-	uint32_t sz = block_size + (2 * sizeof(gpt_header_t)) +
+	uint32_t sz = block_size + (2 * sizeof(struct gpt_header_t)) +
 		      (2 * PARTITION_ENTRY_SIZE * NUM_PARTITIONS);
 	uint8_t *gpt_image = memalign(CACHE_LINE, sz);
 	uint8_t *gpt_primary_part_array = gpt_image + (2 * block_size);
 	uint8_t *gpt_secondary_part_array = gpt_primary_part_array +
 					    (NUM_PARTITIONS * PARTITION_ENTRY_SIZE);
+	struct gpt_header_t *primary_hdr = (struct gpt_header_t *)(gpt_image + block_size);
+	struct gpt_header_t *secondary_hdr = (struct gpt_header_t *)(gpt_secondary_part_array +
+					     (NUM_PARTITIONS * PARTITION_ENTRY_SIZE));
+
+	memset(gpt_image, 0, sz);
 
 	/* Read the MBR, Primary GPT header. */
-	ret = mmc_read(0, (uint32_t *)gpt_image, 2 * block_size);
+	ret = mmc_read(0, (uint32_t *)gpt_image,
+		       (2 * block_size) + (NUM_PARTITIONS * PARTITION_ENTRY_SIZE));
 	if(ret)
 		goto end;
 
-	primary_hdr = (struct gpt_header_t *)(gpt_image + block_size);
-
 	/* Fill primary entries. */
-	for (i = 0; i < partition_count; i++) {
-		memcpy(gpt_primary_part_array + (i * PARTITION_ENTRY_SIZE),
-		       &partition_entries[i], PARTITION_ENTRY_SIZE);
+	for (i = 0; i < primary_hdr->num_parts; i++) {
+		((struct partition_entry *)(gpt_primary_part_array +
+				     (i * PARTITION_ENTRY_SIZE)))->attribute_flag =
+				     partition_entries[i].attribute_flag;
 	}
+
+	primary_hdr->hdr_crc32 = 0;
+	primary_hdr->part_arr_crc32 = calculate_crc32(gpt_primary_part_array,
+				      primary_hdr->num_parts * PARTITION_ENTRY_SIZE);
+	primary_hdr->hdr_crc32 = calculate_crc32((unsigned char *)primary_hdr,
+						 primary_hdr->hdr_size);
+
+	/* Read secondary GPT header. */
+	ret = mmc_read(primary_hdr->backup_lba * block_size,
+		       (uint32_t *)secondary_hdr, block_size);
+	if(ret)
+		goto end;
 
 	/* Fill secondary entries. */
 	memcpy(gpt_secondary_part_array, gpt_primary_part_array,
-	       partition_count * PARTITION_ENTRY_SIZE);
+	       primary_hdr->num_parts * PARTITION_ENTRY_SIZE);
 
-	/* Read the secondary GPT header */
-	ret = mmc_read(primary_hdr->backup_lba * block_size,
-		       gpt_secondary_part_array +
-		       (NUM_PARTITIONS * PARTITION_ENTRY_SIZE),
-		       block_size);
-	if(ret)
-		goto end;
+	secondary_hdr->hdr_crc32 = 0;
+	secondary_hdr->part_arr_crc32 = calculate_crc32(gpt_secondary_part_array,
+					secondary_hdr->num_parts * PARTITION_ENTRY_SIZE);
+
+	secondary_hdr->hdr_crc32 = calculate_crc32((unsigned char *)secondary_hdr,
+						   secondary_hdr->hdr_size);
 
 	flashing_gpt = 1;
 	ret = write_gpt_ex(sz, gpt_image, mmc_get_device_blocksize(), 1);
 	flashing_gpt = 0;
+
 end:
 	free(gpt_image);
 	return ret;
@@ -1419,5 +1436,155 @@ int partition_get_bootable_index()
 		partition_table_sync();
 
 	return kernel_part;
+}
+
+unsigned long long partition_getall_attributes(int index)
+{
+	return partition_entries[index].attribute_flag;
+}
+
+void partition_setall_attributes(int index, unsigned long long attr)
+{
+	partition_entries[index].attribute_flag = attr;
+}
+
+static char *suffix_list[] = {"_a", "_b"};
+
+char* cmd_current_slot(const char* arg)
+{
+	int n;
+	int index = 0;
+	int priority = 0;
+	int curr_part_priority;
+	int kernel_part = INVALID_PTN;
+	unsigned long long attributes;
+	char *pname_list[] = {"boot_a", "boot_b"};
+
+	for(n=0 ; n<2; n++) {
+		index = partition_get_index(pname_list[n]);
+
+		if (INVALID_PTN == index)
+			continue;
+
+		attributes = partition_entries[index].attribute_flag;
+
+		if (!((attributes & PART_ATT_SUCCESS_MASK) ||
+		      (attributes & PART_ATT_TRIES_MASK)))
+			continue;
+
+		curr_part_priority = (attributes & PART_ATT_PRIORITY_MASK) >>
+				     PART_ATT_PRIORITY_OFFSET;
+		if (curr_part_priority && (curr_part_priority > priority)) {
+			priority = curr_part_priority;
+			kernel_part = n;
+		}
+	}
+
+	if (kernel_part != INVALID_PTN)
+		return suffix_list[kernel_part];
+
+	return NULL;
+}
+
+char* cmd_has_slot(const char *arg)
+{
+	int i;
+	char *pname_list[] = {"boot", "system", "oem"};
+
+	if (!arg)
+		return NULL;
+
+	for(i=0; i<3; i++) {
+		if(!strcmp(pname_list[i], arg))
+			return "yes";
+	}
+	return "no";
+}
+
+char* cmd_slot_success(const char *arg)
+{
+	char pname[MAX_GPT_NAME_SIZE];
+	int index = 0;
+	unsigned long long attributes;
+
+	if (!arg)
+		return NULL;
+
+	strncpy(pname, "boot", sizeof(pname));
+	if (arg)
+		strncat(pname, arg, sizeof(pname));
+
+	index = partition_get_index(pname);
+
+	if (INVALID_PTN == index)
+		return NULL;
+
+	attributes = partition_entries[index].attribute_flag;
+
+	if (attributes & PART_ATT_SUCCESS_MASK)
+		return "yes";
+
+	return "no";
+}
+
+char* cmd_slot_unbootable(const char *arg)
+{
+	char pname[MAX_GPT_NAME_SIZE];
+	int index = 0;
+	unsigned long long attributes;
+	unsigned long long all_attributes = 0;
+
+	if (!arg)
+		return NULL;
+
+	all_attributes = PART_ATT_SUCCESS_MASK;
+	all_attributes |= PART_ATT_TRIES_MASK;
+	all_attributes |= PART_ATT_PRIORITY_MASK;
+
+	strncpy(pname, "boot", sizeof(pname));
+	if (arg)
+		strncat(pname, arg, MAX_GPT_NAME_SIZE);
+
+	index = partition_get_index(pname);
+
+	if (INVALID_PTN == index)
+		return NULL;
+
+	attributes = partition_entries[index].attribute_flag;
+
+	if (!(attributes & all_attributes))
+		return "yes";
+
+	return "no";
+}
+
+static char try_count_response[16];
+char* cmd_slot_retry_count(const char *arg)
+{
+	char pname[MAX_GPT_NAME_SIZE];
+	int index = 0;
+	int retry_count = 0;
+	unsigned long long attributes;
+
+	if (!arg)
+		return NULL;
+
+	strncpy(pname, "boot", sizeof(pname));
+	if (arg)
+		strncat(pname, arg, MAX_GPT_NAME_SIZE);
+
+	index = partition_get_index(pname);
+
+	if (INVALID_PTN == index)
+		return NULL;
+
+	attributes = partition_entries[index].attribute_flag;
+
+	retry_count = (attributes & PART_ATT_TRIES_MASK) >>
+		       PART_ATT_TRIES_OFFSET;
+
+	snprintf(try_count_response, sizeof(try_count_response), "%d", retry_count);
+
+	return try_count_response;
 }
 #endif // MULTIPLE_BOOT_SLOT
