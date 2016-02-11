@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -170,6 +170,7 @@ static const char *warmboot_cmdline = " qpnp-power-on.warm_boot=1";
 #if !VBOOT_MOTA
 static const char *verity_mode = " androidboot.veritymode=";
 static const char *verified_state= " androidboot.verifiedbootstate=";
+static const char *keymaster_v1= " androidboot.keymaster=1";
 //indexed based on enum values, green is 0 by default
 
 struct verified_boot_verity_mode vbvm[] =
@@ -352,6 +353,7 @@ unsigned char *update_cmdline(const char * cmdline)
 		ASSERT(0);
 	}
 	cmdline_len += strlen(verity_mode) + strlen(vbvm[device.verity_mode].name);
+	cmdline_len += strlen(keymaster_v1);
 #endif
 #endif
 
@@ -489,6 +491,9 @@ unsigned char *update_cmdline(const char * cmdline)
 		while ((*dst++ = *src++));
 		src = vbvm[device.verity_mode].name;
 		if(have_cmdline) -- dst;
+		while ((*dst++ = *src++));
+		src = keymaster_v1;
+		if(have_cmdline) --dst;
 		while ((*dst++ = *src++));
 #endif
 #endif
@@ -773,10 +778,6 @@ void boot_linux(void *kernel, unsigned *tags,
 
 	enter_critical_section();
 
-	/* Initialise wdog to catch early kernel crashes */
-#if WDOG_SUPPORT
-	msm_wdog_init();
-#endif
 	/* do any platform specific cleanup before kernel entry */
 	platform_uninit();
 
@@ -891,7 +892,7 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 	{
 		case RED:
 #if FBCON_DISPLAY_MSG
-			display_bootverify_menu_thread(DISPLAY_MENU_RED);
+			display_bootverify_menu(DISPLAY_MENU_RED);
 			wait_for_users_action();
 #else
 			dprintf(CRITICAL,
@@ -902,7 +903,7 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 			break;
 		case YELLOW:
 #if FBCON_DISPLAY_MSG
-			display_bootverify_menu_thread(DISPLAY_MENU_YELLOW);
+			display_bootverify_menu(DISPLAY_MENU_YELLOW);
 			wait_for_users_action();
 #else
 			dprintf(CRITICAL,
@@ -1181,7 +1182,7 @@ int boot_linux_from_mmc(void)
 	if(boot_verify_get_state() == ORANGE)
 	{
 #if FBCON_DISPLAY_MSG
-		display_bootverify_menu_thread(DISPLAY_MENU_ORANGE);
+		display_bootverify_menu(DISPLAY_MENU_ORANGE);
 		wait_for_users_action();
 #else
 		dprintf(CRITICAL,
@@ -2006,7 +2007,7 @@ static void set_device_unlock(int type, bool status)
 		}
 
 #if FBCON_DISPLAY_MSG
-		display_unlock_menu_thread(type);
+		display_unlock_menu(type);
 		fastboot_okay("");
 		return;
 #else
@@ -3085,9 +3086,10 @@ void cmd_oem_off_mode_charger(const char *arg, void *data, unsigned size)
 {
 	char *p = NULL;
 	const char *delim = " \t\n\r";
+	char *sp;
 
 	if (arg) {
-		p = strtok((char *)arg, delim);
+		p = strtok_r((char *)arg, delim, &sp);
 		if (p) {
 			if (!strncmp(p, "0", 1)) {
 				device.charger_screen_enabled = 0;
@@ -3566,6 +3568,11 @@ void aboot_init(const struct app_descriptor *app)
 {
 	unsigned reboot_mode = 0;
 
+	/* Initialise wdog to catch early lk crashes */
+#if WDOG_SUPPORT
+	msm_wdog_init();
+#endif
+
 	/* Setup page size information for nv storage */
 	if (target_is_emmc_boot())
 	{
@@ -3621,15 +3628,9 @@ void aboot_init(const struct app_descriptor *app)
 	if (keys_get_state(KEY_VOLUMEUP) && keys_get_state(KEY_VOLUMEDOWN))
 	{
 		dprintf(ALWAYS,"dload mode key sequence detected\n");
-		if (set_download_mode(EMERGENCY_DLOAD))
-		{
-			dprintf(CRITICAL,"dload mode not supported by target\n");
-		}
-		else
-		{
-			reboot_device(DLOAD);
-			dprintf(CRITICAL,"Failed to reboot into dload mode\n");
-		}
+		reboot_device(EMERGENCY_DLOAD);
+		dprintf(CRITICAL,"Failed to reboot into dload mode\n");
+
 		boot_into_fastboot = true;
 	}
 	if (!boot_into_fastboot)
@@ -3728,7 +3729,7 @@ normal_boot:
 	/* initialize and start fastboot */
 	fastboot_init(target_get_scratch_address(), target_get_max_flash_size());
 #if FBCON_DISPLAY_MSG
-	display_fastboot_menu_thread();
+	display_fastboot_menu();
 #endif
 }
 

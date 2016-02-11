@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -58,9 +58,15 @@
 #include <smem.h>
 #include <qmp_phy.h>
 #include <qusb2_phy.h>
+#include "target/display.h"
 
 #if LONG_PRESS_POWER_ON
 #include <shutdown_detect.h>
+#endif
+
+#if PON_VIB_SUPPORT
+#include <vibrator.h>
+#define VIBRATE_TIME 250
 #endif
 
 #define PMIC_ARB_CHANNEL_NUM    0
@@ -163,7 +169,7 @@ void *target_mmc_device()
 }
 
 /* Return 1 if vol_up pressed */
-static int target_volume_up()
+int target_volume_up()
 {
 	uint8_t status = 0;
 
@@ -228,6 +234,10 @@ void target_init(void)
 
 #if LONG_PRESS_POWER_ON
 	shutdown_detect();
+#endif
+
+#if PON_VIB_SUPPORT
+	vib_timed_turn_on(VIBRATE_TIME);
 #endif
 
 
@@ -322,7 +332,8 @@ unsigned target_baseband()
 {
 	return board_baseband();
 }
-int set_download_mode(enum dload_mode mode)
+
+int set_download_mode(enum reboot_reason mode)
 {
 	int ret = 0;
 	ret = scm_dload_mode(mode);
@@ -534,7 +545,7 @@ void target_crypto_init_params()
 
 void pmic_reset_configure(uint8_t reset_type)
 {
-	pm8x41_reset_configure(reset_type);
+	pm8994_reset_configure(reset_type);
 }
 
 uint32_t target_get_pmic()
@@ -641,4 +652,30 @@ struct qmp_reg *target_get_qmp_settings()
 int target_get_qmp_regsize()
 {
 	return ARRAY_SIZE(qmp_settings);
+}
+static uint8_t splash_override;
+/* Returns 1 if target supports continuous splash screen. */
+int target_cont_splash_screen()
+{
+	uint8_t splash_screen = 0;
+	if (!splash_override) {
+		switch (board_hardware_id()) {
+		case HW_PLATFORM_MTP:
+		case HW_PLATFORM_SURF:
+		case HW_PLATFORM_RCM:
+		case HW_PLATFORM_QRD:
+			splash_screen = 1;
+			break;
+		default:
+			splash_screen = 0;
+			break;
+		}
+		dprintf(SPEW, "Target_cont_splash=%d\n", splash_screen);
+	}
+	return splash_screen;
+}
+
+void target_force_cont_splash_disable(uint8_t override)
+{
+        splash_override = override;
 }
