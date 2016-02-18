@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -369,6 +369,57 @@ static struct reset_clk gcc_usb2a_phy_sleep_clk = {
 	},
 };
 
+static struct clk_freq_tbl ftbl_gcc_ce1_clk[] = {
+	F(160000000,  gpll0,   5,   0,   0),
+	F_END
+};
+
+static struct rcg_clk ce1_clk_src = {
+	.cmd_reg      = (uint32_t *) GCC_CRYPTO_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) GCC_CRYPTO_CFG_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl     = ftbl_gcc_ce1_clk,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "ce1_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
+static struct vote_clk gcc_ce1_clk = {
+	.cbcr_reg      = (uint32_t *) GCC_CRYPTO_CBCR,
+	.vote_reg      = (uint32_t *) APCS_CLOCK_BRANCH_ENA_VOTE,
+	.en_mask       = BIT(2),
+
+	.c = {
+		.dbg_name  = "gcc_ce1_clk",
+		.ops       = &clk_ops_vote,
+	},
+};
+
+static struct vote_clk gcc_ce1_ahb_clk = {
+	.cbcr_reg     = (uint32_t *) GCC_CRYPTO_AHB_CBCR,
+	.vote_reg     = (uint32_t *) APCS_CLOCK_BRANCH_ENA_VOTE,
+	.en_mask      = BIT(0),
+
+	.c = {
+		.dbg_name = "gcc_ce1_ahb_clk",
+		.ops      = &clk_ops_vote,
+	},
+};
+
+static struct vote_clk gcc_ce1_axi_clk = {
+	.cbcr_reg     = (uint32_t *) GCC_CRYPTO_AXI_CBCR,
+	.vote_reg     = (uint32_t *) APCS_CLOCK_BRANCH_ENA_VOTE,
+	.en_mask      = BIT(1),
+
+	.c = {
+		.dbg_name = "gcc_ce1_axi_clk",
+		.ops      = &clk_ops_vote,
+	},
+};
+
 static struct clk_lookup msm_clocks_9640[] =
 {
 	CLK_LOOKUP("sdc1_iface_clk", gcc_sdcc1_ahb_clk.c),
@@ -386,6 +437,10 @@ static struct clk_lookup msm_clocks_9640[] =
 	CLK_LOOKUP("usb30_phy_reset",     gcc_usb30_phy_reset.c),
 
 	CLK_LOOKUP("usb_phy_cfg_ahb_clk", gcc_usb_phy_cfg_ahb_clk.c),
+	CLK_LOOKUP("ce1_ahb_clk",  gcc_ce1_ahb_clk.c),
+	CLK_LOOKUP("ce1_axi_clk",  gcc_ce1_axi_clk.c),
+	CLK_LOOKUP("ce1_core_clk", gcc_ce1_clk.c),
+	CLK_LOOKUP("ce1_src_clk",  ce1_clk_src.c),
 };
 
 void platform_clock_init(void)
