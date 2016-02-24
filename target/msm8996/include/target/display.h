@@ -67,8 +67,11 @@ static const uint32_t panel_physical_ctrl[] = { };
 /*---------------------------------------------------------------------------*/
 #define DISPLAY_CMDLINE_PREFIX " mdss_mdp.panel="
 
-#define MIPI_FB_ADDR  0x83400000
+#define MIPI_FB_ADDR  0x83401900
 #define HDMI_FB_ADDR  0xB1C00000
+#define KERNEL_TRIGGER_VALUE         0xFEFEFEFE
+#define MDSS_SCRATCH_REG_0           0x00900014
+#define MDSS_SCRATCH_REG_1           0x00900018
 
 #define MIPI_HSYNC_PULSE_WIDTH       16
 #define MIPI_HSYNC_BACK_PORCH_DCLK   32
@@ -83,6 +86,21 @@ static const uint32_t panel_physical_ctrl[] = { };
 #define HDMI_PANEL_NAME              "hdmi"
 #define HDMI_CONTROLLER_STRING       "hdmi:"
 #define HDMI_VIC_LEN                 5
+
+#define NUM_TARGET_DISPLAYS          3
+#define NUM_TARGET_LAYERS            10
+
+#define NUM_VIG_PIPES                1
+#define VIG_ID_START                 3
+#define VIG_PIPE_START               7
+
+#define NUM_RGB_PIPES                1
+#define RGB_ID_START                 3
+#define RGB_PIPE_START               3
+
+#define NUM_DMA_PIPES                2
+#define DMA_PIPE_START               8
+
 
 /*---------------------------------------------------------------------------*/
 /* Functions		                                                     */
@@ -100,5 +118,72 @@ int target_hdmi_pll_clock(uint8_t enable, struct msm_panel_info *pinfo);
 int target_hdmi_panel_clock(uint8_t enable, struct msm_panel_info *pinfo);
 int target_hdmi_regulator_ctrl(uint8_t enable);
 int target_hdmi_gpio_ctrl(uint8_t enable);
+
+enum LayerBufferFormat {
+  /*
+   * All RGB formats, Any new format will be added towards end of this group to maintain backward
+   * compatibility.
+   */
+  kFormatRGB888,        //!< 8-bits Red, Green, Blue interleaved in RGB order. No Alpha.
+
+  /* All YUV-Planar formats, Any new format will be added towards end of this group to maintain
+     backward compatibility.
+  */
+
+  kFormatYCbCr422H2V1Packed = 0x300,  //!< Y-plane interleaved with horizontally subsampled U/V by  186
+                                      //!< factor of 2  187
+                                      //!<    y(0), u(0), y(1), v(0), y(2), u(2), y(3), v(2)  188
+                                      //!<    y(n-1), u(n-1), y(n), v(n-1)
+
+
+  kFormatInvalid = 0xFFFFFFFF,
+};
+
+enum pipe_type {
+  VIG_TYPE,
+  RGB_TYPE,
+  DMA_TYPE,
+};
+
+struct target_display {
+  uint32_t display_id;
+  uint32_t width;
+  uint32_t height;
+  float    fps;
+};
+
+struct target_layer_int {
+  uint32_t      layer_id;
+  uint32_t      layer_type;
+  bool            assigned;
+  struct target_display *disp;
+};
+
+struct target_layer {
+  void                *layer; /* layer pointer returned by assign */
+  uint32_t            src_rect_x;
+  uint32_t            src_rect_y;
+  uint32_t            dst_rect_x;
+  uint32_t            dst_rect_y;
+  uint32_t            z_order;
+  uint32_t            global_aplha;
+  uint32_t            width;
+  uint32_t            height;
+  struct fbcon_config *fb;
+};
+
+struct target_display_update {
+  void              *disp;
+  struct target_layer *layer_list;
+  uint32_t          num_layers;
+};
+
+/* DYNAMIC APIS */
+void * target_display_open (uint32 display_id);
+struct target_display * target_get_display_info(void *disp);
+void *target_display_acquire_layer(struct target_display * disp, char *client_name, int color_format);
+int target_display_update(struct target_display_update * update, uint32_t size);
+int target_release_layer(struct target_layer *layer);
+int target_display_close(struct target_display * disp);
 
 #endif
