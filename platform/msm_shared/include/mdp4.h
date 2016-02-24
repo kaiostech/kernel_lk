@@ -106,6 +106,8 @@ void mdp_start_dma(void);
 int mdp_dsi_video_off();
 int mdp_dsi_cmd_off(void);
 int mdp_dsi_video_on(struct msm_panel_info *pinfo);
+int mdp_dsi_video_update(struct msm_panel_info *pinfo);
+int mdss_layer_mixer_remove_pipe(struct msm_panel_info *pinfo);
 int mdp_dma_on(struct msm_panel_info *pinfo);
 int mdp_dsi_video_config(struct msm_panel_info *pinfo, struct fbcon_config *fb);
 int mdp_dsi_cmd_config(struct msm_panel_info *pinfo, struct fbcon_config *fb);
@@ -122,6 +124,7 @@ int mdp_edp_off(void);
 
 int mdss_hdmi_init(void);
 int mdss_hdmi_on(struct msm_panel_info *pinfo);
+int mdss_hdmi_update(struct msm_panel_info *pinfo);
 int mdss_hdmi_off(struct msm_panel_info *pinfo);
 int mdss_hdmi_config(struct msm_panel_info *pinfo, struct fbcon_config *fb);
 #endif

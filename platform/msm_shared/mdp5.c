@@ -39,6 +39,7 @@
 #include <err.h>
 #include <clock.h>
 #include <scm.h>
+#include <target.h>
 
 #define MDSS_MDP_MAX_PREFILL_FETCH	25
 
@@ -139,8 +140,25 @@ static void mdp_select_pipe_type(struct msm_panel_info *pinfo,
 {
 	switch (pinfo->pipe_type) {
 		case MDSS_MDP_PIPE_TYPE_RGB:
-			*left_pipe = MDP_VP_0_RGB_0_BASE;
-			*right_pipe = MDP_VP_0_RGB_1_BASE;
+			switch (pinfo->pipe_id) {
+				case 0:
+					*left_pipe = MDP_VP_0_RGB_0_BASE;
+					*right_pipe = MDP_VP_0_RGB_1_BASE;
+					break;
+				case 1:
+					*left_pipe = MDP_VP_0_RGB_1_BASE;
+					*right_pipe = MDP_VP_0_RGB_0_BASE;
+					break;
+				case 2:
+					*left_pipe = MDP_VP_0_RGB_2_BASE;
+					*right_pipe = MDP_VP_0_RGB_1_BASE;
+					break;
+				case 3:
+				default:
+					*left_pipe = MDP_VP_0_RGB_3_BASE;
+					*right_pipe = MDP_VP_0_RGB_1_BASE;
+					break;
+			}
 			break;
 		case MDSS_MDP_PIPE_TYPE_DMA:
 			*left_pipe = MDP_VP_0_DMA_0_BASE;
@@ -148,8 +166,25 @@ static void mdp_select_pipe_type(struct msm_panel_info *pinfo,
 			break;
 		case MDSS_MDP_PIPE_TYPE_VIG:
 		default:
-			*left_pipe = MDP_VP_0_VIG_0_BASE;
-			*right_pipe = MDP_VP_0_VIG_1_BASE;
+			switch (pinfo->pipe_id) {
+				case 0:
+					*left_pipe = MDP_VP_0_VIG_0_BASE;
+					*right_pipe = MDP_VP_0_VIG_1_BASE;
+					break;
+				case 1:
+					*left_pipe = MDP_VP_0_VIG_1_BASE;
+					*right_pipe = MDP_VP_0_VIG_0_BASE;
+					break;
+				case 2:
+					*left_pipe = MDP_VP_0_VIG_2_BASE;
+					*right_pipe = MDP_VP_0_VIG_1_BASE;
+					break;
+				case 3:
+				default:
+					*left_pipe = MDP_VP_0_VIG_3_BASE;
+					*right_pipe = MDP_VP_0_VIG_1_BASE;
+					break;
+			}
 			break;
 	}
 }
@@ -170,6 +205,21 @@ static void mdss_mdp_set_flush(struct msm_panel_info *pinfo,
 
 			if (pinfo->lcdc.dst_split)
 				*ctl0_reg_val |= BIT(4);
+			switch (pinfo->pipe_id) {
+				case 0:
+					*ctl0_reg_val |= BIT(3);
+					break;
+				case 1:
+					*ctl0_reg_val |= BIT(4);
+					break;
+				case 2:
+					*ctl0_reg_val |= BIT(5);
+					break;
+				case 3:
+				default:
+					*ctl0_reg_val |= BIT(19);
+					break;
+			}
 			break;
 		case MDSS_MDP_PIPE_TYPE_DMA:
 			if (dual_pipe_single_ctl)
@@ -189,6 +239,22 @@ static void mdss_mdp_set_flush(struct msm_panel_info *pinfo,
 			*ctl1_reg_val = 0x24082;
 			if (pinfo->lcdc.dst_split)
 				*ctl0_reg_val |= BIT(1);
+
+			switch (pinfo->pipe_id) {
+				case 0:
+					*ctl0_reg_val |= BIT(0);
+					break;
+				case 1:
+					*ctl0_reg_val |= BIT(1);
+					break;
+				case 2:
+					*ctl0_reg_val |= BIT(2);
+					break;
+				case 3:
+				default:
+					*ctl0_reg_val |= BIT(18);
+					break;
+			}
 			break;
 	}
 	/* For targets from MDP v1.5, MDP INTF registers are double buffered */
@@ -243,12 +309,14 @@ static void mdss_source_pipe_config(struct fbcon_config *fb, struct msm_panel_in
 			out_size = (height << 16) + (pinfo->lm_split[0]);
 		}
 	}
+	if (target_is_yuv_format(fb->format))
+		fb->bpp = 16;
 
-	stride = (fb->stride * fb->bpp/8);
+	stride = (width * fb->bpp/8);
 
 	if (fb_off == 0) {	/* left */
 		dst_xy = (pinfo->border_top << 16) | pinfo->border_left;
-		src_xy = dst_xy;
+		src_xy = 0;
 	} else {	/* right */
 		dst_xy = (pinfo->border_top << 16);
 		src_xy = (pinfo->border_top << 16) | fb_off;
@@ -268,6 +336,41 @@ static void mdss_source_pipe_config(struct fbcon_config *fb, struct msm_panel_in
 	writel(0x0002243F, pipe_base + PIPE_SSPP_SRC_FORMAT);
 	writel(0x00020001, pipe_base + PIPE_SSPP_SRC_UNPACK_PATTERN);
 
+	if (target_is_yuv_format(fb->format)) {
+		writel(0x0082B23F, pipe_base + PIPE_SSPP_SRC_FORMAT);
+		writel(0x00020001, pipe_base + PIPE_SSPP_SRC_UNPACK_PATTERN);
+		writel(0x00060000, pipe_base + PIPE_VP_0_OP_MODE);
+
+		//coeff 1 and 2
+		writel(0x9, pipe_base + 0x134);
+
+		writel(0x00000254, pipe_base + PIPE_VP_0_CSC_1_MATRIX_COEFF_0);
+		writel(0x02540396, pipe_base + PIPE_VP_0_CSC_1_MATRIX_COEFF_1);
+		writel(0x1eef1f93, pipe_base + PIPE_VP_0_CSC_1_MATRIX_COEFF_2);
+		writel(0x043e0254, pipe_base + PIPE_VP_0_CSC_1_MATRIX_COEFF_3);
+		writel(0x00000000, pipe_base + PIPE_VP_0_CSC_1_MATRIX_COEFF_4);
+
+		// pre clamp
+		writel(0x000010eb, pipe_base + PIPE_VP_0_CSC_1_COMP_0_PRE_CLAMP);
+		writel(0x000010f0, pipe_base + PIPE_VP_0_CSC_1_COMP_1_PRE_CLAMP);
+		writel(0x000010f0, pipe_base + PIPE_VP_0_CSC_1_COMP_2_PRE_CLAMP);
+
+		//post clamp
+		writel(0x000000ff, pipe_base + PIPE_VP_0_CSC_1_COMP_0_POST_CAMP);
+		writel(0x000000ff, pipe_base + PIPE_VP_0_CSC_1_COMP_1_POST_CLAMP);
+		writel(0x000000ff, pipe_base + PIPE_VP_0_CSC_1_COMP_2_POST_CLAMP);
+
+		//pre bias
+		writel(0x0000fff0, pipe_base + PIPE_VP_0_CSC_1_COMP_0_PRE_BIAS);
+		writel(0x0000ff80, pipe_base + PIPE_VP_0_CSC_1_COMP_1_PRE_BIAS);
+		writel(0x0000ff80, pipe_base + PIPE_VP_0_CSC_1_COMP_2_PRE_BIAS);
+
+		//post bias
+		writel(0x00000000, pipe_base + PIPE_VP_0_CSC_1_COMP_0_POST_BIAS);
+		writel(0x00000000, pipe_base + PIPE_VP_0_CSC_1_COMP_1_POST_BIAS);
+		writel(0x00000000, pipe_base + PIPE_VP_0_CSC_1_COMP_2_POST_BIAS);
+	}
+
 	/* bit(0) is set if hflip is required.
 	 * bit(1) is set if vflip is required.
 	 */
@@ -286,6 +389,27 @@ static void mdss_source_pipe_config(struct fbcon_config *fb, struct msm_panel_in
 		writel(0x200000, pipe_base + PIPE_COMP0_3_PHASE_STEP_Y);
 		writel(0x200000, pipe_base + PIPE_COMP1_2_PHASE_STEP_X);
 		writel(0x200000, pipe_base + PIPE_COMP1_2_PHASE_STEP_Y);
+
+		if (target_is_yuv_format(fb->format)) {
+			//QSEED
+			writel(0x00055f03, pipe_base + PIPE_VP_0_QSEEP2_CONFIG);
+			writel(0x00100000, pipe_base + PIPE_COMP1_2_PHASE_STEP_X);
+			writel(0x00000020, pipe_base + PIPE_VP_0_QSEEP2_SHARP_SMOOTH_STRENGTH);
+			writel(0x00000070, pipe_base + PIPE_VP_0_QSEEP2_SHARP_THRESHOLD_EDGE);
+			writel(0x00000008, pipe_base + PIPE_VP_0_QSEEP2_SHARP_THRESHOLD_SMOOTH);
+			writel(0x00000002, pipe_base + PIPE_VP_0_QSEEP2_SHARP_THRESHHOLD_NOISE);
+
+			//PE
+			writel(0x00020001, pipe_base + PIPE_SSPP_SW_PIX_EXT_CO_LR);
+			writel(0x00020001, pipe_base + PIPE_SSPP_SW_PIX_EXT_CO_TB);
+			writel(0x02d30503, pipe_base + PIPE_SSPP_SW_PIX_EXT_CO_REQ_PIXELS);
+			writel(0x00010000, pipe_base + PIPE_SSPP_SW_PIX_EXT_C1C2_LR);
+			writel(0x00010000, pipe_base + PIPE_SSPP_SW_PIX_EXT_C1C2_TB);
+			writel(0x02d10281, pipe_base + PIPE_SSPP_SW_PIX_EXT_C1C2_REQ_PIXELS);
+			writel(0x00010000, pipe_base + PIPE_SSPP_SW_PIX_EXT_C3_LR);
+			writel(0x00010000, pipe_base + PIPE_SSPP_SW_PIX_EXT_C3_TB);
+			writel(0x02d10501, pipe_base + PIPE_SSPP_SW_PIX_EXT_C3_REQ_PIXELS);
+		}
 	}
 	writel(flip_bits, pipe_base + PIPE_SSPP_SRC_OP_MODE);
 }
@@ -687,11 +811,85 @@ static void mdss_intf_fetch_start_config(struct msm_panel_info *pinfo,
 	writel_relaxed(fetch_enable, MDP_INTF_CONFIG + intf_base);
 }
 
+int mdss_layer_mixer_remove_pipe(struct msm_panel_info *pinfo) {
+	uint32_t left_staging_level, right_staging_level;
+	uint32_t left_bitmask, right_bitmask;
+
+	if (!pinfo) {
+		dprintf(CRITICAL, "Invalid input\n");
+		return ERROR;
+	}
+	left_staging_level = readl(MDP_CTL_0_BASE + CTL_LAYER_0);
+	right_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
+
+	switch (pinfo->pipe_type) {
+		case MDSS_MDP_PIPE_TYPE_RGB:
+			switch (pinfo->pipe_id) {
+				case 0:
+					left_bitmask = 7 << 9;
+					right_bitmask = 7 << 12;
+					break;
+				case 1:
+					left_bitmask = 7 << 12;
+					right_bitmask = 7 << 9;
+					break;
+				case 2:
+					left_bitmask = 7 << 15;
+					right_bitmask = 7 << 12;
+					break;
+				case 3:
+				default:
+					left_bitmask = 7 << 29;
+					right_bitmask = 7 << 12;
+					break;
+			}
+			right_bitmask = ~right_bitmask;
+			left_bitmask = ~left_bitmask;
+			break;
+		case MDSS_MDP_PIPE_TYPE_VIG:
+			switch (pinfo->pipe_id) {
+				case 0:
+					left_bitmask = 7;
+					right_bitmask = 7 << 3;
+					break;
+				case 1:
+					left_bitmask = 7 << 3;
+					right_bitmask = 7;
+					break;
+				case 2:
+					left_bitmask = 7 << 6;
+					right_bitmask = 7 << 3;
+					break;
+				case 3:
+				default:
+					left_bitmask = 7 << 26;
+					right_bitmask = 7 << 3;
+					break;
+			}
+			right_bitmask = ~right_bitmask;
+			left_bitmask = ~left_bitmask;
+			break;
+		default:
+			right_bitmask = 0xFFFFFFFF;
+			left_bitmask = 0xFFFFFFFF;
+			break;
+	}
+	left_staging_level = left_staging_level & left_bitmask;
+	right_staging_level = right_staging_level & right_bitmask;
+	writel(left_staging_level, MDP_CTL_0_BASE + CTL_LAYER_0);
+	if (pinfo->lcdc.dual_pipe && !pinfo->lcdc.dst_split)
+		writel(right_staging_level, MDP_CTL_0_BASE + CTL_LAYER_1);
+	return 0;
+}
+
 void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 		*pinfo)
 {
 	uint32_t mdp_rgb_size, height, width;
 	uint32_t left_staging_level, right_staging_level;
+	uint32_t new_left_staging_level;
+	uint32_t new_right_staging_level;
+	uint32_t pipe_order;
 
 	height = fb->height;
 	width = fb->width;
@@ -712,23 +910,80 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 	writel(0xFF, MDP_VP_0_MIXER_0_BASE + LAYER_2_BLEND0_FG_ALPHA);
 	writel(0x100, MDP_VP_0_MIXER_0_BASE + LAYER_3_BLEND_OP);
 	writel(0xFF, MDP_VP_0_MIXER_0_BASE + LAYER_3_BLEND0_FG_ALPHA);
+	writel(0x100, MDP_VP_0_MIXER_0_BASE + LAYER_4_BLEND_OP);
+	writel(0xFF, MDP_VP_0_MIXER_0_BASE + LAYER_4_BLEND0_FG_ALPHA);
+	writel(0x100, MDP_VP_0_MIXER_0_BASE + LAYER_5_BLEND_OP);
+	writel(0xFF, MDP_VP_0_MIXER_0_BASE + LAYER_5_BLEND0_FG_ALPHA);
 
-	switch (pinfo->pipe_type) {
-		case MDSS_MDP_PIPE_TYPE_RGB:
-			left_staging_level = 0x0000200;
-			right_staging_level = 0x1000;
+	left_staging_level = readl(MDP_CTL_0_BASE + CTL_LAYER_0);
+	right_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
+
+	switch (pinfo->zorder) {
+		case 1:
+			pipe_order = 6;
 			break;
-		case MDSS_MDP_PIPE_TYPE_DMA:
-			left_staging_level = 0x0040000;
-			right_staging_level = 0x200000;
+		case 2:
+			pipe_order = 2;
 			break;
-		case MDSS_MDP_PIPE_TYPE_VIG:
 		default:
-			left_staging_level = 0x1;
-			right_staging_level = 0x8;
+			pipe_order = 1;
 			break;
 	}
 
+	switch (pinfo->pipe_type) {
+		case MDSS_MDP_PIPE_TYPE_RGB:
+			switch (pinfo->pipe_id) {
+				case 0:
+					new_left_staging_level = pipe_order << 9;
+					new_right_staging_level = pipe_order << 12;
+					break;
+				case 1:
+					new_left_staging_level = pipe_order << 12;
+					new_right_staging_level = pipe_order << 9;
+					break;
+				case 2:
+					new_left_staging_level = pipe_order << 15;
+					new_right_staging_level = pipe_order << 12;
+					break;
+				case 3:
+				default:
+					new_left_staging_level = pipe_order << 29;
+					new_right_staging_level = pipe_order << 12;
+					break;
+			}
+			break;
+		case MDSS_MDP_PIPE_TYPE_DMA:
+			new_left_staging_level = 0x0040000;
+			new_right_staging_level = 0x200000;
+			break;
+		case MDSS_MDP_PIPE_TYPE_VIG:
+		default:
+			switch (pinfo->pipe_id) {
+				case 0:
+					new_left_staging_level = pipe_order;
+					new_right_staging_level = pipe_order << 3;
+					break;
+				case 1:
+					new_left_staging_level = pipe_order << 3;
+					new_right_staging_level = pipe_order;
+					break;
+				case 2:
+					new_left_staging_level = pipe_order << 6;
+					new_right_staging_level = pipe_order << 3;
+					break;
+				case 3:
+				default:
+					new_left_staging_level = pipe_order << 26;
+					new_right_staging_level = pipe_order << 3;
+					break;
+			}
+			break;
+	}
+
+	left_staging_level |= new_left_staging_level;
+	left_staging_level |= BIT(24);
+	right_staging_level |= new_right_staging_level;
+	right_staging_level |= BIT(24);
 	/*
 	 * When ping-pong split is enabled and two pipes are used,
 	 * both the pipes need to be staged on the same layer mixer.
@@ -753,6 +1008,10 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_2_BLEND0_FG_ALPHA);
 		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_3_BLEND_OP);
 		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_3_BLEND0_FG_ALPHA);
+		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_4_BLEND_OP);
+		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_4_BLEND0_FG_ALPHA);
+		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_5_BLEND_OP);
+		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_5_BLEND0_FG_ALPHA);
 
 		/* Base layer for layer mixer 1 */
 		if (pinfo->lcdc.split_display)
@@ -915,7 +1174,7 @@ static uint32_t mdss_mdp_ctl_out_sel(struct msm_panel_info *pinfo,
 	uint32_t sctl_intf_sel;
 
 	if ((pinfo->dest == DISPLAY_2) ||
-		((pinfo->dest = DISPLAY_1) && (pinfo->lcdc.pipe_swap))) {
+		((pinfo->dest == DISPLAY_1) && (pinfo->lcdc.pipe_swap))) {
 		mctl_intf_sel = BIT(4) | BIT(5); /* Interface 2 */
 		sctl_intf_sel = BIT(5); /* Interface 1 */
 	} else {
@@ -1033,7 +1292,6 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 	writel(0x1111, MDP_VIDEO_INTF_UNDERFLOW_CTL);
 	writel(0x01, MDP_UPPER_NEW_ROI_PRIOR_RO_START);
 	writel(0x01, MDP_LOWER_NEW_ROI_PRIOR_TO_START);
-
 	return 0;
 }
 
@@ -1241,6 +1499,22 @@ int mdp_dsi_video_on(struct msm_panel_info *pinfo)
 	return NO_ERROR;
 }
 
+int mdp_dsi_video_update(struct msm_panel_info *pinfo)
+{
+	uint32_t ctl0_reg_val, ctl1_reg_val;
+
+	if (!pinfo) {
+		dprintf(CRITICAL, "Error! Invalid arg\n");
+		return ERR_INVALID_ARGS;
+	}
+	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
+	writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
+	if (pinfo->lcdc.dual_pipe && !pinfo->lcdc.dst_split)
+		writel(ctl1_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
+
+	return NO_ERROR;
+}
+
 int mdp_dsi_video_off(struct msm_panel_info *pinfo)
 {
 	uint32_t timing_engine_en;
@@ -1306,6 +1580,16 @@ int mdss_hdmi_on(struct msm_panel_info *pinfo)
 	writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
 
 	writel(0x01, MDP_INTF_3_TIMING_ENGINE_EN + mdss_mdp_intf_offset());
+
+	return NO_ERROR;
+}
+
+int mdss_hdmi_update(struct msm_panel_info *pinfo)
+{
+	uint32_t ctl0_reg_val, ctl1_reg_val;
+
+	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
+	writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
 
 	return NO_ERROR;
 }

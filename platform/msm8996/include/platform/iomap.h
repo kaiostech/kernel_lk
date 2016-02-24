@@ -515,8 +515,12 @@
 
 #define MDP_VP_0_VIG_0_BASE                     REG_MDP(0x5000)
 #define MDP_VP_0_VIG_1_BASE                     REG_MDP(0x7000)
+#define MDP_VP_0_VIG_2_BASE                     REG_MDP(0x9000)
+#define MDP_VP_0_VIG_3_BASE                     REG_MDP(0xB000)
 #define MDP_VP_0_RGB_0_BASE                     REG_MDP(0x15000)
 #define MDP_VP_0_RGB_1_BASE                     REG_MDP(0x17000)
+#define MDP_VP_0_RGB_2_BASE                     REG_MDP(0x19000)
+#define MDP_VP_0_RGB_3_BASE                     REG_MDP(0x1B000)
 #define MDP_VP_0_DMA_0_BASE                     REG_MDP(0x25000)
 #define MDP_VP_0_DMA_1_BASE                     REG_MDP(0x27000)
 #define MDP_VP_0_MIXER_0_BASE                   REG_MDP(0x45000)

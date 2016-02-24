@@ -42,6 +42,16 @@
 #define PIPE_SSPP_SRC_FORMAT                    0x30
 #define PIPE_SSPP_SRC_UNPACK_PATTERN            0x34
 #define PIPE_SSPP_SRC_OP_MODE                   0x38
+#define PIPE_SSPP_SW_PIX_EXT_CO_LR              0x100
+#define PIPE_SSPP_SW_PIX_EXT_CO_TB              0x104
+#define PIPE_SSPP_SW_PIX_EXT_CO_REQ_PIXELS      0x108
+#define PIPE_SSPP_SW_PIX_EXT_C1C2_LR            0x110
+#define PIPE_SSPP_SW_PIX_EXT_C1C2_TB            0x114
+#define PIPE_SSPP_SW_PIX_EXT_C1C2_REQ_PIXELS    0x118
+#define PIPE_SSPP_SW_PIX_EXT_C3_LR              0x120
+#define PIPE_SSPP_SW_PIX_EXT_C3_TB              0x124
+#define PIPE_SSPP_SW_PIX_EXT_C3_REQ_PIXELS      0x128
+#define PIPE_SSPP_SW_CDP_CTL                    0x134
 #define REQPRIORITY_FIFO_WATERMARK0        	0x50
 #define REQPRIORITY_FIFO_WATERMARK1        	0x54
 #define REQPRIORITY_FIFO_WATERMARK2        	0x58
@@ -52,6 +62,30 @@
 #define PIPE_COMP0_3_PHASE_STEP_Y               0x214
 #define PIPE_COMP1_2_PHASE_STEP_X               0x218
 #define PIPE_COMP1_2_PHASE_STEP_Y               0x21c
+#define PIPE_VP_0_OP_MODE                       0x200
+#define PIPE_VP_0_QSEEP2_CONFIG                 0x204
+#define PIPE_VP_0_QSEEP2_SHARP_SMOOTH_STRENGTH  0x230
+#define PIPE_VP_0_QSEEP2_SHARP_THRESHOLD_EDGE   0x234
+#define PIPE_VP_0_QSEEP2_SHARP_THRESHOLD_SMOOTH 0x238
+#define PIPE_VP_0_QSEEP2_SHARP_THRESHHOLD_NOISE 0x23C
+
+#define PIPE_VP_0_CSC_1_MATRIX_COEFF_0          0x320
+#define PIPE_VP_0_CSC_1_MATRIX_COEFF_1          0x324
+#define PIPE_VP_0_CSC_1_MATRIX_COEFF_2          0x328
+#define PIPE_VP_0_CSC_1_MATRIX_COEFF_3          0x32C
+#define PIPE_VP_0_CSC_1_MATRIX_COEFF_4          0x330
+#define PIPE_VP_0_CSC_1_COMP_0_PRE_CLAMP        0x334
+#define PIPE_VP_0_CSC_1_COMP_1_PRE_CLAMP        0x338
+#define PIPE_VP_0_CSC_1_COMP_2_PRE_CLAMP        0x33C
+#define PIPE_VP_0_CSC_1_COMP_0_POST_CAMP        0x340
+#define PIPE_VP_0_CSC_1_COMP_1_POST_CLAMP       0x344
+#define PIPE_VP_0_CSC_1_COMP_2_POST_CLAMP       0x348
+#define PIPE_VP_0_CSC_1_COMP_0_PRE_BIAS         0x34C
+#define PIPE_VP_0_CSC_1_COMP_1_PRE_BIAS         0x350
+#define PIPE_VP_0_CSC_1_COMP_2_PRE_BIAS         0x354
+#define PIPE_VP_0_CSC_1_COMP_0_POST_BIAS        0x358
+#define PIPE_VP_0_CSC_1_COMP_1_POST_BIAS        0x35C
+#define PIPE_VP_0_CSC_1_COMP_2_POST_BIAS        0x360
 
 #define LAYER_0_OUT_SIZE                        0x04
 #define LAYER_0_OP_MODE                         0x00
@@ -64,6 +98,10 @@
 #define LAYER_2_BLEND0_FG_ALPHA                 0x84
 #define LAYER_3_BLEND_OP                        0xB0
 #define LAYER_3_BLEND0_FG_ALPHA                 0xB4
+#define LAYER_4_BLEND_OP                        0x230
+#define LAYER_4_BLEND0_FG_ALPHA                 0x234
+#define LAYER_5_BLEND_OP                        0x260
+#define LAYER_5_BLEND0_FG_ALPHA                 0x264
 
 /* HW Revisions for different MDSS targets */
 #define MDSS_GET_MAJOR(rev)         ((rev) >> 28)

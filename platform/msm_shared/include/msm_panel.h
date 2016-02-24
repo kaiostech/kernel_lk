@@ -390,6 +390,8 @@ struct msm_panel_info {
 	uint32_t compression_mode;
 	/*  Select pipe type for handoff */
 	uint32_t pipe_type;
+	uint32_t pipe_id;
+	uint32_t zorder;
 	char     lowpowerstop;
 	char     lcd_reg_en;
 	uint32_t border_top;
