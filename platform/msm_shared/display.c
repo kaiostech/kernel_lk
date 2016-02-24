@@ -54,10 +54,14 @@ static int msm_fb_alloc(struct fbcon_config *fb)
 							* fb->height
 							* (fb->bpp / 8));
 
-	if (fb->base == NULL)
+	if (fb->base == NULL) {
+		dprintf(CRITICAL, "Error in Allocating buffer\n");
 		return ERROR;
-
-	return NO_ERROR;
+	}
+	else {
+		dprintf(SPEW, "Allocated buffer\n");
+		return NO_ERROR;
+	}
 }
 
 int msm_display_config()
@@ -264,6 +268,87 @@ int msm_display_on()
 
 msm_display_on_out:
 	return ret;
+}
+
+
+int msm_display_update(struct fbcon_config *fb, uint32_t pipe_id, uint32_t pipe_type,
+	uint32_t zorder, uint32_t width, uint32_t height)
+{
+	struct msm_panel_info *pinfo;
+	int ret = 0;
+	if (!panel || !fb) {
+		dprintf(CRITICAL, "Error! Inalid args\n");
+		return ERR_INVALID_ARGS;
+	}
+
+	panel->fb = *fb;
+	pinfo = &(panel->panel_info);
+	pinfo->pipe_type = pipe_type;
+	pinfo->pipe_id = pipe_id;
+	pinfo->zorder = zorder;
+	pinfo->border_top = fb->height/2 - height/2;
+	pinfo->border_bottom = pinfo->border_top;
+	pinfo->border_left = fb->width/2 - width/2;
+	pinfo->border_right = pinfo->border_left;
+
+	switch (pinfo->type) {
+		case MIPI_VIDEO_PANEL:
+			ret = mdp_dsi_video_config(pinfo, fb);
+			if (ret) {
+				dprintf(CRITICAL, "ERROR in display config\n");
+				goto msm_display_update_out;
+			}
+			ret = mdp_dsi_video_update(pinfo);
+			if (ret) {
+				dprintf(CRITICAL, "ERROR in display upate\n");
+				goto msm_display_update_out;
+			}
+			break;
+		case HDMI_PANEL:
+			ret = mdss_hdmi_config(pinfo, fb);
+			if (ret) {
+				dprintf(CRITICAL, "ERROR in display config\n");
+				goto msm_display_update_out;
+			}
+			ret = mdss_hdmi_update(pinfo);
+			if (ret) {
+				dprintf(CRITICAL, "ERROR in display upate\n");
+				goto msm_display_update_out;
+			}
+			break;
+		default:
+			dprintf(SPEW, "Update not supported right now\n");
+			break;
+	}
+
+msm_display_update_out:
+	return ret;
+}
+
+int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type)
+{
+	struct msm_panel_info *pinfo;
+	int ret = 0;
+
+	if (!panel) {
+		dprintf(CRITICAL, "Error! Inalid args\n");
+		return ERR_INVALID_ARGS;
+	}
+
+	pinfo = &(panel->panel_info);
+	pinfo->pipe_type = pipe_type;
+	pinfo->pipe_id = pipe_id;
+
+	ret = mdss_layer_mixer_remove_pipe(pinfo);
+	if (ret) {
+		dprintf(CRITICAL, "Error in mdss_layer_mixer_remove_pipe\n");
+		return ret;
+	} else {
+		if (pinfo->type == MIPI_VIDEO_PANEL)
+			return mdp_dsi_video_update(pinfo);
+		else
+			return mdss_hdmi_update(pinfo);
+	}
 }
 
 int msm_display_init(struct msm_fb_panel_data *pdata)

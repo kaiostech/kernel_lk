@@ -105,4 +105,5 @@ bool target_battery_soc_ok();
 bool target_battery_is_present();
 uint32_t target_get_pmic();
 void earlydomain();
+int target_is_yuv_format(uint32_t format);
 #endif
