@@ -117,6 +117,12 @@ extern int msm_display_update(struct fbcon_config *fb, uint32_t pipe_id,
 	uint32_t pipe_type, uint32_t zorder, uint32_t width, uint32_t height);
 extern int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type);
 
+bool display_init_done = false;
+
+bool target_display_is_init_done()
+{
+	return display_init_done;
+}
 
 static void target_hdmi_ldo_enable(uint8_t enable)
 {
@@ -822,11 +828,11 @@ void target_display_init(const char *panel_name)
 		|| oem.skip) {
 		dprintf(INFO, "Selected panel: %s\nSkip panel configuration\n",
 			oem.panel);
-		return;
+		goto target_display_init_end;
 	} else if (!strcmp(oem.panel, HDMI_PANEL_NAME)) {
 		dprintf(INFO, "%s: HDMI is primary\n", __func__);
 		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
-		return;
+		goto target_display_init_end;
 	}
 
 	if (gcdb_display_init(oem.panel, MDP_REV_50, (void *)MIPI_FB_ADDR)) {
@@ -838,6 +844,9 @@ void target_display_init(const char *panel_name)
 		dprintf(INFO, "Forcing continuous splash disable\n");
 		target_force_cont_splash_disable(true);
 	}
+
+target_display_init_end:
+	display_init_done = true;
 }
 
 void target_display_shutdown(void)
@@ -848,6 +857,7 @@ void target_display_shutdown(void)
 	} else {
 		gcdb_display_shutdown();
 	}
+	display_init_done = false;
 }
 
 /* DYNAMIC APIS */

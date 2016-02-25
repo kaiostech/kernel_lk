@@ -3671,7 +3671,12 @@ void aboot_init(const struct app_descriptor *app)
 	}
 #endif
 #endif
-
+	while ((device.early_domain_enabled)
+		&& (TRUE == target_animated_splash_screen())
+		&& (FALSE == target_is_mmc_read_done()))
+	{
+		mdelay(10);
+	}
 	target_serialno((unsigned char *) sn_buf);
 	dprintf(SPEW,"serial number: %s\n",sn_buf);
 
@@ -3749,6 +3754,7 @@ void aboot_init(const struct app_descriptor *app)
 #endif
 #endif
 
+// mdelay(500);
 normal_boot:
 	if (!boot_into_fastboot)
 	{

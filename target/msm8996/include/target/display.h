@@ -182,5 +182,6 @@ void *target_display_acquire_layer(struct target_display * disp, char *client_na
 int target_display_update(struct target_display_update * update, uint32_t size);
 int target_release_layer(struct target_layer *layer);
 int target_display_close(struct target_display * disp);
+bool target_display_is_init_done();
 
 #endif

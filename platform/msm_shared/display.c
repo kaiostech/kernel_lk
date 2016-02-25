@@ -46,20 +46,30 @@ extern int lvds_on(struct msm_fb_panel_data *pdata);
 
 static int msm_fb_alloc(struct fbcon_config *fb)
 {
+	/* Static splash buffer */
+	int num_buffers = 1;
+
 	if (fb == NULL)
 		return ERROR;
+
+	if (target_animated_splash_screen()) {
+		/* Static splash + animated splash buffers */
+		dprintf(SPEW, "Allocate extra buffers for animates splash\n");
+		num_buffers = 13;
+	}
 
 	if (fb->base == NULL)
 		fb->base = memalign(4096, fb->width
 							* fb->height
-							* (fb->bpp / 8));
+							* (fb->bpp / 8)
+							* num_buffers);
 
 	if (fb->base == NULL) {
-		dprintf(CRITICAL, "Error in Allocating buffer\n");
+		dprintf(CRITICAL, "Error in Allocating %d buffer\n", num_buffers);
 		return ERROR;
 	}
 	else {
-		dprintf(SPEW, "Allocated buffer\n");
+		dprintf(SPEW, "Allocated %d buffers\n", num_buffers);
 		return NO_ERROR;
 	}
 }
