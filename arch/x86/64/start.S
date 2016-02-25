@@ -41,6 +41,9 @@
 #define MSR_EFER 0xc0000080
 #define EFER_LME 0x00000100
 
+#define PHYS_LOAD_ADDRESS (MEMBASE + KERNEL_LOAD_OFFSET)
+#define PHYS_ADDR_DELTA (KERNEL_ASPACE_BASE + KERNEL_LOAD_OFFSET - PHYS_LOAD_ADDRESS)
+
 .section ".text.boot"
 .code32
 .global _start
@@ -60,25 +63,27 @@ multiboot_header:
 
 #if !defined(__ELF__) || 1
     /* header_addr */
-    .int multiboot_header
+    .int (multiboot_header - PHYS_ADDR_DELTA)
     /* load_addr */
-    .int _start
+    .int (_start - PHYS_ADDR_DELTA)
     /* load_end_addr */
-    .int __data_end
+    .int (__data_end - PHYS_ADDR_DELTA)
     /* bss_end_addr */
-    .int __bss_end
+    .int (__bss_end - PHYS_ADDR_DELTA)
     /* entry_addr */
-    .int real_start
+    .int (real_start - PHYS_ADDR_DELTA)
 #endif
+
 
 real_start:
     cmpl $MULTIBOOT_BOOTLOADER_MAGIC, %eax
     jne 0f
-    movl %ebx, (_multiboot_info)
+    movl %ebx, (_multiboot_info - PHYS_ADDR_DELTA)
+
 0:
     /* setup isr stub descriptors in the idt */
-    movl $_isr, %esi
-    movl $_idt, %edi
+    movl $(_isr - PHYS_ADDR_DELTA), %esi
+    movl $(_idt - PHYS_ADDR_DELTA), %edi
     movl $NUM_INT, %ecx
 
 .Lloop:
@@ -99,13 +104,14 @@ real_start:
 
     loop .Lloop
 
+    lidt (_idtr32 - PHYS_ADDR_DELTA)
 
-    lidt _idtr
+    /* zero out cr3 */
     xorl %eax, %eax
     mov %eax, %cr3
 
-    lgdt _gdtr
-
+    /* load our new gdt by 32bit pointer */
+    lgdt (_gdtr32 - PHYS_ADDR_DELTA)
 
     movw $datasel, %ax
     movw %ax, %ds
@@ -115,20 +121,24 @@ real_start:
     movw %ax, %gs
     movw %ax, %ss
 
-    movl $_kstack, %esp
+    /* load a kernel stack by 32bit pointer */
+    movl $(_kstack - PHYS_ADDR_DELTA), %esp
 
     /* We need to jump to our sane 32 bit  CS
      executing a far jump using retf */
     movl $codesel_32, %ecx
-        pushl %ecx
-        movl $farjump, %ecx
-        pushl %ecx
-        xorl %ecx, %ecx
-        retf
+    pushl %ecx
+    movl $(farjump - PHYS_ADDR_DELTA), %ecx
+    pushl %ecx
+    xorl %ecx, %ecx
+    retf
 
 farjump:
     movl $tsssel, %eax
     ltr %ax
+
+
+#if 0
     /* zero the bss section */
     movl $__bss_start, %edi /* starting address of the bss */
     movl $__bss_end, %ecx   /* find the length of the bss in bytes */
@@ -138,7 +148,7 @@ farjump:
     movl $0, (%edi)
     addl $4, %edi
     loop 2b
-
+#endif
 
     /* Preparing 64 bit paging, we will use 2MB pages covering 1GB
     for initial bootstrap, this page table will be 1 to 1  */
@@ -148,7 +158,7 @@ farjump:
     btsl $(5), %eax
     mov %eax, %cr4  /*Enabling PAE*/
 
-    movl $pml4, %eax
+    movl $(pml4 - PHYS_ADDR_DELTA), %eax
     mov %eax, %cr3
 
     /* Long Mode Enabled at this point*/
@@ -159,17 +169,17 @@ farjump:
 
     /* Setting the First PML4E with a PDP table reference*/
     xorl %eax,  %eax
-    movl $pdp,   %eax
+    movl $(pdp - PHYS_ADDR_DELTA),   %eax
     orl  $0x7, %eax
-    movl %eax, (pml4)
+    movl %eax, (pml4 - PHYS_ADDR_DELTA)
 
     /* Setting the First PDPTE with a Page table reference*/
     xorl %eax, %eax
-    movl $pte, %eax
+    movl $(pte - PHYS_ADDR_DELTA), %eax
     orl  $0x7, %eax
-    movl %eax, (pdp)
+    movl %eax, (pdp - PHYS_ADDR_DELTA)
 
-    movl $pte, %esi
+    movl $(pte - PHYS_ADDR_DELTA), %esi
     movl $0x1ff, %ecx
 
     /* We need 256 entries of 2MB each to cover 1GB */
@@ -196,7 +206,7 @@ fill_pte:
     after this we will be on real 64 bit mode */
     movl $codesel_64, %ecx     /*Need to put it in a the right CS*/
     pushl %ecx
-    movl $farjump64, %ecx
+    movl $(farjump64 - PHYS_ADDR_DELTA), %ecx
     pushl %ecx
     retf
 
@@ -311,13 +321,14 @@ interrupt_common:
 
 .global _multiboot_info
 _multiboot_info:
-    .int 0
-    .int 0
+    .long 0
+
 .align 8
-.global _gdtr
-_gdtr:
+.global _gdtr32
+_gdtr32:
     .short _gdt_end - _gdt - 1
-    .int _gdt
+    .int _gdt - PHYS_ADDR_DELTA
+
 .align 8
 .global _gdt
 _gdt:
@@ -422,11 +433,19 @@ _tss_gde:
 _gdt_end:
 
 .align 8
+.global _idtr32
+_idtr32:
+    .short _idt_end - _idt - 1  /* IDT limit */
+    .long _idt - PHYS_ADDR_DELTA
+.fill 8
+
+.align 8
 .global _idtr
 _idtr:
     .short _idt_end - _idt - 1  /* IDT limit */
-    .long _idt
+    .quad _idt
 .fill 8
+
 .align 8
 /* interrupt descriptor table (IDT) */
 .global _idt
