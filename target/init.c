@@ -167,6 +167,18 @@ __WEAK int target_cont_splash_screen()
 	return 0;
 }
 
+/* Default target does not support animated splash screen feature. */
+__WEAK int target_animated_splash_screen()
+{
+	return 0;
+}
+
+/* Default target does not support animated splash screen feature. */
+__WEAK bool target_is_mmc_read_done()
+{
+	return false;
+}
+
 /* Default target specific initialization before using USB */
 __WEAK void target_usb_init(void)
 {
