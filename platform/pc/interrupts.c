@@ -36,11 +36,11 @@
 
 static spin_lock_t lock;
 
-void x86_gpf_handler(struct x86_iframe *frame);
-void x86_invop_handler(struct x86_iframe *frame);
-void x86_unhandled_exception(struct x86_iframe *frame);
+void x86_gpf_handler(x86_iframe_t *frame);
+void x86_invop_handler(x86_iframe_t *frame);
+void x86_unhandled_exception(x86_iframe_t *frame);
 #ifdef ARCH_X86_64
-void x86_pfe_handler(struct x86_iframe *frame);
+void x86_pfe_handler(x86_iframe_t *frame);
 #endif
 
 #define PIC1 0x20
@@ -206,7 +206,7 @@ status_t unmask_interrupt(unsigned int vector)
     return NO_ERROR;
 }
 
-enum handler_return platform_irq(struct x86_iframe *frame)
+enum handler_return platform_irq(x86_iframe_t *frame)
 {
     // get the current vector
     unsigned int vector = frame->vector;

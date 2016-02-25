@@ -26,8 +26,9 @@
 #include <kernel/thread.h>
 
 
-static void dump_fault_frame(struct x86_iframe *frame)
+static void dump_fault_frame(x86_iframe_t *frame)
 {
+#if ARCH_X86_32
     dprintf(CRITICAL, " CS:     %04x EIP: %08x EFL: %08x CR2: %08x\n",
             frame->cs, frame->eip, frame->eflags, x86_get_cr2());
     dprintf(CRITICAL, "EAX: %08x ECX: %08x EDX: %08x EBX: %08x\n",
@@ -36,9 +37,20 @@ static void dump_fault_frame(struct x86_iframe *frame)
             frame->esp, frame->ebp, frame->esi, frame->edi);
     dprintf(CRITICAL, " DS:     %04x  ES:     %04x  FS:     %04x  GS:     %04x\n",
             frame->ds, frame->es, frame->fs, frame->gs);
+#elif ARCH_X86_64
+    dprintf(CRITICAL, " CS:     %04llx EIP: %08llx EFL: %08llx CR2: %08llx\n",
+            frame->cs, frame->rip, frame->rflags, x86_get_cr2());
+    /*  dprintf(CRITICAL, "EAX: %08x ECX: %08x EDX: %08x EBX: %08x\n",
+                frame->rax, frame->rcx, frame->rdx, frame->rbx);
+        dprintf(CRITICAL, "ESP: %08x EBP: %08x ESI: %08x EDI: %08x\n",
+                frame->rsp, frame->rbp, frame->rsi, frame->rdi);
+        dprintf(CRITICAL, " DS:     %04x  ES:     %04x  FS:     %04x  GS:     %04x\n",
+                frame->ds, frame->es, frame->fs, frame->gs);
+    */
+#endif
 
     // dump the bottom of the current stack
-    addr_t stack = (addr_t) frame; //(addr_t) (((uint32_t *) frame) + (sizeof(struct x86_iframe) / sizeof(uint32_t) - 1));
+    addr_t stack = (addr_t) frame; //(addr_t) (((uint32_t *) frame) + (sizeof(x86_iframe_t) / sizeof(uint32_t) - 1));
 
     if (stack != 0) {
         dprintf(CRITICAL, "bottom of stack at 0x%08x:\n", (unsigned int)stack);
@@ -46,7 +58,7 @@ static void dump_fault_frame(struct x86_iframe *frame)
     }
 }
 
-static void exception_die(struct x86_iframe *frame, const char *msg)
+static void exception_die(x86_iframe_t *frame, const char *msg)
 {
     dprintf(CRITICAL, msg);
     dump_fault_frame(frame);
@@ -57,27 +69,27 @@ static void exception_die(struct x86_iframe *frame, const char *msg)
     }
 }
 
-void x86_syscall_handler(struct x86_iframe *frame)
+void x86_syscall_handler(x86_iframe_t *frame)
 {
     exception_die(frame, "unhandled syscall, halting\n");
 }
 
-void x86_gpf_handler(struct x86_iframe *frame)
+void x86_gpf_handler(x86_iframe_t *frame)
 {
     exception_die(frame, "unhandled gpf, halting\n");
 }
 
-void x86_invop_handler(struct x86_iframe *frame)
+void x86_invop_handler(x86_iframe_t *frame)
 {
     exception_die(frame, "unhandled invalid op, halting\n");
 }
 
-void x86_unhandled_exception(struct x86_iframe *frame)
+void x86_unhandled_exception(x86_iframe_t *frame)
 {
     exception_die(frame, "unhandled exception, halting\n");
 }
 
-void x86_pfe_handler(struct x86_iframe *frame)
+void x86_pfe_handler(x86_iframe_t *frame)
 {
     /* Handle a page fault exception */
     uint32_t error_code;

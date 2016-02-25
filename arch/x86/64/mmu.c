@@ -202,7 +202,7 @@ uint get_arch_mmu_flags(arch_flags_t flags)
  * 4KB pages.
  *
  */
-static status_t x86_mmu_get_mapping(addr_t pml4, vaddr_t vaddr, uint32_t *ret_level,
+status_t x86_mmu_get_mapping(map_addr_t pml4, vaddr_t vaddr, uint32_t *ret_level,
                                     arch_flags_t *mmu_flags, map_addr_t *last_valid_entry)
 {
     uint64_t pml4e, pdpe, pde, pte;
@@ -405,7 +405,7 @@ map_addr_t get_kernel_cr3()
  * 4KB pages.
  *
  */
-status_t x86_mmu_add_mapping(addr_t pml4, paddr_t paddr,
+status_t x86_mmu_add_mapping(map_addr_t pml4, map_addr_t paddr,
                              vaddr_t vaddr, arch_flags_t mmu_flags)
 {
     uint32_t pd_new = 0, pdp_new = 0;
@@ -550,7 +550,7 @@ static void x86_mmu_unmap_entry(vaddr_t vaddr, int level, vaddr_t table_entry)
     }
 }
 
-status_t x86_mmu_unmap(addr_t pml4, vaddr_t vaddr, uint count)
+status_t x86_mmu_unmap(map_addr_t pml4, vaddr_t vaddr, uint count)
 {
     vaddr_t next_aligned_v_addr;
 
@@ -563,7 +563,7 @@ status_t x86_mmu_unmap(addr_t pml4, vaddr_t vaddr, uint count)
 
     next_aligned_v_addr = vaddr;
     while (count > 0) {
-        x86_mmu_unmap_entry(next_aligned_v_addr, PAGING_LEVELS, X86_PHYS_TO_VIRT(pml4));
+        x86_mmu_unmap_entry(next_aligned_v_addr, X86_PAGING_LEVELS, X86_PHYS_TO_VIRT(pml4));
         next_aligned_v_addr += PAGE_SIZE;
         count--;
     }
@@ -592,7 +592,7 @@ int arch_mmu_unmap(arch_aspace_t *aspace, vaddr_t vaddr, uint count)
  * @brief  Mapping a section/range with specific permissions
  *
  */
-status_t x86_mmu_map_range(addr_t pml4, struct map_range *range, arch_flags_t flags)
+status_t x86_mmu_map_range(map_addr_t pml4, struct map_range *range, arch_flags_t flags)
 {
     vaddr_t next_aligned_v_addr;
     paddr_t next_aligned_p_addr;

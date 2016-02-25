@@ -45,6 +45,18 @@
 #define USER_DATA_64_SELECTOR   0x58
 
 #define TSS_SELECTOR        0x60
+
+// XXX from x86-64 header
+#if 0
+#define CODE_SELECTOR   0x10
+#define DATA_SELECTOR   0x18
+#define VIDEO_SELECTOR  0x20
+#define TSS_SELECTOR    0x40
+
+#define USER_CODE_SELECTOR 0x23
+#define USER_DATA_SELECTOR 0x2b
+#endif
+
 /*
  * Descriptor Types
  */

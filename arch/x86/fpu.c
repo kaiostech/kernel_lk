@@ -23,6 +23,7 @@
 
 #include <arch/x86.h>
 #include <arch/fpu.h>
+#include <string.h>
 #include <kernel/thread.h>
 
 #if X86_WITH_FPU
@@ -49,6 +50,9 @@
 
 static int fp_supported;
 static thread_t *fp_owner;
+
+/* FXSAVE area comprises 512 bytes starting with 16-byte aligned */
+static uint8_t __ALIGNED(16) fpu_init_states[512]= {0};
 
 static void get_cpu_cap(uint32_t *ecx, uint32_t *edx)
 {
@@ -107,8 +111,17 @@ void fpu_init(void)
     mxcsr &= 0x0000003f;
     __asm__ __volatile__("ldmxcsr %0" : : "m" (mxcsr));
 
+    /* save fpu initial states, and used when new thread creates */
+    __asm__ __volatile__("fxsave %0" : "=m" (fpu_init_states));
+
     x86_set_cr0(x86_get_cr0() | X86_CR0_TS);
     return;
+}
+
+void fpu_init_thread_states(thread_t *t)
+{
+    t->arch.fpu_states = (vaddr_t *)ROUNDUP(((vaddr_t)t->arch.fpu_buffer), 16);
+    memcpy(t->arch.fpu_states,fpu_init_states,sizeof(t->arch.fpu_buffer));
 }
 
 void fpu_context_switch(thread_t *old_thread, thread_t *new_thread)
