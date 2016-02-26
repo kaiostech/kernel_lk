@@ -27,7 +27,12 @@
 
 __BEGIN_CDECLS
 
+void x86_mmu_early_init(void);
 void x86_mmu_init(void);
+
+#define KB                (1024UL)
+#define MB                (1024UL*1024UL)
+#define GB                (1024UL*1024UL*1024UL)
 
 #define X86_MMU_PG_P        0x001           /* P    Valid                   */
 #define X86_MMU_PG_RW       0x002           /* R/W  Read/Write              */
@@ -91,8 +96,9 @@ void x86_mmu_init(void);
 #define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_BASE)
 #define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_BASE)
 #elif ARCH_X86_64
-#define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_BASE)
-#define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_BASE)
+/* on x86-64 all of the memory is direct mapped to KERNEL_ASPACE_BASE */
+#define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_ASPACE_BASE)
+#define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_ASPACE_BASE)
 #endif
 
 /* Different page table levels in the page table mgmt hirerachy */

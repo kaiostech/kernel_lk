@@ -24,9 +24,9 @@
 #ifndef __ARCH_ARM_MMU_H
 #define __ARCH_ARM_MMU_H
 
-#define KB                (1024U)
-#define MB                (1024U*1024U)
-#define GB                (1024U*1024U*1024U)
+#define KB                (1024UL)
+#define MB                (1024UL*1024UL)
+#define GB                (1024UL*1024UL*1024UL)
 
 #define SECTION_SIZE      MB
 #define SUPERSECTION_SIZE (16 * MB)

@@ -41,10 +41,6 @@
 #include <assert.h>
 #include <kernel/vm.h>
 
-#define KB                (1024U)
-#define MB                (1024U*1024U)
-#define GB                (1024U*1024U*1024U)
-
 #define LOCAL_TRACE 0
 
 /* multiboot information passed in, if present */
@@ -137,12 +133,12 @@ void platform_init_mmu_mappings(void)
 
 #if WITH_KERNEL_VM
 struct mmu_initial_mapping mmu_initial_mappings[] = {
-#if ARCH_x86_64
+#if ARCH_X86_64
     /* 64GB of memory mapped where the kernel lives */
     {
         .phys = MEMBASE,
         .virt = KERNEL_ASPACE_BASE,
-        .size = 64*GB, /* x86-64 maps first 64GB by default */
+        .size = 64ULL*GB, /* x86-64 maps first 64GB by default */
         .flags = 0,
         .name = "memory"
     },

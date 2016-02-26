@@ -602,7 +602,7 @@ int arch_mmu_map(arch_aspace_t *aspace, vaddr_t vaddr, paddr_t paddr, uint count
     return (x86_mmu_map_range(X86_PHYS_TO_VIRT(current_cr3_val), &range, flags));
 }
 
-void arch_mmu_early_init(void)
+void x86_mmu_early_init(void)
 {
     volatile uint32_t cr0;
 
@@ -637,7 +637,7 @@ void arch_mmu_early_init(void)
     x86_set_cr3(x86_get_cr3());
 }
 
-void arch_mmu_init(void)
+void x86_mmu_init(void)
 {
 }
 

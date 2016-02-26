@@ -150,18 +150,49 @@ paging_setup:
     orl  $0x7, %eax
     movl %eax, PHYS(pdp_high + 8*510)
 
+    /* map the first 1GB in this table */
     movl $PHYS(pte), %esi
-    movl $0x1ff, %ecx
+    movl $0x200, %ecx
+    xor  %eax, %eax
 
-    /* We need 256 entries of 2MB each to cover 1GB */
-fill_pte:
-    movl $0x1ff, %eax
-    subl %ecx, %eax
-    shll $21,%eax
-    orl  $0x87, %eax
-    movl %eax, (%esi)
+0:
+    mov  %eax, %ebx
+    shll $21, %ebx
+    orl  $0x87, %ebx
+    movl %ebx, (%esi)
     addl $8,%esi
-    loop fill_pte
+    inc  %eax
+    loop 0b
+
+    /* set up a linear map of the first 64GB at 0xffffff8000000000 */
+    movl $PHYS(linear_map_pdp), %esi
+    movl $32768, %ecx
+    xor  %eax, %eax
+
+    /* loop across these page tables, incrementing the address by 2MB */
+0:
+    mov  %eax, %ebx
+    shll $21, %ebx
+    orl  $0x87, %ebx    # lower word of the entry
+    movl %ebx, (%esi)
+    mov  %eax, %ebx
+    shrl $11, %ebx      # upper word of the entry
+    movl %ebx, 4(%esi)
+    addl $8,%esi
+    inc  %eax
+    loop 0b
+
+    /* point the high pdp at our linear mapping page tables */
+    movl $PHYS(pdp_high), %esi
+    movl $64, %ecx
+    movl $PHYS(linear_map_pdp), %eax
+    orl  $0x7, %eax
+
+0:
+    movl %eax, (%esi)
+    add  $8, %esi
+    addl $4096, %eax
+    loop 0b
 
     /* Enabling Paging and from this point we are in
     32 bit compatibility mode*/

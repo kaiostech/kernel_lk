@@ -45,10 +45,14 @@ uint8_t g_paddr_width = 0;
 
 /* top level kernel page tables, initialized in start.S */
 map_addr_t pml4[NO_OF_PT_ENTRIES] __ALIGNED(PAGE_SIZE);
-map_addr_t pdp[NO_OF_PT_ENTRIES] __ALIGNED(PAGE_SIZE);
+map_addr_t pdp[NO_OF_PT_ENTRIES] __ALIGNED(PAGE_SIZE); /* temporary */
 map_addr_t pte[NO_OF_PT_ENTRIES] __ALIGNED(PAGE_SIZE);
 
+/* top level pdp needed to map the -512GB..0 space */
 map_addr_t pdp_high[NO_OF_PT_ENTRIES] __ALIGNED(PAGE_SIZE);
+
+/* a big pile of page tables needed to map 64GB of memory into kernel space using 2MB pages */
+map_addr_t linear_map_pdp[(64ULL*GB) / (2*MB)];
 
 /**
  * @brief  check if the virtual address is aligned and canonical
@@ -152,7 +156,7 @@ static inline uint64_t get_pfn_from_pde(uint64_t pde)
 
     pfn = (pde & X86_2MB_PAGE_FRAME);
 
-    LTRACEF("pde 0x%llx, pfn 0x%llx\n", pde, pfn);
+    LTRACEF_LEVEL(2, "pde 0x%llx, pfn 0x%llx\n", pde, pfn);
 
     return pfn;
 }
@@ -222,13 +226,13 @@ status_t x86_mmu_get_mapping(map_addr_t pml4, vaddr_t vaddr, uint32_t *ret_level
     *last_valid_entry = pml4;
     *mmu_flags = 0;
 
-    LTRACEF("pml4 0x%llx\n", pml4);
+    LTRACEF_LEVEL(2, "pml4 0x%llx\n", pml4);
 
     pml4e = get_pml4_entry_from_pml4_table(vaddr, pml4);
     if ((pml4e & X86_MMU_PG_P) == 0) {
         return ERR_NOT_FOUND;
     }
-    LTRACEF("pml4e 0x%llx\n", pml4e);
+    LTRACEF_LEVEL(2, "pml4e 0x%llx\n", pml4e);
 
     pdpe = get_pdp_entry_from_pdp_table(vaddr, pml4e);
     if ((pdpe & X86_MMU_PG_P) == 0) {
@@ -236,7 +240,7 @@ status_t x86_mmu_get_mapping(map_addr_t pml4, vaddr_t vaddr, uint32_t *ret_level
         *last_valid_entry = pml4e;
         return ERR_NOT_FOUND;
     }
-    LTRACEF("pdpe 0x%llx\n", pdpe);
+    LTRACEF_LEVEL(2, "pdpe 0x%llx\n", pdpe);
 
     pde = get_pd_entry_from_pd_table(vaddr, pdpe);
     if ((pde & X86_MMU_PG_P) == 0) {
@@ -244,7 +248,7 @@ status_t x86_mmu_get_mapping(map_addr_t pml4, vaddr_t vaddr, uint32_t *ret_level
         *last_valid_entry = pdpe;
         return ERR_NOT_FOUND;
     }
-    LTRACEF("pde 0x%llx\n", pde);
+    LTRACEF_LEVEL(2, "pde 0x%llx\n", pde);
 
     /* 2 MB pages */
     if (pde & X86_MMU_PG_PS) {
@@ -483,38 +487,38 @@ static void x86_mmu_unmap_entry(vaddr_t vaddr, int level, vaddr_t table_entry)
 
     next_table_addr = NULL;
     table = (vaddr_t *)(table_entry & X86_PG_FRAME);
-    LTRACEF("table %p\n", table);
+    LTRACEF_LEVEL(2, "table %p\n", table);
 
     switch (level) {
         case PML4_L:
             offset = (((uint64_t)vaddr >> PML4_SHIFT) & ((1ul << ADDR_OFFSET) - 1));
-            LTRACEF("offset %u\n", offset);
+            LTRACEF_LEVEL(2, "offset %u\n", offset);
             next_table_addr = (vaddr_t *)X86_PHYS_TO_VIRT(table[offset]);
-            LTRACEF("next_table_addr %p\n", next_table_addr);
+            LTRACEF_LEVEL(2, "next_table_addr %p\n", next_table_addr);
             if ((X86_PHYS_TO_VIRT(table[offset]) & X86_MMU_PG_P)== 0)
                 return;
             break;
         case PDP_L:
             offset = (((uint64_t)vaddr >> PDP_SHIFT) & ((1ul << ADDR_OFFSET) - 1));
-            LTRACEF("offset %u\n", offset);
+            LTRACEF_LEVEL(2, "offset %u\n", offset);
             next_table_addr = (vaddr_t *)X86_PHYS_TO_VIRT(table[offset]);
-            LTRACEF("next_table_addr %p\n", next_table_addr);
+            LTRACEF_LEVEL(2, "next_table_addr %p\n", next_table_addr);
             if ((X86_PHYS_TO_VIRT(table[offset]) & X86_MMU_PG_P) == 0)
                 return;
             break;
         case PD_L:
             offset = (((uint64_t)vaddr >> PD_SHIFT) & ((1ul << ADDR_OFFSET) - 1));
-            LTRACEF("offset %u\n", offset);
+            LTRACEF_LEVEL(2, "offset %u\n", offset);
             next_table_addr = (vaddr_t *)X86_PHYS_TO_VIRT(table[offset]);
-            LTRACEF("next_table_addr %p\n", next_table_addr);
+            LTRACEF_LEVEL(2, "next_table_addr %p\n", next_table_addr);
             if ((X86_PHYS_TO_VIRT(table[offset]) & X86_MMU_PG_P) == 0)
                 return;
             break;
         case PT_L:
             offset = (((uint64_t)vaddr >> PT_SHIFT) & ((1ul << ADDR_OFFSET) - 1));
-            LTRACEF("offset %u\n", offset);
+            LTRACEF_LEVEL(2, "offset %u\n", offset);
             next_table_addr = (vaddr_t *)X86_PHYS_TO_VIRT(table[offset]);
-            LTRACEF("next_table_addr %p\n", next_table_addr);
+            LTRACEF_LEVEL(2, "next_table_addr %p\n", next_table_addr);
             if ((X86_PHYS_TO_VIRT(table[offset]) & X86_MMU_PG_P) == 0)
                 return;
             break;
@@ -524,13 +528,13 @@ static void x86_mmu_unmap_entry(vaddr_t vaddr, int level, vaddr_t table_entry)
             return;
     }
 
-    LTRACEF("recursing\n");
+    LTRACEF_LEVEL(2, "recursing\n");
 
     level -= 1;
     x86_mmu_unmap_entry(vaddr, level, (vaddr_t)next_table_addr);
     level += 1;
 
-    LTRACEF("next_table_addr %p\n", next_table_addr);
+    LTRACEF_LEVEL(2, "next_table_addr %p\n", next_table_addr);
 
     next_table_addr = (vaddr_t *)((vaddr_t)(next_table_addr) & X86_PG_FRAME);
     if (level > PT_L) {
@@ -676,12 +680,8 @@ int arch_mmu_map(arch_aspace_t *aspace, vaddr_t vaddr, paddr_t paddr, uint count
     if ((!x86_mmu_check_paddr(paddr)))
         return ERR_INVALID_ARGS;
 
-    LTRACE;
-
     if (!x86_mmu_check_vaddr(vaddr))
         return ERR_INVALID_ARGS;
-
-    LTRACE;
 
     if (count == 0)
         return NO_ERROR;
@@ -696,7 +696,7 @@ int arch_mmu_map(arch_aspace_t *aspace, vaddr_t vaddr, paddr_t paddr, uint count
     return (x86_mmu_map_range(X86_PHYS_TO_VIRT(current_cr3_val), &range, flags));
 }
 
-void arch_mmu_early_init(void)
+void x86_mmu_early_init(void)
 {
     volatile uint64_t efer_msr, cr0, cr4;
 
@@ -734,7 +734,7 @@ void arch_mmu_early_init(void)
     x86_set_cr3(x86_get_cr3());
 }
 
-void arch_mmu_init(void)
+void x86_mmu_init(void)
 {
 }
 

@@ -44,9 +44,6 @@ __SECTION(".data") void *_multiboot_info;
 /* main tss */
 static tss_t system_tss;
 
-extern void arch_mmu_early_init(void);
-extern void arch_mmu_init(void);
-
 void arch_early_init(void)
 {
     /* enable caches here for now */
@@ -67,12 +64,12 @@ void arch_early_init(void)
     set_global_desc(TSS_SELECTOR, &system_tss, sizeof(system_tss), 1, 0, 0, SEG_TYPE_TSS, 0, 0);
     x86_ltr(TSS_SELECTOR);
 
-    arch_mmu_early_init();
+    x86_mmu_early_init();
 }
 
 void arch_init(void)
 {
-    arch_mmu_init();
+    x86_mmu_init();
 
 #ifdef X86_WITH_FPU
     fpu_init();
