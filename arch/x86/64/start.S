@@ -74,7 +74,6 @@ multiboot_header:
     .int (real_start - PHYS_ADDR_DELTA)
 #endif
 
-
 real_start:
     cmpl $MULTIBOOT_BOOTLOADER_MAGIC, %eax
     jne 0f

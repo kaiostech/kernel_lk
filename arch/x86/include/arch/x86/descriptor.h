@@ -21,10 +21,7 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef __ARCH_DESCRIPTOR_H
-#define __ARCH_DESCRIPTOR_H
-
-#include <sys/types.h>
+#pragma once
 
 /*
  * System Selectors
@@ -66,6 +63,10 @@
 #define SEG_TYPE_INT_GATE   0xe     // 32 bit
 #define SEG_TYPE_DATA_RW    0x2
 #define SEG_TYPE_CODE_RW    0xa
+
+#ifndef ASSEMBLY
+
+#include <sys/types.h>
 
 typedef uint16_t seg_sel_t;
 

@@ -29,12 +29,15 @@
 #include <arch/x86/mmu.h>
 #include <arch/x86/descriptor.h>
 #include <arch/fpu.h>
-#include <arch/fpu.h>
+#include <arch/mmu.h>
 #include <platform.h>
 #include <sys/types.h>
 #include <string.h>
 
 tss_t system_tss;
+
+extern void arch_mmu_early_init(void);
+extern void arch_mmu_init(void);
 
 void arch_early_init(void)
 {
@@ -55,10 +58,14 @@ void arch_early_init(void)
 
     set_global_desc(TSS_SELECTOR, &system_tss, sizeof(system_tss), 1, 0, 0, SEG_TYPE_TSS, 0, 0);
     x86_ltr(TSS_SELECTOR);
+
+    arch_mmu_early_init();
 }
 
 void arch_init(void)
 {
+    arch_mmu_init();
+
 #ifdef X86_WITH_FPU
     fpu_init();
 #endif

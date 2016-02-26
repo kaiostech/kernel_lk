@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2009 Corey Tabaka
  * Copyright (c) 2015 Intel Corporation
+ * Copyright (c) 2016 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -21,6 +22,8 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#include <asm.h>
+#include <arch/x86/descriptor.h>
 
 /* The magic number for the Multiboot header. */
 #define MULTIBOOT_HEADER_MAGIC 0x1BADB002
@@ -35,8 +38,10 @@
 /* The magic number passed by a Multiboot-compliant boot loader. */
 #define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002
 
-#define NUM_INT 0x31
-#define NUM_EXC 0x14
+#define PHYS_LOAD_ADDRESS (MEMBASE + KERNEL_LOAD_OFFSET)
+#define PHYS_ADDR_DELTA (KERNEL_ASPACE_BASE + KERNEL_LOAD_OFFSET - PHYS_LOAD_ADDRESS)
+
+#define PHYS(x) ((x) - PHYS_ADDR_DELTA)
 
 .section ".text.boot"
 .global _start
@@ -56,43 +61,27 @@ multiboot_header:
 
 #if !defined(__ELF__) || 1
     /* header_addr */
-    .int multiboot_header
+    .int PHYS(multiboot_header)
     /* load_addr */
-    .int _start
+    .int PHYS(_start)
     /* load_end_addr */
-    .int __data_end
+    .int PHYS(__data_end)
     /* bss_end_addr */
-    .int __bss_end
+    .int PHYS(__bss_end)
     /* entry_addr */
-    .int real_start
+    .int PHYS(real_start)
 #endif
 
 real_start:
     cmpl $MULTIBOOT_BOOTLOADER_MAGIC, %eax
     jne 0f
-    movl %ebx, (_multiboot_info)
+    movl %ebx, PHYS(_multiboot_info)
 0:
-    /* setup isr stub descriptors in the idt */
-    movl $_isr, %esi
-    movl $_idt, %edi
-    movl $NUM_INT, %ecx
 
-.Lloop:
-    movl %esi, %ebx
-    movw %bx, (%edi)        /* low word in IDT(n).low */
-    shrl $16, %ebx
-    movw %bx, 6(%edi)       /* high word in IDT(n).high */
-
-    addl $isr_stub_len, %esi/* index the next ISR stub */
-    addl $8, %edi           /* index the next IDT entry */
-
-    loop .Lloop
-
-    lidt _idtr
     xorl %eax, %eax
     movl %eax, %cr3
 
-    lgdt _gdtr
+    lgdt PHYS(_gdtr_phys)
 
     movw $datasel, %ax
     movw %ax, %ds
@@ -102,20 +91,22 @@ real_start:
     movw %ax, %gs
     movw %ax, %ss
 
-    movl $_kstack, %esp
+    movl $PHYS(_kstack_top), %esp
     /*We jumped here in protected mode in a code segment that migh not longer
       be valid , do a long jump to our code segment, we use retf instead of
       ljmp to be able to use relative labels */
-    movl $codesel_32, %ecx     /*Pushing our code segment */
+    movl $CODE_SELECTOR, %ecx     /*Pushing our code segment */
     push %ecx
-    movl $farjump, %ecx /*and jump address */
+    movl $PHYS(.Lfarjump), %ecx /*and jump address */
     push %ecx
     xorl %ecx, %ecx
     retf    /*This instruction will jump to codesel:farjump */
-farjump:
+.Lfarjump:
+
     /* zero the bss section */
-    movl $__bss_start, %edi /* starting address of the bss */
-    movl $__bss_end, %ecx   /* find the length of the bss in bytes */
+bss_setup:
+    movl $PHYS(__bss_start), %edi /* starting address of the bss */
+    movl $PHYS(__bss_end), %ecx   /* find the length of the bss in bytes */
     subl %edi, %ecx
     shrl $2, %ecx       /* convert to 32 bit words, since the bss is aligned anyway */
 2:
@@ -123,8 +114,9 @@ farjump:
     addl $4, %edi
     loop 2b
 
+paging_setup:
 #ifdef PAE_MODE_ENABLED
-
+#error broken for now
     /* Preparing PAE paging, we will use 2MB pages covering 1GB
     for initial bootstrap, this page table will be 1 to 1 */
 
@@ -162,28 +154,42 @@ fill_pdp:
     mov %eax,  %cr0
 
 #else
-    /* Set PD in CR3 */
-    movl $pd, %eax
-    mov %eax, %cr3
-
-    movl $pd, %esi
+    /* map the first 1GB 1:1 */
+    movl $PHYS(pd), %esi
     movl $0x100, %ecx
+    xor  %eax, %eax
 
-fill_pd:
-    xor %eax, %eax
-    mov $0x100, %eax
-    sub %ecx, %eax
-    shll $22,%eax
-    orl  $0x87, %eax
-    movl %eax, (%esi)
-    addl $4,%esi
-    loop fill_pd
+.Lfill_pd:
+    mov  %eax, %edx
+    orl  $0x87, %edx
+    movl %edx, (%esi)
+    addl $4, %esi
+    addl $0x00400000, %eax
+    loop .Lfill_pd
+
+    /* map the first 1GB to KERNEL_ASPACE_BASE */
+    movl $(PHYS(pd) + 0x800), %esi
+    movl $0x100, %ecx
+    xor  %eax, %eax
+
+.Lfill_pd2:
+    mov  %eax, %edx
+    orl  $0x87, %edx
+    movl %edx, (%esi)
+    addl $4, %esi
+    addl $0x00400000, %eax
+    loop .Lfill_pd2
+
+    /* Set PD in CR3 */
+    movl $PHYS(pd), %eax
+    mov %eax, %cr3
 
     /* Enabling Paging and from this point we are in */
     xorl %eax, %eax
     mov %cr4, %eax
     orl $0x10, %eax
     mov %eax, %cr4
+
     xorl %eax, %eax
     mov %cr0,  %eax
     btsl $(31), %eax
@@ -191,10 +197,23 @@ fill_pd:
 #endif
 
     /* Flushing TLB's */
-        mov %cr3,%eax
-        mov %eax,%cr3
+    mov %cr3,%eax
+    mov %eax,%cr3
+
+    /* load the high kernel stack */
+    movl $_kstack_top, %esp
+
+    /* reload the high gdtr */
+    lgdt PHYS(_gdtr)
+
+    /* branch to the high address */
+    movl $main_lk, %eax
+    jmp *%eax
 
 main_lk:
+    /* set up the idt */
+    call setup_idt
+
     /* call the main module */
     call lk_main
 0:                          /* just sit around waiting for interrupts */
@@ -202,76 +221,15 @@ main_lk:
     pause
     jmp 0b                  /* so jump back to halt to conserve power */
 
-/* interrupt service routine stubs */
-_isr:
-
-.set i, 0
-.rept NUM_INT
-
-.set isr_stub_start, .
-
-.if i == 8 || (i >= 10 && i <= 14) || i == 17
-    nop                     /* error code pushed by exception */
-    nop                     /* 2 nops are the same length as push byte */
-    pushl $i                /* interrupt number */
-    jmp interrupt_common
-.else
-    pushl $0                /* fill in error code in iframe */
-    pushl $i                /* interrupt number */
-    jmp interrupt_common
-.endif
-
-/* figure out the length of a single isr stub (usually 6 or 9 bytes) */
-.set isr_stub_len, . - isr_stub_start
-
-.set i, i + 1
-.endr
-
-/* annoying, but force AS to use the same (longer) encoding of jmp for all of the stubs */
-.fill 256
-
-interrupt_common:
-    pushl %gs               /* save segment registers */
-    pushl %fs
-    pushl %es
-    pushl %ds
-    pusha                   /* save general purpose registers */
-    movl $datasel, %eax     /* put known good value in segment registers */
-    movl %eax, %gs
-    movl %eax, %fs
-    movl %eax, %es
-    movl %eax, %ds
-    movl %esp, %eax         /* store stack switch pivot. push esp has errata on some cpus, so use mov/push */
-    pushl %eax
-    movl %esp, %eax         /* store pointer to iframe, using same method */
-    pushl %eax
-
-
-    call platform_irq
-
-    cmpl $0,%eax
-    je 0f
-    call thread_preempt
-
-0:
-
-    popl %eax               /* drop pointer to iframe */
-    popl %eax               /* restore task_esp, stack switch can occur here if task_esp is modified */
-    movl %eax, %esp
-    popa                    /* restore general purpose registers */
-    popl %ds                /* restore segment registers */
-    popl %es
-    popl %fs
-    popl %gs
-    addl $8, %esp           /* drop exception number and error code */
-    iret
-
 .data
 .align 4
 
-.global _multiboot_info
-_multiboot_info:
+DATA(_multiboot_info)
     .int 0
+
+_gdtr_phys:
+    .short _gdt_end - _gdt - 1
+    .int PHYS(_gdt)
 
 _gdtr:
     .short _gdt_end - _gdt - 1
@@ -375,61 +333,7 @@ _tss_gde:
 .global _gdt_end
 _gdt_end:
 
-.align 8
-.global _idtr
-_idtr:
-    .short _idt_end - _idt - 1  /* IDT limit */
-    .int _idt
-
-/* interrupt descriptor table (IDT) */
-.global _idt
-_idt:
-
-.set i, 0
-.rept NUM_INT-1
-    .short 0                /* low 16 bits of ISR offset (_isr#i & 0FFFFh) */
-    .short codesel_32           /* selector */
-    .byte  0
-    .byte  0x8e             /* present, ring 0, 32-bit interrupt gate */
-    .short 0                /* high 16 bits of ISR offset (_isr#i / 65536) */
-
-.set i, i + 1
-.endr
-
-/* syscall int (ring 3) */
-_idt30:
-    .short 0                /* low 16 bits of ISR offset (_isr#i & 0FFFFh) */
-    .short codesel_32           /* selector */
-    .byte  0
-    .byte  0xee             /* present, ring 3, 32-bit interrupt gate */
-    .short 0                /* high 16 bits of ISR offset (_isr#i / 65536) */
-
-.global _idt_end
-_idt_end:
-
-/* Memory for the initial page table, we will use 2 pages for a
-   1 to 1 mapping that covers 1GB of physical memory */
-.align 4096
-.fill 4096
-
-#ifdef PAE_MODE_ENABLED
-.align 4096
-pdpt:
-.fill 4096
-pdp:
-.fill 4096
-#else
-.align 4096
-pd:
-.fill 4096
-#endif
-
-.align 4096
-.fill 4096
-
 .bss
-.align 4096
-
-.global _kstack
-.fill 4096
 _kstack:
+.fill 4096
+_kstack_top:

@@ -18,6 +18,7 @@ MODULE_SRCS += \
     $(LOCAL_DIR)/ide.c \
     $(LOCAL_DIR)/uart.c \
 
+
 LK_HEAP_IMPLEMENTATION ?= dlmalloc
 
 include make/module.mk

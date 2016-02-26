@@ -68,6 +68,12 @@ void x86_mmu_init(void);
 #define PDPT_ADDR_OFFSET    2
 #define NO_OF_PT_ENTRIES    512
 
+#define X86_SET_FLAG(x)     (x=1)
+
+#warning fix
+#define X86_PHYS_TO_VIRT(x)     (x)
+#define X86_VIRT_TO_PHYS(x)     (x)
+
 #else
 /* non PAE mode */
 #define X86_PG_FRAME        (0xfffff000)
@@ -81,11 +87,11 @@ void x86_mmu_init(void);
 #define PD_SHIFT        22
 #define PT_SHIFT        12
 #define ADDR_OFFSET     10
-#endif
 
-#define X86_PHYS_TO_VIRT(x)     (x)
-#define X86_VIRT_TO_PHYS(x)     (x)
-#define X86_SET_FLAG(x)     (x=1)
+/* translate from phys to virt and virt to phys in 32bit kernel mode */
+#define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_ASPACE_BASE)
+#define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_ASPACE_BASE)
+#endif
 
 /* Different page table levels in the page table mgmt hirerachy */
 enum page_table_levels {
@@ -133,7 +139,5 @@ status_t x86_mmu_map_range (map_addr_t pt, struct map_range *range, arch_flags_t
 status_t x86_mmu_add_mapping(map_addr_t init_table, map_addr_t paddr,
                              vaddr_t vaddr, arch_flags_t flags);
 status_t x86_mmu_unmap(map_addr_t init_table, vaddr_t vaddr, uint count);
-addr_t *x86_create_new_cr3(void);
-map_addr_t get_kernel_cr3(void);
 
 __END_CDECLS

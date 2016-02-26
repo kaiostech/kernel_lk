@@ -24,8 +24,10 @@
 #ifndef __ARCH_ARM_MMU_H
 #define __ARCH_ARM_MMU_H
 
+#define KB                (1024U)
 #define MB                (1024U*1024U)
 #define GB                (1024U*1024U*1024U)
+
 #define SECTION_SIZE      MB
 #define SUPERSECTION_SIZE (16 * MB)
 #define TT_ENTRY_COUNT    (4096)
