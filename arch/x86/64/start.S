@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2009 Corey Tabaka
  * Copyright (c) 2015 Intel Corporation
+ * Copyright (c) 2016 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -80,13 +81,10 @@ real_start:
     movl %ebx, PHYS(_multiboot_info)
 
 0:
-    /* zero out cr3 */
-    xorl %eax, %eax
-    mov %eax, %cr3
-
     /* load our new gdt by physical pointer */
     lgdt PHYS(_gdtr_phys)
 
+    /* load our data selectors */
     movw $DATA_SELECTOR, %ax
     movw %ax, %ds
     movw %ax, %es
@@ -95,16 +93,9 @@ real_start:
     movw %ax, %gs
     movw %ax, %ss
 
-    /* load a kernel stack by physical pointer */
-    movl $PHYS(_kstack + 4096), %esp
-
-    /* We need to jump to our sane 32 bit  CS
-     executing a far jump using retf */
-    movl $CODE_SELECTOR, %ecx
-    pushl %ecx
-    movl $PHYS(.Lfarjump), %ecx
-    pushl %ecx
-    xorl %ecx, %ecx
+    /* We need to jump to our sane 32 bit CS */
+    pushl $CODE_SELECTOR
+    pushl $PHYS(.Lfarjump)
     retf
 
 .Lfarjump:
@@ -127,8 +118,9 @@ paging_setup:
     /* PAE bit must be enabled  for 64 bit paging*/
     mov %cr4, %eax
     btsl $(5), %eax
-    mov %eax, %cr4  /*Enabling PAE*/
+    mov %eax, %cr4
 
+    /* load the physical pointer to the top level page table */
     movl $PHYS(pml4), %eax
     mov %eax, %cr3
 
@@ -139,7 +131,7 @@ paging_setup:
     wrmsr
 
     /* Setting the First PML4E with a PDP table reference*/
-    movl $PHYS(pdp),   %eax
+    movl $PHYS(pdp), %eax
     orl  $0x7, %eax
     movl %eax, PHYS(pml4)
 
@@ -177,16 +169,10 @@ fill_pte:
     btsl $(31), %eax
     mov %eax,  %cr0
 
-    /* Flushing TLB's */
-    mov %cr3,%eax
-    mov %eax,%cr3
-
     /* Using another long jump to be on 64 bit mode
     after this we will be on real 64 bit mode */
-    movl $CODE_64_SELECTOR, %ecx     /*Need to put it in a the right CS*/
-    pushl %ecx
-    movl $PHYS(farjump64), %ecx
-    pushl %ecx
+    pushl $CODE_64_SELECTOR     /*Need to put it in a the right CS*/
+    pushl $PHYS(farjump64)
     retf
 
 .align 8

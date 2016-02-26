@@ -77,10 +77,6 @@ real_start:
     movl %ebx, PHYS(_multiboot_info)
 
 0:
-    /* zero out cr3 */
-    xorl %eax, %eax
-    movl %eax, %cr3
-
     /* load our new gdt by physical pointer */
     lgdt PHYS(_gdtr_phys)
 
@@ -92,18 +88,13 @@ real_start:
     movw %ax, %gs
     movw %ax, %ss
 
-    /* load a kernel stack by physical pointer */
-    movl $PHYS(_kstack + 4096), %esp
-
     /*We jumped here in protected mode in a code segment that migh not longer
       be valid , do a long jump to our code segment, we use retf instead of
       ljmp to be able to use relative labels */
-    movl $CODE_SELECTOR, %ecx     /*Pushing our code segment */
-    push %ecx
-    movl $PHYS(.Lfarjump), %ecx /*and jump address */
-    push %ecx
-    xorl %ecx, %ecx
+    pushl $CODE_SELECTOR     /*Pushing our code segment */
+    pushl $PHYS(.Lfarjump)   /*and jump address */
     retf    /*This instruction will jump to codesel:farjump */
+
 .Lfarjump:
 
     /* zero the bss section */
@@ -124,7 +115,6 @@ paging_setup:
     for initial bootstrap, this page table will be 1 to 1 */
 
     /* Setting the First PDPTE with a PD table reference*/
-    xorl %eax,  %eax
     movl $pdp,   %eax
     orl  $0x01, %eax
     movl %eax, (pdpt)
@@ -188,20 +178,14 @@ fill_pdp:
     mov %eax, %cr3
 
     /* Enabling Paging and from this point we are in */
-    xorl %eax, %eax
     mov %cr4, %eax
     orl $0x10, %eax
     mov %eax, %cr4
 
-    xorl %eax, %eax
     mov %cr0,  %eax
     btsl $(31), %eax
     mov %eax, %cr0
 #endif
-
-    /* Flushing TLB's */
-    mov %cr3,%eax
-    mov %eax,%cr3
 
     /* load the high kernel stack */
     movl $(_kstack + 4096), %esp

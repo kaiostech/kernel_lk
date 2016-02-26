@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2009 Corey Tabaka
  * Copyright (c) 2015 Intel Corporation
+ * Copyright (c) 2016 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -44,7 +45,7 @@
 #define MB                (1024U*1024U)
 #define GB                (1024U*1024U*1024U)
 
-#define LOCAL_TRACE 1
+#define LOCAL_TRACE 0
 
 /* multiboot information passed in, if present */
 extern multiboot_info_t *_multiboot_info;
@@ -182,6 +183,7 @@ void mem_arena_init(void)
 
 void platform_init_multiboot_info(void)
 {
+    LTRACEF("_multiboot_info %p\n", _multiboot_info);
     if (_multiboot_info) {
         /* bump the multiboot pointer up to the kernel mapping */
         _multiboot_info = (void *)((uintptr_t)_multiboot_info + KERNEL_BASE);
