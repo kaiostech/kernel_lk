@@ -92,15 +92,9 @@
 
 #endif
 
-#if ARCH_X86_32
-/* translate from phys to virt and virt to phys in 32bit kernel mode */
-#define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_BASE)
-#define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_BASE)
-#elif ARCH_X86_64
-/* on x86-64 all of the memory is direct mapped to KERNEL_ASPACE_BASE */
+/* on both x86-32 and x86-64 physical memory is mapped at the base of the kernel address space */
 #define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_ASPACE_BASE)
 #define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_ASPACE_BASE)
-#endif
 
 /* C defines below */
 #ifndef ASSEMBLY

@@ -31,7 +31,7 @@
 #include <stdarg.h>
 
 /* memory mapped framebuffer */
-#define FB (0xB8000U + KERNEL_BASE)
+#define FB (0xB8000U + KERNEL_ASPACE_BASE)
 
 /* CGA values */
 #define CURSOR_START        0x0A
@@ -46,7 +46,7 @@ static unsigned char curr_x;
 static unsigned char curr_y;
 static unsigned char curr_start;
 static unsigned char curr_end;
-static unsigned char curr_attr;
+static unsigned char curr_attr = 0x7;
 
 /* video page buffer */
 #define VPAGE_SIZE      2048
