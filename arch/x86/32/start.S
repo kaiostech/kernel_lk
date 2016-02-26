@@ -24,6 +24,7 @@
  */
 #include <asm.h>
 #include <arch/x86/descriptor.h>
+#include <arch/x86/mmu.h>
 
 /* The magic number for the Multiboot header. */
 #define MULTIBOOT_HEADER_MAGIC 0x1BADB002
@@ -154,7 +155,7 @@ fill_pdp:
 
 .Lfill_pd:
     mov  %eax, %edx
-    orl  $0x87, %edx
+    orl  $X86_KERNEL_PD_LP_FLAGS, %edx
     movl %edx, (%esi)
     addl $4, %esi
     addl $0x00400000, %eax
@@ -167,7 +168,7 @@ fill_pdp:
 
 .Lfill_pd2:
     mov  %eax, %edx
-    orl  $0x87, %edx
+    orl  $X86_KERNEL_PD_LP_FLAGS, %edx
     movl %edx, (%esi)
     addl $4, %esi
     addl $0x00400000, %eax

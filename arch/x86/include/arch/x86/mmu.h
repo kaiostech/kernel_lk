@@ -21,15 +21,10 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#pragma once
 
-#include <sys/types.h>
-#include <compiler.h>
-
-__BEGIN_CDECLS
-
-void x86_mmu_early_init(void);
-void x86_mmu_init(void);
-
+/* top level defines for the x86 mmu */
+/* NOTE: the top part can be included from assembly */
 #define KB                (1024UL)
 #define MB                (1024UL*1024UL)
 #define GB                (1024UL*1024UL*1024UL)
@@ -43,6 +38,12 @@ void x86_mmu_init(void);
 #define X86_MMU_CLEAR       0x0
 #define X86_DIRTY_ACCESS_MASK   0xf9f
 #define X86_MMU_CACHE_DISABLE   0x010       /* C Cache disable */
+
+/* default flags for inner page directory entries */
+#define X86_KERNEL_PD_FLAGS (X86_MMU_PG_G | X86_MMU_PG_RW | X86_MMU_PG_P)
+
+/* default flags for 2MB/4MB/1GB page directory entries */
+#define X86_KERNEL_PD_LP_FLAGS (X86_MMU_PG_G | X86_MMU_PG_PS | X86_MMU_PG_RW | X86_MMU_PG_P)
 
 #define PAGE_SIZE       4096
 #define PAGE_DIV_SHIFT      12
@@ -101,6 +102,14 @@ void x86_mmu_init(void);
 #define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_ASPACE_BASE)
 #endif
 
+/* C defines below */
+#ifndef ASSEMBLY
+
+#include <sys/types.h>
+#include <compiler.h>
+
+__BEGIN_CDECLS
+
 /* Different page table levels in the page table mgmt hirerachy */
 enum page_table_levels {
     PF_L,
@@ -148,4 +157,9 @@ status_t x86_mmu_add_mapping(map_addr_t init_table, map_addr_t paddr,
                              vaddr_t vaddr, arch_flags_t flags);
 status_t x86_mmu_unmap(map_addr_t init_table, vaddr_t vaddr, uint count);
 
+void x86_mmu_early_init(void);
+void x86_mmu_init(void);
+
 __END_CDECLS
+
+#endif // !ASSEMBLY

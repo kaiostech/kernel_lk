@@ -24,6 +24,7 @@
  */
 #include <asm.h>
 #include <arch/x86/descriptor.h>
+#include <arch/x86/mmu.h>
 
 /* The magic number for the Multiboot header. */
 #define MULTIBOOT_HEADER_MAGIC 0x1BADB002
@@ -132,22 +133,22 @@ paging_setup:
 
     /* Setting the First PML4E with a PDP table reference*/
     movl $PHYS(pdp), %eax
-    orl  $0x7, %eax
+    orl  $X86_KERNEL_PD_FLAGS, %eax
     movl %eax, PHYS(pml4)
 
     /* Setting the First PDPTE with a Page table reference*/
     movl $PHYS(pte), %eax
-    orl  $0x7, %eax
+    orl  $X86_KERNEL_PD_FLAGS, %eax
     movl %eax, PHYS(pdp)
 
     /* point the pml4e at the second high PDP (for -2GB mapping) */
     movl $PHYS(pdp_high),   %eax
-    orl  $0x7, %eax
+    orl  $X86_KERNEL_PD_FLAGS, %eax
     movl %eax, PHYS(pml4 + 8*511)
 
     /* point the second pdp at the same low level page table */
     movl $PHYS(pte), %eax
-    orl  $0x7, %eax
+    orl  $X86_KERNEL_PD_FLAGS, %eax
     movl %eax, PHYS(pdp_high + 8*510)
 
     /* map the first 1GB in this table */
@@ -158,7 +159,7 @@ paging_setup:
 0:
     mov  %eax, %ebx
     shll $21, %ebx
-    orl  $0x87, %ebx
+    orl  $X86_KERNEL_PD_LP_FLAGS, %ebx
     movl %ebx, (%esi)
     addl $8,%esi
     inc  %eax
@@ -173,7 +174,7 @@ paging_setup:
 0:
     mov  %eax, %ebx
     shll $21, %ebx
-    orl  $0x87, %ebx    # lower word of the entry
+    orl  $X86_KERNEL_PD_LP_FLAGS, %ebx    # lower word of the entry
     movl %ebx, (%esi)
     mov  %eax, %ebx
     shrl $11, %ebx      # upper word of the entry
@@ -186,7 +187,7 @@ paging_setup:
     movl $PHYS(pdp_high), %esi
     movl $64, %ecx
     movl $PHYS(linear_map_pdp), %eax
-    orl  $0x7, %eax
+    orl  $X86_KERNEL_PD_FLAGS, %eax
 
 0:
     movl %eax, (%esi)
