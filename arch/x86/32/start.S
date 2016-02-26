@@ -39,8 +39,7 @@
 #define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002
 
 #define PHYS_LOAD_ADDRESS (MEMBASE + KERNEL_LOAD_OFFSET)
-#define PHYS_ADDR_DELTA (KERNEL_ASPACE_BASE + KERNEL_LOAD_OFFSET - PHYS_LOAD_ADDRESS)
-
+#define PHYS_ADDR_DELTA (KERNEL_BASE + KERNEL_LOAD_OFFSET - PHYS_LOAD_ADDRESS)
 #define PHYS(x) ((x) - PHYS_ADDR_DELTA)
 
 .section ".text.boot"
@@ -76,14 +75,16 @@ real_start:
     cmpl $MULTIBOOT_BOOTLOADER_MAGIC, %eax
     jne 0f
     movl %ebx, PHYS(_multiboot_info)
-0:
 
+0:
+    /* zero out cr3 */
     xorl %eax, %eax
     movl %eax, %cr3
 
+    /* load our new gdt by physical pointer */
     lgdt PHYS(_gdtr_phys)
 
-    movw $datasel, %ax
+    movw $DATA_SELECTOR, %ax
     movw %ax, %ds
     movw %ax, %es
     movw %ax, %fs
@@ -91,7 +92,9 @@ real_start:
     movw %ax, %gs
     movw %ax, %ss
 
-    movl $PHYS(_kstack_top), %esp
+    /* load a kernel stack by physical pointer */
+    movl $PHYS(_kstack + 4096), %esp
+
     /*We jumped here in protected mode in a code segment that migh not longer
       be valid , do a long jump to our code segment, we use retf instead of
       ljmp to be able to use relative labels */
@@ -201,7 +204,7 @@ fill_pdp:
     mov %eax,%cr3
 
     /* load the high kernel stack */
-    movl $_kstack_top, %esp
+    movl $(_kstack + 4096), %esp
 
     /* reload the high gdtr */
     lgdt PHYS(_gdtr)
@@ -220,120 +223,3 @@ main_lk:
     hlt                     /* interrupts will unhalt the processor */
     pause
     jmp 0b                  /* so jump back to halt to conserve power */
-
-.data
-.align 4
-
-DATA(_multiboot_info)
-    .int 0
-
-_gdtr_phys:
-    .short _gdt_end - _gdt - 1
-    .int PHYS(_gdt)
-
-_gdtr:
-    .short _gdt_end - _gdt - 1
-    .int _gdt
-
-.global _gdt
-_gdt:
-    .int 0
-    .int 0
-
-/* ring 0 descriptors */
-.set codesel_32, . - _gdt
-_code_32_gde:
-    .short 0xffff           /* limit 15:00 */
-    .short 0x0000           /* base 15:00 */
-    .byte  0x00         /* base 23:16 */
-    .byte  0b10011010       /* P(1) DPL(00) S(1) 1 C(0) R(1) A(0) */
-    .byte  0b11001111       /* G(1) D(1) 0 0 limit 19:16 */
-    .byte  0x0          /* base 31:24 */
-
-.set datasel, . - _gdt
-_data_gde:
-    .short 0xffff           /* limit 15:00 */
-    .short 0x0000           /* base 15:00 */
-    .byte  0x00         /* base 23:16 */
-    .byte  0b10010010       /* P(1) DPL(00) S(1) 0 E(0) W(1) A(0) */
-    .byte  0b11001111       /* G(1) B(1) 0 0 limit 19:16 */
-    .byte  0x0          /* base 31:24 */
-
-.set user_codesel_32, . - _gdt
-_user_code_32_gde:
-    .short 0xffff           /* limit 15:00 */
-    .short 0x0000           /* base 15:00 */
-    .byte  0x00         /* base 23:16 */
-    .byte  0b11111010       /* P(1) DPL(11) S(1) 1 C(0) R(1) A(0) */
-    .byte  0b11001111       /* G(1) D(1) 0 0 limit 19:16 */
-    .byte  0x0          /* base 31:24 */
-
-.set user_datasel, . - _gdt
-_user_data_32_gde:
-    .short 0xffff           /* limit 15:00 */
-    .short 0x0000           /* base 15:00 */
-    .byte  0x00         /* base 23:16 */
-    .byte  0b11110010       /* P(1) DPL(11) S(1) 0 E(0) W(1) A(0) */
-    .byte  0b11001111       /* G(1) B(1) 0 0 limit 19:16 */
-    .byte  0x0          /* base 31:24 */
-
-.set codesel_64, . - _gdt
-_code_64_gde:
-    .short 0xffff           /* limit 15:00 */
-    .short 0x0000           /* base 15:00 */
-    .byte  0x00         /* base 23:16 */
-    .byte  0b10011010       /* P(1) DPL(00) S(1) 1 C(0) R(1) A(0) */
-    .byte  0b10101111       /* G(1) D(0) L(1) AVL(0) limit 19:16 */
-    .byte  0x0          /* base 31:24 */
-
-.set datasel_64, . - _gdt
-_data_64_gde:
-    .short 0xffff           /* limit 15:00 */
-    .short 0x0000           /* base 15:00 */
-    .byte  0x00         /* base 23:16 */
-    .byte  0b10010010       /* P(1) DPL(00) S(1) 1 C(0) R(1) A(0) */
-    .byte  0b11001111       /* G(1) B(1) 0 AVL(0) limit 19:16 */
-    .byte  0x0          /* base 31:24 */
-
-    .quad  0x0000000000000000
-    .quad  0x0000000000000000
-
-.set user_codesel_64, . - _gdt
-_user_code_64_gde:
-    .short 0xffff           /* limit 15:00 */
-    .short 0x0000           /* base 15:00 */
-    .byte  0x00         /* base 23:16 */
-    .byte  0b11111010       /* P(1) DPL(11) S(1) 1 C(0) R(1) A(0) */
-    .byte  0b10101111       /* G(1) D(1) L(0) AVL(0) limit 19:16 */
-    .byte  0x0          /* base 31:24 */
-
-.set user_datasel_64, . - _gdt
-_user_data_64_gde:
-    .short 0xffff           /* limit 15:00 */
-    .short 0x0000           /* base 15:00 */
-    .byte  0x00         /* base 23:16 */
-    .byte  0b11110010       /* P(1) DPL(11) S(1) 0 E(0) W(1) A(0) */
-    .byte  0b11001111       /* G(1) B(1) 0 0 limit 19:16 */
-    .byte  0x0          /* base 31:24 */
-
-.set null_2, . - _gdt
-_null_2:
-    .int 0
-    .int 0
-
-/* TSS descriptor */
-.set tsssel, . - _gdt
-_tss_gde:
-    .short 0                /* limit 15:00 */
-    .short 0                /* base 15:00 */
-    .byte  0                /* base 23:16 */
-    .byte  0x89             /* P(1) DPL(11) 0 10 B(0) 1 */
-    .byte  0x80             /* G(0) 0 0 AVL(0) limit 19:16 */
-    .short  0               /* base 31:24 */
-.global _gdt_end
-_gdt_end:
-
-.bss
-_kstack:
-.fill 4096
-_kstack_top:

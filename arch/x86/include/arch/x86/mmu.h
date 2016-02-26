@@ -45,7 +45,7 @@ void x86_mmu_init(void);
 #if defined(PAE_MODE_ENABLED) || ARCH_X86_64
 /* PAE mode */
 #define X86_PDPT_ADDR_MASK  (0x00000000ffffffe0ul)
-#define X86_PG_FRAME        (0x000ffffffffff000ul)
+#define X86_PG_FRAME        (0xfffffffffffff000ul)
 #define X86_PHY_ADDR_MASK   (0x000ffffffffffffful)
 #define X86_FLAGS_MASK      (0x0000000000000ffful)  /* NX Bit is ignored in the PAE mode */
 #define X86_PTE_NOT_PRESENT (0xFFFFFFFFFFFFFFFEul)
@@ -70,10 +70,6 @@ void x86_mmu_init(void);
 
 #define X86_SET_FLAG(x)     (x=1)
 
-#warning fix
-#define X86_PHYS_TO_VIRT(x)     (x)
-#define X86_VIRT_TO_PHYS(x)     (x)
-
 #else
 /* non PAE mode */
 #define X86_PG_FRAME        (0xfffff000)
@@ -88,9 +84,15 @@ void x86_mmu_init(void);
 #define PT_SHIFT        12
 #define ADDR_OFFSET     10
 
+#endif
+
+#if ARCH_X86_32
 /* translate from phys to virt and virt to phys in 32bit kernel mode */
-#define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_ASPACE_BASE)
-#define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_ASPACE_BASE)
+#define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_BASE)
+#define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_BASE)
+#elif ARCH_X86_64
+#define X86_PHYS_TO_VIRT(x)     ((uintptr_t)(x) + KERNEL_BASE)
+#define X86_VIRT_TO_PHYS(x)     ((uintptr_t)(x) - KERNEL_BASE)
 #endif
 
 /* Different page table levels in the page table mgmt hirerachy */

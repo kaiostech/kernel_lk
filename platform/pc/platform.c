@@ -64,28 +64,14 @@ extern uint64_t __bss_end;
 extern void pci_init(void);
 extern void arch_mmu_init(void);
 
-/* Address width including virtual/physical address*/
-uint8_t g_vaddr_width = 0;
-uint8_t g_paddr_width = 0;
-
 void platform_init_mmu_mappings(void)
 {
 #if 0
     struct map_range range;
     arch_flags_t access;
     map_addr_t *init_table, phy_init_table;
-    uint32_t   addr_width;
 
     LTRACE_ENTRY;
-
-    /* getting the address width from CPUID instr */
-    /* Bits 07-00: Physical Address width info */
-    /* Bits 15-08: Linear Address width info */
-    addr_width    = x86_get_address_width();
-    g_paddr_width = (uint8_t)(addr_width & 0xFF);
-    g_vaddr_width = (uint8_t)((addr_width >> 8) & 0xFF);
-
-    LTRACEF("paddr_width %u vaddr_width %u\n", g_paddr_width, g_vaddr_width);
 
     /* Creating the First page in the page table hirerachy */
     /* Can be pml4, pdpt or pdt based on x86_64, x86 PAE mode & x86 non-PAE mode respectively */
@@ -150,17 +136,23 @@ void platform_init_mmu_mappings(void)
 
 #if WITH_KERNEL_VM
 struct mmu_initial_mapping mmu_initial_mappings[] = {
-    /* all of detected memory */
+#if ARCH_x86_64
+    /* 64GB of memory mapped where the kernel lives */
+    {
+        .phys = MEMBASE,
+        .virt = KERNEL_ASPACE_BASE,
+        .size = 64*GB, /* x86-64 maps first 64GB by default */
+        .flags = 0,
+        .name = "memory"
+    },
+#endif
+    /* 1GB of memory mapped where the kernel lives */
     {
         .phys = MEMBASE,
         .virt = KERNEL_BASE,
-#if ARCH_X86_32
         .size = 1*GB, /* x86 maps first 1GB by default */
-#elif ARCH_X86_64
-#error implement
-#endif
         .flags = 0,
-        .name = "memory"
+        .name = "kernel"
     },
 
     /* null entry to terminate the list */
@@ -190,10 +182,10 @@ void mem_arena_init(void)
 
 void platform_init_multiboot_info(void)
 {
-    /* bump the multiboot pointer up to the kernel mapping */
-    _multiboot_info = (void *)((uintptr_t)_multiboot_info + KERNEL_BASE);
-
     if (_multiboot_info) {
+        /* bump the multiboot pointer up to the kernel mapping */
+        _multiboot_info = (void *)((uintptr_t)_multiboot_info + KERNEL_BASE);
+
         if (_multiboot_info->flags & MB_INFO_MEM_SIZE) {
             LTRACEF("memory lower 0x%x\n", _multiboot_info->mem_lower * 1024U);
             LTRACEF("memory upper 0x%llx\n", _multiboot_info->mem_upper * 1024ULL);

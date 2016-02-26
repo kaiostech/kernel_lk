@@ -36,6 +36,10 @@
 
 tss_t system_tss;
 
+uint8_t _kstack[PAGE_SIZE] __ALIGNED(8);
+
+void *_multiboot_info;
+
 extern void arch_mmu_early_init(void);
 extern void arch_mmu_init(void);
 

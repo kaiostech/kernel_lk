@@ -38,15 +38,16 @@ static void dump_fault_frame(x86_iframe_t *frame)
     dprintf(CRITICAL, " DS:     %04x  ES:     %04x  FS:     %04x  GS:     %04x\n",
             frame->ds, frame->es, frame->fs, frame->gs);
 #elif ARCH_X86_64
-    dprintf(CRITICAL, " CS:     %04llx EIP: %08llx EFL: %08llx CR2: %08llx\n",
+    dprintf(CRITICAL, " CS:              %4llx RIP: %16llx EFL: %16llx CR2: %16llx\n",
             frame->cs, frame->rip, frame->rflags, x86_get_cr2());
-    /*  dprintf(CRITICAL, "EAX: %08x ECX: %08x EDX: %08x EBX: %08x\n",
-                frame->rax, frame->rcx, frame->rdx, frame->rbx);
-        dprintf(CRITICAL, "ESP: %08x EBP: %08x ESI: %08x EDI: %08x\n",
-                frame->rsp, frame->rbp, frame->rsi, frame->rdi);
-        dprintf(CRITICAL, " DS:     %04x  ES:     %04x  FS:     %04x  GS:     %04x\n",
-                frame->ds, frame->es, frame->fs, frame->gs);
-    */
+    dprintf(CRITICAL, " RAX: %16llx RBX: %16llx RCX: %16llx RDX: %16llx\n",
+            frame->rax, frame->rbx, frame->rcx, frame->rdx);
+    dprintf(CRITICAL, " RSI: %16llx RDI: %16llx RBP: %16llx RSP: %16lx\n",
+            frame->rsi, frame->rdi, frame->rbp, (uintptr_t)(frame + 1));
+    dprintf(CRITICAL, "  R8: %16llx  R9: %16llx R10: %16llx R11: %16llx\n",
+            frame->r8, frame->r9, frame->r10, frame->r11);
+    dprintf(CRITICAL, " R12: %16llx R13: %16llx R14: %16llx R15: %16llx\n",
+            frame->r12, frame->r13, frame->r14, frame->r15);
 #endif
 
     // dump the bottom of the current stack

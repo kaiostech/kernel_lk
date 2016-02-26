@@ -628,7 +628,6 @@ void arch_mmu_early_init(void)
     write_msr(x86_MSR_EFER, efer_msr);
 #endif
 
-    TRACEF("unmapping lower mapping\n");
     /* unmap the lower identity mapping */
     for (uint i = 0; i < (1024*1024*1024) / (4*1024*1024); i++) {
         pd[i] = 0;
@@ -636,8 +635,6 @@ void arch_mmu_early_init(void)
 
     /* tlb flush */
     x86_set_cr3(x86_get_cr3());
-
-    TRACEF("done unmapping lower mapping\n");
 }
 
 void arch_mmu_init(void)
