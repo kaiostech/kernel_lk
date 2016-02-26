@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, 2016 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -111,12 +111,59 @@ void clock_init_mmc(uint32_t interface)
 }
 
 /* Configure MMC clock */
+void clock_reset_mmc(uint32_t interface)
+{
+	char clk_name[64];
+	struct clk *clk;
+	int ret;
+
+	snprintf(clk_name, 64, "sdc%u_core_clk", interface);
+
+	clk = clk_get(clk_name);
+
+	if(!clk)
+	{
+		dprintf(CRITICAL, "sdc%d %s clk_get failed\n",
+			interface, clk_name);
+		return;
+	}
+
+	/* Disalbe MCI_CLK before changing the sdcc clock */
+#ifndef MMC_SDHCI_SUPPORT
+	mmc_boot_mci_clk_disable();
+#endif
+
+	ret = clk_reset(clk, CLK_RESET_ASSERT);
+	if(ret)
+	{
+		dprintf(CRITICAL, "sdc%d %s clk_reset assert failed\n",
+			interface, clk);
+		goto err_clk_reset;
+	}
+
+	udelay(20);
+
+	ret = clk_reset(clk, CLK_RESET_DEASSERT);
+	if(ret)
+	{
+		dprintf(CRITICAL, "sdc%d %s clk_reset deassert failed\n",
+			interface, clk);
+	}
+
+err_clk_reset:
+#ifndef MMC_SDHCI_SUPPORT
+	mmc_boot_mci_clk_enable();
+#endif
+	return;
+}
+
 void clock_config_mmc(uint32_t interface, uint32_t freq)
 {
 	int ret;
 	uint32_t reg;
 	char clk_name[64];
 
+	clock_reset_mmc(interface);
 	snprintf(clk_name, 64, "sdc%u_core_clk", interface);
 
 	/* Disalbe MCI_CLK before changing the sdcc clock */
