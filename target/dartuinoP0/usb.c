@@ -28,7 +28,6 @@
 #include <compiler.h>
 #include <dev/usb.h>
 #include <dev/usbc.h>
-#include <dev/usb/class/bulktest.h>
 #include <hw/usb.h>
 #include <lk/init.h>
 
@@ -103,9 +102,6 @@ void target_usb_setup(void)
 
     usb_add_string("LK", 1);
     usb_add_string("LK Industries", 2);
-
-    /* add our bulk endpoint class device */
-    usb_class_bulktest_init(1, 1, 1);
 
     usb_start();
 }

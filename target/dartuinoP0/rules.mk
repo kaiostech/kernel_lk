@@ -31,8 +31,7 @@ MODULE_SRCS += \
     $(LOCAL_DIR)/usb.c \
 
 MODULE_DEPS += \
-    dev/usb \
-    dev/usb/class/bulktest
+    dev/usb
 
 include make/module.mk
 
