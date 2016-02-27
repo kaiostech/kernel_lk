@@ -84,6 +84,7 @@ GLOBAL_CFLAGS += $(call cc-option,$(CC),-fno-stack-protector,)
 
 GLOBAL_COMPILEFLAGS += -fasynchronous-unwind-tables
 GLOBAL_COMPILEFLAGS += -gdwarf-2
+GLOBAL_COMPILEFLAGS += -fno-pic
 GLOBAL_LDFLAGS += -z max-page-size=4096
 
 ifeq ($(SUBARCH),x86-64)

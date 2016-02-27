@@ -76,23 +76,9 @@ interrupt_common:
     pushq %rsi
     pushq %rdi
 
-    /* store stack switch pivot.
-           push rsp has errata on some cpus, so use mov/push */
-    movq %rsp, %rax
-    pushq %rax
     movq %rsp, %rdi     /* pass the  iframe using rdi */
 
-    call platform_irq
-
-    cmpq $0,%rax
-    je 0f
-    call thread_preempt
-
-0:
-    /* restore task_rsp, stack switch can occur here
-           if task_rsp is modified */
-    popq %rax
-    movq %rax, %rsp
+    call x86_exception_handler
 
     /* restore general purpose registers */
     popq %rdi

@@ -25,11 +25,11 @@
 #include <debug.h>
 #include <err.h>
 #include <reg.h>
+#include <assert.h>
 #include <kernel/thread.h>
 #include <platform/interrupts.h>
 #include <arch/ops.h>
 #include <arch/x86.h>
-#include <arch/fpu.h>
 #include <kernel/spinlock.h>
 #include "platform_p.h"
 #include <platform/pc.h>
@@ -211,44 +211,13 @@ enum handler_return platform_irq(x86_iframe_t *frame)
     // get the current vector
     unsigned int vector = frame->vector;
 
-    THREAD_STATS_INC(interrupts);
+    DEBUG_ASSERT(vector >= 0x20);
 
     // deliver the interrupt
     enum handler_return ret = INT_NO_RESCHEDULE;
 
-    switch (vector) {
-        case INT_GP_FAULT:
-            x86_gpf_handler(frame);
-            break;
-
-        case INT_INVALID_OP:
-            x86_invop_handler(frame);
-            break;
-        case INT_PAGE_FAULT:
-#ifdef ARCH_X86_64
-            x86_pfe_handler(frame);
-#endif
-            break;
-
-        case INT_DEV_NA_EX:
-#if X86_WITH_FPU
-            fpu_dev_na_handler();
-            break;
-#endif
-
-        case INT_MF:
-        case INT_XM:
-        case INT_DIVIDE_0:
-        case INT_DEBUG_EX:
-        case INT_STACK_FAULT:
-        case 3:
-            x86_unhandled_exception(frame);
-            break;
-
-        default:
-            if (int_handler_table[vector].handler)
-                ret = int_handler_table[vector].handler(int_handler_table[vector].arg);
-    }
+    if (int_handler_table[vector].handler)
+        ret = int_handler_table[vector].handler(int_handler_table[vector].arg);
 
     // ack the interrupt
     issueEOI(vector);

@@ -54,43 +54,38 @@ void arch_thread_initialize(thread_t *t)
     // create a default stack frame on the stack
     vaddr_t stack_top = (vaddr_t)t->stack + t->stack_size;
 
-    // make sure the top of the stack is 8 byte aligned for EABI compliance
-    stack_top = ROUNDDOWN(stack_top, 8);
-
 #if ARCH_X86_32
+    // make sure the top of the stack is 8 byte aligned for ABI compliance
+    stack_top = ROUNDDOWN(stack_top, 8);
     struct x86_32_context_switch_frame *frame = (struct x86_32_context_switch_frame *)(stack_top);
 #endif
 #if ARCH_X86_64
+    // make sure the top of the stack is 16 byte aligned for ABI compliance
+    stack_top = ROUNDDOWN(stack_top, 16);
+
+    // make sure we start the frame 8 byte unaligned (relative to the 16 byte alignment) because
+    // of the way the context switch will pop the return address off the stack. After the first
+    // context switch, this leaves the stack in unaligned relative to how a called function expects it.
+    stack_top -= 8;
     struct x86_64_context_switch_frame *frame = (struct x86_64_context_switch_frame *)(stack_top);
 #endif
-    frame--;
 
-    // fill it in
+    // move down a frame size and zero it out
+    frame--;
     memset(frame, 0, sizeof(*frame));
 
 #if ARCH_X86_32
     frame->eip = (vaddr_t) &initial_thread_func;
     frame->eflags = 0x3002; // IF = 0, NT = 0, IOPL = 3
-    //frame->cs = CODE_SELECTOR;
-    //frame->fs = DATA_SELECTOR;
-    //frame->gs = DATA_SELECTOR;
-    //frame->es = DATA_SELECTOR;
-    //frame->ds = DATA_SELECTOR;
-
-#if X86_WITH_FPU
-    memset(t->arch.fpu_buffer, 0, sizeof(t->arch.fpu_buffer));
-    t->arch.fpu_states = (vaddr_t *)ROUNDUP(((vaddr_t)t->arch.fpu_buffer), 16);
-#endif
 #endif
 
 #if ARCH_X86_64
     frame->rip = (vaddr_t) &initial_thread_func;
     frame->rflags = 0x3002; /* IF = 0, NT = 0, IOPL = 3 */
+#endif
 
-#if X86_WITH_FPU
+    // initialize the saved fpu state
     fpu_init_thread_states(t);
-#endif
-#endif
 
     // set the stack pointer
     t->arch.sp = (vaddr_t)frame;

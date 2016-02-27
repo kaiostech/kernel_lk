@@ -55,11 +55,8 @@ _isr:
 .set i, i + 1
 .endr
 
-
-
 /* annoying, but force AS to use the same (longer) encoding of jmp for all of the stubs */
 .fill 256
-
 
 FUNCTION(interrupt_common)
     pushl %gs               /* save segment registers */
@@ -72,23 +69,14 @@ FUNCTION(interrupt_common)
     movl %eax, %fs
     movl %eax, %es
     movl %eax, %ds
-    movl %esp, %eax         /* store stack switch pivot. push esp has errata on some cpus, so use mov/push */
+
+    movl %esp, %eax         /* store pointer to iframe */
     pushl %eax
-    movl %esp, %eax         /* store pointer to iframe, using same method */
-    pushl %eax
 
-
-    call platform_irq
-
-    cmpl $0,%eax
-    je 0f
-    call thread_preempt
-
-0:
+    call x86_exception_handler
 
     popl %eax               /* drop pointer to iframe */
-    popl %eax               /* restore task_esp, stack switch can occur here if task_esp is modified */
-    movl %eax, %esp
+
     popa                    /* restore general purpose registers */
     popl %ds                /* restore segment registers */
     popl %es

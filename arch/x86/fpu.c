@@ -21,12 +21,17 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include <trace.h>
 #include <arch/x86.h>
 #include <arch/fpu.h>
 #include <string.h>
 #include <kernel/thread.h>
 
+#define LOCAL_TRACE 0
+
 #if X86_WITH_FPU
+
+#define FPU_MASK_ALL_EXCEPTIONS 1
 
 /* CPUID EAX = 1 return values */
 
@@ -92,15 +97,19 @@ void fpu_init(void)
     x |= X86_CR0_MP;
     x86_set_cr0(x);
 
-    /* Init x87 and unmask all exceptions */
-
+    /* Init x87 */
     __asm__ __volatile__ ("finit");
     __asm__ __volatile__("fstcw %0" : "=m" (fcw));
+#if FPU_MASK_ALL_EXCEPTIONS
+    /* mask all exceptions */
+    fcw |= 0x3f;
+#else
+    /* unmask all exceptions */
     fcw &= 0xffc0;
+#endif
     __asm__ __volatile__("fldcw %0" : : "m" (fcw));
 
-    /* Init SSE and unmask all exceptions */
-
+    /* Init SSE */
     x = x86_get_cr4();
     x |= X86_CR4_OSXMMEXPT;
     x |= X86_CR4_OSFXSR;
@@ -108,7 +117,13 @@ void fpu_init(void)
     x86_set_cr4(x);
 
     __asm__ __volatile__("stmxcsr %0" : "=m" (mxcsr));
+#if FPU_MASK_ALL_EXCEPTIONS
+    /* mask all exceptions */
+    mxcsr = (0x3f << 7);
+#else
+    /* unmask all exceptions */
     mxcsr &= 0x0000003f;
+#endif
     __asm__ __volatile__("ldmxcsr %0" : : "m" (mxcsr));
 
     /* save fpu initial states, and used when new thread creates */
@@ -121,7 +136,7 @@ void fpu_init(void)
 void fpu_init_thread_states(thread_t *t)
 {
     t->arch.fpu_states = (vaddr_t *)ROUNDUP(((vaddr_t)t->arch.fpu_buffer), 16);
-    memcpy(t->arch.fpu_states,fpu_init_states,sizeof(t->arch.fpu_buffer));
+    memcpy(t->arch.fpu_states, fpu_init_states, sizeof(fpu_init_states));
 }
 
 void fpu_context_switch(thread_t *old_thread, thread_t *new_thread)
@@ -148,6 +163,7 @@ void fpu_dev_na_handler(void)
 
     self = get_current_thread();
 
+    LTRACEF("owner %p self %p\n", fp_owner, self);
     if ((fp_owner != NULL) && (fp_owner != self)) {
         __asm__ __volatile__("fxsave %0" : "=m" (*fp_owner->arch.fpu_states));
         __asm__ __volatile__("fxrstor %0" : : "m" (*self->arch.fpu_states));

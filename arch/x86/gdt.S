@@ -25,11 +25,11 @@
 #include <asm.h>
 #include <arch/x86/descriptor.h>
 
-.data
-
 #define PHYS_LOAD_ADDRESS (MEMBASE + KERNEL_LOAD_OFFSET)
 #define PHYS_ADDR_DELTA (KERNEL_BASE + KERNEL_LOAD_OFFSET - PHYS_LOAD_ADDRESS)
 #define PHYS(x) ((x) - PHYS_ADDR_DELTA)
+
+.section .rodata
 
 .align 8
 DATA(_gdtr_phys)
@@ -45,6 +45,7 @@ DATA(_gdtr)
     .quad _gdt
 #endif
 
+.data
 .align 8
 DATA(_gdt)
     .int 0
@@ -88,11 +89,6 @@ _user_data_32_gde:
     .byte  0b11001111       /* G(1) B(1) 0 0 limit 19:16 */
     .byte  0x0          /* base 31:24 */
 
-.set null_2, . - _gdt
-_null_2:
-    .int 0
-    .int 0
-
 .set codesel_64, . - _gdt
 _code_64_gde:
     .short 0xffff           /* limit 15:00 */
@@ -110,9 +106,6 @@ _data_64_gde:
     .byte  0b10010010       /* P(1) DPL(00) S(1) 1 C(0) R(1) A(0) */
     .byte  0b11001111       /* G(1) B(1) 0 AVL(0) limit 19:16 */
     .byte  0x0          /* base 31:24 */
-
-    .quad  0x0000000000000000
-    .quad  0x0000000000000000
 
 .set user_codesel_64, . - _gdt
 _user_code_64_gde:

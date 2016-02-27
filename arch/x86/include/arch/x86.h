@@ -40,7 +40,6 @@ __BEGIN_CDECLS
 #define X86_CPUID_ADDR_WIDTH 0x80000008
 
 struct x86_32_iframe {
-    uint32_t pivot;                                     // stack switch pivot
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;    // pushed by common handler using pusha
     uint32_t ds, es, fs, gs;                            // pushed by common handler
     uint32_t vector;                                    // pushed by stub
@@ -50,7 +49,6 @@ struct x86_32_iframe {
 };
 
 struct x86_64_iframe {
-    uint64_t pivot;                                     // stack switch pivot
     uint64_t rdi, rsi, rbp, rbx, rdx, rcx, rax;         // pushed by common handler
     uint64_t r8, r9, r10, r11, r12, r13, r14, r15;      // pushed by common handler
     uint64_t vector;                                    // pushed by stub
