@@ -64,22 +64,12 @@ static struct {
     0, 0, 79, 24
 };
 
-static void cput_callback(print_callback_t *cb, const char *str, size_t len);
-
-struct __print_callback cb = {
-    .entry = { 0 },
-    .print = cput_callback,
-    .context = NULL
-};
-
 void platform_init_console(void)
 {
     curr_save();
     window(0, 0, 79, 24);
     clear();
     place(0, 0);
-
-    register_print_callback(&cb);
 }
 
 void set_visual_page(int page)
@@ -286,16 +276,6 @@ void cputs(char *s)
     while (*s != '\0') {
         c = *s++;
         cputc(c);
-    }
-}
-
-static void cput_callback(print_callback_t *cb, const char *str, size_t len)
-{
-    while (len > 0) {
-        if (*str == '\n')
-            cputc('\r');
-        cputc(*str++);
-        len--;
     }
 }
 

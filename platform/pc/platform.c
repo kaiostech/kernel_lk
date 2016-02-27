@@ -59,7 +59,6 @@ extern uint64_t __bss_start;
 extern uint64_t __bss_end;
 
 extern void pci_init(void);
-extern void arch_mmu_init(void);
 
 void platform_init_mmu_mappings(void)
 {
@@ -226,8 +225,8 @@ void platform_init_multiboot_info(void)
 
 void platform_early_init(void)
 {
-
-    platform_init_uart();
+    /* get the debug output working */
+    platform_init_debug_early();
 
     /* get the text console working */
     platform_init_console();
@@ -249,9 +248,9 @@ void platform_early_init(void)
 
 void platform_init(void)
 {
-    uart_init();
+    platform_init_debug();
 
-    platform_init_keyboard();
+    platform_init_keyboard(&console_input_buf);
 #if defined(ARCH_X86)
     pci_init();
 #endif
