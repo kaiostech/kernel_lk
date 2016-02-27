@@ -5,3 +5,4 @@ include project/virtual/fs.mk
 
 MODULES += \
   app/shell \
+  app/moot \
