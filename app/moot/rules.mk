@@ -4,7 +4,8 @@ MODULE := $(LOCAL_DIR)
 
 MODULE_SRCS += \
 	$(LOCAL_DIR)/moot.c \
-	$(LOCAL_DIR)/cmd.c
+	$(LOCAL_DIR)/usb.c \
+
 
 include make/module.mk
 

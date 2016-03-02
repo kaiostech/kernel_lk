@@ -21,15 +21,15 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef LK_APP_MOOT_CMDS_H_
-#define LK_APP_MOOT_CMDS_H_
+#ifndef APP_MOOT_USB_H_
+#define APP_MOOT_USB_H_
 
-/* Dispatch a command to the bootloader. */
-status_t cmd_dispatch(void *data, size_t len);
+#include <stdbool.h>
 
-typedef struct cmd_header {
-	uint32_t moot_magic;
-	uint32_t cmd_id;
-} cmd_header_t;
+// Initialize the USB stack / USB boot mechanisms.
+void init_usb_boot(void);
 
-#endif  // LK_APP_MOOT_CMDS_H_
+// Allow the USB device to interrupt the boot sequence. 
+bool attempt_usb_boot(void);
+
+#endif  // APP_MOOT_USB_H_

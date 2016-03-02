@@ -4,5 +4,5 @@ include project/target/dartuinoP0.mk
 include project/virtual/fs.mk
 
 MODULES += \
-  app/shell \
   app/moot \
+  app/shell \
