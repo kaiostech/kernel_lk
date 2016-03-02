@@ -2405,6 +2405,18 @@ void cmd_erase_mmc(const char *arg, void *data, unsigned sz)
 	}
 #endif
 
+	if(!strcmp("partition", arg)) {
+		uint64_t device_density = mmc_get_device_capacity();
+		unsigned int ret;
+		ret = mmc_erase_card(0x00000000, device_density);
+		if (ret) {
+			dprintf(CRITICAL, "Failed to erase the eMMC card\n");
+			fastboot_fail("Failed to erase the eMMC\n");
+		}
+		fastboot_okay("");
+		return;
+	}
+
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
 	size = partition_get_size(index);
