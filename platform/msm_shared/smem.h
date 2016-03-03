@@ -452,6 +452,8 @@ enum {
 	MSM8996AU = 310,
 	APQ8096AU = 311,
 	APQ8096SG = 312,
+	MSM8996SGAU = 315,
+	APQ8096SGAU = 316
 };
 
 enum platform {
