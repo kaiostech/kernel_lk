@@ -105,7 +105,9 @@ void arch_init(void)
 
 void arch_quiesce(void)
 {
-    // Turn down the device.
+#if ARM_WITH_CACHE
+    arch_disable_cache(UCACHE);
+#endif
 }
 
 void arch_idle(void)

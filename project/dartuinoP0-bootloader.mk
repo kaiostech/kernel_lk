@@ -6,3 +6,5 @@ include project/virtual/fs.mk
 MODULES += \
   app/moot \
   app/shell \
+  lib/version \
+  lib/buildsig \
