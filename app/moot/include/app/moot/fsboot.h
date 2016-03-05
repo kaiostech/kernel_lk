@@ -21,15 +21,22 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef LK_APP_MOOT_CMDS_H_
-#define LK_APP_MOOT_CMDS_H_
 
-/* Dispatch a command to the bootloader. */
-status_t cmd_dispatch(void *data, size_t len);
 
-typedef struct cmd_header {
-	uint32_t moot_magic;
-	uint32_t cmd_id;
-} cmd_header_t;
+#ifndef APP_MOOT_FS_BOOT_H_
+#define APP_MOOT_FS_BOOT_H_
 
-#endif  // LK_APP_MOOT_CMDS_H_
+#include <stdbool.h>
+
+// The platform/target should implement this routine by mouting the default
+// filesystem and returning a string that points to the mount point. If NULL is
+// returned it is assumed that either (1) the platform does not implement FS 
+// boot or that (2) mounting the default filesystem failed in which case the 
+// system proceeds to boot without FSBoot.
+char *fs_boot_mount_default_fs(void);
+
+// Attempt to boot from the filesystem.
+bool attempt_fs_boot(void);
+
+
+#endif  // APP_MOOT_FS_BOOT_H_

@@ -21,47 +21,30 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <app.h>
 #include <app/moot/fsboot.h>
-#include <app/moot/usb.h>
-#include <assert.h>
-#include <debug.h>
-#include <err.h>
-#include <kernel/event.h>
-#include <lk/init.h>
-#include <stdlib.h>
-#include <trace.h>
+#include <compiler.h>
 
+typedef struct upgrade_image_header {
 
-static void moot_init(const struct app_descriptor *app)
+} upgrade_image_header_t;
+
+// Attempt to boot from the filesystem.
+bool attempt_fs_boot(void)
 {
-    // Initialize our boot subsystems.
-    init_usb_boot();
+    const char* mount_path = fs_boot_mount_default_fs();
+
+    // Couldn't mount, continue the boot.
+    if (!mount_path)
+        return true;
+
+
+
 
 }
 
-static void moot_entry(const struct app_descriptor *app, void *args)
+// The default implementation returns NULL which indicates that FSBoot should
+// be skipped.
+__WEAK char *fs_boot_mount_default_fs(void)
 {
-    do {
-        // Wait a few seconds for the host to try to talk to us over USB.
-        if (attempt_usb_boot())
-            break;
-
-        // Check the SPIFlash for an upgrade image.
-        if (attempt_spifs_upgrade())
-         break;
-
-    } while (false);
-
-
-    // Ensure the integrity of the system image.
-    // verify_system_image();
-
-    // Boot the main system image.
-    // do_boot();
+    return NULL;
 }
-
-APP_START(moot)
- .init = moot_init,
- .entry = moot_entry,
-APP_END
