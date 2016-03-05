@@ -104,8 +104,7 @@ static const uint8_t if_descriptor[] = {
 #define USB_RESP_ERR_OPEN_SYS_FLASH   (0xFFF2)
 #define USB_RESP_ERR_ERASE_SYS_FLASH  (0xFFF3)
 #define USB_RESP_ERR_WRITE_SYS_FLASH  (0xFFF4)
-#define USB_RESP_ERR_WRITE_SYS_FLASH  (0xFFF5)
-#define USB_RESP_CANT_FIND_BUILDSIG   (0xFFF6)
+#define USB_RESP_CANT_FIND_BUILDSIG   (0xFFF5)
 
 /* Bootloader commands */
 #define USB_CMD_FLASH    (0x01)
@@ -158,8 +157,8 @@ static void handle(const void *data, const size_t n, cmd_response_t *resp)
         return;
     }
 
-    size_t image_length;
-    lk_version_t *version;
+    ssize_t image_length;
+    const lk_version_t *version;
     status_t st;
 
     switch (header->cmd) {
@@ -190,14 +189,14 @@ static void handle(const void *data, const size_t n, cmd_response_t *resp)
 
             off_t addr = SYSTEM_BASE;
             while (image_length > 0) {
-                size_t xfer = (image_length > sizeof(buffer)) ?
-                              sizeof(buffer) : image_length;
+                ssize_t xfer = (image_length > (ssize_t)sizeof(buffer)) ?
+                                (ssize_t)sizeof(buffer) : image_length;
 
                 size_t bytes_received;
                 usb_recv(buffer, xfer, INFINITE_TIME, &bytes_received);
 
                 ssize_t written = bio_write(dev, buffer, addr, bytes_received);
-                if (written != bytes_received) {
+                if (written != (ssize_t)bytes_received) {
                     resp->code = USB_RESP_ERR_WRITE_SYS_FLASH;
                     goto finish;
                 }
@@ -216,11 +215,11 @@ static void handle(const void *data, const size_t n, cmd_response_t *resp)
 
             arch_disable_ints();
             arch_quiesce();
-            arch_chain_load(ROMBASE + SYSTEM_BASE, 0, 0, 0, 0);
+            arch_chain_load((void *)(ROMBASE + SYSTEM_BASE), 0, 0, 0, 0);
             break;
         case USB_CMD_DEVINFO:
             st = buildsig_search(
-                     ROMBASE + SYSTEM_BASE,
+                     (void *)ROMBASE + SYSTEM_BASE,
                      DEFAULT_BUILDSIG_SEARCH_LEN,
                      1024*1024,
                      &version
@@ -231,12 +230,12 @@ static void handle(const void *data, const size_t n, cmd_response_t *resp)
             }
 
             size_t buflen = sizeof(buffer);
-            snprintf(buffer, sizeof(buffer), "%s\n%s\n%s\n%s\n%s",
+            snprintf((char *)buffer, buflen, "%s\n%s\n%s\n%s\n%s",
                      version->arch, version->platform, version->target,
                      version->project, version->buildid);
 
             resp->code = USB_RESP_XMIT_READY;
-            resp->arg = strnlen(buffer, sizeof(buffer));
+            resp->arg = strnlen((char *)buffer, buflen);
             usb_xmit((void *)resp, sizeof(*resp));
             usb_xmit((void *)buffer, resp->arg);
 
