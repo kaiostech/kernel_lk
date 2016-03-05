@@ -51,7 +51,7 @@ DEFINES += ENABLE_WBC=1
 #Enable below flag to compile cmnlib64
 #DEFINES += ENABLE_CMNLIB64_LOADING=1
 
-ENABLE_HAP_VIB_SUPPORT := true
+ENABLE_HAP_VIB_SUPPORT := false
 
 #Enable the feature of long press power on
 DEFINES += LONG_PRESS_POWER_ON=1
