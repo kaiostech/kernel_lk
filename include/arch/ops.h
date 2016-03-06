@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
  * (the "Software"), to deal in the Software without restriction,
@@ -62,6 +63,7 @@ void arch_disable_mmu(void);
 void arch_switch_stacks_and_call(addr_t call, addr_t stack) __NO_RETURN;
 
 uint32_t arch_cycle_count(void);
+void cpu_on_asm(void);
 
 #if defined(__cplusplus)
 }
