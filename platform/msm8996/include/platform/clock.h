@@ -85,6 +85,13 @@
 #define MMSS_CAMSS_CSI2PIX_CBCR         REG_MM(0x31B4)
 #define MMSS_CAMSS_CPP_VBIF_AHB_CBCR    REG_MM(0x36C8)
 #define MMSS_MMSS_MMAGIC_CFG_AHB_CBCR   REG_MM(0x5054)
+#define MMSS_MMAGIC_CAMSS_GDSCR         REG_MM(0x3C4C)
+#define MMSS_CAMSS_VFE0_GDSCR           REG_MM(0x3664)
+#define MMSS_CAMSS_TOP_GDSCR            REG_MM(0x34A0)
+#define MMSS_CAMSS_VFE1_GDSCR           REG_MM(0x3674)
+#define MMSS_CAMSS_JPEG_GDSCR           REG_MM(0x35A4)
+#define MMSS_CAMSS_CPP_GDSCR            REG_MM(0x36D4)
+#define MMSS_FD_GDSCR                   REG_MM(0x3B64)
 
 #define VIDEO_GDSCR                     REG_MM(0x1024)
 #define MMAGIC_VIDEO_GDSCR              REG_MM(0x119c)
@@ -180,8 +187,9 @@ void mmss_gdsc_enable();
 void mmss_gdsc_disable();
 void video_gdsc_enable();
 void video_gdsc_disable();
+void camera_clocks_enable(int enable);
+void camera_gdsc_enable(int enable);
 void clock_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id);
-void camera_clocks_enable(void);
 
 void hdmi_ahb_core_clk_enable(void);
 void hdmi_pixel_clk_enable(uint32_t rate);
