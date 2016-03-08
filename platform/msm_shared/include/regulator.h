@@ -58,6 +58,8 @@
 #define SW_MODE_LDO_IPEAK 1
 #define LDOA_RES_TYPE 0x616F646C //aodl
 #define SMPS_RES_TYPE 0x61706D73 //apms
+#define VS_RES_TYPE  0x617376 //vsa
+
 
 /* RPM clock helper macros */
 #define RPM_CLK_BUFFER_A_REQ                   0x616B6C63 //aklc
