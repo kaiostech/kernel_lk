@@ -873,7 +873,6 @@ void target_display_init(const char *panel_name)
 		gcdb_display_init("adv7533_720p_dsi1_video", MDP_REV_50,
 				(void *)MIPI_FB_ADDR + 0x1000000);
 		goto target_display_init_end;
->>>>>>> 732bf6b... target: msm8996: add three display support in target
 	}
 
 	if (gcdb_display_init(oem.panel, MDP_REV_50, (void *)MIPI_FB_ADDR)) {
