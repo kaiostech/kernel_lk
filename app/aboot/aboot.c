@@ -93,6 +93,7 @@
 #include <menu_keys_detect.h>
 #include <display_menu.h>
 #include "fastboot_test.h"
+#include <target/target_camera.h>
 
 extern  bool target_use_signed_kernel(void);
 extern void platform_uninit(void);
@@ -747,7 +748,6 @@ void boot_linux(void *kernel, unsigned *tags,
 #if DEVICE_TREE
 	int ret = 0;
 #endif
-
 	void (*entry)(unsigned, unsigned, unsigned*) = (entry_func_ptr*)(PA((addr_t)kernel));
 	uint32_t tags_phys = PA((addr_t)tags);
 	struct kernel64_hdr *kptr = (struct kernel64_hdr*)kernel;
@@ -3641,8 +3641,10 @@ void aboot_init(const struct app_descriptor *app)
 	read_device_info(&device);
 	read_allow_oem_unlock(&device);
 	/* enable secondary core for early domain services */
-	if (device.early_domain_enabled)
+	if (device.early_domain_enabled) {
+		target_early_camera_init();
 		enable_secondary_core();
+	}
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN

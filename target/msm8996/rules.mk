@@ -59,6 +59,8 @@ OBJS += \
 	$(LOCAL_DIR)/meminfo.o \
 	$(LOCAL_DIR)/target_display.o \
 	$(LOCAL_DIR)/oem_panel.o \
+	$(LOCAL_DIR)/target_camera.o \
+	$(LOCAL_DIR)/target_camera_config.o \
 
 ifeq ($(ENABLE_GLINK_SUPPORT),1)
 OBJS += \

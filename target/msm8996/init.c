@@ -78,6 +78,7 @@
 
 #include <msm_panel.h>
 #include <target/display.h>
+#include <target/target_camera.h>
 
 #define ANIMATED_SPLAH_PARTITION "splash"
 #define ANIMATED_SPLASH_BUFFER   0x836a5580
@@ -805,7 +806,6 @@ int animated_splash_screen_mmc()
 		dprintf(CRITICAL, "ERROR: splash Partition table not found\n");
 		return -1;
 	}
-
 	ptn = partition_get_offset(index);
 	if (ptn == 0) {
 		dprintf(CRITICAL, "ERROR: splash Partition invalid\n");
@@ -821,6 +821,7 @@ int animated_splash_screen_mmc()
 	}
 	// ToDo: use correct display ID to get the fb
 	fb_display = target_display_get_fb(0);
+
 	if (!fb_display) {
 		dprintf(CRITICAL, "ERROR: fb config is not allocated\n");
 		return -1;
@@ -869,7 +870,6 @@ int animated_splash_screen_mmc()
 			}
 			dprintf(INFO, "width:%d height:%d blocks:%d imgsize:%d num_frames:%d\n", header->width,
 			header->height, header->blocks, header->img_size,header->num_frames);
-
 			realsize =  header->blocks * blocksize;
 			if ((realsize % blocksize) != 0)
 				readsize =  ROUNDUP(realsize, blocksize) - blocksize;
@@ -982,7 +982,9 @@ int animated_splash() {
 /* early domain services */
 void earlydomain_services()
 {
+#ifndef EARLY_CAMERA
 	uint32_t ret = 0;
+#endif
 	int i = 0;
 
 	dprintf(CRITICAL, "earlydomain_services: Waiting for display init to complete\n");
@@ -995,6 +997,12 @@ void earlydomain_services()
 
     dprintf(CRITICAL, "earlydomain_services: Display init done\n");
 
+#ifdef EARLY_CAMERA
+	/* starting early domain services */
+	dprintf(CRITICAL, "earlydomain_services: Early Camera starting\n");
+	mmc_read_done = true;
+	early_camera_init();
+#else
 	/*Create Animated splash thread
 	if target supports it*/
 	if (target_animated_splash_screen())
@@ -1008,6 +1016,7 @@ void earlydomain_services()
 			animated_splash();
 		}
 	}
+#endif
   /* starting eraly domain services */
 }
 
