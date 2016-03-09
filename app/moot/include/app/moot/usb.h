@@ -29,7 +29,7 @@
 // Initialize the USB stack / USB boot mechanisms.
 void init_usb_boot(void);
 
-// Allow the USB device to interrupt the boot sequence. 
-bool attempt_usb_boot(void);
+// Allow the USB device to interrupt the boot sequence.
+void attempt_usb_boot(void);
 
 #endif  // APP_MOOT_USB_H_

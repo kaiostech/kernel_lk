@@ -58,8 +58,7 @@ class Retcode:
     err_open_sys_flash  = (0xFFF2)
     err_erase_sys_flash = (0xFFF3)
     err_write_sys_flash = (0xFFF4)
-    err_write_sys_flash = (0xFFF5)
-    cant_find_buildsig  = (0xFFF6)
+    cant_find_buildsig  = (0xFFF5)
 
 
 class CommandParam:

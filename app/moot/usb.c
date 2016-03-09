@@ -23,7 +23,7 @@
 
 #include <app/moot/usb.h>
 
-#include <arch.h>
+#include <app/moot/stubs.h>
 #include <dev/udc.h>
 #include <dev/usb.h>
 #include <dev/usbc.h>
@@ -36,23 +36,12 @@
 #include <platform.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <trace.h>
 #include <string.h>
+#include <trace.h>
 
 #define LOCAL_TRACE 0
 #define COMMAND_MAGIC (0x4d4f4f54)  // MOOT
 #define RESP_MAGIC    (0x52455350)  // RESP
-
-// TODO(gkalsi): These are all platform level constructs and need to be pulled
-//               out into some platform specific code.
-#define ROMBASE           (0x00200000)
-#define TOTAL_FLASH_LEN   (1024 * 1024)
-#define BTLDR_BASE        (0x0)
-#define BTLDR_LEN         (128 * 1024)
-#define SYSTEM_BASE       (BTLDR_LEN)
-#define SYSTEM_LEN        (TOTAL_FLASH_LEN - BTLDR_LEN)
-#define SYSTEM_FLASH_NAME ("flash0")
-
 
 #define USB_XFER_SIZE (512)
 #define W(w) (w & 0xff), (w >> 8)
@@ -137,7 +126,7 @@ static event_t rxevt = EVENT_INITIAL_VALUE(rxevt, 0, EVENT_FLAG_AUTOUNSIGNAL);
 static volatile bool online = false;
 
 // Command processor that handles USB boot commands.
-static void handle(const void *data, const size_t n, cmd_response_t *resp)
+static bool handle(const void *data, const size_t n, cmd_response_t *resp)
 {
     DEBUG_ASSERT(resp);
 
@@ -148,35 +137,34 @@ static void handle(const void *data, const size_t n, cmd_response_t *resp)
     // Make sure we have enough data.
     if (n < sizeof(cmd_header_t)) {
         resp->code = USB_RESP_BAD_DATA_LEN;
-        return;
+        return false;
     }
 
     cmd_header_t *header = (cmd_header_t *)data;
     if (header->magic != COMMAND_MAGIC) {
         resp->code = USB_RESP_BAD_MAGIC;
-        return;
+        return false;
     }
 
     ssize_t image_length;
     const lk_version_t *version;
     status_t st;
-
     switch (header->cmd) {
         case USB_CMD_FLASH:
             image_length = header->arg;
-            if (image_length > SYSTEM_LEN) {
+            if (image_length > (ssize_t)moot_system_info.system_len) {
                 resp->code = USB_RESP_SYS_IMAGE_TOO_BIG;
                 break;
             }
 
             // Make space on the flash for the data.
-            bdev_t *dev = bio_open(SYSTEM_FLASH_NAME);
+            bdev_t *dev = bio_open(moot_system_info.system_flash_name);
             if (!dev) {
                 resp->code = USB_RESP_ERR_OPEN_SYS_FLASH;
                 break;
             }
 
-            ssize_t n_bytes_erased = bio_erase(dev, SYSTEM_BASE, image_length);
+            ssize_t n_bytes_erased = bio_erase(dev, moot_system_info.system_offset, image_length);
             if (n_bytes_erased < image_length) {
                 resp->code = USB_RESP_ERR_ERASE_SYS_FLASH;
                 break;
@@ -187,10 +175,10 @@ static void handle(const void *data, const size_t n, cmd_response_t *resp)
             resp->arg = 0;
             usb_xmit((void *)resp, sizeof(*resp));
 
-            off_t addr = SYSTEM_BASE;
+            off_t addr = moot_system_info.system_offset;
             while (image_length > 0) {
                 ssize_t xfer = (image_length > (ssize_t)sizeof(buffer)) ?
-                                (ssize_t)sizeof(buffer) : image_length;
+                               (ssize_t)sizeof(buffer) : image_length;
 
                 size_t bytes_received;
                 usb_recv(buffer, xfer, INFINITE_TIME, &bytes_received);
@@ -211,15 +199,11 @@ static void handle(const void *data, const size_t n, cmd_response_t *resp)
         case USB_CMD_BOOT:
             resp->code = USB_RESP_NO_ERROR;
             resp->arg = 0;
-            usb_xmit((void *)resp, sizeof(*resp));
-
-            arch_disable_ints();
-            arch_quiesce();
-            arch_chain_load((void *)(ROMBASE + SYSTEM_BASE), 0, 0, 0, 0);
+            return true;
             break;
         case USB_CMD_DEVINFO:
             st = buildsig_search(
-                     (void *)ROMBASE + SYSTEM_BASE,
+                     (void *)moot_system_info.sys_base_addr,
                      DEFAULT_BUILDSIG_SEARCH_LEN,
                      1024*1024,
                      &version
@@ -249,7 +233,7 @@ static void handle(const void *data, const size_t n, cmd_response_t *resp)
     }
 
 finish:
-    return;
+    return false;
 }
 
 void init_usb_boot(void)
@@ -260,11 +244,10 @@ void init_usb_boot(void)
     usb_register_callback(&usb_register_cb, NULL);
 }
 
-bool attempt_usb_boot(void)
+void attempt_usb_boot(void)
 {
     printf("attempting usb boot\n");
     uint8_t *buf = malloc(USB_XFER_SIZE);
-    bool should_continue_boot = true;
 
     lk_time_t start = current_time();
     lk_time_t timeout = USB_BOOT_TIMEOUT;
@@ -278,20 +261,22 @@ bool attempt_usb_boot(void)
 
         status_t r = usb_recv(buf, USB_XFER_SIZE, timeout, &bytes_received);
         if (r == ERR_TIMED_OUT) {
-            should_continue_boot = true;
             goto finish;
         } else if (r == NO_ERROR) {
             // Somebody tried to talk to us over USB, they own the boot now.
             cmd_response_t response;
-            handle(buf, bytes_received, &response);
+            bool should_boot = handle(buf, bytes_received, &response);
             usb_xmit((void *)&response, sizeof(response));
             timeout = INFINITE_TIME;
+            if (should_boot) {
+                goto finish;
+            }
         }
     }
 
 finish:
     free(buf);
-    return should_continue_boot;
+    return;
 }
 
 static status_t usb_register_cb(

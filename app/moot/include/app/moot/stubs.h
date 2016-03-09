@@ -21,16 +21,30 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef APP_MOOT_STUBS_H_
+#define APP_MOOT_STUBS_H_
 
+#include <sys/types.h>
 
-#ifndef APP_MOOT_FS_BOOT_H_
-#define APP_MOOT_FS_BOOT_H_
+typedef struct moot_sysinfo {
+    uintptr_t sys_base_addr;  // Pointer to the base of the main system image.
 
-// The platform/target should implement this routine by mouting the default
-// filesystem and returning a string that points to the mount point. If NULL is
-// returned it is assumed that either (1) the platform does not implement FS
-// boot or that (2) mounting the default filesystem failed in which case the
-// system proceeds to boot without FSBoot.
-void attempt_fs_boot(void);
+    size_t btldr_offset;
+    size_t bootloader_len;
 
-#endif  // APP_MOOT_FS_BOOT_H_
+    size_t system_offset;
+    size_t system_len;
+
+    char *system_flash_name;
+} moot_sysinfo_t;
+
+// Must be implemented by the platform;
+extern const moot_sysinfo_t moot_system_info;
+
+// Returns NO_ERROR if it was successfully able to mount a secondary flash
+// device. If NO_ERROR is returned, mount_path and device_name should also be
+// populated to reflect the path at which the FS was mounted and the name of
+// the BIO device that hosts the FS.
+status_t moot_mount_default_fs(char **mount_path, char **device_name);
+
+#endif  // APP_MOOT_STUBS_H_

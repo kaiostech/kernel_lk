@@ -21,9 +21,13 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <app.h>
 #include <app/moot/fsboot.h>
+#include <app/moot/moot.h>
+#include <app/moot/stubs.h>
 #include <app/moot/usb.h>
+
+#include <app.h>
+#include <arch.h>
 #include <assert.h>
 #include <debug.h>
 #include <err.h>
@@ -32,6 +36,12 @@
 #include <stdlib.h>
 #include <trace.h>
 
+static void do_boot(void)
+{
+    arch_disable_ints();
+    arch_quiesce();
+    arch_chain_load((void *)(moot_system_info.sys_base_addr), 0, 0, 0, 0);
+}
 
 static void moot_init(const struct app_descriptor *app)
 {
@@ -42,26 +52,17 @@ static void moot_init(const struct app_descriptor *app)
 
 static void moot_entry(const struct app_descriptor *app, void *args)
 {
-    do {
-        // Wait a few seconds for the host to try to talk to us over USB.
-        if (attempt_usb_boot())
-            break;
+    // Wait a few seconds for the host to try to talk to us over USB.
+    attempt_usb_boot();
 
-        // Check the SPIFlash for an upgrade image.
-        if (attempt_spifs_upgrade())
-         break;
-
-    } while (false);
-
-
-    // Ensure the integrity of the system image.
-    // verify_system_image();
+    // Check the SPIFlash for an upgrade image.
+    attempt_fs_boot();
 
     // Boot the main system image.
-    // do_boot();
+    do_boot();
 }
 
 APP_START(moot)
- .init = moot_init,
+.init = moot_init,
  .entry = moot_entry,
-APP_END
+  APP_END

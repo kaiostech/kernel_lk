@@ -21,16 +21,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <compiler.h>
+#include <app/moot/stubs.h>
+#include <err.h>
 
-
-#ifndef APP_MOOT_FS_BOOT_H_
-#define APP_MOOT_FS_BOOT_H_
-
-// The platform/target should implement this routine by mouting the default
-// filesystem and returning a string that points to the mount point. If NULL is
-// returned it is assumed that either (1) the platform does not implement FS
-// boot or that (2) mounting the default filesystem failed in which case the
-// system proceeds to boot without FSBoot.
-void attempt_fs_boot(void);
-
-#endif  // APP_MOOT_FS_BOOT_H_
+// Fail by default. System must override this.
+__WEAK status_t moot_mount_default_fs(char **mount_path, char **device_name)
+{
+    *device_name = NULL;
+    *mount_path = NULL;
+    return ERR_NOT_IMPLEMENTED;
+}

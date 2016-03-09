@@ -8,3 +8,4 @@ MODULES += \
   app/shell \
   lib/version \
   lib/buildsig \
+  target/dartuinoP0/bootloader

@@ -21,16 +21,29 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+static char bootloader_primary_flash_name[] = "flash0";
+static char bootloader_secondary_flash_name[] = "qspi-flash";
+static char bootloader_mount_point[] = "/spifs";
 
+#include <lib/fs.h>
+#include <err.h>
+#include <app/moot/stubs.h>
+#include <stdio.h>
 
-#ifndef APP_MOOT_FS_BOOT_H_
-#define APP_MOOT_FS_BOOT_H_
+#define BOOTLOADER_LENGTH_KB (128)
 
-// The platform/target should implement this routine by mouting the default
-// filesystem and returning a string that points to the mount point. If NULL is
-// returned it is assumed that either (1) the platform does not implement FS
-// boot or that (2) mounting the default filesystem failed in which case the
-// system proceeds to boot without FSBoot.
-void attempt_fs_boot(void);
+status_t moot_mount_default_fs(char **mount_path, char **device_name)
+{
+    *mount_path = bootloader_mount_point;
+    *device_name = bootloader_secondary_flash_name;
+    return NO_ERROR;
+}
 
-#endif  // APP_MOOT_FS_BOOT_H_
+const moot_sysinfo_t moot_system_info = {
+    .sys_base_addr = 0x00220000,
+    .btldr_offset = 0x0,
+    .bootloader_len = 1024 * BOOTLOADER_LENGTH_KB,
+    .system_offset = 1024 * BOOTLOADER_LENGTH_KB,
+    .system_len = (1024 * (1024 - BOOTLOADER_LENGTH_KB)),
+    .system_flash_name = bootloader_primary_flash_name,
+};
