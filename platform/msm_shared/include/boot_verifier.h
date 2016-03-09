@@ -181,4 +181,5 @@ bool boot_verify_flash_allowed(const char * entry);
 /* Function to send root of trust to trust zone */
 bool send_rot_command(uint32_t is_unlocked);
 unsigned char* get_boot_fingerprint(unsigned int* buf_size);
+uint32_t read_der_message_length(unsigned char* input, unsigned sz);
 #endif
