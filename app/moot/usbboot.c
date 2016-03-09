@@ -21,7 +21,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <app/moot/usb.h>
+#include <app/moot/usbboot.h>
 
 #include <app/moot/stubs.h>
 #include <dev/udc.h>

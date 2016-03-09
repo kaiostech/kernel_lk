@@ -24,7 +24,7 @@
 #include <app/moot/fsboot.h>
 #include <app/moot/moot.h>
 #include <app/moot/stubs.h>
-#include <app/moot/usb.h>
+#include <app/moot/usbboot.h>
 
 #include <app.h>
 #include <arch.h>

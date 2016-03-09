@@ -21,14 +21,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <lib/bootimage.h>
 #include <app/moot/fsboot.h>
 #include <app/moot/stubs.h>
 #include <compiler.h>
-#include <stdio.h>
-#include <lib/fs.h>
 #include <err.h>
 #include <lib/bio.h>
+#include <lib/bootimage.h>
+#include <lib/fs.h>
+#include <stdio.h>
 
 #define MAX_FPATH_LEN 64
 
