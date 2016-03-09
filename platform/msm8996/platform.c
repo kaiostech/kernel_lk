@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -37,6 +37,14 @@
 #include <smem.h>
 #include <board.h>
 #include <target/display.h>
+
+enum
+{
+     APC0_CPU0 = 0x0,
+     APC0_CPU1 = 0x1,
+     APC1_CPU0 = 0x100,
+     APC1_CPU1 = 0x101,
+} cpu_aff;
 
 #define MSM_IOMAP_SIZE     ((MSM_IOMAP_END - MSM_IOMAP_BASE)/MB)
 #define MSM_SHARED_SIZE    2
@@ -181,3 +189,18 @@ bool platform_use_qmp_misc_settings()
 
 	return false;
 }
+
+#if EARLYDOMAIN_SUPPORT
+/* return the cpu number for the secondary CPU to run early services on */
+int platform_get_secondary_cpu_num()
+{
+     return APC0_CPU1;
+}
+#else
+/* stub functions */
+int platform_get_secondary_cpu_num()
+{
+     return 0;
+}
+#endif /*EARLYDOMAIN_SUPPORT*/
+
