@@ -556,7 +556,7 @@ void boot_linux(void *kernel, unsigned *tags,
  * start: Start of the memory region
  * size: Size of the memory region
  */
-int check_aboot_addr_range_overlap(uint32_t start, uint32_t size)
+int check_aboot_addr_range_overlap(uintptr_t start, uint32_t size)
 {
 	/* Check for boundary conditions. */
 	if ((UINT_MAX - start) < size)
@@ -794,7 +794,7 @@ int boot_linux_from_mmc(void)
 		dprintf(INFO, "Loading boot image (%d): start\n", imagesize_actual);
 		bs_set_timestamp(BS_KERNEL_LOAD_START);
 
-		if (check_aboot_addr_range_overlap(image_addr, imagesize_actual))
+		if (check_aboot_addr_range_overlap((uintptr_t) image_addr, imagesize_actual))
 		{
 			dprintf(CRITICAL, "Boot image buffer address overlaps with aboot addresses.\n");
 			return -1;
@@ -812,7 +812,7 @@ int boot_linux_from_mmc(void)
 
 		offset = imagesize_actual;
 
-		if (check_aboot_addr_range_overlap(image_addr + offset, page_size))
+		if (check_aboot_addr_range_overlap((uintptr_t)image_addr + offset, page_size))
 		{
 			dprintf(CRITICAL, "Signature read buffer address overlaps with aboot addresses.\n");
 			return -1;

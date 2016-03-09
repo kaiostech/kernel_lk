@@ -50,7 +50,7 @@ extern uint32_t target_dev_tree_mem(void *fdt, uint32_t memory_node_offset);
 /* TODO: This function needs to be moved to target layer to check violations
  * against all the other regions as well.
  */
-extern int check_aboot_addr_range_overlap(uint32_t start, uint32_t size);
+extern int check_aboot_addr_range_overlap(uintptr_t start, uint32_t size);
 
 struct msm_id
 {
@@ -187,7 +187,7 @@ void *dev_tree_appended(void *kernel, uint32_t kernel_size, void *tags)
 			break;
 		dtb_size = fdt_totalsize(&dtb_hdr);
 
-		if (check_aboot_addr_range_overlap(tags, dtb_size)) {
+		if (check_aboot_addr_range_overlap((uintptr_t)tags, dtb_size)) {
 			dprintf(CRITICAL, "Tags addresses overlap with aboot addresses.\n");
 			return NULL;
 		}
