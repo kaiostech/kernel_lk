@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -163,7 +163,7 @@ crypto_engine_type board_ce_type(void)
 static void target_mmc_sdhci_init()
 {
 	static uint32_t mmc_clks[] = {
-		MMC_CLK_96MHZ, MMC_CLK_50MHZ };
+		MMC_CLK_200MHZ, MMC_CLK_96MHZ };
 
 	struct mmc_config_data config = {0};
 	int i;
