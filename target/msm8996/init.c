@@ -60,6 +60,7 @@
 #include <secapp_loader.h>
 #include <rpmb.h>
 #include <rpm-glink.h>
+#include <psci.h>
 #if ENABLE_WBC
 #include <pm_app_smbchg.h>
 #endif
@@ -110,6 +111,18 @@ static uint32_t  mmc_sdc_pwrctl_irq[] =
 
 struct mmc_device *dev;
 struct ufs_dev ufs_device;
+
+/* function pointer for secondary core entry point*/
+void (*cpu_on_ep) (void);
+
+/* early domain initialization */
+void earlydomain_init();
+
+/* run all early domain services */
+void earlydomain_services();
+
+/* early domain cleanup and exit*/
+void earlydomain_exit();
 
 void target_early_init(void)
 {
@@ -607,3 +620,90 @@ uint32_t target_get_pmic()
 {
 	return PMIC_IS_PMI8996;
 }
+
+
+#if EARLYDOMAIN_SUPPORT
+
+/* calls psci to turn on the secondary core */
+void enable_secondary_core()
+{
+    cpu_on_ep = &cpu_on_asm;
+
+    if (psci_cpu_on(platform_get_secondary_cpu_num(), (paddr_t)cpu_on_ep))
+    {
+        dprintf(CRITICAL, "Failed to turn on secondary CPU: %x\n", platform_get_secondary_cpu_num());
+    }
+    dprintf (INFO, "LK continue on cpu0\n");
+}
+
+/* handles the early domain */
+void earlydomain()
+{
+    /* init and run early domain services*/
+    earlydomain_init();
+
+    /* run all early domain services */
+    earlydomain_services();
+
+    /* cleanup and exit early domain services*/
+    earlydomain_exit();
+}
+
+/* early domain initialization */
+void earlydomain_init()
+{
+    dprintf(INFO, "started early domain on secondary CPU\n");
+}
+
+/* early domain cleanup and exit */
+void earlydomain_exit()
+{
+    dprintf(INFO, "exit early domain on secondary CPU\n");
+
+    isb();
+
+    /* clean-up */
+    arch_disable_cache(UCACHE);
+
+    arch_disable_mmu();
+
+    dsb();
+    isb();
+
+    arch_disable_ints();
+
+    dprintf(INFO, "secondary CPU going to idle\n");
+
+    /* workaround to prevent calling psci_cpu_off */
+    /*TODO - remove this while loop when the PSCI_cpu_off fixes are available */
+    while(1)
+    {
+        arch_idle();
+        dprintf(CRITICAL, "secondary CPU has been woken up.. going back to sleep\n");
+    }
+
+    /* turn off secondary cpu */
+    if (psci_cpu_off())
+    {
+        dprintf(CRITICAL, "Secondary CPU: Failed to turn off currnet cpu \n");
+    }
+}
+
+/* early domain services */
+void earlydomain_services()
+{
+    /* running early domain services */
+
+}
+
+#else
+
+/* stubs for early domain functions */
+void enable_secondary_core() {}
+void earlydomain() {}
+void earlydomain_init() {}
+void earlydomain_services() {}
+void earlydomain_exit() {}
+
+#endif /* EARLYDOMAIN_SUPPORT */
+
