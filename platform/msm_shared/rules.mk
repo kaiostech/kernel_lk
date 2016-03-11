@@ -27,6 +27,10 @@ ifeq ($(ENABLE_SECAPP_LOADER), 1)
 OBJS += $(LOCAL_DIR)/secapp_loader.o
 endif
 
+ifeq ($(ENABLE_PSCI_SUPPORT),1)
+OBJS += $(LOCAL_DIR)/psci.o
+endif
+
 ifeq ($(ENABLE_QGIC3), 1)
 OBJS += $(LOCAL_DIR)/qgic_v3.o
 endif
