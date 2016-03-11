@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -301,3 +301,15 @@ FUNCTION(arm_write_mair1)
 FUNCTION(arm_write_ttbcr)
 	mcr p15, 0, r0, c2, c0, 2
 	bx lr
+
+#if EARLYDOMAIN_SUPPORT
+/* void cpu_on_asm(void) */
+FUNCTION(cpu_on_asm)
+    ldr r1, =cpu_stack_top      /* stack base ptr, SP 16-byte aligned */
+    mov sp, r1
+    b   secondary_cpu_init      /* secondary cpu initialization */
+#else
+/* stub function */
+FUNCTION(cpu_on_asm)
+    bx lr
+#endif

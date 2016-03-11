@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
  * (the "Software"), to deal in the Software without restriction,
@@ -90,6 +91,7 @@ void arm_write_mair0(uint32_t);
 void arm_write_mair1(uint32_t);
 void arm_write_ttbcr(uint32_t);
 void dump_fault_frame(struct arm_fault_frame *frame);
+void secondary_cpu_init(void);
 
 #if defined(__cplusplus)
 }

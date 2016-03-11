@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -37,6 +37,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mmu.h>
 #include <platform.h>
 #include <stdlib.h>
+#include <target.h>
 
 #if ARM_WITH_MMU
 
@@ -52,6 +53,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MMU_AP_FLAG             (0x1 << 10)
 #define L2_PT_MASK              0xFFFFE00000
 #define L2_INDEX_MASK           0x3FE00000
+#define TTBCR_VALUE             0x80000500
 
 uint64_t mmu_l1_pagetable[ROUNDUP(L1_PT_SZ, CACHE_LINE)] __attribute__ ((aligned(4096))); /* Max is 8 */
 uint64_t mmu_l2_pagetable[ROUNDUP(L2_PT_SZ*MMU_L2_PT_SIZE, CACHE_LINE)] __attribute__ ((aligned(4096))); /* Macro from target code * 512 */
@@ -215,6 +217,41 @@ void arm_mmu_init(void)
 	/* turn on the mmu */
 	arm_write_cr1(arm_read_cr1() | 0x1);
 }
+
+/* page tables mapping for secondary core*/
+void secondary_cpu_init(void)
+{
+    /* turn off the cache */
+    arch_disable_cache(UCACHE);
+
+    /* set some mmu specific control bits:
+    * access flag disabled, TEX remap disabled, mmu disabled
+    */
+    arm_write_cr1(arm_read_cr1() & ~((1<<29)|(1<<28)|(1<<0)));
+
+    /* set up the translation table base */
+    arm_write_ttbr((uint32_t)mmu_l1_pagetable);
+
+    /* set up the Memory Attribute Indirection Registers 0 and 1 */
+    arm_write_mair0(MAIR0);
+    arm_write_mair1(MAIR1);
+
+    /* TTBCR.EAE = 1 & IRGN0 [9:8], ORNG0 bits [11:10]: 01 */
+    arm_write_ttbcr(TTBCR_VALUE);
+
+    /* Enable TRE */
+    arm_write_cr1(arm_read_cr1() | (1<<28));
+
+    /* turn on the mmu */
+    arm_write_cr1(arm_read_cr1() | 0x1);
+
+    /* turn the cache back on */
+    arch_enable_cache(UCACHE);
+
+    /* entering to early domain */
+    earlydomain();
+}
+
 
 void arch_disable_mmu(void)
 {
