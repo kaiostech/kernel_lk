@@ -109,6 +109,9 @@ static int aboot_frp_unlock(char *pname, void *data, unsigned sz);
 /* fastboot command function pointer */
 typedef void (*fastboot_cmd_fn) (const char *, void *, unsigned);
 
+/* turns on the secondary core */
+void enable_secondary_core();
+
 struct fastboot_cmd_desc {
 	char * name;
 	fastboot_cmd_fn cb;
@@ -203,7 +206,7 @@ static int auth_kernel_img = 0;
 #if VBOOT_MOTA
 static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0, {0}, {0},{0}};
 #else
-static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0, {0}, {0},{0}, 1};
+static device_info device = {DEVICE_MAGIC, 0, 0, 0, 0, 0, {0},{0}, {0}, 1};
 #endif
 static bool is_allow_unlock = 0;
 
@@ -259,6 +262,7 @@ char charger_screen_enabled[MAX_RSP_SIZE];
 char sn_buf[13];
 char display_panel_buf[MAX_PANEL_BUF_SIZE];
 char panel_display_mode[MAX_RSP_SIZE];
+char is_early_domain_enabled[MAX_RSP_SIZE];
 
 #if CHECK_BAT_VOLTAGE
 char battery_voltage[MAX_RSP_SIZE];
@@ -318,6 +322,9 @@ unsigned char *update_cmdline(const char * cmdline)
 	int have_target_boot_params = 0;
 	char *boot_dev_buf = NULL;
     bool is_mdtp_activated = 0;
+#if EARLYDOMAIN_SUPPORT
+	const char *boot_cpus_cmdline = " boot_cpus=0,2,3";
+#endif
 #if VERIFIED_BOOT
 #if !VBOOT_MOTA
     uint32_t boot_state = boot_verify_get_state();
@@ -444,6 +451,11 @@ unsigned char *update_cmdline(const char * cmdline)
 		warm_boot = true;
 		cmdline_len += strlen(warmboot_cmdline);
 	}
+
+#if EARLYDOMAIN_SUPPORT
+	if (device.early_domain_enabled)
+	  cmdline_len += strlen(boot_cpus_cmdline);
+#endif /*EARLYDOMAIN_SUPPORT*/
 
 	if (cmdline_len > 0) {
 		const char *src;
@@ -614,6 +626,15 @@ unsigned char *update_cmdline(const char * cmdline)
 			if (have_cmdline) --dst;
 			while ((*dst++ = *src++));
 		}
+
+#if EARLYDOMAIN_SUPPORT
+		if (device.early_domain_enabled) {
+		  src = boot_cpus_cmdline;
+		  if (have_cmdline) --dst;
+		  have_cmdline = 1;
+		  while ((*dst++ = *src++));
+		}
+#endif /*EARLYDOMAIN_SUPPORT*/
 
 		if (have_target_boot_params) {
 			if (have_cmdline) --dst;
@@ -1933,6 +1954,7 @@ void read_device_info(device_info *dev)
 			}
 			info->is_tampered = 0;
 			info->charger_screen_enabled = 0;
+			info->early_domain_enabled = 0;
 #if !VBOOT_MOTA
 			info->verity_mode = 1; //enforcing by default
 #endif
@@ -3118,6 +3140,32 @@ void cmd_oem_select_display_panel(const char *arg, void *data, unsigned size)
 	fastboot_okay("");
 }
 
+#if EARLYDOMAIN_SUPPORT
+void cmd_oem_enable_early_domain(const char *arg, void *data, unsigned size)
+{
+       dprintf(INFO, "Enabling early domain check\n");
+       device.early_domain_enabled = 1;
+       write_device_info(&device);
+       fastboot_okay("");
+}
+
+void cmd_oem_disable_early_domain(const char *arg, void *data, unsigned size)
+{
+       dprintf(INFO, "Disabling early domain check\n");
+       device.early_domain_enabled = 0;
+       write_device_info(&device);
+       fastboot_okay("");
+}
+#else
+void cmd_oem_enable_early_domain(const char *arg, void *data, unsigned size)
+{
+}
+
+void cmd_oem_disable_early_domain(const char *arg, void *data, unsigned size)
+{
+}
+#endif /* EARLYDOMAIN_SUPPORT */
+
 void cmd_oem_unlock(const char *arg, void *data, unsigned sz)
 {
 	set_device_unlock(UNLOCK, TRUE);
@@ -3184,6 +3232,8 @@ void cmd_oem_devinfo(const char *arg, void *data, unsigned sz)
 	snprintf(response, sizeof(response), "\tCharger screen enabled: %s", (device.charger_screen_enabled ? "true" : "false"));
 	fastboot_info(response);
 	snprintf(response, sizeof(response), "\tDisplay panel: %s", (device.display_panel));
+	fastboot_info(response);
+	snprintf(response, sizeof(response), "\tEarly Domain enabled: %s", (device.early_domain_enabled ? "true" : "false"));
 	fastboot_info(response);
 	fastboot_okay("");
 }
@@ -3509,6 +3559,8 @@ void aboot_fastboot_register_commands(void)
 						{"preflash", cmd_preflash},
 						{"oem enable-charger-screen", cmd_oem_enable_charger_screen},
 						{"oem disable-charger-screen", cmd_oem_disable_charger_screen},
+						{"oem enable-early-domain", cmd_oem_enable_early_domain},
+						{"oem disable-early-domain", cmd_oem_disable_early_domain},
 						{"oem off-mode-charge", cmd_oem_off_mode_charger},
 						{"oem select-display-panel", cmd_oem_select_display_panel},
 #if UNITTEST_FW_SUPPORT
@@ -3545,6 +3597,11 @@ void aboot_fastboot_register_commands(void)
 	fastboot_publish("charger-screen-enabled",
 			(const char *) charger_screen_enabled);
 	fastboot_publish("off-mode-charge", (const char *) charger_screen_enabled);
+	/* Is early domain check enabled */
+	snprintf(is_early_domain_enabled, MAX_RSP_SIZE, "%d",
+		 device.early_domain_enabled);
+	fastboot_publish("early-domain-enabled",
+			 (const char *) is_early_domain_enabled);
 	snprintf(panel_display_mode, MAX_RSP_SIZE, "%s",
 			device.display_panel);
 	fastboot_publish("display-panel",
@@ -3583,6 +3640,10 @@ void aboot_init(const struct app_descriptor *app)
 
 	read_device_info(&device);
 	read_allow_oem_unlock(&device);
+
+	/* enable secondary core for early domain services */
+	if (device.early_domain_enabled)
+	  enable_secondary_core();
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -237,6 +237,11 @@ __WEAK void target_crypto_init_params()
 __WEAK uint32_t target_ddr_cfg_val()
 {
 	return DDR_CONFIG_VAL;
+}
+
+/* stub for early domain */
+__WEAK void earlydomain()
+{
 }
 
 #if PON_VIB_SUPPORT
