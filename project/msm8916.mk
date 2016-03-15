@@ -61,3 +61,5 @@ ENABLE_REBOOT_MODULE := 1
 
 #enable battery voltage check
 DEFINES += CHECK_BAT_VOLTAGE=1
+
+DEFINES += BOOT_APPENDED_DT=1

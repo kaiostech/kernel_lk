@@ -201,6 +201,7 @@ static bool boot_into_ffbm;
 static char target_boot_params[64];
 static bool boot_reason_alarm;
 static bool devinfo_present = true;
+static uint32_t dt_size = 0;
 
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
@@ -1135,7 +1136,10 @@ int boot_linux_from_mmc(void)
 	image_addr = (unsigned char *)target_get_scratch_address();
 
 #if DEVICE_TREE
-	dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+#ifndef BOOT_APPENDED_DT
+	dt_size = hdr->dt_size;
+#endif
+	dt_actual = ROUND_TO_PAGE(dt_size, page_mask);
 	imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
 #else
 	imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
@@ -1306,7 +1310,7 @@ int boot_linux_from_mmc(void)
 	memmove((void*) hdr->ramdisk_addr, (char *)(image_addr + page_size + kernel_actual), hdr->ramdisk_size);
 
 	#if DEVICE_TREE
-	if(hdr->dt_size) {
+	if(dt_size) {
 		dt_table_offset = ((uint32_t)image_addr + page_size + kernel_actual + ramdisk_actual + second_actual);
 		table = (struct dt_table*) dt_table_offset;
 
@@ -1495,16 +1499,13 @@ int boot_linux_from_flash(void)
 		offset = 0;
 
 #if DEVICE_TREE
-		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
-
-		if (UINT_MAX < ((uint64_t)kernel_actual + (uint64_t)ramdisk_actual+ (uint64_t)dt_actual + page_size)) {
-			dprintf(CRITICAL, "Integer overflow detected in bootimage header fields\n");
-			return -1;
-		}
-
+#ifndef BOOT_APPENDED_DT
+		dt_size = hdr->dt_size;
+#endif
+		dt_actual = ROUND_TO_PAGE(dt_size, page_mask);
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
 
-		if (check_aboot_addr_range_overlap(hdr->tags_addr, hdr->dt_size))
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_size))
 		{
 			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
 			return -1;
@@ -1551,7 +1552,7 @@ int boot_linux_from_flash(void)
 			return -1;
 		}
 
-		memmove((void*) hdr->tags_addr, (char *)(image_addr + page_size + kernel_actual + ramdisk_actual), hdr->dt_size);
+		memmove((void*) hdr->tags_addr, (char *)(image_addr + page_size + kernel_actual + ramdisk_actual), dt_size);
 #endif
 
 		/* Make sure everything from scratch address is read before next step!*/
@@ -1598,7 +1599,7 @@ int boot_linux_from_flash(void)
 		}
 
 #if DEVICE_TREE
-		if(hdr->dt_size != 0) {
+		if(dt_size != 0) {
 
 			/* Read the device tree table into buffer */
 			if(flash_read(ptn, offset, (void *) dt_buf, page_size)) {
@@ -2080,7 +2081,11 @@ int copy_dtb(uint8_t *boot_image_start, unsigned int scratch_offset)
 
 	struct boot_img_hdr *hdr = (struct boot_img_hdr *) (boot_image_start);
 
-	if(hdr->dt_size != 0) {
+#ifndef BOOT_APPENDED_DT
+	dt_size = hdr->dt_size;
+#endif
+
+	if(dt_size != 0) {
 		/* add kernel offset */
 		dt_image_offset += page_size;
 		n = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
@@ -2195,7 +2200,10 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	kernel_actual = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
 #if DEVICE_TREE
-	dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+#ifndef BOOT_APPENDED_DT
+	dt_size = hdr->dt_size;
+#endif
+	dt_actual = ROUND_TO_PAGE(dt_size, page_mask);
 #endif
 
 	image_actual = ADD_OF(page_size, kernel_actual);
