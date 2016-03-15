@@ -201,6 +201,7 @@ static bool boot_into_ffbm;
 static char target_boot_params[64];
 static bool boot_reason_alarm;
 static bool devinfo_present = true;
+static uint32_t dt_size = 0;
 
 /* Assuming unauthorized kernel image by default */
 static int auth_kernel_img = 0;
@@ -1097,7 +1098,10 @@ int boot_linux_from_mmc(void)
 	image_addr = (unsigned char *)target_get_scratch_address();
 
 #if DEVICE_TREE
-	dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+#ifndef OSVERSION_IN_BOOTIMAGE
+	dt_size = hdr->dt_size;
+#endif
+	dt_actual = ROUND_TO_PAGE(dt_size, page_mask);
 	if (UINT_MAX < ((uint64_t)kernel_actual + (uint64_t)ramdisk_actual+ (uint64_t)dt_actual + page_size)) {
 		dprintf(CRITICAL, "Integer overflow detected in bootimage header fields at %u in %s\n",__LINE__,__FILE__);
 		return -1;
@@ -1276,7 +1280,7 @@ int boot_linux_from_mmc(void)
 	memmove((void*) hdr->ramdisk_addr, (char *)(image_addr + page_size + kernel_actual), hdr->ramdisk_size);
 
 	#if DEVICE_TREE
-	if(hdr->dt_size) {
+	if(dt_size) {
 		dt_table_offset = ((uint32_t)image_addr + page_size + kernel_actual + ramdisk_actual + second_actual);
 		table = (struct dt_table*) dt_table_offset;
 
@@ -1287,7 +1291,7 @@ int boot_linux_from_mmc(void)
 
 		/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
 		goes beyound hdr->dt_size*/
-		if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+		if (dt_hdr_size > ROUND_TO_PAGE(dt_size,hdr->page_size)) {
 			dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
 			return -1;
 		}
@@ -1304,7 +1308,7 @@ int boot_linux_from_mmc(void)
 		}
 
 		/* Ensure we are not overshooting dt_size with the dt_entry selected */
-		if ((dt_entry.offset + dt_entry.size) > hdr->dt_size) {
+		if ((dt_entry.offset + dt_entry.size) > dt_size) {
 			dprintf(CRITICAL, "ERROR: Device tree contents are Invalid\n");
 			return -1;
 		}
@@ -1486,8 +1490,10 @@ int boot_linux_from_flash(void)
 		offset = 0;
 
 #if DEVICE_TREE
-		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
-
+#ifndef OSVERSION_IN_BOOTIMAGE
+		dt_size = hdr->dt_size;
+#endif
+		dt_actual = ROUND_TO_PAGE(dt_size, page_mask);
 		if (UINT_MAX < ((uint64_t)kernel_actual + (uint64_t)ramdisk_actual+ (uint64_t)dt_actual + page_size)) {
 			dprintf(CRITICAL, "Integer overflow detected in bootimage header fields\n");
 			return -1;
@@ -1495,7 +1501,7 @@ int boot_linux_from_flash(void)
 
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
 
-		if (check_aboot_addr_range_overlap(hdr->tags_addr, hdr->dt_size))
+		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_size))
 		{
 			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
 			return -1;
@@ -1535,7 +1541,7 @@ int boot_linux_from_flash(void)
 		memmove((void*) hdr->kernel_addr, (char*) (image_addr + page_size), hdr->kernel_size);
 		memmove((void*) hdr->ramdisk_addr, (char*) (image_addr + page_size + kernel_actual), hdr->ramdisk_size);
 #if DEVICE_TREE
-		if(hdr->dt_size != 0) {
+		if(dt_size != 0) {
 
 			dt_table_offset = ((uint32_t)image_addr + page_size + kernel_actual + ramdisk_actual + second_actual);
 			table = (struct dt_table*) dt_table_offset;
@@ -1605,7 +1611,7 @@ int boot_linux_from_flash(void)
 		}
 
 #if DEVICE_TREE
-		if(hdr->dt_size != 0) {
+		if(dt_size != 0) {
 
 			/* Read the device tree table into buffer */
 			if(flash_read(ptn, offset, (void *) dt_buf, page_size)) {
@@ -1622,7 +1628,7 @@ int boot_linux_from_flash(void)
 
 			/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
 			goes beyound hdr->dt_size*/
-			if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+			if (dt_hdr_size > ROUND_TO_PAGE(dt_size,hdr->page_size)) {
 				dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
 				return -1;
 			}
@@ -2094,7 +2100,11 @@ int copy_dtb(uint8_t *boot_image_start, unsigned int scratch_offset)
 
 	struct boot_img_hdr *hdr = (struct boot_img_hdr *) (boot_image_start);
 
-	if(hdr->dt_size != 0) {
+#ifndef OSVERSION_IN_BOOTIMAGE
+	dt_size = hdr->dt_size;
+#endif
+
+	if(dt_size != 0) {
 		/* add kernel offset */
 		dt_image_offset += page_size;
 		n = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
@@ -2120,7 +2130,7 @@ int copy_dtb(uint8_t *boot_image_start, unsigned int scratch_offset)
 
 		/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
 		goes beyound hdr->dt_size*/
-		if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+		if (dt_hdr_size > ROUND_TO_PAGE(dt_size,hdr->page_size)) {
 			dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
 			return -1;
 		}
@@ -2217,7 +2227,10 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	kernel_actual = ROUND_TO_PAGE(hdr->kernel_size, page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
 #if DEVICE_TREE
-	dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+#ifndef OSVERSION_IN_BOOTIMAGE
+	dt_size = hdr->dt_size;
+#endif
+	dt_actual = ROUND_TO_PAGE(dt_size, page_mask);
 #endif
 
 	image_actual = ADD_OF(page_size, kernel_actual);
