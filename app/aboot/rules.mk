@@ -14,6 +14,10 @@ OBJS += \
 ifeq ($(ENABLE_UNITTEST_FW), 1)
 OBJS += \
 	$(LOCAL_DIR)/fastboot_test.o
+	ifeq ($(ENABLE_MDTP_SUPPORT),1)
+		OBJS += \
+			$(LOCAL_DIR)/mdtp_lk_ut.o
+	endif
 endif
 
 ifeq ($(ENABLE_MDTP_SUPPORT),1)
@@ -21,5 +25,6 @@ OBJS += \
 	$(LOCAL_DIR)/mdtp.o \
 	$(LOCAL_DIR)/mdtp_ui.o \
 	$(LOCAL_DIR)/mdtp_fuse.o \
-	$(LOCAL_DIR)/mdtp_defs.o
+	$(LOCAL_DIR)/mdtp_defs.o \
+	$(LOCAL_DIR)/mdtp_fs.o
 endif

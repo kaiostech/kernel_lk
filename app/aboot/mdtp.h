@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -34,8 +34,7 @@
 #define MAX_PARTITIONS         (3)
 #define MAX_PARTITION_NAME_LEN (100)
 #define HASH_LEN               (32)
-#define MDTP_MAX_PIN_LEN       (8)
-#define MDTP_MIN_PIN_LEN       (5)
+#define MDTP_PIN_LEN           (8)
 #define DIP_PADDING            (15)
 
 #define INITIAL_DELAY_MSECONDS      5000
@@ -84,14 +83,14 @@ typedef struct DIP_partition_cfg {
 } DIP_partition_cfg_t;
 
 typedef struct mdtp_pin {
-	char mdtp_pin[MDTP_MAX_PIN_LEN+1];              /* A null terminated PIN. */
+	char mdtp_pin[MDTP_PIN_LEN+1];              /* A null terminated PIN. */
 } mdtp_pin_t;
 
 /** MDTP configuration. */
 typedef struct mdtp_cfg {
 	uint8_t enable_local_pin_authentication;/* Allow local authentication using a PIN. */
 	mdtp_pin_t mdtp_pin;                    /* Null terminated PIN provided by the user for local deactivation.
-                                               PIN length should be from MDTP_MIN_PIN_LEN to MDTP_MAX_PIN_LEN digits. */
+                                               PIN length should be MDTP_PIN_LEN digits. */
 } mdtp_cfg_t;
 
 typedef struct DIP {
@@ -137,6 +136,7 @@ typedef enum {
 	VERIFY_SKIPPED = 0,
 	VERIFY_OK,
 	VERIFY_FAILED,
+	VERIFY_MDTP_FAILED,
 } verify_result_t;
 
 /**
@@ -185,6 +185,15 @@ void display_invalid_pin_msg();
 void display_error_msg();
 
 /**
+ * display_error_msg_mdtp
+ *
+ * Display error message in case mdtp image corrupted and stop boot process.
+ *
+ * @return - None.
+ */
+void display_error_msg_mdtp();
+
+/**
  * mdtp_activated
  *
  * Indicates whether the MDTP is currently in ACTIVATED state.
@@ -206,5 +215,18 @@ int mdtp_activated(bool * activated);
  *  verification result, or use boot_verifier APIs to verify internally.
  **/
 void mdtp_fwlock_verify_lock(mdtp_ext_partition_verification_t *ext_partition);
+
+
+//UT functions
+
+/** Entry point of the MDTP LK UT.
+ * Start UT on LK mdtp components during fastboot.
+ **/
+void cmd_mdtp_runtests();
+
+int mdtp_verify_hash_ut();
+int mdtp_validate_partition_params_ut();
+int mdtp_verify_partition_ut();
+int mdtp_verify_external_partition_ut(mdtp_ext_partition_verification_t* ext_partition);
 
 #endif

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2016 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -26,47 +26,47 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __PLATFORM_MDM9607_GPIO_H
-#define __PLATFORM_MDM9607_GPIO_H
+#include <debug.h>
+#include <reg.h>
+#include <platform/iomap.h>
+#include <platform/gpio.h>
+#include <blsp_qup.h>
 
-#include <bits.h>
-#include <gpio.h>
+void gpio_tlmm_config(uint32_t gpio, uint8_t func,
+			uint8_t dir, uint8_t pull,
+			uint8_t drvstr, uint32_t enable)
+{
+	uint32_t val = 0;
 
-/* GPIO TLMM: Direction */
-#define GPIO_INPUT      0
-#define GPIO_OUTPUT     1
+	val |= pull;
+	val |= func << 2;
+	val |= drvstr << 6;
+	val |= enable << 9;
 
-/* GPIO TLMM: Pullup/Pulldown */
-#define GPIO_NO_PULL    0
-#define GPIO_PULL_DOWN  1
-#define GPIO_KEEPER     2
-#define GPIO_PULL_UP    3
+	writel(val, (uint32_t *)GPIO_CONFIG_ADDR(gpio));
+	return;
+}
 
-/* GPIO TLMM: Drive Strength */
-#define GPIO_2MA        0
-#define GPIO_4MA        1
-#define GPIO_6MA        2
-#define GPIO_8MA        3
-#define GPIO_10MA       4
-#define GPIO_12MA       5
-#define GPIO_14MA       6
-#define GPIO_16MA       7
+void gpio_set_dir(uint32_t gpio, uint32_t dir)
+{
+	writel(dir, (uint32_t *)GPIO_IN_OUT_ADDR(gpio));
 
-/* GPIO TLMM: Status */
-#define GPIO_ENABLE     0
-#define GPIO_DISABLE    1
+	return;
+}
 
-/* GPIO_IN_OUT register shifts. */
-#define GPIO_IN         BIT(0)
-#define GPIO_OUT        BIT(1)
+uint32_t gpio_status(uint32_t gpio)
+{
+	return readl(GPIO_IN_OUT_ADDR(gpio)) & GPIO_IN;
+}
 
-void gpio_config_uart_dm(uint8_t id);
-uint32_t gpio_status(uint32_t gpio);
-void gpio_set_val(uint32_t gpio, uint32_t val);
-void gpio_tlmm_config(uint32_t gpio,
-			uint8_t func,
-			uint8_t dir,
-			uint8_t pull,
-			uint8_t drvstr,
-			uint32_t enable);
-#endif
+/* Configure gpio for blsp uart 2 */
+void gpio_config_uart_dm(uint8_t id)
+{
+	/* configure rx gpio */
+	gpio_tlmm_config(5, 2, GPIO_INPUT, GPIO_NO_PULL,
+				GPIO_8MA, GPIO_DISABLE);
+
+	/* configure tx gpio */
+	gpio_tlmm_config(4, 2, GPIO_OUTPUT, GPIO_NO_PULL,
+				GPIO_8MA, GPIO_DISABLE);
+}

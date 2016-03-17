@@ -219,6 +219,7 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 						struct msm_panel_info *pinfo)
 {
 	int ret = NO_ERROR;
+	uint32_t hw_id = board_hardware_id();
 
 	if (enable) {
 
@@ -231,11 +232,13 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 			gpio_set_dir(enable_gpio.pin_id, 2);
 		}
 
-		gpio_tlmm_config(bkl_gpio.pin_id, 0,
+		if (hw_id != HW_PLATFORM_QRD) {
+			gpio_tlmm_config(bkl_gpio.pin_id, 0,
 				bkl_gpio.pin_direction, bkl_gpio.pin_pull,
 				bkl_gpio.pin_strength, bkl_gpio.pin_state);
 
-		gpio_set_dir(bkl_gpio.pin_id, 2);
+			gpio_set_dir(bkl_gpio.pin_id, 2);
+		}
 
 		gpio_tlmm_config(reset_gpio.pin_id, 0,
 				reset_gpio.pin_direction, reset_gpio.pin_pull,
@@ -265,39 +268,53 @@ static void wled_init(struct msm_panel_info *pinfo)
 	struct qpnp_wled_config_data config = {0};
 	struct labibb_desc *labibb;
 	int display_type = 0;
+	bool swire_control = 0;
+	bool wled_avdd_control = 0;
 
 	labibb = pinfo->labibb;
 
 	if (labibb)
 		display_type = labibb->amoled_panel;
 
+	if (display_type) {
+		swire_control = labibb->swire_control;
+		wled_avdd_control = true;
+	} else {
+		swire_control = false;
+		wled_avdd_control = false;
+	}
+
 	config.display_type = display_type;
 	config.lab_init_volt = 4600000;	/* fixed, see pmi register */
 	config.ibb_init_volt = 1400000;	/* fixed, see pmi register */
+	config.lab_ibb_swire_control = swire_control;
+	config.wled_avdd_control = wled_avdd_control;
 
-	if (labibb && labibb->force_config) {
-		config.lab_min_volt = labibb->lab_min_volt;
-		config.lab_max_volt = labibb->lab_max_volt;
-		config.ibb_min_volt = labibb->ibb_min_volt;
-		config.ibb_max_volt = labibb->ibb_max_volt;
-		config.pwr_up_delay = labibb->pwr_up_delay;
-		config.pwr_down_delay = labibb->pwr_down_delay;
-		config.ibb_discharge_en = labibb->ibb_discharge_en;
-	} else {
-		/* default */
-		config.pwr_up_delay = 3;
-		config.pwr_down_delay =  3;
-		config.ibb_discharge_en = 1;
-		if (display_type) {	/* amoled */
-			config.lab_min_volt = 4600000;
-			config.lab_max_volt = 4600000;
-			config.ibb_min_volt = 4000000;
-			config.ibb_max_volt = 4000000;
-		} else { /* lcd */
-			config.lab_min_volt = 5500000;
-			config.lab_max_volt = 5500000;
-			config.ibb_min_volt = 5500000;
-			config.ibb_max_volt = 5500000;
+	if (!swire_control) {
+		if (labibb && labibb->force_config) {
+			config.lab_min_volt = labibb->lab_min_volt;
+			config.lab_max_volt = labibb->lab_max_volt;
+			config.ibb_min_volt = labibb->ibb_min_volt;
+			config.ibb_max_volt = labibb->ibb_max_volt;
+			config.pwr_up_delay = labibb->pwr_up_delay;
+			config.pwr_down_delay = labibb->pwr_down_delay;
+			config.ibb_discharge_en = labibb->ibb_discharge_en;
+		} else {
+			/* default */
+			config.pwr_up_delay = 3;
+			config.pwr_down_delay =  3;
+			config.ibb_discharge_en = 1;
+			if (display_type) {	/* amoled */
+				config.lab_min_volt = 4600000;
+				config.lab_max_volt = 4600000;
+				config.ibb_min_volt = 4000000;
+				config.ibb_max_volt = 4000000;
+			} else { /* lcd */
+				config.lab_min_volt = 5500000;
+				config.lab_max_volt = 5500000;
+				config.ibb_min_volt = 5500000;
+				config.ibb_max_volt = 5500000;
+			}
 		}
 	}
 
@@ -333,9 +350,13 @@ int target_display_get_base_offset(uint32_t base)
 
 int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 {
-	uint32_t ldo_num = REG_LDO6 | REG_LDO17 | REG_LDO3 | REG_SMPS3;
+	uint32_t ldo_num = REG_LDO6 | REG_LDO3 | REG_SMPS3;
+	uint32_t hw_id = board_hardware_id();
 
 	if (enable) {
+		if (hw_id != HW_PLATFORM_QRD)
+			ldo_num |= REG_LDO17;
+
 		regulator_enable(ldo_num);
 		mdelay(10);
 		wled_init(pinfo);
@@ -346,7 +367,8 @@ int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 		 * LDO6, LDO3 and SMPS3 are shared with other subsystems.
 		 * Do not disable them.
 		 */
-		regulator_disable(REG_LDO17);
+		if (hw_id != HW_PLATFORM_QRD)
+			regulator_disable(REG_LDO17);
 	}
 
 	return NO_ERROR;
