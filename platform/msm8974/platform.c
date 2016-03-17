@@ -66,8 +66,8 @@ static struct smem_ram_ptable ram_ptable;
 
 /* Boot timestamps */
 #define BS_INFO_OFFSET     (0x6B0)
-#define BS_INFO_ADDR_V1    (RPM_MSG_RAM_BASE     + BS_INFO_OFFSET)
-#define BS_INFO_ADDR_V2    (MSM_SHARED_IMEM_BASE + BS_INFO_OFFSET)
+#define BS_INFO_ADDR_V1    (MSM_SHARED_IMEM_BASE + BS_INFO_OFFSET)
+#define BS_INFO_ADDR_V2    (RPM_MSG_RAM_BASE     + BS_INFO_OFFSET)
 
 void platform_early_init(void)
 {
