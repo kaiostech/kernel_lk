@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -40,6 +40,11 @@
 static struct panel_config adv7533_720p_video_panel_data = {
 	"qcom,mdss_dsi_adv7533_720p", "dsi:0:", "qcom,mdss-dsi-panel",
 	10, 0, "DISPLAY_1", 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "NONE"
+};
+
+static struct panel_config adv7533_720p_video_two_panels_data = {
+	"qcom,mdss_dual_dsi_adv7533_720p", "dsi:0:", "qcom,mdss-dsi-panel",
+	10, 0, "DISPLAY_1", 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, DUAL_DSI_FLAG | DUAL_PIPE_FLAG, 0, 0, "NONE"
 };
 
 /*---------------------------------------------------------------------------*/

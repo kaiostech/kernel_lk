@@ -873,7 +873,6 @@ int animated_splash() {
 	struct target_display * disp;
 	struct fbcon_config *fb;
 	uint32_t sleep_time;
-	uint32_t reg_count = 0;
 
 	if (!buffers[0]) {
 		dprintf(CRITICAL, "Unexpected error in read\n");
@@ -890,7 +889,7 @@ int animated_splash() {
 		dprintf(CRITICAL, "Display info failed\n");
 		return -1;
 	}
-	layer_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatRGB888);
+	layer_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatYCbCr422H2V1Packed);
 	if (layer_ptr == NULL){
 		dprintf(CRITICAL, "Layer acquire failed\n");
 		return -1;
@@ -917,13 +916,8 @@ int animated_splash() {
 	while (k < ANIMATED_SPLASH_LOOPS) {
 		for (j = 0; j < g_head.num_frames; j++) {
 			if (0xFEFEFEFE == readl_relaxed((void *)0x00900018)) {
-				if (reg_count == 0) {
-					writel(0, (void *)0x00900018);
-					reg_count++;
-				} else {
-					dprintf(INFO, "UI is up, finish animated_splash\n");
-					goto release_and_ret;
-				}
+				dprintf(INFO, "UI is up, finish animated_splash\n");
+				goto release_and_ret;
 			}
 			layer.fb->base = buffers[0][j];
 			ret = target_display_update(&update,1);

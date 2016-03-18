@@ -109,6 +109,7 @@ struct panel_lookup_list lookup_skip_panels[] = {
 	{"sharp_1080p_cmd", "qcom,mdss_dsi_sharp_1080p_cmd", false},
 	{"sharp_120hz_1080p_cmd", "qcom,mdss_dual_sharp_1080p_120hz_cmd",
 		true},
+	{"dual_720p_single_hdmi_video", "", false},
 };
 
 struct sim_lookup_list lookup_sim[] = {

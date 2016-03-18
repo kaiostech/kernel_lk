@@ -39,7 +39,7 @@
 #ifdef DISPLAY_TYPE_MDSS
 #include <target/display.h>
 #endif
-
+#include <qtimer.h>
 static struct msm_fb_panel_data *panel;
 
 extern int lvds_on(struct msm_fb_panel_data *pdata);
@@ -364,6 +364,8 @@ int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type)
 int msm_display_init(struct msm_fb_panel_data *pdata)
 {
 	int ret = NO_ERROR;
+	uint32_t buffer_size;
+	uint32_t memcmp_ret;
 
 	panel = pdata;
 	if (!panel) {
@@ -420,17 +422,34 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 	if (ret)
 		goto msm_display_init_out;
 
+	if ((panel->panel_info.mipi.dual_dsi) && (panel->panel_info.has_bridge_chip)) {
+		panel->fb.height *= 2;
+	}
+
 	ret = msm_fb_alloc(&(panel->fb));
 	if (ret)
 		goto msm_display_init_out;
 
+	if ((panel->panel_info.mipi.dual_dsi) && (panel->panel_info.has_bridge_chip)) {
+		panel->fb.height /= 2;
+	}
+
 	fbcon_setup(&(panel->fb));
+
 	display_image_on_screen();
 
 	if ((panel->dsi2HDMI_config) && (panel->panel_info.has_bridge_chip))
 		ret = panel->dsi2HDMI_config(&(panel->panel_info));
 	if (ret)
 		goto msm_display_init_out;
+
+	if (panel->panel_info.has_bridge_chip && panel->panel_info.lcdc.dual_pipe) {
+		buffer_size = panel->fb.width * panel->fb.height * (panel->fb.bpp / 8);
+		memcpy (panel->fb.base + buffer_size, panel->fb.base, buffer_size);
+		memcmp_ret = memcmp(panel->fb.base + buffer_size, panel->fb.base, buffer_size);
+		dprintf(SPEW, "fb offset:%d  memcmp:%d\n", buffer_size, memcmp_ret);
+
+	}
 
 	ret = msm_display_config();
 	if (ret)

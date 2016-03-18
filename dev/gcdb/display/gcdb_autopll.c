@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,7 +44,7 @@ static void calculate_bitclock(struct msm_panel_info *pinfo)
 	struct dsc_desc *dsc = NULL;
 	int bpp_lane;
 
-	if (pinfo->mipi.dual_dsi)
+	if ((pinfo->mipi.dual_dsi) && (!pinfo->has_bridge_chip))
 		width /= 2;
 
 	if (pinfo->compression_mode == COMPRESSION_DSC) {
