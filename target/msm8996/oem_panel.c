@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -77,6 +77,7 @@ enum {
 	ADV7533_1080P_VIDEO_PANEL,
 	ADV7533_720P_VIDEO_PANEL,
 	TRULY_FWVGA_VIDEO_PANEL,
+	DUAL_720P_SINGLE_HDMI_PANELS,
 	UNKNOWN_PANEL
 };
 
@@ -97,10 +98,13 @@ static struct panel_list supp_panels[] = {
 	{"adv7533_1080p_video", ADV7533_1080P_VIDEO_PANEL},
 	{"adv7533_720p_video", ADV7533_720P_VIDEO_PANEL},
 	{"truly_fwvga_video", TRULY_FWVGA_VIDEO_PANEL},
+	{"dual_720p_single_hdmi_video", DUAL_720P_SINGLE_HDMI_PANELS},
 };
 
 #define TARGET_ADV7533_MAIN_INST_0    (0x3D)
 #define TARGET_ADV7533_CEC_DSI_INST_0 (0x3E)
+#define TARGET_ADV7533_MAIN_INST_1    (0x39)
+#define TARGET_ADV7533_CEC_DSI_INST_1 (0x3C)
 
 static uint32_t panel_id;
 
@@ -633,6 +637,31 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 				hx8379a_truly_fwvga_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));
 		break;
+	case DUAL_720P_SINGLE_HDMI_PANELS:
+		pan_type = PANEL_TYPE_DSI;
+		panelstruct->paneldata    = &adv7533_720p_video_two_panels_data;
+		panelstruct->panelres     = &adv7533_720p_video_panel_res;
+		panelstruct->color        = &adv7533_720p_video_color;
+		panelstruct->videopanel   = &adv7533_720p_video_video_panel;
+		panelstruct->commandpanel = &adv7533_720p_video_command_panel;
+		panelstruct->state        = &adv7533_720p_video_state;
+		panelstruct->laneconfig   = &adv7533_720p_video_lane_config;
+		panelstruct->paneltiminginfo
+					= &adv7533_720p_video_timing_info;
+		pinfo->adv7533.dsi_tg_i2c_cmd = adv7533_720p_tg_i2c_command;
+		pinfo->adv7533.num_of_tg_i2c_cmds = ADV7533_720P_TG_COMMANDS;
+		pinfo->adv7533.dsi_setup_cfg_i2c_cmd = adv7533_720p_common_cfg;
+		pinfo->adv7533.num_of_cfg_i2c_cmds = ADV7533_720P_CONFIG_COMMANDS;
+		pinfo->sadv7533.dsi_tg_i2c_cmd = adv7533_720p_tg_i2c_command;
+		pinfo->sadv7533.num_of_tg_i2c_cmds = ADV7533_720P_TG_COMMANDS;
+		pinfo->sadv7533.dsi_setup_cfg_i2c_cmd = adv7533_720p_common_cfg;
+		pinfo->sadv7533.num_of_cfg_i2c_cmds = ADV7533_720P_CONFIG_COMMANDS;
+		pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_VIG;
+		pinfo->pipe_id = 3;
+		memcpy(phy_db->timing,
+				adv7533_720p_thulium_video_timings,
+				MAX_TIMING_CONFIG * sizeof(uint32_t));
+		break;
 	default:
 	case UNKNOWN_PANEL:
 		pan_type = PANEL_TYPE_UNKNOWN;
@@ -648,20 +677,33 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 
 int oem_panel_bridge_chip_init(struct msm_panel_info *pinfo) {
 	uint8_t rev = 0;
-
 	pinfo->adv7533.i2c_main_addr = TARGET_ADV7533_MAIN_INST_0;
 	pinfo->adv7533.i2c_cec_addr = TARGET_ADV7533_CEC_DSI_INST_0;
+
 	pinfo->adv7533.program_i2c_addr = false;
 	/* Set Switch GPIO to DSI2HDMI mode */
 	target_set_switch_gpio(1);
 	/* ADV7533 DSI to HDMI Bridge Chip Connected */
 	mipi_dsi_i2c_device_init(BLSP_ID_2, QUP_ID_1);
 	/* Read ADV Chip ID */
-	if (!mipi_dsi_i2c_read_byte(ADV7533_MAIN, 0x00, &rev)) {
+	if (!mipi_dsi_i2c_read_byte(TARGET_ADV7533_MAIN_INST_0, 0x00, &rev)) {
 		dprintf(INFO, "ADV7533 Rev ID: 0x%x\n",rev);
 	} else {
 		dprintf(CRITICAL, "error reading Rev ID from bridge chip\n");
 		return PANEL_TYPE_UNKNOWN;
+	}
+
+	if (pinfo->mipi.dual_dsi) {
+		pinfo->sadv7533.i2c_main_addr = TARGET_ADV7533_MAIN_INST_1;
+		pinfo->sadv7533.i2c_cec_addr = TARGET_ADV7533_CEC_DSI_INST_1;
+		pinfo->sadv7533.program_i2c_addr = false;
+		/* Read ADV Chip ID */
+		if (!mipi_dsi_i2c_read_byte(TARGET_ADV7533_MAIN_INST_1, 0x00, &rev)) {
+			dprintf(INFO, "second ADV7533 Rev ID: 0x%x\n",rev);
+		} else {
+			dprintf(CRITICAL, "error reading Rev ID from bridge chip\n");
+			return PANEL_TYPE_UNKNOWN;
+		}
 	}
 
 	return NO_ERROR;
@@ -688,9 +730,15 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		} else if (panel_override_id < UNKNOWN_PANEL) {
 			/* panel override using fastboot oem command */
 			panel_id = panel_override_id;
-
 			dprintf(INFO, "OEM panel override:%s\n",
 					panel_name);
+			switch(panel_id) {
+			case DUAL_720P_SINGLE_HDMI_PANELS:
+				pinfo->mipi.dual_dsi = 1;
+			case ADV7533_720P_VIDEO_PANEL:
+			case ADV7533_1080P_VIDEO_PANEL:
+				pinfo->has_bridge_chip = true;
+			}
 			goto panel_init;
 		}
 	}

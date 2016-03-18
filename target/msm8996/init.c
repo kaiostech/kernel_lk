@@ -924,7 +924,7 @@ int animated_splash() {
 		dprintf(CRITICAL, "Display info failed\n");
 		return -1;
 	}
-	layer_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatRGB888);
+	layer_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatYCbCr422H2V1Packed);
 	if (layer_ptr == NULL){
 		dprintf(CRITICAL, "Layer acquire failed\n");
 		return -1;

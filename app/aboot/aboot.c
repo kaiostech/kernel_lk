@@ -3640,10 +3640,9 @@ void aboot_init(const struct app_descriptor *app)
 
 	read_device_info(&device);
 	read_allow_oem_unlock(&device);
-
 	/* enable secondary core for early domain services */
 	if (device.early_domain_enabled)
-	  enable_secondary_core();
+		enable_secondary_core();
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN

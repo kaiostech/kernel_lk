@@ -93,6 +93,10 @@ static struct gpio_pin dsi2hdmi_switch_gpio = {
   "msmgpio", 105, 3, 1, 0, 1
 };
 
+static struct gpio_pin dsi2hdmi2_switch_gpio = {
+  "msmgpio", 107, 3, 1, 0, 0
+};
+
 /* gpio name, id, strength, direction, pull, state. */
 static struct gpio_pin hdmi_cec_gpio = {        /* CEC */
   "msmgpio", 31, 0, 2, 3, 1
@@ -196,7 +200,7 @@ int target_hdmi_pll_clock(uint8_t enable, struct msm_panel_info *pinfo)
         hdmi_pll_config(pinfo->clk_rate);
         hdmi_vco_enable();
         hdmi_pixel_clk_enable(pinfo->clk_rate);
-    } else if(!target_cont_splash_screen()) {
+    } else if (!target_cont_splash_screen()) {
         /* Disable clocks if continuous splash off */
         hdmi_pixel_clk_disable();
         hdmi_vco_disable();
@@ -275,6 +279,9 @@ static uint32_t thulium_dsi_pll_enable_seq(uint32_t phy_base, uint32_t pll_base)
 	pll_locked = thulium_dsi_pll_lock_status(pll_base, 0xcc, 5);
 	if (pll_locked)
 		pll_locked = thulium_dsi_pll_lock_status(pll_base, 0xcc, 0);
+	else
+		dprintf(INFO, "%s: bad status\n", __func__);
+
 
 	if (!pll_locked)
 		dprintf(ERROR, "%s: DSI PLL lock failed\n", __func__);
@@ -374,7 +381,7 @@ static void lcd_bklt_reg_disable(void)
 }
 
 static int dsi2HDMI_i2c_write_regs(struct msm_panel_info *pinfo,
-	struct mipi_dsi_i2c_cmd *cfg, int size)
+	struct mipi_dsi_i2c_cmd *cfg, int size, bool primary_dsi)
 {
 	int ret = NO_ERROR;
 	int i;
@@ -388,10 +395,16 @@ static int dsi2HDMI_i2c_write_regs(struct msm_panel_info *pinfo,
 	for (i = 0; i < size; i++) {
 		switch (cfg[i].i2c_addr) {
 			case ADV7533_MAIN:
-				addr = pinfo->adv7533.i2c_main_addr;
+				if (primary_dsi)
+					addr = pinfo->adv7533.i2c_main_addr;
+				else
+					addr = pinfo->sadv7533.i2c_main_addr;
 				break;
 			case ADV7533_CEC_DSI:
-				addr = pinfo->adv7533.i2c_cec_addr;
+				if (primary_dsi)
+					addr = pinfo->adv7533.i2c_cec_addr;
+				else
+					addr = pinfo->sadv7533.i2c_cec_addr;
 				break;
 			default:
 				dprintf(CRITICAL, "Invalid I2C addr in array\n");
@@ -413,17 +426,24 @@ w_regs_fail:
 	return ret;
 }
 
-int target_display_dsi2hdmi_program_addr(struct msm_panel_info *pinfo)
+int target_display_dsi2hdmi_program_addr(struct msm_panel_info *pinfo, bool primary_dsi)
 {
 	int ret = NO_ERROR;
-	uint8_t i2c_8bits = pinfo->adv7533.i2c_cec_addr << 1;
-	ret = mipi_dsi_i2c_write_byte(pinfo->adv7533.i2c_main_addr,
-				0xE1, i2c_8bits);
+	if (primary_dsi) {
+		uint8_t i2c_8bits = pinfo->adv7533.i2c_cec_addr << 1;
+		ret = mipi_dsi_i2c_write_byte(pinfo->adv7533.i2c_main_addr,
+								0xE1, i2c_8bits);
+	} else {
+		uint8_t i2c_8bits = pinfo->sadv7533.i2c_cec_addr << 1;
+		ret = mipi_dsi_i2c_write_byte(pinfo->sadv7533.i2c_main_addr,
+								0xE1, i2c_8bits);
+	}
 	if (ret) {
 		dprintf(CRITICAL, "Error in programming CEC DSI addr\n");
-	} else {
-		dprintf(SPEW, "CEC address programming successful\n");
+		return ret;
 	}
+	dprintf(SPEW, "CEC address programming successful\n");
+
 	return ret;
 }
 
@@ -437,7 +457,7 @@ int target_display_dsi2hdmi_config(struct msm_panel_info *pinfo)
 	}
 
 	if (!pinfo->adv7533.program_i2c_addr) {
-		ret = target_display_dsi2hdmi_program_addr(pinfo);
+		ret = target_display_dsi2hdmi_program_addr(pinfo, true);
 		if (ret) {
 			dprintf(CRITICAL, "Error in programming cec dsi addr\n");
 			return ret;
@@ -453,7 +473,7 @@ int target_display_dsi2hdmi_config(struct msm_panel_info *pinfo)
 	 */
 	if (pinfo->adv7533.dsi_setup_cfg_i2c_cmd)
 		ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->adv7533.dsi_setup_cfg_i2c_cmd,
-					pinfo->adv7533.num_of_cfg_i2c_cmds);
+					pinfo->adv7533.num_of_cfg_i2c_cmds, true);
 	if (ret) {
 		dprintf(CRITICAL, "Error in writing adv7533 setup registers\n");
 		return ret;
@@ -461,11 +481,47 @@ int target_display_dsi2hdmi_config(struct msm_panel_info *pinfo)
 
 	if (pinfo->adv7533.dsi_tg_i2c_cmd)
 		ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->adv7533.dsi_tg_i2c_cmd,
-					pinfo->adv7533.num_of_tg_i2c_cmds);
+					pinfo->adv7533.num_of_tg_i2c_cmds, true);
 	if (ret) {
 		dprintf(CRITICAL, "Error in writing adv7533 timing registers\n");
 	}
 
+	if ((pinfo->mipi.dual_dsi) && (!pinfo->sadv7533.program_i2c_addr)) {
+		ret = target_display_dsi2hdmi_program_addr(pinfo, false);
+		if (ret) {
+			dprintf(CRITICAL, "Error in programming cec dsi addr\n");
+			return ret;
+		} else {
+			dprintf(SPEW, "successfully programmed cec dsi addr\n");
+			pinfo->sadv7533.program_i2c_addr = 1;
+		}
+	}
+
+	if (!pinfo->sadv7533.program_i2c_addr) {
+		ret = target_display_dsi2hdmi_program_addr(pinfo, false);
+		if (ret) {
+			dprintf(CRITICAL, "Error in programming cec dsi addr\n");
+			return ret;
+		} else {
+			dprintf(SPEW, "successfully programmed cec dsi addr\n");
+			pinfo->sadv7533.program_i2c_addr = 1;
+		}
+	}
+	if ((pinfo->mipi.dual_dsi) && (pinfo->sadv7533.dsi_setup_cfg_i2c_cmd)) {
+		ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->sadv7533.dsi_setup_cfg_i2c_cmd,
+					pinfo->sadv7533.num_of_cfg_i2c_cmds, false);
+		if (ret) {
+			dprintf(CRITICAL, "Error in writing adv7533 setup registers for second bridge chip\n");
+			return ret;
+		}
+	}
+
+	if ((pinfo->mipi.dual_dsi) && (pinfo->sadv7533.dsi_tg_i2c_cmd)) {
+		ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->sadv7533.dsi_tg_i2c_cmd,
+					pinfo->sadv7533.num_of_tg_i2c_cmds, false);
+		if (ret)
+			dprintf(CRITICAL, "Error in writing adv7533 timing registers for second bridge chip\n");
+	}
 	return ret;
 }
 
@@ -484,7 +540,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 	case BL_WLED:
 		/* Enable MPP4 */
 		pmi8994_config_mpp_slave_id(PMIC_MPP_SLAVE_ID);
-	        mpp.base = PM8x41_MMP4_BASE;
+		mpp.base = PM8x41_MMP4_BASE;
 		mpp.vin = MPP_VIN2;
 		if (enable) {
 			pm_pwm_enable(false);
@@ -507,7 +563,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 	case BL_PWM:
 		/* Enable MPP1 */
 		pmi8994_config_mpp_slave_id(PMIC_MPP_SLAVE_ID);
-	        mpp.base = PM8x41_MMP1_BASE;
+		mpp.base = PM8x41_MMP1_BASE;
 		mpp.vin = MPP_VIN2;
 		mpp.mode = MPP_DTEST4;
 		if (enable) {
@@ -534,15 +590,10 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 	uint32_t board_version = board_soc_version();
 	struct dfps_pll_codes *pll_codes = &pinfo->mipi.pll_codes;
 
-	if (pinfo->dest == DISPLAY_2) {
+	if (pinfo->dest == DISPLAY_2)
 		flags = MMSS_DSI_CLKS_FLAG_DSI1;
-		if (pinfo->mipi.dual_dsi)
-			flags |= MMSS_DSI_CLKS_FLAG_DSI0;
-	} else {
+	else
 		flags = MMSS_DSI_CLKS_FLAG_DSI0;
-		if (pinfo->mipi.dual_dsi)
-			flags |= MMSS_DSI_CLKS_FLAG_DSI1;
-	}
 
 	if (!enable) {
 		/* stop pll */
@@ -566,19 +617,30 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 		dprintf(CRITICAL, "PLL failed to lock!\n");
 		goto clks_disable;
 	}
+	if (pinfo->mipi.dual_dsi) {
+		if (!thulium_dsi_pll_enable_seq(pinfo->mipi.sphy_base,
+			pinfo->mipi.spll_base)) {
+			ret = ERROR;
+			dprintf(CRITICAL, "DSI1 PLL failed to lock!\n");
+			goto clks_disable;
+		}
+	}
 
 	pll_codes->codes[0] = readl_relaxed(pinfo->mipi.pll_base +
-			        MMSS_DSI_PHY_PLL_CORE_KVCO_CODE);
+				MMSS_DSI_PHY_PLL_CORE_KVCO_CODE);
 	pll_codes->codes[1] = readl_relaxed(pinfo->mipi.pll_base +
-			        MMSS_DSI_PHY_PLL_CORE_VCO_TUNE);
+				MMSS_DSI_PHY_PLL_CORE_VCO_TUNE);
 	dprintf(SPEW, "codes %d %d\n", pll_codes->codes[0],
-			        pll_codes->codes[1]);
+				pll_codes->codes[1]);
 
 	if (pinfo->mipi.use_dsi1_pll)
 		dsi_phy_pll_out = DSI1_PHY_PLL_OUT;
 	else
 		dsi_phy_pll_out = DSI0_PHY_PLL_OUT;
 	mmss_dsi_clock_enable(dsi_phy_pll_out, flags);
+
+	if (pinfo->mipi.dual_dsi)
+		mmss_dsi_clock_enable(DSI1_PHY_PLL_OUT, MMSS_DSI_CLKS_FLAG_DSI1);
 
 	return NO_ERROR;
 
@@ -752,11 +814,18 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 
 void target_set_switch_gpio(int enable_dsi2hdmibridge)
 {
-	gpio_tlmm_config(dsi2hdmi_switch_gpio.pin_id, 0,
+	gpio_tlmm_config(dsi2hdmi2_switch_gpio.pin_id, 0,
 				dsi2hdmi_switch_gpio.pin_direction,
 				dsi2hdmi_switch_gpio.pin_pull,
 				dsi2hdmi_switch_gpio.pin_strength,
 				dsi2hdmi_switch_gpio.pin_state);
+
+	gpio_tlmm_config(dsi2hdmi_switch_gpio.pin_id, 0,
+				dsi2hdmi2_switch_gpio.pin_direction,
+				dsi2hdmi2_switch_gpio.pin_pull,
+				dsi2hdmi2_switch_gpio.pin_strength,
+				dsi2hdmi2_switch_gpio.pin_state);
+
 	gpio_set(enable_gpio.pin_id, GPIO_STATE_HIGH);
 	if (enable_dsi2hdmibridge)
 		gpio_set(enable_gpio.pin_id, GPIO_STATE_LOW); /* DSI2HDMI Bridge */
@@ -810,6 +879,8 @@ static int target_layers_populate(struct target_layer_int *layers)
 	return 0;
 }
 
+extern void set_multi_panel(bool val);
+
 
 void target_display_init(const char *panel_name)
 {
@@ -830,9 +901,12 @@ void target_display_init(const char *panel_name)
 			oem.panel);
 		goto target_display_init_end;
 	} else if (!strcmp(oem.panel, HDMI_PANEL_NAME)) {
-		dprintf(INFO, "%s: HDMI is primary\n", __func__);
 		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
 		goto target_display_init_end;
+	} else if (!strcmp(oem.panel, "dual_720p_single_hdmi_video")) {
+		// Three display panels init, init native HDMI first
+		set_multi_panel(true);
+		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
 	}
 
 	if (gcdb_display_init(oem.panel, MDP_REV_50, (void *)MIPI_FB_ADDR)) {
@@ -854,6 +928,7 @@ void target_display_shutdown(void)
 	struct oem_panel_data oem = mdss_dsi_get_oem_data();
 	if (!strcmp(oem.panel, HDMI_PANEL_NAME)) {
 		msm_display_off();
+		return;
 	} else {
 		gcdb_display_shutdown();
 	}

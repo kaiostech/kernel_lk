@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -411,6 +411,7 @@ struct msm_panel_info {
 	struct hdmi_panel_info hdmi;
 	struct edp_panel_info edp;
 	struct dsi2HDMI_panel_info adv7533;
+	struct dsi2HDMI_panel_info sadv7533;
 	bool has_bridge_chip;
 
 	struct dfps_info dfps;
