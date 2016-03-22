@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -165,7 +165,7 @@ static void target_mmc_sdhci_init()
 	struct mmc_config_data config = {0};
 
 	config.bus_width = DATA_BUS_WIDTH_8BIT;
-	config.max_clk_rate = MMC_CLK_96MHZ;
+	config.max_clk_rate = MMC_CLK_200MHZ;
 
 	/* Trying Slot 1*/
 	config.slot = 1;
