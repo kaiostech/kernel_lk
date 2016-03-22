@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, 2016 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -53,6 +53,7 @@ static struct clk_ops clk_ops_branch =
 {
 	.enable     = clock_lib2_branch_clk_enable,
 	.disable    = clock_lib2_branch_clk_disable,
+	.reset      = clock_lib2_branch_clk_reset,
 	.set_rate   = clock_lib2_branch_set_rate,
 };
 
@@ -146,6 +147,7 @@ static struct rcg_clk sdcc1_apps_clk_src =
 
 static struct branch_clk gcc_sdcc1_apps_clk =
 {
+	.bcr_reg      = (uint32_t *) SDCC1_BCR,
 	.cbcr_reg     = (uint32_t *) SDCC1_APPS_CBCR,
 	.parent       = &sdcc1_apps_clk_src.c,
 
