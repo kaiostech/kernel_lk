@@ -76,7 +76,8 @@ hash_find(unsigned char *addr, unsigned int size, unsigned char *digest,
 		dprintf(CRITICAL, "crypto_sha256 returns error %d\n", ret_val);
 	}
 
-	crypto_eng_cleanup();
+	if (platform_ce_type == CRYPTO_ENGINE_TYPE_HW)
+		crypto_eng_cleanup();
 
 }
 

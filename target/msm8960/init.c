@@ -248,10 +248,13 @@ void target_init(void)
 		(platform_id == MSM8660AB) || (platform_id == MSM8660A) ||
 		(platform_id == MSM8260A) || (platform_id == APQ8060A) ||
 		(platform_id == APQ8064) || (platform_id == APQ8064AA) ||
-		(platform_id == APQ8064AB)|| (platform_id == APQ8064AU))
+		(platform_id == APQ8064AB))
 		/* Enable Hardware CE */
 		platform_ce_type = CRYPTO_ENGINE_TYPE_HW;
-
+	else if (platform_id == APQ8064AU)
+		/* Enable Software CE for APQ8064AU even though */
+		/* hardware crypto engine is available */
+		platform_ce_type = CRYPTO_ENGINE_TYPE_SW;
 }
 
 unsigned board_machtype(void)
