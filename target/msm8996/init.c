@@ -124,6 +124,12 @@ void earlydomain_services();
 /* early domain cleanup and exit*/
 void earlydomain_exit();
 
+/* is charging supported */
+bool target_charging_supported();
+
+/* is charging in progress */
+bool target_charging_in_progress();
+
 void target_early_init(void)
 {
 #if WITH_DEBUG_UART
@@ -352,17 +358,10 @@ void target_init(void)
 	 * Charging should happen as early as possible, any other driver
 	 * initialization before this should consider the power impact
 	 */
-	switch(board_hardware_id())
+	if(target_charging_supported())
 	{
-		case HW_PLATFORM_MTP:
-		case HW_PLATFORM_FLUID:
-		case HW_PLATFORM_QRD:
-			pm_appsbl_chg_check_weak_battery_status(1);
-			break;
-		default:
-			/* Charging not supported */
-			break;
-	};
+		pm_appsbl_chg_check_weak_battery_status(1);
+	}
 #endif
 
 	/* Initialize Qseecom */
@@ -415,7 +414,7 @@ static uint8_t splash_override;
 int target_cont_splash_screen()
 {
 	uint8_t splash_screen = 0;
-	if(!splash_override && !pm_appsbl_charging_in_progress()) {
+	if(!splash_override && !target_charging_in_progress()) {
 		switch(board_hardware_id())
 		{
 			case HW_PLATFORM_SURF:
@@ -580,30 +579,72 @@ void target_crypto_init_params()
 	crypto_init_params(&ce_params);
 }
 
+#if ENABLE_WBC
 unsigned target_pause_for_battery_charge(void)
 {
-	uint8_t pon_reason = pm8x41_get_pon_reason();
-	uint8_t is_cold_boot = pm8x41_get_is_cold_boot();
-	pm_smbchg_usb_chgpth_pwr_pth_type charger_path = PM_SMBCHG_USB_CHGPTH_PWR_PATH__INVALID;
-	dprintf(INFO, "%s : pon_reason is %d cold_boot:%d charger path: %d\n", __func__,
-		pon_reason, is_cold_boot, charger_path);
-	/* In case of fastboot reboot,adb reboot or if we see the power key
-	* pressed we do not want go into charger mode.
-	* fastboot reboot is warm boot with PON hard reset bit not set
-	* adb reboot is a cold boot with PON hard reset bit set
-	*/
-	pm_smbchg_get_charger_path(1, &charger_path);
-	if (is_cold_boot &&
-			(!(pon_reason & HARD_RST)) &&
-			(!(pon_reason & KPDPWR_N)) &&
-			((pon_reason & PON1)) &&
-			((charger_path == PM_SMBCHG_USB_CHGPTH_PWR_PATH__DC_CHARGER) ||
-			(charger_path == PM_SMBCHG_USB_CHGPTH_PWR_PATH__USB_CHARGER)))
+	unsigned int target_pause = 0;
 
-		return 1;
-	else
-		return 0;
+	if(target_charging_supported())
+	{
+		uint8_t pon_reason = pm8x41_get_pon_reason();
+		uint8_t is_cold_boot = pm8x41_get_is_cold_boot();
+		pm_smbchg_usb_chgpth_pwr_pth_type charger_path = PM_SMBCHG_USB_CHGPTH_PWR_PATH__INVALID;
+		dprintf(INFO, "%s : pon_reason is %d cold_boot:%d charger path: %d\n", __func__,
+			pon_reason, is_cold_boot, charger_path);
+		/* In case of fastboot reboot,adb reboot or if we see the power key
+		* pressed we do not want go into charger mode.
+		* fastboot reboot is warm boot with PON hard reset bit not set
+		* adb reboot is a cold boot with PON hard reset bit set
+		*/
+		pm_smbchg_get_charger_path(1, &charger_path);
+		if (is_cold_boot &&
+				(!(pon_reason & HARD_RST)) &&
+				(!(pon_reason & KPDPWR_N)) &&
+				((pon_reason & PON1)) &&
+				((charger_path == PM_SMBCHG_USB_CHGPTH_PWR_PATH__DC_CHARGER) ||
+				(charger_path == PM_SMBCHG_USB_CHGPTH_PWR_PATH__USB_CHARGER)))
+
+			target_pause = 1;
+	}
+
+	return target_pause;
 }
+
+bool target_charging_supported()
+{
+	switch(board_hardware_id())
+	{
+		case HW_PLATFORM_MTP:
+		case HW_PLATFORM_FLUID:
+		case HW_PLATFORM_QRD:
+			return 1;
+		default:
+			/* Charging not supported */
+			return 0;
+	};
+}
+
+bool target_charging_in_progress()
+{
+	return pm_appsbl_charging_in_progress();
+}
+
+#else
+unsigned target_pause_for_battery_charge(void)
+{
+	return 0;
+}
+
+bool target_charging_supported()
+{
+	return 0;
+}
+
+bool target_charging_in_progress()
+{
+	return 0;
+}
+#endif /*ENABLE_WBC*/
 
 int set_download_mode(enum dload_mode mode)
 {
