@@ -519,7 +519,7 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 	switch (hw_id) {
 	case HW_PLATFORM_MTP:
 		if (platform_is_msm8956())
-			panel_id = NT35597_WQXGA_DUALDSI_VIDEO_PANEL;
+                        panel_id = HX8399A_1080P_VIDEO_PANEL;
 		else
 			panel_id = TRULY_1080P_VIDEO_PANEL;
 		break;
