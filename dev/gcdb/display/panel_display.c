@@ -419,7 +419,9 @@ int dsi_video_panel_config(struct msm_panel_info *pinfo,
 			pinfo->mipi.interleave_mode,
 			pinfo->mipi.ctl_base);
 
-	if (pinfo->mipi.dual_dsi)
+	// For DISPLAY_2, the DSI0 base is saved in mipi.sctl_base, runing the following
+	// will reset the config in DSI0
+	if ((pinfo->mipi.dual_dsi) && (pinfo->dest == DISPLAY_1))
 		ret = mdss_dsi_video_mode_config(pinfo,
 				final_width, final_height,
 				final_xres, final_yres,

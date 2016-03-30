@@ -94,9 +94,9 @@ static const uint32_t panel_physical_ctrl[] = { };
 #define VIG_ID_START                 3
 #define VIG_PIPE_START               7
 
-#define NUM_RGB_PIPES                1
-#define RGB_ID_START                 3
-#define RGB_PIPE_START               3
+#define NUM_RGB_PIPES                3
+#define RGB_ID_START                 0
+#define RGB_PIPE_START               0
 
 #define NUM_DMA_PIPES                2
 #define DMA_PIPE_START               8
@@ -182,9 +182,11 @@ struct target_display_update {
 void * target_display_open (uint32 display_id);
 struct target_display * target_get_display_info(void *disp);
 void *target_display_acquire_layer(struct target_display * disp, char *client_name, int color_format);
-int target_display_update(struct target_display_update * update, uint32_t size);
+struct fbcon_config* target_display_get_fb(uint32_t disp_id);
+int target_display_update(struct target_display_update * update, uint32_t size, uint32_t disp_id);
 int target_release_layer(struct target_layer *layer);
 int target_display_close(struct target_display * disp);
+int target_get_max_display();
 bool target_display_is_init_done();
 
 #endif

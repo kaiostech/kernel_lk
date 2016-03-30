@@ -407,12 +407,8 @@ void mdss_dsi_auto_pll_thulium_config(struct msm_panel_info *pinfo)
 	uint32_t phy_1_base = pinfo->mipi.sphy_base;
 
 	mdss_dsi_phy_sw_reset(pinfo->mipi.ctl_base);
-	if (pinfo->mipi.dual_dsi)
-		mdss_dsi_phy_sw_reset(pinfo->mipi.sctl_base);
 
 	mdss_dsi_phy_14nm_init(pinfo, phy_base);
-	if (pinfo->mipi.dual_dsi)
-		mdss_dsi_phy_14nm_init(pinfo, phy_1_base);
 
 	mdss_mdp_pll_input_init(&pdb);
 	pdb.out.pll_postdiv = pll_data->ndiv;
@@ -425,14 +421,14 @@ void mdss_dsi_auto_pll_thulium_config(struct msm_panel_info *pinfo)
 	/* de-assert pll and start */
 	mdss_mdp_pll_assert_and_div_cfg(phy_base, &pdb);
 	writel(pdb.in.dsiclk_sel, phy_base + DSIPHY_CMN_CLK_CFG1);
-	if ((pinfo->lcdc.split_display) || (pinfo->mipi.dual_dsi))
+	if (pinfo->lcdc.split_display)
 		mdss_mdp_pll_assert_and_div_cfg(phy_1_base, &pdb);
 
 	/* configure frequence */
 	mdss_mdp_pll_nonfreq_config(phy_base, &pdb);
 	mdss_mdp_pll_freq_config(phy_base, &pdb);
 
-	if ((pinfo->lcdc.split_display) || (pinfo->mipi.dual_dsi)) {
+    if (pinfo->lcdc.split_display) {
 		mdss_mdp_pll_nonfreq_config(phy_1_base, &pdb);
 		mdss_mdp_pll_freq_config(phy_1_base, &pdb);
 	}

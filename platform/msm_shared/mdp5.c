@@ -202,7 +202,7 @@ static void mdss_mdp_set_flush(struct msm_panel_info *pinfo,
 			if (dual_pipe_single_ctl)
 				*ctl0_reg_val = 0x220D8;
 			else
-				*ctl0_reg_val = 0x22048;
+				*ctl0_reg_val = 0x22040;
 			*ctl1_reg_val = 0x24090;
 
 			if (pinfo->lcdc.dst_split)
@@ -237,7 +237,7 @@ static void mdss_mdp_set_flush(struct msm_panel_info *pinfo,
 			if (dual_pipe_single_ctl)
 				*ctl0_reg_val = 0x220C3;
 			else
-				*ctl0_reg_val = 0x22041;
+				*ctl0_reg_val = 0x22040;
 			*ctl1_reg_val = 0x24082;
 			if (pinfo->lcdc.dst_split)
 				*ctl0_reg_val |= BIT(1);
@@ -277,7 +277,10 @@ static void mdss_mdp_set_flush(struct msm_panel_info *pinfo,
 			MDSS_MDP_HW_REV_107) ||
 		(mdss_mdp_rev == MDSS_MDP_HW_REV_110)) {
 		if (pinfo->dest == DISPLAY_2) {
-			*ctl0_reg_val |= BIT(29);
+			//clear the default mixer and DSPP
+			*ctl0_reg_val &= 0xFFFF182F;
+			// Set to use Mixer1 and DSPP1
+			*ctl0_reg_val |= BIT(14) | BIT(7) | BIT(29);
 			*ctl1_reg_val |= BIT(30);
 		} else {
 			*ctl0_reg_val |= BIT(30);
@@ -759,7 +762,6 @@ static void mdss_intf_fetch_start_config(struct msm_panel_info *pinfo,
 			(lcdc->v_back_porch + lcdc->v_pulse_width) >=
 			MDSS_MDP_MAX_PREFILL_FETCH)
 		return;
-
 	adjust_xres = pinfo->xres;
 	if (pinfo->lcdc.split_display) {
 		if (pinfo->lcdc.dst_split) {
@@ -822,6 +824,9 @@ int mdss_layer_mixer_remove_pipe(struct msm_panel_info *pinfo) {
 		/* Base layer for layer mixer 2 */
 		left_staging_level = readl(MDP_CTL_2_BASE + CTL_LAYER_2);
 		right_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
+	} else if (pinfo->dest == DISPLAY_2) {
+		left_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
+		right_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
 	} else {
 		left_staging_level = readl(MDP_CTL_0_BASE + CTL_LAYER_0);
 		right_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
@@ -881,14 +886,12 @@ int mdss_layer_mixer_remove_pipe(struct msm_panel_info *pinfo) {
 	left_staging_level = left_staging_level & left_bitmask;
 	right_staging_level = right_staging_level & right_bitmask;
 
-	if ((pinfo->type == HDMI_PANEL) && (multi_panel == true)) {
-		/* Base layer for layer mixer 2 */
+	if ((pinfo->type == HDMI_PANEL) && (multi_panel == true))
 		writel(left_staging_level, MDP_CTL_2_BASE + CTL_LAYER_2);
-	} else {
+	else if (pinfo->dest == DISPLAY_2)
+		writel(left_staging_level, MDP_CTL_1_BASE + CTL_LAYER_1);
+	else
 		writel(left_staging_level, MDP_CTL_0_BASE + CTL_LAYER_0);
-		if (pinfo->lcdc.dual_pipe && !pinfo->lcdc.dst_split)
-			writel(right_staging_level, MDP_CTL_1_BASE + CTL_LAYER_1);
-	}
 	return 0;
 }
 
@@ -931,6 +934,23 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 		writel(0x100, MDP_VP_0_MIXER_2_BASE + LAYER_5_BLEND_OP);
 		writel(0xFF, MDP_VP_0_MIXER_2_BASE + LAYER_5_BLEND0_FG_ALPHA);
 		left_staging_level = readl(MDP_CTL_2_BASE + CTL_LAYER_0);
+		right_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
+	} else if (pinfo->dest == DISPLAY_2) {
+		writel(mdp_rgb_size, MDP_VP_0_MIXER_1_BASE + LAYER_0_OUT_SIZE);
+		writel(0x00, MDP_VP_0_MIXER_1_BASE + LAYER_0_OP_MODE);
+		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_0_BLEND_OP);
+		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_0_BLEND0_FG_ALPHA);
+		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_1_BLEND_OP);
+		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_1_BLEND0_FG_ALPHA);
+		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_2_BLEND_OP);
+		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_2_BLEND0_FG_ALPHA);
+		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_3_BLEND_OP);
+		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_3_BLEND0_FG_ALPHA);
+		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_4_BLEND_OP);
+		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_4_BLEND0_FG_ALPHA);
+		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_5_BLEND_OP);
+		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_5_BLEND0_FG_ALPHA);
+		left_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
 		right_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
 	} else {
 		writel(mdp_rgb_size, MDP_VP_0_MIXER_0_BASE + LAYER_0_OUT_SIZE);
@@ -1024,13 +1044,14 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 	if (pinfo->lcdc.dual_pipe && pinfo->lcdc.dst_split)
 		left_staging_level |= right_staging_level;
 
-	if ((pinfo->type == HDMI_PANEL) && (multi_panel == true)) {
-	/* Base layer for layer mixer 2 */
+		/* Setup Base layer with correct layer mixer */
+	if ((pinfo->type == HDMI_PANEL) && (multi_panel == true))
 		writel(left_staging_level, MDP_CTL_2_BASE + CTL_LAYER_2);
-	} else {
-	/* Base layer for layer mixer 0 */
+	else if (pinfo->dest == DISPLAY_2)
+		writel(left_staging_level, MDP_CTL_1_BASE + CTL_LAYER_1);
+	else
 		writel(left_staging_level, MDP_CTL_0_BASE + CTL_LAYER_0);
-	}
+
 	if (pinfo->lcdc.dual_pipe && !pinfo->lcdc.dst_split) {
 		if (!pinfo->has_bridge_chip) {
 			/* write active region size*/
@@ -1051,12 +1072,11 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 		writel(0x100, MDP_VP_0_MIXER_1_BASE + LAYER_5_BLEND_OP);
 		writel(0xFF, MDP_VP_0_MIXER_1_BASE + LAYER_5_BLEND0_FG_ALPHA);
 
-		/* Base layer for layer mixer 1 */
-		if ((pinfo->lcdc.split_display) || (pinfo->has_bridge_chip)) {
+		/* Setup Base layer with correct layer mixer */
+		if ((pinfo->lcdc.split_display) || (pinfo->has_bridge_chip))
 			writel(right_staging_level, MDP_CTL_1_BASE + CTL_LAYER_1);
-		} else {
+		else
 			writel(right_staging_level, MDP_CTL_0_BASE + CTL_LAYER_1);
-		}
 	}
 }
 
@@ -1230,7 +1250,7 @@ static void mdp_set_intf_base(struct msm_panel_info *pinfo,
 	uint32_t *intf_sel, uint32_t *sintf_sel,
 	uint32_t *intf_base, uint32_t *sintf_base)
 {
-	if (pinfo->dest == DISPLAY_2) {
+	if ((pinfo->dest == DISPLAY_2) && (!pinfo->mipi.dual_dsi)) {
 		*intf_sel = BIT(16);
 		*sintf_sel = BIT(8);
 		*intf_base = MDP_INTF_2_BASE + mdss_mdp_intf_offset();
@@ -1255,12 +1275,12 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 	uint32_t reg;
 	mdp_set_intf_base(pinfo, &intf_sel, &sintf_sel, &intf_base, &sintf_base);
 
-	mdss_intf_tg_setup(pinfo, intf_base);
-	mdss_intf_fetch_start_config(pinfo, intf_base);
-
-	if (pinfo->mipi.dual_dsi) {
+	if ((pinfo->mipi.dual_dsi) && (pinfo->dest == DISPLAY_2)) {
 		mdss_intf_tg_setup(pinfo, sintf_base);
 		mdss_intf_fetch_start_config(pinfo, sintf_base);
+	} else {
+		mdss_intf_tg_setup(pinfo, intf_base);
+		mdss_intf_fetch_start_config(pinfo, intf_base);
 	}
 	mdp_clk_gating_ctrl();
 
@@ -1278,7 +1298,6 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 	}
 
 	mdss_layer_mixer_setup(fb, pinfo);
-
 	reg = 0x1f00 | mdss_mdp_ctl_out_sel(pinfo, 1);
 
 	/* enable 3D mux for dual_pipe but single interface config */
@@ -1288,11 +1307,11 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 		if (pinfo->num_dsc_enc != 2)
 			reg |= BIT(19) | BIT(20);
 	}
-
-	writel(reg, MDP_CTL_0_BASE + CTL_TOP);
+	if (pinfo->dest == DISPLAY_1)
+		writel(reg, MDP_CTL_0_BASE + CTL_TOP);
 
 	if ((pinfo->compression_mode == COMPRESSION_DSC) &&
-	    pinfo->dsc.mdp_dsc_config) {
+		pinfo->dsc.mdp_dsc_config) {
 		struct dsc_desc *dsc = &pinfo->dsc;
 
 		if (pinfo->lcdc.dual_pipe && !pinfo->mipi.dual_dsi &&
@@ -1310,14 +1329,17 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 		if (pinfo->fbc.enabled)
 			mdss_fbc_cfg(pinfo);
 	}
+
 	/*
 	 * if dst_split is enabled, intf 1 & 2 needs to be enabled but
 	 * CTL_1 path should not be set since CTL_0 itself is going
 	 * to split after DSPP block and drive both intf.
 	 */
-	if (pinfo->mipi.dual_dsi) {
+	if ((pinfo->mipi.dual_dsi) && (pinfo->dest == DISPLAY_2)) {
 		if (!pinfo->lcdc.dst_split) {
-			reg = 0x1f00 | mdss_mdp_ctl_out_sel(pinfo,0);
+			// for DISPLAY_2, the mctl is intf_2,
+			// so is_main_ctl should set to 1
+			reg = 0x1f00 | mdss_mdp_ctl_out_sel(pinfo,1);
 			writel(reg, MDP_CTL_1_BASE + CTL_TOP);
 		}
 		intf_sel |= sintf_sel; /* INTF 2 enable */
@@ -1525,21 +1547,15 @@ int mdp_dsi_cmd_config(struct msm_panel_info *pinfo,
 int mdp_dsi_video_on(struct msm_panel_info *pinfo)
 {
 	uint32_t ctl0_reg_val, ctl1_reg_val;
-	uint32_t timing_engine_en;
 
 	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
-	writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
-
-	if (pinfo->lcdc.dual_pipe && !pinfo->lcdc.dst_split)
-		writel(ctl1_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
-
-	if (pinfo->dest == DISPLAY_1)
-		timing_engine_en = MDP_INTF_1_TIMING_ENGINE_EN;
+	if ((pinfo->dest == DISPLAY_2) && (pinfo->mipi.dual_dsi))
+		writel(ctl0_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
 	else
-		timing_engine_en = MDP_INTF_2_TIMING_ENGINE_EN;
-	writel(0x01, timing_engine_en + mdss_mdp_intf_offset());
-
-	if (pinfo->lcdc.dual_pipe && !pinfo->lcdc.dst_split)
+		writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
+	if (pinfo->dest == DISPLAY_1)
+		writel(0x01, MDP_INTF_1_TIMING_ENGINE_EN + mdss_mdp_intf_offset());
+	else
 		writel(0x01, MDP_INTF_2_TIMING_ENGINE_EN + mdss_mdp_intf_offset());
 
 	return NO_ERROR;
@@ -1554,9 +1570,10 @@ int mdp_dsi_video_update(struct msm_panel_info *pinfo)
 		return ERR_INVALID_ARGS;
 	}
 	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
-	writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
-	if (pinfo->lcdc.dual_pipe && !pinfo->lcdc.dst_split)
-		writel(ctl1_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
+	if ((pinfo->dest == DISPLAY_2) && (pinfo->mipi.dual_dsi))
+		writel(ctl0_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
+	else
+		writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
 
 	return NO_ERROR;
 }
@@ -1639,7 +1656,11 @@ int mdss_hdmi_update(struct msm_panel_info *pinfo)
 	uint32_t ctl0_reg_val, ctl1_reg_val;
 
 	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
-	writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
+
+	if (multi_panel == true)
+		writel(0x28108, MDP_CTL_2_BASE + CTL_FLUSH);
+	else
+		writel(0x24048, MDP_CTL_0_BASE + CTL_FLUSH);
 
 	return NO_ERROR;
 }

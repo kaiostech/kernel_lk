@@ -411,7 +411,6 @@ struct msm_panel_info {
 	struct hdmi_panel_info hdmi;
 	struct edp_panel_info edp;
 	struct dsi2HDMI_panel_info adv7533;
-	struct dsi2HDMI_panel_info sadv7533;
 	bool has_bridge_chip;
 
 	struct dfps_info dfps;

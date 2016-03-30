@@ -41,6 +41,8 @@
 #endif
 #include <qtimer.h>
 static struct msm_fb_panel_data *panel;
+static struct msm_fb_panel_data *panel_array= NULL;
+static uint32_t num_panel = 0;
 
 extern int lvds_on(struct msm_fb_panel_data *pdata);
 
@@ -102,18 +104,18 @@ int msm_display_config()
 		dprintf(INFO, "Config MIPI_VIDEO_PANEL.\n");
 
 		mdp_rev = mdp_get_revision();
-		if (mdp_rev == MDP_REV_50 || mdp_rev == MDP_REV_304 ||
-						mdp_rev == MDP_REV_305)
-			ret = mdss_dsi_config(panel);
-		else
-			ret = mipi_config(panel);
-
+		if (pinfo->dest == DISPLAY_1) {
+			if (mdp_rev == MDP_REV_50 || mdp_rev == MDP_REV_304 ||
+							mdp_rev == MDP_REV_305)
+				ret = mdss_dsi_config(panel);
+			else
+				ret = mipi_config(panel);
+		}
 		if (ret)
 			goto msm_display_config_out;
 
 		if (pinfo->early_config)
 			ret = pinfo->early_config((void *)pinfo);
-
 		ret = mdp_dsi_video_config(pinfo, &(panel->fb));
 		if (ret)
 			goto msm_display_config_out;
@@ -280,21 +282,29 @@ msm_display_on_out:
 	return ret;
 }
 
+struct fbcon_config* msm_display_get_fb(uint32_t disp_id)
+{
+    if (panel_array == NULL)
+        return NULL;
+    else
+        return &(panel_array[disp_id].fb);
+}
 
 int msm_display_update(struct fbcon_config *fb, uint32_t pipe_id, uint32_t pipe_type,
-	uint32_t zorder, uint32_t width, uint32_t height)
+	uint32_t zorder, uint32_t width, uint32_t height, uint32_t disp_id)
 {
 	struct msm_panel_info *pinfo;
+	struct msm_fb_panel_data *panel_local;
 	int ret = 0;
-	if (!panel || !fb) {
+	if (!panel_array || !fb) {
 		dprintf(CRITICAL, "Error! Inalid args\n");
 		return ERR_INVALID_ARGS;
 	}
-
-	panel->fb = *fb;
-	pinfo = &(panel->panel_info);
+	panel_local = &(panel_array[disp_id]);
+	panel_local->fb = *fb;
+	pinfo = &(panel_local->panel_info);
 	pinfo->pipe_type = pipe_type;
-	pinfo->pipe_id = pipe_id;
+	//pinfo->pipe_id = pipe_id;
 	pinfo->zorder = zorder;
 	pinfo->border_top = fb->height/2 - height/2;
 	pinfo->border_bottom = pinfo->border_top;
@@ -364,9 +374,12 @@ int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type)
 int msm_display_init(struct msm_fb_panel_data *pdata)
 {
 	int ret = NO_ERROR;
-	uint32_t buffer_size;
-	uint32_t memcmp_ret;
 
+	if (panel_array == NULL) {
+		int num_target_display;
+		num_target_display = target_get_max_display();
+		panel_array = malloc(num_target_display * sizeof(struct  msm_fb_panel_data));
+	}
 	panel = pdata;
 	if (!panel) {
 		ret = ERR_INVALID_ARGS;
@@ -422,17 +435,9 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 	if (ret)
 		goto msm_display_init_out;
 
-	if ((panel->panel_info.mipi.dual_dsi) && (panel->panel_info.has_bridge_chip)) {
-		panel->fb.height *= 2;
-	}
-
 	ret = msm_fb_alloc(&(panel->fb));
 	if (ret)
 		goto msm_display_init_out;
-
-	if ((panel->panel_info.mipi.dual_dsi) && (panel->panel_info.has_bridge_chip)) {
-		panel->fb.height /= 2;
-	}
 
 	fbcon_setup(&(panel->fb));
 
@@ -442,14 +447,6 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 		ret = panel->dsi2HDMI_config(&(panel->panel_info));
 	if (ret)
 		goto msm_display_init_out;
-
-	if (panel->panel_info.has_bridge_chip && panel->panel_info.lcdc.dual_pipe) {
-		buffer_size = panel->fb.width * panel->fb.height * (panel->fb.bpp / 8);
-		memcpy (panel->fb.base + buffer_size, panel->fb.base, buffer_size);
-		memcmp_ret = memcmp(panel->fb.base + buffer_size, panel->fb.base, buffer_size);
-		dprintf(SPEW, "fb offset:%d  memcmp:%d\n", buffer_size, memcmp_ret);
-
-	}
 
 	ret = msm_display_config();
 	if (ret)
@@ -470,6 +467,11 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 
 	if (ret)
 		goto msm_display_init_out;
+
+	// if panel init correctly, save the panel struct in the array
+	memcpy((void*) &panel_array[num_panel], (void*) panel, sizeof(struct  msm_fb_panel_data));
+	dprintf (INFO, "Panel %d init, width:%d height:%d\n", num_panel, panel->fb.width, panel->fb.height);
+	num_panel ++;
 
 msm_display_init_out:
 	return ret;
