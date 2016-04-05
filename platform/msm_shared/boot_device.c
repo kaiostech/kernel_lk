@@ -38,6 +38,11 @@ static uint32_t boot_device;
 void platform_read_boot_config()
 {
 	boot_device = BOOT_DEVICE_MASK(readl(BOOT_CONFIG_REG));
+	if ((boot_device == BOOT_QSPI_NOR) || (boot_device == BOOT_SPI_NOR)) {
+		dprintf(INFO, "BOOT CONFIG: %s boot. LK boot-device switching to eMMC...\n",
+			(boot_device == BOOT_QSPI_NOR) ? "QSPI_NOR" : "SPI_NOR");
+		boot_device = BOOT_EMMC;
+	}
 	board_update_boot_dev(boot_device);
 }
 

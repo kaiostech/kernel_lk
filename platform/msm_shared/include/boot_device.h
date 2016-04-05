@@ -51,6 +51,8 @@ enum boot_device
 	BOOT_DEFAULT=0, /* EMMC */
 	BOOT_EMMC=2,
 	BOOT_UFS=4,
+	BOOT_QSPI_NOR=6,
+	BOOT_SPI_NOR=7
 };
 #endif
 
