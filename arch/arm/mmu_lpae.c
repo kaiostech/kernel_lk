@@ -221,9 +221,6 @@ void arm_mmu_init(void)
 /* page tables mapping for secondary core*/
 void secondary_cpu_init(void)
 {
-    /* turn off the cache */
-    arch_disable_cache(UCACHE);
-
     /* set some mmu specific control bits:
     * access flag disabled, TEX remap disabled, mmu disabled
     */
