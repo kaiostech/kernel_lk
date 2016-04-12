@@ -190,6 +190,8 @@ struct verified_boot_state_name vbsn[] =
 
 static unsigned page_size = 0;
 static unsigned page_mask = 0;
+static unsigned mmc_blocksize = 0;
+static unsigned mmc_blocksize_mask = 0;
 static char ffbm_mode_string[FFBM_MODE_BUF_SIZE];
 static bool boot_into_ffbm;
 static char *target_boot_params = NULL;
@@ -817,7 +819,7 @@ void boot_linux(void *kernel, unsigned *tags,
  * start: Start of the memory region
  * size: Size of the memory region
  */
-int check_aboot_addr_range_overlap(uint32_t start, uint32_t size)
+int check_aboot_addr_range_overlap(uintptr_t start, uint32_t size)
 {
 	/* Check for boundary conditions. */
 	if ((UINT_MAX - start) < size)
@@ -1126,7 +1128,7 @@ int boot_linux_from_mmc(void)
 	boot_verifier_init();
 #endif
 
-	if (check_aboot_addr_range_overlap((uint32_t) image_addr, imagesize_actual))
+	if (check_aboot_addr_range_overlap((uintptr_t) image_addr, imagesize_actual))
 	{
 		dprintf(CRITICAL, "Boot image buffer address overlaps with aboot addresses.\n");
 		return -1;
@@ -1145,6 +1147,12 @@ int boot_linux_from_mmc(void)
 	dprintf(INFO, "Loading (%s) image (%d): start\n",
 			(!boot_into_recovery ? "boot" : "recovery"),imagesize_actual);
 	bs_set_timestamp(BS_KERNEL_LOAD_START);
+
+	if ((target_get_max_flash_size() - page_size) < imagesize_actual)
+	{
+		dprintf(CRITICAL, "booimage  size is greater than DDR can hold\n");
+		return -1;
+	}
 
 	/* Read image without signature */
 	if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
@@ -1171,7 +1179,7 @@ int boot_linux_from_mmc(void)
 	if((target_use_signed_kernel() && (!device.is_unlocked)) || is_test_mode_enabled())
 	{
 		offset = imagesize_actual;
-		if (check_aboot_addr_range_overlap((uint32_t)image_addr + offset, page_size))
+		if (check_aboot_addr_range_overlap((uintptr_t)image_addr + offset, page_size))
 		{
 			dprintf(CRITICAL, "Signature read buffer address overlaps with aboot addresses.\n");
 			return -1;
@@ -1304,9 +1312,27 @@ int boot_linux_from_mmc(void)
 			return -1;
 		}
 
+		/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+		goes beyound hdr->dt_size*/
+		if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+			dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
+			return -1;
+		}
+
 		/* Find index of device tree within device tree table */
 		if(dev_tree_get_entry_info(table, &dt_entry) != 0){
 			dprintf(CRITICAL, "ERROR: Getting device tree address failed\n");
+			return -1;
+		}
+
+		if(dt_entry.offset > (UINT_MAX - dt_entry.size)) {
+			dprintf(CRITICAL, "ERROR: Device tree contents are Invalid\n");
+			return -1;
+		}
+
+		/* Ensure we are not overshooting dt_size with the dt_entry selected */
+		if ((dt_entry.offset + dt_entry.size) > hdr->dt_size) {
+			dprintf(CRITICAL, "ERROR: Device tree contents are Invalid\n");
 			return -1;
 		}
 
@@ -1625,6 +1651,13 @@ int boot_linux_from_flash(void)
 
 			if (dev_tree_validate(table, hdr->page_size, &dt_hdr_size) != 0) {
 				dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
+				return -1;
+			}
+
+			/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+			goes beyound hdr->dt_size*/
+			if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+				dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
 				return -1;
 			}
 
@@ -2121,6 +2154,14 @@ int copy_dtb(uint8_t *boot_image_start, unsigned int scratch_offset)
 			dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
 			return -1;
 		}
+
+		/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+		goes beyound hdr->dt_size*/
+		if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+			dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
+			return -1;
+		}
+
 		/* Find index of device tree within device tree table */
 		if(dev_tree_get_entry_info(table, &dt_entry) != 0){
 			dprintf(CRITICAL, "ERROR: Getting device tree address failed\n");
@@ -2173,7 +2214,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	unsigned ramdisk_actual;
 	uint32_t image_actual;
 	uint32_t dt_actual = 0;
-	uint32_t sig_actual = SIGNATURE_SIZE;
+	uint32_t sig_actual = 0;
 	struct boot_img_hdr *hdr = NULL;
 	struct kernel64_hdr *kptr = NULL;
 	char *ptr = ((char*) data);
@@ -2225,8 +2266,12 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	image_actual = ADD_OF(image_actual, ramdisk_actual);
 	image_actual = ADD_OF(image_actual, dt_actual);
 
-	if (target_use_signed_kernel() && (!device.is_unlocked))
+	if (target_use_signed_kernel() && (!device.is_unlocked)) {
+		/* Calculate the signature length from boot image */
+		sig_actual = read_der_message_length(
+				(unsigned char*)(data + image_actual),sz);
 		image_actual = ADD_OF(image_actual, sig_actual);
+	}
 
 	/* sz should have atleast raw boot image */
 	if (image_actual > sz) {
@@ -2585,7 +2630,7 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 			}
 
 			size = partition_get_size(index);
-			if (ROUND_TO_PAGE(sz,511) > size) {
+			if (ROUND_TO_PAGE(sz, mmc_blocksize_mask) > size) {
 				fastboot_fail("size too large");
 				return;
 			}
@@ -2655,7 +2700,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 	uint32_t i;
 	uint8_t lun = 0;
 	/*End of the sparse image address*/
-	uint32_t data_end = (uint32_t)data + sz;
+	uintptr_t data_end = (uintptr_t)data + sz;
 
 	index = partition_get_index(arg);
 	ptn = partition_get_offset(index);
@@ -2684,7 +2729,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 
 	data += sizeof(sparse_header_t);
 
-	if (data_end < (uint32_t)data) {
+	if (data_end < (uintptr_t)data) {
 		fastboot_fail("buffer overreads occured due to invalid sparse header");
 		return;
 	}
@@ -2717,7 +2762,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 		chunk_header = (chunk_header_t *) data;
 		data += sizeof(chunk_header_t);
 
-		if (data_end < (uint32_t)data) {
+		if (data_end < (uintptr_t)data) {
 			fastboot_fail("buffer overreads occured due to invalid sparse header");
 			return;
 		}
@@ -2759,7 +2804,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 
-			if (data_end < (uint32_t)data + chunk_data_sz) {
+			if (data_end < (uintptr_t)data + chunk_data_sz) {
 				fastboot_fail("buffer overreads occured due to invalid sparse header");
 				return;
 			}
@@ -2797,8 +2842,9 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 
-			if (data_end < (uint32_t)data + sizeof(uint32_t)) {
+			if (data_end < (uintptr_t)data + sizeof(uint32_t)) {
 				fastboot_fail("buffer overreads occured due to invalid sparse header");
+				free(fill_buf);
 				return;
 			}
 			fill_val = *(uint32_t *)data;
@@ -2809,12 +2855,20 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				fill_buf[i] = fill_val;
 			}
 
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz))
+			{
+				fastboot_fail("bogus size for chunk FILL type");
+				free(fill_buf);
+				return;
+			}
+
 			for (i = 0; i < chunk_header->chunk_sz; i++)
 			{
 				/* Make sure that the data written to partition does not exceed partition size */
 				if ((uint64_t)total_blocks * (uint64_t)sparse_header->blk_sz + sparse_header->blk_sz > size)
 				{
 					fastboot_fail("Chunk data size for fill type exceeds partition size");
+					free(fill_buf);
 					return;
 				}
 
@@ -2852,12 +2906,12 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 			total_blocks += chunk_header->chunk_sz;
-			if ((uint32_t)data > UINT_MAX - chunk_data_sz) {
+			if ((uintptr_t)data > UINT_MAX - chunk_data_sz) {
 				fastboot_fail("integer overflow occured");
 				return;
 			}
 			data += (uint32_t)chunk_data_sz;
-			if (data_end < (uint32_t)data) {
+			if (data_end < (uintptr_t)data) {
 				fastboot_fail("buffer overreads occured due to invalid sparse header");
 				return;
 			}
@@ -3631,6 +3685,8 @@ void aboot_init(const struct app_descriptor *app)
 	{
 		page_size = mmc_page_size();
 		page_mask = page_size - 1;
+		mmc_blocksize = mmc_get_device_blocksize();
+		mmc_blocksize_mask = mmc_blocksize - 1;
 	}
 	else
 	{
