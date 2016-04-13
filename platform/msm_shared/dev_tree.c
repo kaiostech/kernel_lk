@@ -595,6 +595,21 @@ static int platform_dt_absolute_match(struct dt_entry *cur_dt_entry, struct dt_e
 		insert_dt_entry_in_queue(dt_list, dt_node_tmp);
 		return 1;
 	}
+        /* Unconditionally add the DTB for the IP-Cam target */
+        else if (cur_dt_msm_id == MSM8956 && cur_dt_hw_platform == 9 && cur_dt_hw_subtype == 0) {
+		dt_node_tmp = dt_entry_list_init();
+		memcpy((char*)dt_node_tmp->dt_entry_m,(char*)cur_dt_entry, sizeof(struct dt_entry));
+
+		dprintf(INFO, "Force add DTB entry %u/%08x/0x%08x/%x/%x/%x/%x/%x/%x/%x\n",
+			dt_node_tmp->dt_entry_m->platform_id, dt_node_tmp->dt_entry_m->variant_id,
+			dt_node_tmp->dt_entry_m->board_hw_subtype, dt_node_tmp->dt_entry_m->soc_rev,
+			dt_node_tmp->dt_entry_m->pmic_rev[0], dt_node_tmp->dt_entry_m->pmic_rev[1],
+			dt_node_tmp->dt_entry_m->pmic_rev[2], dt_node_tmp->dt_entry_m->pmic_rev[3],
+			dt_node_tmp->dt_entry_m->offset, dt_node_tmp->dt_entry_m->size);
+
+		insert_dt_entry_in_queue(dt_list, dt_node_tmp);
+		return 1;
+        }
 	return 0;
 }
 
