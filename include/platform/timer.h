@@ -32,6 +32,7 @@ void udelay(unsigned usecs);
 
 uint32_t platform_tick_rate(void);
 
+void mdelay_optimal(unsigned msecs);
 
 #endif
 

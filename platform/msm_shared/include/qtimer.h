@@ -46,3 +46,4 @@ void qtimer_init();
 uint32_t qtimer_tick_rate();
 void udelay(unsigned usecs);
 void mdelay(unsigned msecs);
+void mdelay_optimal(unsigned msecs);
