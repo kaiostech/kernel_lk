@@ -715,7 +715,15 @@ void earlydomain_exit()
 
     arch_disable_ints();
 
-    dprintf(INFO, "Turning off secondary CPU\n");
+    dprintf(INFO, "secondary CPU going to idle\n");
+
+    /* workaround to prevent calling psci_cpu_off */
+    /*TODO - remove this while loop when the PSCI_cpu_off fixes are available */
+    while(1)
+    {
+        arch_idle();
+        dprintf(CRITICAL, "secondary CPU has been woken up.. going back to sleep\n");
+    }
 
     /* turn off secondary cpu */
     if (psci_cpu_off())
