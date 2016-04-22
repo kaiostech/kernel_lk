@@ -95,6 +95,7 @@
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
+int early_camera_enabled = 1;
 
 enum
 {
@@ -956,6 +957,8 @@ int animated_splash() {
 			break;
 
 		for (j = 0; j < NUM_DISPLAYS; j++) {
+			if (j == 1 && early_camera_enabled == 1)
+				continue;
 			layer[j].fb->base = buffers[j][frame_cnt[j]];
 			ret = target_display_update(&update[j],1, j);
 			frame_cnt[j]++;
@@ -964,11 +967,17 @@ int animated_splash() {
 		}
 		// assume all displays have the same fps
 		mdelay_optimal(sleep_time);
+		if(early_camera_enabled)
+			early_camera_flip();
 		k++;
 	}
-
-	for (j = 0; j < NUM_DISPLAYS; j++)
+	if(early_camera_enabled)
+		early_camera_stop();
+	for (j = 0; j < NUM_DISPLAYS; j++) {
+		if (j == 1 && early_camera_enabled == 1)
+			continue;
 		target_release_layer(&layer[j]);
+	}
 
 	return ret;
 }
@@ -1185,9 +1194,7 @@ int animated_splash() {
 /* early domain services */
 void earlydomain_services()
 {
-#ifndef EARLY_CAMERA
 	uint32_t ret = 0;
-#endif
 	int i = 0;
 
 	dprintf(CRITICAL, "earlydomain_services: Waiting for display init to complete\n");
@@ -1198,14 +1205,14 @@ void earlydomain_services()
 		i++;
 	}
 
-    dprintf(CRITICAL, "earlydomain_services: Display init done\n");
+	dprintf(CRITICAL, "earlydomain_services: Display init done\n");
 
-#ifdef EARLY_CAMERA
 	/* starting early domain services */
+	if (early_camera_init() == -1) {
+		early_camera_enabled = 0;
+	}
 	dprintf(CRITICAL, "earlydomain_services: Early Camera starting\n");
-	mmc_read_done = true;
-	early_camera_init();
-#else
+
 	/*Create Animated splash thread
 	if target supports it*/
 	if (target_animated_splash_screen())
@@ -1219,7 +1226,6 @@ void earlydomain_services()
 			animated_splash();
 		}
 	}
-#endif
   /* starting eraly domain services */
 }
 

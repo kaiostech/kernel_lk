@@ -32,6 +32,7 @@
 //#define EARLY_CAMERA
 
 //#define BRIDGE_REV_1  // For adashub rev 1 of TI 960 Bridge chip.
+#define DISPLAY_ID 1 // Use dsi 1
 
 struct camera_i2c_reg_array {
 	unsigned short reg_addr;
@@ -52,6 +53,7 @@ struct i2c_config_data {
 int get_cam_data(struct i2c_config_data **cam_data);
 int early_camera_init(void);
 void target_early_camera_init(void);
-
+void early_camera_flip(void);
+void early_camera_stop(void);
 
 #endif
