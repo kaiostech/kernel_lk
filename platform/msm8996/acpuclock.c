@@ -466,6 +466,15 @@ void video_gdsc_disable()
 		while(readl(_addr_) & (GDSC_POWER_ON_BIT)); \
 	} while(0)
 
+#define GDSC_ENABLE(_enable_, _addr_) \
+do { \
+	if (_enable_) { \
+		GDSC_ENABLE_ADDR(#_addr_); \
+	} else { \
+		GDSC_DISABLE_ADDR(#_addr_); \
+	} \
+} while(0)
+
 void camera_gdsc_enable(int enable)
 {
 	if (enable) {
@@ -484,7 +493,7 @@ void camera_gdsc_enable(int enable)
 		GDSC_DISABLE_ADDR(MMSS_CAMSS_VFE1_GDSCR);
 		GDSC_DISABLE_ADDR(MMSS_CAMSS_VFE0_GDSCR);
 		GDSC_DISABLE_ADDR(MMSS_CAMSS_TOP_GDSCR);
-		//GDSC_DISABLE_ADDR(MMSS_MMAGIC_CAMSS_GDSCR);
+		GDSC_DISABLE_ADDR(MMSS_MMAGIC_CAMSS_GDSCR);
 		//GDSC_DISABLE_ADDR(MMAGIC_BIMC_GDSCR);
 	}
 

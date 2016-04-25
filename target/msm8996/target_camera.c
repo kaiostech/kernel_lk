@@ -46,49 +46,27 @@
 #ifdef BRIDGE_REV_1
 #define SW_FORMAT_CORRECTION
 #endif
+#define NUM_DISPLAYS 1
 
-// Ping Pong buffer addresses
-//#define VFE_PING_ADDR 		0x84bc3980
-//#define VFE_PONG_ADDR 		0x84e67600
-
-#define VFE_PING_ADDR 0xB1C00000
-#define VFE_PONG_ADDR 0xB1EA3C80
-
-
-#define DISPLAY_PING_ADDR 	0x8510b280
-#define DISPLAY_PONG_ADDR 	0x853aef00
-#define PING_PONG_IRQ_MASK 0x100
-
-#define EARLY_CAM_NUM_FRAMES 60*20
+#define EARLY_CAM_NUM_FRAMES 60*2
 #define MAX_POLL_COUNT 1000
 #define CAM_RESET_GPIO 23
 
 struct i2c_config_data *cam_data;
 void *disp_ptr, *layer_cam_ptr;
-struct target_display_update update_cam;
-struct target_layer layer_cam;
+struct target_display_update update_cam[NUM_DISPLAYS];
+struct target_layer layer_cam[NUM_DISPLAYS];
 struct target_display * disp;
 struct fbcon_config *fb;
 int num_configs = 0;
 int firstframe = 0;
-#ifdef SW_FORMAT_CORRECTION
-int raw_size = 1280*720*2.5;
-#else
-int raw_size = 1280*720*2.0;
-#endif
-int early_cam_on = 1;
-uint32 frame_counter = 0;
-int index = 0;
-uint32_t read_val = 0;
-int ping = 0;
-#ifdef SW_FORMAT_CORRECTION
-int i = 0;
-char *tempsrcPtr = (char *)DISPLAY_PONG_ADDR;
-char *tempdstPtr = (char *)VFE_PING_ADDR;
-#endif
 
-
-
+// Ping Pong buffer addresses
+#define VFE_PING_ADDR 		0x84bc3980
+#define VFE_PONG_ADDR 		0x84e67600
+#define DISPLAY_PING_ADDR 	0x8510b280
+#define DISPLAY_PONG_ADDR 	0x853aef00
+#define PING_PONG_IRQ_MASK 0x100
 
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
@@ -758,7 +736,7 @@ int msm_vfe_poll_irq(int irq_num)
 
 	if(irq_num == PING_PONG_IRQ_MASK) {
 		while(!(irq &PING_PONG_IRQ_MASK)) {
-			mdelay_optimal(1);
+			//thread_yield();
 			irq = msm_camera_io_r_mb(MMSS_A_VFE_0_IRQ_STATUS_0);
 			poll_count++;
 		}
@@ -1612,45 +1590,56 @@ void target_early_camera_init(void)
 #endif
 }
 
-static void early_camera_setup_layer(int display_id)
+static void early_camera_setup_layer(int j)
 {
 
 	layer_cam_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatYCbCr422H2V1Packed);
 	if (layer_cam_ptr == NULL){
 		dprintf(CRITICAL, "Layer acquire failed\n");
 	}
-	fb = target_display_get_fb(1);
-	layer_cam.layer = layer_cam_ptr;
-	layer_cam.z_order = 1;
-	update_cam.disp = disp_ptr;
-	update_cam.layer_list = &layer_cam;
-	update_cam.num_layers = 1;
-	layer_cam.fb = fb;
+	fb = target_display_get_fb(j);
+	layer_cam[j].layer = layer_cam_ptr;
+	layer_cam[j].z_order = 1;
+	update_cam[j].disp = disp_ptr;
+	update_cam[j].layer_list = &layer_cam[j];
+	update_cam[j].num_layers = 1;
+	layer_cam[j].fb = fb;
 	fb->bpp = 16;
 	fb->format = kFormatYCbCr422H2V1Packed;
-	layer_cam.width = fb->width;
-	layer_cam.height = fb->height;
+	layer_cam[j].width = fb->width;
+	layer_cam[j].height = fb->height;
 	if (1280 < fb->width) {
 		dprintf(SPEW, "Modify width\n");
-		layer_cam.width = 1280;
+		layer_cam[j].width = 1280;
 	}
 	if (720 < fb->height) {
 		dprintf(SPEW, "Modify height\n");
-		layer_cam.height = 720;
+		layer_cam[j].height = 720;
 	}
 
 }
 static int early_camera_thread(void *arg) {
+#ifdef SW_FORMAT_CORRECTION
+	int raw_size = 1280*720*2.5;
+#else
+	int raw_size = 1280*720*2.0;
+#endif
+	int early_cam_on = 1;
+	uint32 frame_counter = 0;
+	int index = 0;
+	uint32_t read_val = 0;
+	uint32 j = 0;
 
 	num_configs = get_cam_data(&cam_data);
 
 	if(num_configs == 0) {
 		dprintf(CRITICAL,
 			"Early Camera not configured for this target exiting\n");
-		return -1;
+		return 0;
 	}
 
-	disp_ptr = target_display_open(DISPLAY_ID);
+	for (j = 0; j < NUM_DISPLAYS; j ++) {
+		disp_ptr = target_display_open(j);
 	if (disp_ptr == NULL) {
 		dprintf(CRITICAL, "Display open failed\n");
 		return -1;
@@ -1661,8 +1650,8 @@ static int early_camera_thread(void *arg) {
 		return -1;
 	}
 
-	early_camera_setup_layer(DISPLAY_ID);
-
+		early_camera_setup_layer(j);
+	}
 	hw_vfe0_init_regs[46].reg_data = (unsigned int)VFE_PING_ADDR;
 	hw_vfe0_init_regs[47].reg_data = hw_vfe0_init_regs[46].reg_data +raw_size;
 	hw_vfe0_init_regs[48].reg_data = (unsigned int)VFE_PONG_ADDR;
@@ -1703,7 +1692,7 @@ static int early_camera_thread(void *arg) {
 							cam_data[index].i2c_num_bytes_data);
 			if(read_val != cam_data[index].i2c_revision_id_val) {
 				dprintf(CRITICAL,
-				"Early Camera - I2c sensor rev id %d doesn't match for this target %d exiting\n",
+				"Early Camera - I2c revision %d doesn't match for this target %d exiting\n",
 				read_val,
 				cam_data[index].i2c_revision_id_val);
 				goto exit;
@@ -1744,19 +1733,14 @@ static int early_camera_thread(void *arg) {
 					cam_data[num_configs-1].i2c_num_bytes_address,
 					cam_data[num_configs-1].i2c_num_bytes_data,
 					0);
-	return 0;
-	exit:
-	return -1;
-}
-void early_camera_stop(void) {
-	// stop VFE writes to memory
-	msm_hw_init(&stop_vfe_stream[0],
-		sizeof(stop_vfe_stream) / sizeof(stop_vfe_stream[0]),0);
 
-	target_release_layer(&layer_cam);
-}
-void early_camera_flip(void)
-{
+	while(1) {
+		int ping = 0;
+#ifdef SW_FORMAT_CORRECTION
+		int i = 0;
+		char *tempsrcPtr = (char *)DISPLAY_PONG_ADDR;
+		char *tempdstPtr = (char *)VFE_PING_ADDR;
+#endif
 		// wait for ping pong irq;
 		ping = msm_vfe_poll_irq(PING_PONG_IRQ_MASK);
 
@@ -1767,22 +1751,26 @@ void early_camera_flip(void)
 		}
 		if(early_cam_on == 1) {
 		if(ping) {
+				for (j = 0; j < NUM_DISPLAYS; j ++) {
 #ifdef SW_FORMAT_CORRECTION
-			layer_cam.fb->base = (void *)DISPLAY_PING_ADDR;
-			tempdstPtr = (char *)DISPLAY_PING_ADDR;
-			tempsrcPtr = (char *)VFE_PONG_ADDR;
+				layer_cam[j].fb->base = (void *)DISPLAY_PING_ADDR;
+				tempdstPtr = (char *)DISPLAY_PING_ADDR;
+				tempsrcPtr = (char *)VFE_PONG_ADDR;
 #else
-			layer_cam.fb->base = (void *)VFE_PING_ADDR;
+				layer_cam[j].fb->base = (void *)VFE_PING_ADDR;
 #endif
+		}
 			}
 		else {
+				for (j = 0; j < NUM_DISPLAYS; j ++) {
 #ifdef SW_FORMAT_CORRECTION
-				layer_cam.fb->base = (void *)DISPLAY_PONG_ADDR;
+				layer_cam[j].fb->base = (void *)DISPLAY_PONG_ADDR;
 				tempdstPtr = (char *)DISPLAY_PONG_ADDR;
 				tempsrcPtr = (char *)VFE_PING_ADDR;
 #else
-				layer_cam.fb->base = (void *)VFE_PONG_ADDR;
+				layer_cam[j].fb->base = (void *)VFE_PONG_ADDR;
 #endif
+			}
 		}
 		}
 
@@ -1798,14 +1786,35 @@ void early_camera_flip(void)
 #endif
 		frame_counter++;
 		if(early_cam_on == 1) {
-				target_display_update(&update_cam,1,DISPLAY_ID);
+			for (j = 0; j < NUM_DISPLAYS; j++)
+				target_display_update(&update_cam[j],1,j);
 			if (firstframe == 0) {
 				cam_place_kpi_marker("Camera display post done");
 				firstframe = 1;
 			}
 		}
+		if(frame_counter > EARLY_CAM_NUM_FRAMES) {
+			break;
+		}
+		//thread_yield();
 	}
 
+	// stop VFE writes to memory
+	msm_hw_init(&stop_vfe_stream[0],
+		sizeof(stop_vfe_stream) / sizeof(stop_vfe_stream[0]),0);
+
+	//if(early_cam_on == 1) {
+	//	for (j = 0; j < NUM_DISPLAYS; j++)
+	//		target_release_layer(&layer_cam[j]);
+	//}
+
+exit:
+	camera_clocks_enable(0);
+	camera_gdsc_enable(0);
+
+	//thread_exit(0);
+	return 0;
+}
 
 bool is_thread_start = false;
 static void early_camera_thread_start(void *arg)
@@ -1828,10 +1837,9 @@ static void early_camera_thread_start(void *arg)
 int early_camera_init(void)
 {
 	int msg = 0;
-	int rc = 0;
 	//early_camera_thread_start(&msg);
-	rc  = early_camera_thread(&msg);
-	return rc;
+	early_camera_thread(&msg);
+	return 0;
 }
 
 
