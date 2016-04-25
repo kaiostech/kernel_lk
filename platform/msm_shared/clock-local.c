@@ -89,7 +89,7 @@ static void __local_clk_enable_reg(struct rcg_clk *clk)
 	void *const reg = clk->b.ctl_reg;
 
 	if(clk->current_freq == &local_dummy_freq)
-		dprintf(CRITICAL, "Attempting to enable %s before setting its rate.", clk->c.dbg_name);
+		dprintf(CRITICAL, "Attempting to enable %s before setting its rate.\n", clk->c.dbg_name);
 	/*
 	 * Program the NS register, if applicable. NS registers are not
 	 * set in the set_rate path because power can be saved by deferring
