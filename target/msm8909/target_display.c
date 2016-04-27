@@ -44,6 +44,7 @@
 #include "include/panel.h"
 #include "include/display_resource.h"
 
+#define QRD_RJIL 2
 #define VCO_DELAY_USEC 1000
 #define GPIO_STATE_LOW 0
 #define GPIO_STATE_HIGH 2
@@ -126,7 +127,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 	mdelay(20);
 
 	if (enable) {
-		if (hw_id == HW_PLATFORM_SURF || (hw_id == HW_PLATFORM_MTP)) {
+		if (hw_id == HW_PLATFORM_SURF || (hw_id == HW_PLATFORM_MTP) || (hw_id == HW_PLATFORM_QRD)) {
 			/* configure backlight gpio for CDP and MTP */
 			gpio_tlmm_config(bkl_gpio.pin_id, 0,
 				bkl_gpio.pin_direction, bkl_gpio.pin_pull,
@@ -193,14 +194,15 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 	uint32_t hw_subtype = board_hardware_subtype();
 
 	if (enable) {
-		if (pinfo->mipi.use_enable_gpio) {
-			gpio_tlmm_config(enable_gpio.pin_id, 0,
-				enable_gpio.pin_direction, enable_gpio.pin_pull,
-				enable_gpio.pin_strength,
-				enable_gpio.pin_state);
+		if (!((hw_id == HW_PLATFORM_QRD) && (hw_subtype == QRD_RJIL)))
+			if (pinfo->mipi.use_enable_gpio) {
+				gpio_tlmm_config(enable_gpio.pin_id, 0,
+						enable_gpio.pin_direction, enable_gpio.pin_pull,
+						enable_gpio.pin_strength,
+						enable_gpio.pin_state);
 
-			gpio_set(enable_gpio.pin_id, 2);
-		}
+				gpio_set(enable_gpio.pin_id, 2);
+			}
 
 		gpio_tlmm_config(reset_gpio.pin_id, 0,
 				reset_gpio.pin_direction, reset_gpio.pin_pull,

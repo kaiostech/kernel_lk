@@ -46,12 +46,14 @@
 #include "include/panel_hx8394d_qhd_video.h"
 #include "include/panel_hx8379c_fwvga_video.h"
 #include "include/panel_hx8379c_hvga_video.h"
+#include "include/panel_ili9488_hvga_video.h"
 
 #define DISPLAY_MAX_PANEL_DETECTION 0
 #define ILI9806E_FWVGA_VIDEO_PANEL_POST_INIT_DELAY 68
 
 enum {
 	QRD_SKUA = 0x00,
+	QRD_RJIL = 0x02,
 	QRD_SKUC = 0x08,
 	QRD_SKUE = 0x09,
 };
@@ -68,6 +70,7 @@ enum {
 	TRULY_WVGA_CMD_PANEL,
 	HX8379A_FWVGA_SKUA_VIDEO_PANEL,
 	ILI9806E_FWVGA_VIDEO_PANEL,
+	ILI9488_HVGA_VIDEO_PANEL,
 	HX8394D_QHD_VIDEO_PANEL,
 	HX8379C_FWVGA_VIDEO_PANEL,
 	HX8379C_HVGA_VIDEO_PANEL,
@@ -85,6 +88,7 @@ static struct panel_list supp_panels[] = {
 	{"truly_wvga_cmd", TRULY_WVGA_CMD_PANEL},
 	{"hx8379a_fwvga_skua_video", HX8379A_FWVGA_SKUA_VIDEO_PANEL},
 	{"ili9806e_fwvga_video",ILI9806E_FWVGA_VIDEO_PANEL},
+	{"ili9488_hvga_video",ILI9488_HVGA_VIDEO_PANEL},
 	{"hx8394d_qhd_video", HX8394D_QHD_VIDEO_PANEL},
 	{"hx8379c_fwvga_video",HX8379C_FWVGA_VIDEO_PANEL},
 	{"hx8379c_hvga_video", HX8379C_HVGA_VIDEO_PANEL},
@@ -248,6 +252,27 @@ static int init_panel_data(struct panel_struct *panelstruct,
                                 ili9806e_fwvga_video_timings, TIMING_SIZE);
                 pinfo->mipi.signature = ILI9806E_FWVGA_VIDEO_SIGNATURE;
                 break;
+	case ILI9488_HVGA_VIDEO_PANEL:
+		dprintf(CRITICAL,"RJIL_RUGGED seleceted ILI9488_HVGA_VIDEO_PANEL %s:%d",__func__,__LINE__);
+		panelstruct->paneldata    = &ili9488_hvga_video_panel_data;
+		panelstruct->panelres     = &ili9488_hvga_video_panel_res;
+		panelstruct->color        = &ili9488_hvga_video_color;
+		panelstruct->videopanel   = &ili9488_hvga_video_video_panel;
+		panelstruct->commandpanel = &ili9488_hvga_video_command_panel;
+		panelstruct->state        = &ili9488_hvga_video_state;
+		panelstruct->laneconfig   = &ili9488_hvga_video_lane_config;
+		panelstruct->paneltiminginfo
+			= &ili9488_hvga_video_timing_info;
+		panelstruct->panelresetseq
+			= &ili9488_hvga_video_panel_reset_seq;
+		panelstruct->backlightinfo = &ili9488_hvga_video_backlight;
+		pinfo->mipi.panel_cmds
+			= ili9488_hvga_video_on_command;
+		pinfo->mipi.num_of_panel_cmds
+			= ILI9488_HVGA_VIDEO_ON_COMMAND;
+		memcpy(phy_db->timing,
+				ili9488_hvga_video_timings, TIMING_SIZE);
+		break;
 	case HX8394D_QHD_VIDEO_PANEL:
 		panelstruct->paneldata	  = &hx8394d_qhd_video_panel_data;
 		panelstruct->panelres	  = &hx8394d_qhd_video_panel_res;
@@ -363,6 +388,10 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		switch (platform_subtype) {
 			case QRD_SKUA:
 				panel_id = HX8379A_FWVGA_SKUA_VIDEO_PANEL;
+				break;
+			case QRD_RJIL:
+				dprintf(CRITICAL,"HW_ID QRD_RJIL");
+				panel_id = ILI9488_HVGA_VIDEO_PANEL;
 				break;
 			case QRD_SKUC:
 				panel_id = ILI9806E_FWVGA_VIDEO_PANEL;
