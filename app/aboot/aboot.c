@@ -1333,6 +1333,7 @@ int boot_linux_from_flash(void)
 	struct dt_entry dt_entry;
 	uint32_t dt_actual;
 	uint32_t dt_hdr_size;
+	uint32_t dtb_offset = 0;
 #endif
 
 	if (target_is_emmc_boot()) {
@@ -1476,16 +1477,6 @@ int boot_linux_from_flash(void)
 		/* Move kernel and ramdisk to correct address */
 		memmove((void*) hdr->kernel_addr, (char*) (image_addr + page_size), hdr->kernel_size);
 		memmove((void*) hdr->ramdisk_addr, (char*) (image_addr + page_size + kernel_actual), hdr->ramdisk_size);
-#if DEVICE_TREE
-		/* Validate and Read device device tree in the "tags_add */
-		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_entry.size))
-		{
-			dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
-			return -1;
-		}
-
-		memmove((void*) hdr->tags_addr, (char *)(image_addr + page_size + kernel_actual + ramdisk_actual), hdr->dt_size);
-#endif
 
 		/* Make sure everything from scratch address is read before next step!*/
 		if(device.is_tampered)
@@ -1529,6 +1520,7 @@ int boot_linux_from_flash(void)
 			/* Second image loading not implemented. */
 			ASSERT(0);
 		}
+	}
 
 #if DEVICE_TREE
 		if(hdr->dt_size != 0) {
@@ -1577,9 +1569,29 @@ int boot_linux_from_flash(void)
 				return -1;
 			}
 		}
+		else
+		{
+			/* Validate the tags_addr */
+			if (check_aboot_addr_range_overlap(hdr->tags_addr, kernel_actual))
+			{
+				dprintf(CRITICAL, "Device tree addresses overlap with aboot addresses.\n");
+				return -1;
+			}
+			/*
+			* If appended dev tree is found, update the atags with
+			* memory address to the DTB appended location on RAM.
+			* Else update with the atags address in the kernel header
+			*/
+			void *dtb;
+			dtb = dev_tree_appended((void*)(hdr->kernel_addr),
+							hdr->kernel_size, dtb_offset,
+								(void *)hdr->tags_addr);
+			if (!dtb) {
+				dprintf(CRITICAL, "ERROR: Appended Device Tree Blob not found\n");
+				return -1;
+			}
+		}
 #endif
-
-	}
 continue_boot:
 
 	/* TODO: create/pass atags to kernel */
