@@ -77,7 +77,7 @@ static unsigned int lk_splash_val_en = 1;
 
 extern void get_lk_splash_val(unsigned int *val);
 
-static unsigned int place_marker(char *marker_name)
+unsigned int place_marker(char *marker_name)
 {
 	unsigned int marker_value;
 

@@ -143,8 +143,9 @@ static const char *baseband_auto    = " androidboot.baseband=auto";
 #ifdef WITH_SPLASH_SCREEN_MARKER
 #define LK_SPLASH_CMD_SIZE 13
 static const char *lk_splash_cmdline            = " LK_splash=";
-
+static const char *lk_kernel_cmdline            = " LK_kernel=";
 static char lk_splash_buf[LK_SPLASH_CMD_SIZE];
+static char lk_kernel_buf[LK_SPLASH_CMD_SIZE];
 #endif
 
 /* Assuming unauthorized kernel image by default */
@@ -219,6 +220,7 @@ unsigned char *update_cmdline(const char * cmdline)
 	int pause_at_bootup = 0;
 #ifdef WITH_SPLASH_SCREEN_MARKER
 	unsigned int lk_splash_val;
+	unsigned int lk_kernel_val;
 #endif
 
 	if (cmdline && cmdline[0]) {
@@ -291,6 +293,12 @@ unsigned char *update_cmdline(const char * cmdline)
 		 lk_splash_val);
 	cmdline_len += strlen(lk_splash_cmdline);
 	cmdline_len += strlen(lk_splash_buf);
+
+	lk_kernel_val = place_marker("lk kernel");
+	snprintf((char *)lk_kernel_buf, LK_SPLASH_CMD_SIZE, "%d",
+		 lk_kernel_val);
+	cmdline_len += strlen(lk_kernel_cmdline);
+	cmdline_len += strlen(lk_kernel_buf);
 #endif
 	if (cmdline_len > 0) {
 		const char *src;
@@ -401,6 +409,16 @@ unsigned char *update_cmdline(const char * cmdline)
 		while ((*dst++ = *src++));
 
 		src = lk_splash_buf;
+		if (have_cmdline) --dst;
+		have_cmdline = 1;
+		while ((*dst++ = *src++));
+
+		src = lk_kernel_cmdline;
+		if (have_cmdline) --dst;
+		have_cmdline = 1;
+		while ((*dst++ = *src++));
+
+		src = lk_kernel_buf;
 		if (have_cmdline) --dst;
 		have_cmdline = 1;
 		while ((*dst++ = *src++));

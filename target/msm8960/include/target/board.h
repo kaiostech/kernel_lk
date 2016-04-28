@@ -67,4 +67,6 @@
 #define LINUX_MACHTYPE_8064_ADP_2_ES2   4909
 #define LINUX_MACHTYPE_8064_ADP_2_ES2P5   7801
 
+unsigned int place_marker(char *marker_name);
+
 #endif
