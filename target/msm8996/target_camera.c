@@ -1672,8 +1672,7 @@ static int early_camera_start(void *arg) {
 
 	// Write setup configs for i2c devices.
 	// Last config is for starting the camera.
-
-	for(index = 0;index < num_configs - 1;index++) {
+	for(index = 0;index < num_configs - 2;index++) {
 		if(index == 1) {
 			// Check if sensor is present and exit if not
 			msm_cci_i2c_read(cam_data[index].i2c_revision_id_reg,
@@ -1731,22 +1730,34 @@ static int early_camera_start(void *arg) {
 		sizeof(hw_ispif_init_regs) / sizeof(hw_ispif_init_regs[0]),0);
 
 	// Start cam
-	msm_cci_i2c_write(cam_data[num_configs-1].i2c_regs,
-					cam_data[num_configs-1].size,
-					cam_data[num_configs-1].i2c_slave_address,
+	msm_cci_i2c_write(cam_data[num_configs-2].i2c_regs,
+					cam_data[num_configs-2].size,
+					cam_data[num_configs-2].i2c_slave_address,
 					0,
 					0,
-					cam_data[num_configs-1].i2c_num_bytes_address,
-					cam_data[num_configs-1].i2c_num_bytes_data,
+					cam_data[num_configs-2].i2c_num_bytes_address,
+					cam_data[num_configs-2].i2c_num_bytes_data,
 					0);
 	return 0;
 	exit:
 	return -1;
 }
+
+#define SENSOR_STOP_IDX 3
 void early_camera_stop(void) {
 	// stop VFE writes to memory
 	msm_hw_init(&stop_vfe_stream[0],
 		sizeof(stop_vfe_stream) / sizeof(stop_vfe_stream[0]),0);
+
+	// Stop cam
+	msm_cci_i2c_write(cam_data[SENSOR_STOP_IDX].i2c_regs,
+					cam_data[SENSOR_STOP_IDX].size,
+					cam_data[SENSOR_STOP_IDX].i2c_slave_address,
+					0,
+					0,
+					cam_data[SENSOR_STOP_IDX].i2c_num_bytes_address,
+					cam_data[SENSOR_STOP_IDX].i2c_num_bytes_data,
+					0);
 
 	target_release_layer(&layer_cam);
 }

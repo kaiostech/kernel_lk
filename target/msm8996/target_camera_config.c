@@ -101,6 +101,13 @@ static struct camera_i2c_reg_array ti960_start_regs[] = {
 	{ 0x20, 0xe0, 0},
 };
 
+// Start TI 960 RX 0 port
+static struct camera_i2c_reg_array ti960_stop_regs[] = {
+	{ 0x4c, 0x1, 0},
+	{ 0x6e, 0x8, 5000},
+};
+
+
 // Camera init registers
 struct camera_i2c_reg_array ov10635_regs[] = {
 	{ 0x0103, 0x01, 5000 },
@@ -694,7 +701,7 @@ struct camera_i2c_reg_array ov10635_regs[] = {
 };
 
 // I2C config data where last set is for stream start.
-struct i2c_config_data config_data[3];
+struct i2c_config_data config_data[4];
 
 int get_cam_data(struct i2c_config_data **cam_data) {
 	int number_config_elements = 0;
@@ -738,6 +745,20 @@ int get_cam_data(struct i2c_config_data **cam_data) {
 	config_data[2].i2c_revision_id_val = 0x20;
 #endif
 	config_data[2].i2c_revision_id_reg = 0x3;
+	number_config_elements++;
+
+	// Stop streaming on RX port 0
+	config_data[3].size = sizeof(ti960_stop_regs) / sizeof(ti960_stop_regs[0]);
+	config_data[3].i2c_slave_address = BRIDGE_SLAVEADDR;
+	config_data[3].i2c_regs = &ti960_stop_regs[0];
+	config_data[3].i2c_num_bytes_address = 1;
+	config_data[3].i2c_num_bytes_data = 1;
+#ifdef BRIDGE_REV_1
+	config_data[3].i2c_revision_id_val = 0x10;
+#else
+	config_data[3].i2c_revision_id_val = 0x20;
+#endif
+	config_data[3].i2c_revision_id_reg = 0x3;
 	number_config_elements++;
 
 	return number_config_elements;
