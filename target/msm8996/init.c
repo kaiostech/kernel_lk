@@ -965,13 +965,15 @@ int animated_splash() {
 			if (frame_cnt[j] >= g_head[j].num_frames)
 				frame_cnt[j] = 0;
 		}
-		// assume all displays have the same fps
-		mdelay_optimal(sleep_time);
-		if(early_camera_enabled)
+		if(early_camera_enabled == 1)
+			// Rely on camera timing to flip.
 			early_camera_flip();
+		else
+			// assume all displays have the same fps
+			mdelay_optimal(sleep_time);
 		k++;
 	}
-	if(early_camera_enabled)
+	if (early_camera_enabled == 1)
 		early_camera_stop();
 	for (j = 0; j < NUM_DISPLAYS; j++) {
 		if (j == 1 && early_camera_enabled == 1)
@@ -1210,8 +1212,10 @@ void earlydomain_services()
 	/* starting early domain services */
 	if (early_camera_init() == -1) {
 		early_camera_enabled = 0;
+		dprintf(CRITICAL, "earlydomain_services: Early Camera exit init failed\n");
+	} else {
+		dprintf(CRITICAL, "earlydomain_services: Early Camera starting\n");
 	}
-	dprintf(CRITICAL, "earlydomain_services: Early Camera starting\n");
 
 	/*Create Animated splash thread
 	if target supports it*/

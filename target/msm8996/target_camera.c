@@ -47,14 +47,8 @@
 #define SW_FORMAT_CORRECTION
 #endif
 
-// Ping Pong buffer addresses
-//#define VFE_PING_ADDR 		0x84bc3980
-//#define VFE_PONG_ADDR 		0x84e67600
-
 #define VFE_PING_ADDR 0xB1C00000
 #define VFE_PONG_ADDR 0xB1EA3C80
-
-
 #define DISPLAY_PING_ADDR 	0x8510b280
 #define DISPLAY_PONG_ADDR 	0x853aef00
 #define PING_PONG_IRQ_MASK 0x100
@@ -1640,7 +1634,7 @@ static void early_camera_setup_layer(int display_id)
 	}
 
 }
-static int early_camera_thread(void *arg) {
+static int early_camera_start(void *arg) {
 
 	num_configs = get_cam_data(&cam_data);
 
@@ -1649,19 +1643,6 @@ static int early_camera_thread(void *arg) {
 			"Early Camera not configured for this target exiting\n");
 		return -1;
 	}
-
-	disp_ptr = target_display_open(DISPLAY_ID);
-	if (disp_ptr == NULL) {
-		dprintf(CRITICAL, "Display open failed\n");
-		return -1;
-	}
-	disp = target_get_display_info(disp_ptr);
-	if (disp == NULL){
-		dprintf(CRITICAL, "Display info failed\n");
-		return -1;
-	}
-
-	early_camera_setup_layer(DISPLAY_ID);
 
 	hw_vfe0_init_regs[46].reg_data = (unsigned int)VFE_PING_ADDR;
 	hw_vfe0_init_regs[47].reg_data = hw_vfe0_init_regs[46].reg_data +raw_size;
@@ -1677,6 +1658,9 @@ static int early_camera_thread(void *arg) {
 					cam_data[0].i2c_num_bytes_address,
 					cam_data[0].i2c_num_bytes_data);
 
+
+
+
 	if(cam_data[0].i2c_revision_id_val != read_val) {
 		dprintf(CRITICAL,
 			"Early Camera - I2c revision %d doesn't match for this target %d exiting\n",
@@ -1690,6 +1674,7 @@ static int early_camera_thread(void *arg) {
 
 	// Write setup configs for i2c devices.
 	// Last config is for starting the camera.
+
 	for(index = 0;index < num_configs - 1;index++) {
 		if(index == 1) {
 			// Check if sensor is present and exit if not
@@ -1709,7 +1694,6 @@ static int early_camera_thread(void *arg) {
 				goto exit;
 			}
 		}
-
 		msm_cci_i2c_write(cam_data[index].i2c_regs,
 						cam_data[index].size,
 						cam_data[index].i2c_slave_address,
@@ -1719,6 +1703,19 @@ static int early_camera_thread(void *arg) {
 						cam_data[index].i2c_num_bytes_data,
 						0);
 	}
+
+	disp_ptr = target_display_open(DISPLAY_ID);
+	if (disp_ptr == NULL) {
+		dprintf(CRITICAL, "Display open failed\n");
+		return -1;
+	}
+	disp = target_get_display_info(disp_ptr);
+	if (disp == NULL){
+		dprintf(CRITICAL, "Display info failed\n");
+		return -1;
+	}
+
+	early_camera_setup_layer(DISPLAY_ID);
 	// SMMU and anything else missed.
 	msm_hw_init(&other_init_regs[0],
 		sizeof(other_init_regs) / sizeof(other_init_regs[0]),0);
@@ -1806,31 +1803,11 @@ void early_camera_flip(void)
 		}
 	}
 
-
-bool is_thread_start = false;
-static void early_camera_thread_start(void *arg)
-{
-	thread_t *thr;
-
-	if (!is_thread_start) {
-		thr = thread_create("earlycamera", &early_camera_thread,
-			(void*)arg, DEFAULT_PRIORITY, DEFAULT_STACK_SIZE*2);
-		if (!thr) {
-			dprintf(CRITICAL, "ERROR: creating early camera thread\n");
-			return;
-		}
-		thread_resume(thr);
-	}
-
-	is_thread_start = true;
-}
-
 int early_camera_init(void)
 {
 	int msg = 0;
 	int rc = 0;
-	//early_camera_thread_start(&msg);
-	rc  = early_camera_thread(&msg);
+	rc  = early_camera_start(&msg);
 	return rc;
 }
 
