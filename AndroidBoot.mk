@@ -2,12 +2,12 @@
 
 ifeq ($(BOOTLOADER_GCC_VERSION),)
 ifndef $(2ND_TARGET_GCC_VERSION)
-CROSS_COMPILE := ../../../prebuilts/gcc/linux-x86/arm/arm-eabi-$(TARGET_GCC_VERSION)/bin/arm-eabi-
+CROSS_COMPILE := ../../../../../../prebuilts/gcc/linux-x86/arm/arm-eabi-$(TARGET_GCC_VERSION)/bin/arm-eabi-
 else
-CROSS_COMPILE := ../../../prebuilts/gcc/linux-x86/arm/arm-eabi-$(2ND_TARGET_GCC_VERSION)/bin/arm-eabi-
+CROSS_COMPILE := ../../../../../../prebuilts/gcc/linux-x86/arm/arm-eabi-$(2ND_TARGET_GCC_VERSION)/bin/arm-eabi-
 endif
 else # BOOTLOADER_GCC_VERSION defined
-CROSS_COMPILE := ../../../prebuilts/gcc/linux-x86/arm/$(BOOTLOADER_GCC_VERSION)/bin/arm-eabi-
+CROSS_COMPILE := ../../../../../../prebuilts/gcc/linux-x86/arm/$(BOOTLOADER_GCC_VERSION)/bin/arm-linux-androideabi-
 endif
 
 # Set flags if we need to include security libs
@@ -39,6 +39,22 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
   BOOTLOADER_PLATFORM := msm8660_surf
 endif
 
+ifeq ($(ABOOT_MULTIPLE_BOOT_SLOT),true)
+  BOOT_SLOT := MULTIPLE_BOOT_SLOT=1
+endif
+
+ifeq ($(ABOOT_DISABLE_CHARGER_DETECTION),true)
+  CHG_DET := DISABLE_CHARGER_DETECTION=1
+endif
+
+ifeq ($(ABOOT_NO_CACHE_PARTITON),true)
+  CACHE_PART := NO_CACHE_PARTITON=1
+endif
+
+ifeq ($(ABOOT_GETVAR_DYNAMIC_GETTERS),true)
+  GETVAR_DYN := GETVAR_DYNAMIC_GETTERS=1
+endif
+
 ABOOT_OUT := $(TARGET_OUT_INTERMEDIATES)/ABOOT_OBJ
 $(ABOOT_OUT):
 	$(hide) mkdir -p $(ABOOT_OUT)
@@ -49,7 +65,7 @@ ABOOT_CLEAN:
 # ELF binary for ABOOT
 TARGET_ABOOT_ELF := $(PRODUCT_OUT)/aboot.elf
 $(TARGET_ABOOT_ELF): ABOOT_CLEAN | $(ABOOT_OUT)
-	$(MAKE) -C bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../$(ABOOT_OUT) $(BOOTLOADER_PLATFORM) $(EMMC_BOOT) $(SIGNED_KERNEL) $(VERIFIED_BOOT) $(DEVICE_STATUS) $(BUILD_VARIANT)
+	$(MAKE) -C hardware/bsp/qcom/bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../../../../$(ABOOT_OUT) $(BOOTLOADER_PLATFORM) $(EMMC_BOOT) $(SIGNED_KERNEL) $(VERIFIED_BOOT) $(DEVICE_STATUS) $(BUILD_VARIANT)
 
 # NAND variant output
 TARGET_NAND_BOOTLOADER := $(PRODUCT_OUT)/appsboot.mbn
@@ -74,11 +90,11 @@ $(EMMC_BOOTLOADER_OUT):
 
 # Top level for NAND variant targets
 $(TARGET_NAND_BOOTLOADER): appsbootldr_clean | $(NAND_BOOTLOADER_OUT)
-	$(MAKE) -C bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../$(NAND_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) $(SIGNED_KERNEL)
+	$(MAKE) -C hardware/bsp/qcom/bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../../../../$(NAND_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) $(SIGNED_KERNEL)
 
 # Top level for eMMC variant targets
 $(TARGET_EMMC_BOOTLOADER): emmc_appsbootldr_clean | $(EMMC_BOOTLOADER_OUT) $(INSTALLED_KEYSTOREIMAGE_TARGET)
-	$(MAKE) -C bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../$(EMMC_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) EMMC_BOOT=1 $(SIGNED_KERNEL) $(VERIFIED_BOOT) $(DEVICE_STATUS) $(BUILD_VARIANT)
+	$(MAKE) -C hardware/bsp/qcom/bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../../../../$(EMMC_BOOTLOADER_OUT) $(BOOTLOADER_PLATFORM) EMMC_BOOT=1 $(SIGNED_KERNEL) $(VERIFIED_BOOT) $(DEVICE_STATUS) $(BUILD_VARIANT) $(BOOT_SLOT) $(CHG_DET) $(CACHE_PART) $(GETVAR_DYN)
 
 # Keep build NAND & eMMC as default for targets still using TARGET_BOOTLOADER
 TARGET_BOOTLOADER := $(PRODUCT_OUT)/EMMCBOOT.MBN
@@ -99,4 +115,4 @@ $(NANDWRITE_OUT):
 
 $(TARGET_NANDWRITE): nandwrite_clean | $(NANDWRITE_OUT)
 	@echo $(BOOTLOADER_PLATFORM)_nandwrite
-	$(MAKE) -C bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../$(NANDWRITE_OUT) $(BOOTLOADER_PLATFORM)_nandwrite BUILD_NANDWRITE=1
+	$(MAKE) -C hardware/bsp/qcom/bootable/bootloader/lk TOOLCHAIN_PREFIX=$(CROSS_COMPILE) BOOTLOADER_OUT=../../../../../../$(NANDWRITE_OUT) $(BOOTLOADER_PLATFORM)_nandwrite BUILD_NANDWRITE=1
