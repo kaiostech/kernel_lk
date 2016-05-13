@@ -649,8 +649,6 @@ struct camera_hw_reg_array other_init_regs[] ={
 	{0x00385000	,1,0},
 	// mmagic_bimc_noc_cfg_ahb_clk
 	{0x008C5298,1,0},
-	// gcc_bimc_ddr_cpll1_clk
-	{0x00346008,1,0},
 	// mmagic_camss_noc_cfg_ahb_clk
 	{0x008C3C48, 1,0},
 };
