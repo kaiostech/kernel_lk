@@ -1767,8 +1767,15 @@ void early_camera_stop(void) {
 }
 void early_camera_flip(void)
 {
+		int gpio103;
 		// wait for ping pong irq;
 		ping = msm_vfe_poll_irq(PING_PONG_IRQ_MASK);
+
+		gpio103 = gpio_get(103);
+
+		//dprintf(CRITICAL,
+		//"Early Camera - gpio13 %x\n",
+		//gpio103);
 
 		if (firstframe == 0) {
 			dprintf(CRITICAL,
@@ -1794,6 +1801,22 @@ void early_camera_flip(void)
 				layer_cam.fb->base = (void *)VFE_PONG_ADDR;
 #endif
 		}
+
+		if (gpio103)
+		{
+			int i = 0;
+			char *tempdstPtr = (char *)DISPLAY_PONG_ADDR;
+			layer_cam.fb->base = (void *)DISPLAY_PONG_ADDR;
+
+			for(i=0;i<raw_size/2;i++) {
+				*tempdstPtr = 0;
+				tempdstPtr++;
+				*tempdstPtr = 0x80;
+				tempdstPtr++;
+			}
+		}
+
+
 		}
 
 #ifdef SW_FORMAT_CORRECTION
