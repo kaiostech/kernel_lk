@@ -285,7 +285,7 @@ static int thulium_pwm_backlight_ctrl(uint8_t enable)
 
 		 /* LPG_ENABLE_CONTROL */
                 pm8x41_lpg_write_sid(slave_id, PWM_BL_LPG_CHAN_ID, 0x46, 0x0);
-		mdelay(100);
+		mdelay(10);
 
 		 /* LPG_VALUE_LSB, duty cycle = 0x80/0x200 = 1/4 */
                 pm8x41_lpg_write_sid(slave_id, PWM_BL_LPG_CHAN_ID, 0x44, 0x80);
