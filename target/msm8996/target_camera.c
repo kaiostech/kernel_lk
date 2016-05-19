@@ -56,6 +56,7 @@
 #define EARLY_CAM_NUM_FRAMES 60*20
 #define MAX_POLL_COUNT 1000
 #define CAM_RESET_GPIO 23
+#define MMSS_A_VFE_0_SPARE 0x00A10C84
 
 struct i2c_config_data *cam_data;
 void *disp_ptr, *layer_cam_ptr;
@@ -1760,6 +1761,9 @@ void early_camera_stop(void) {
 					0);
 
 	target_release_layer(&layer_cam);
+
+	// Signal Kernel were done to allow camera daemon to start.
+	msm_camera_io_w_mb(0xa5a5a5a5,MMSS_A_VFE_0_SPARE);
 }
 void early_camera_flip(void)
 {
