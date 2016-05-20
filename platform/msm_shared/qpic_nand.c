@@ -1376,6 +1376,12 @@ flash_num_blocks(void)
 }
 
 unsigned
+flash_num_pages_per_blk(void)
+{
+	return flash.num_pages_per_blk;
+}
+
+unsigned
 flash_spare_size(void)
 {
     return flash.spare_size;
