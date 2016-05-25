@@ -672,6 +672,7 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 			struct mdss_dsi_phy_ctrl *phy_db)
 {
 	uint32_t hw_id = board_hardware_id();
+	uint32_t platform_id = board_platform_id();
 	int32_t panel_override_id;
 	uint32_t ret = 0;
 
@@ -698,8 +699,13 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 	switch (hw_id) {
 	case HW_PLATFORM_MTP:
 	case HW_PLATFORM_FLUID:
-	case HW_PLATFORM_SURF:
 		panel_id = SHARP_WQXGA_DUALDSI_VIDEO_PANEL;
+		break;
+	case HW_PLATFORM_SURF:
+		if (platform_id == MSM8996AU)
+			panel_id = NT35597_WQXGA_DUALDSI_VIDEO_PANEL;
+		else
+			panel_id = SHARP_WQXGA_DUALDSI_VIDEO_PANEL;
 		break;
 	case HW_PLATFORM_QRD:
 		panel_id = R69007_WQXGA_CMD_PANEL;
