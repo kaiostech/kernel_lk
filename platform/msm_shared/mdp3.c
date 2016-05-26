@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -164,7 +164,6 @@ int mdp_dsi_cmd_config(struct msm_panel_info *pinfo,
 	unsigned short pack_pattern = 0x21;
 	unsigned char ystride = 3;
         unsigned int sync_cfg;
-	unsigned long total_lines;
 
 	/*Program QOS remapper settings*/
 	writel(0x1A9, MDP_DMA_P_QOS_REMAPPER);
@@ -191,14 +190,11 @@ int mdp_dsi_cmd_config(struct msm_panel_info *pinfo,
 	writel(0x10, MDP_DSI_CMD_MODE_ID_MAP);
 	writel(0x11, MDP_DSI_CMD_MODE_TRIGGER_EN);
 	/* Enable Auto refresh */
-	total_lines = pinfo->yres + pinfo->lcdc.v_front_porch;
-	total_lines += pinfo->lcdc.v_back_porch;
-	total_lines += pinfo->lcdc.v_pulse_width;
-	sync_cfg = (total_lines) << 21;
+	sync_cfg = (pinfo->yres - 1) << 21;
 	sync_cfg |= BIT(19);
 
-	/* Vsync Clock 19.2 HMz */
-	sync_cfg |= (19200000) / (total_lines * 60);
+       /* Vsync Clock 19.2 HMz */
+	sync_cfg |= (19200000) / (pinfo->yres * 60);
 	writel(sync_cfg, MDP_SYNC_CONFIG_0);
 	writel((MDP_AUTOREFRESH_EN | MDP_AUTOREFRESH_FRAME_NUM),
 		MDP_AUTOREFRESH_CONFIG_P);
@@ -233,10 +229,10 @@ int mdp_dsi_cmd_off(void)
 		 * stop the data transfer
 		 */
 		mdelay(10);
-		/* Disable Auto refresh */
-		if (readl(MDP_AUTOREFRESH_CONFIG_P))
-			writel(0, MDP_AUTOREFRESH_CONFIG_P);
 	}
+	/* Disable Auto refresh */
+	if (readl(MDP_AUTOREFRESH_CONFIG_P))
+		writel(0, MDP_AUTOREFRESH_CONFIG_P);
 	writel(0x00000000, MDP_INTR_ENABLE);
 	writel(0x01ffffff, MDP_INTR_CLEAR);
 	return NO_ERROR;
