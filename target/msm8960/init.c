@@ -115,10 +115,22 @@ static void mobis_qca6574_init(void)
 	pm8921_gpio_config(PM_GPIO(44), &mobis_qca_param);
 }
 
+/*
+ * ARMV7_NEON is true when a NEON unit is present in the current CPU.
+ * This is for openssl assembly to execute neon optimized code.
+ * Refer lib/openssl/crypto/arm_arch.h file
+ */
+#define ARMV7_NEON (1 << 0)
+unsigned int OPENSSL_armcap_P = 0;
+
 void target_early_init(void)
 {
 #if WITH_DEBUG_UART
 	target_uart_init();
+#endif
+#if ARM_WITH_NEON
+	/* Enable openssl NEON implemetation */
+	OPENSSL_armcap_P = ARMV7_NEON;
 #endif
 
 	if (MPLATFORM()) {
