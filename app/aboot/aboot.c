@@ -831,6 +831,13 @@ int boot_linux_from_mmc(void)
 				return -1;
 			}
 
+			/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+			goes beyound hdr->dt_size*/
+			if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+				dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
+				return -1;
+			}
+
 			/* Find index of device tree within device tree table */
 			if(dev_tree_get_entry_info(table, &dt_entry) != 0){
 				dprintf(CRITICAL, "ERROR: Device Tree Blob cannot be found\n");
@@ -910,6 +917,13 @@ int boot_linux_from_mmc(void)
 
 			if (dev_tree_validate(table, hdr->page_size, &dt_hdr_size) != 0) {
 				dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
+				return -1;
+			}
+
+			/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+			goes beyound hdr->dt_size*/
+			if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+				dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
 				return -1;
 			}
 
@@ -1208,6 +1222,13 @@ int boot_linux_from_flash(void)
 				return -1;
 			}
 
+			/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+			goes beyound hdr->dt_size*/
+			if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+				dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
+				return -1;
+			}
+
 			table = (struct dt_table*) memalign(CACHE_LINE, dt_hdr_size);
 			if (!table)
 				return -1;
@@ -1451,6 +1472,14 @@ int copy_dtb(uint8_t *boot_image_start)
 			dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
 			return -1;
 		}
+
+		/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+		goes beyound hdr->dt_size*/
+		if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+			dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
+			return -1;
+		}
+
 		/* Find index of device tree within device tree table */
 		if(dev_tree_get_entry_info(table, &dt_entry) != 0){
 			dprintf(CRITICAL, "ERROR: Getting device tree address failed\n");
