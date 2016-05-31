@@ -456,8 +456,8 @@ int target_animated_splash_screen()
 			case HW_PLATFORM_ADP:
 			case HW_PLATFORM_DRAGON:
 				dprintf(SPEW, "Target_animated_splash=1\n");
-				// disable until kernel change is merged
-				animated_splash = 0;
+				// enable animated splash for ADP and Dragonboard
+				animated_splash = 1;
 				break;
 			default:
 				dprintf(SPEW, "Target_animated_splash=0\n");
