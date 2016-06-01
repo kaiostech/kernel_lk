@@ -961,12 +961,14 @@ int animated_splash() {
 			if (j == 1 && early_camera_enabled == 1)
 				continue;
 			layer[j].fb->base = buffers[j][frame_cnt[j]];
+			layer[j].fb->format = kFormatRGB888;
 			ret = target_display_update(&update[j],1, j);
 			frame_cnt[j]++;
 			if (frame_cnt[j] >= g_head[j].num_frames) {
 				frame_cnt[j] = 0;
 			}
 		}
+
 		if(early_camera_enabled == 1)
 			// Rely on camera timing to flip.
 			early_camera_flip();
@@ -978,8 +980,6 @@ int animated_splash() {
 	if (early_camera_enabled == 1)
 		early_camera_stop();
 	for (j = 0; j < NUM_DISPLAYS; j++) {
-		if (j == 1 && early_camera_enabled == 1)
-			continue;
 		target_release_layer(&layer[j]);
 	}
 

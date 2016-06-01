@@ -1808,6 +1808,7 @@ void early_camera_flip(void)
 #endif
 		frame_counter++;
 		if(early_cam_on == 1) {
+				layer_cam.fb->format = kFormatYCbCr422H2V1Packed;
 				target_display_update(&update_cam,1,DISPLAY_ID);
 			if (firstframe == 0) {
 				cam_place_kpi_marker("Camera display post done");
