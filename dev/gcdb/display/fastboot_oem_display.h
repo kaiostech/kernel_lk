@@ -56,7 +56,11 @@ struct sim_lookup_list {
 
 struct panel_lookup_list lookup_skip_panels[] = {
 	{"adv7533_1080p_video", "qcom,mdss_dsi_adv7533_1080p60_video", false},
+	{"adv7533_1080p_dsi0_video", "qcom,mdss_dsi_adv7533_1080p60_video", false},
+	{"adv7533_1080p_dsi1_video", "qcom,mdss_dsi_adv7533_1080p60_video", false},
 	{"adv7533_720p_video", "qcom,mdss_dsi_adv7533_720p60_video", false},
+	{"adv7533_720p_dsi0_video", "qcom,mdss_dsi_adv7533_720p60_video", false},
+	{"adv7533_720p_dsi1_video", "qcom,mdss_dsi_adv7533_720p60_video", false},
 	{"auo_qvga_cmd", "qcom,mdss_dsi_auo_qvga_cmd", false},
 	{"generic_720p_cmd", "qcom,mdss_dsi_generic_720p_cmd", false},
 	{"hx8279a_wsvga_video", "qcom,mdss_dsi_hx8279a_wsvga_video", false},
@@ -109,6 +113,7 @@ struct panel_lookup_list lookup_skip_panels[] = {
 	{"sharp_1080p_cmd", "qcom,mdss_dsi_sharp_1080p_cmd", false},
 	{"sharp_120hz_1080p_cmd", "qcom,mdss_dual_sharp_1080p_120hz_cmd",
 		true},
+	{"dual_720p_single_hdmi_video", "qcom,mdss_dsi_adv7533_720p60_video", false},
 };
 
 struct sim_lookup_list lookup_sim[] = {

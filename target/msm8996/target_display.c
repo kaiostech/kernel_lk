@@ -93,6 +93,10 @@ static struct gpio_pin dsi2hdmi_switch_gpio = {
   "msmgpio", 105, 3, 1, 0, 1
 };
 
+static struct gpio_pin dsi2hdmi2_switch_gpio = {
+  "msmgpio", 107, 3, 1, 0, 0
+};
+
 /* gpio name, id, strength, direction, pull, state. */
 static struct gpio_pin hdmi_cec_gpio = {        /* CEC */
   "msmgpio", 31, 0, 2, 3, 1
@@ -114,8 +118,9 @@ struct target_display displays[NUM_TARGET_DISPLAYS];
 struct target_layer_int layers[NUM_TARGET_LAYERS];
 
 extern int msm_display_update(struct fbcon_config *fb, uint32_t pipe_id,
-	uint32_t pipe_type, uint32_t zorder, uint32_t width, uint32_t height);
+	uint32_t pipe_type, uint32_t zorder, uint32_t width, uint32_t height, uint32_t disp_id);
 extern int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type);
+extern struct fbcon_config* msm_display_get_fb(uint32_t disp_id);
 
 bool display_init_done = false;
 
@@ -439,10 +444,12 @@ int target_display_dsi2hdmi_config(struct msm_panel_info *pinfo)
 	if (!pinfo->adv7533.program_i2c_addr) {
 		ret = target_display_dsi2hdmi_program_addr(pinfo);
 		if (ret) {
-			dprintf(CRITICAL, "Error in programming cec dsi addr\n");
+			dprintf(CRITICAL, "Error in programming cec dsi addr for %s\n",
+				(pinfo->dest == DISPLAY_2) ? "DSI1" : "DSI0");
 			return ret;
 		} else {
-			dprintf(SPEW, "successfully programmed cec dsi addr\n");
+			dprintf(SPEW, "successfully programmed cec dsi addr for %s\n",
+				(pinfo->dest == DISPLAY_2) ? "DSI1" : "DSI0");
 			pinfo->adv7533.program_i2c_addr = 1;
 		}
 	}
@@ -451,21 +458,34 @@ int target_display_dsi2hdmi_config(struct msm_panel_info *pinfo)
 	 * If dsi to HDMI bridge chip connected then
 	 * send I2c commands to the chip
 	 */
-	if (pinfo->adv7533.dsi_setup_cfg_i2c_cmd)
-		ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->adv7533.dsi_setup_cfg_i2c_cmd,
+	if (pinfo->adv7533.dsi_setup_cfg_i2c_cmd) {
+		if ((pinfo->mipi.dual_dsi) && ((pinfo->dest == DISPLAY_2))) {
+			ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->adv7533.dsi_setup_cfg_i2c_cmd,
 					pinfo->adv7533.num_of_cfg_i2c_cmds);
-	if (ret) {
-		dprintf(CRITICAL, "Error in writing adv7533 setup registers\n");
-		return ret;
+		} else {
+			ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->adv7533.dsi_setup_cfg_i2c_cmd,
+					pinfo->adv7533.num_of_cfg_i2c_cmds);
+		}
+		if (ret) {
+			dprintf(CRITICAL, "Error in writing adv7533 setup registers for %s\n",
+							(pinfo->dest == DISPLAY_2) ? "DSI1" : "DSI0");
+			return ret;
+		}
 	}
 
-	if (pinfo->adv7533.dsi_tg_i2c_cmd)
-		ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->adv7533.dsi_tg_i2c_cmd,
-					pinfo->adv7533.num_of_tg_i2c_cmds);
-	if (ret) {
-		dprintf(CRITICAL, "Error in writing adv7533 timing registers\n");
-	}
+	if (pinfo->adv7533.dsi_tg_i2c_cmd) {
+		if ((pinfo->mipi.dual_dsi) && ((pinfo->dest == DISPLAY_2)))
+			ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->adv7533.dsi_tg_i2c_cmd,
+						pinfo->adv7533.num_of_tg_i2c_cmds);
+		else
+			ret = dsi2HDMI_i2c_write_regs(pinfo, pinfo->adv7533.dsi_tg_i2c_cmd,
+						pinfo->adv7533.num_of_tg_i2c_cmds);
 
+		if (ret) {
+			dprintf(CRITICAL, "Error in writing adv7533 timing registers for %s\n",
+							(pinfo->dest == DISPLAY_2) ? "DSI1" : "DSI0");
+		}
+	}
 	return ret;
 }
 
@@ -484,7 +504,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 	case BL_WLED:
 		/* Enable MPP4 */
 		pmi8994_config_mpp_slave_id(PMIC_MPP_SLAVE_ID);
-	        mpp.base = PM8x41_MMP4_BASE;
+		mpp.base = PM8x41_MMP4_BASE;
 		mpp.vin = MPP_VIN2;
 		if (enable) {
 			pm_pwm_enable(false);
@@ -507,7 +527,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 	case BL_PWM:
 		/* Enable MPP1 */
 		pmi8994_config_mpp_slave_id(PMIC_MPP_SLAVE_ID);
-	        mpp.base = PM8x41_MMP1_BASE;
+		mpp.base = PM8x41_MMP1_BASE;
 		mpp.vin = MPP_VIN2;
 		mpp.mode = MPP_DTEST4;
 		if (enable) {
@@ -536,11 +556,11 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 
 	if (pinfo->dest == DISPLAY_2) {
 		flags = MMSS_DSI_CLKS_FLAG_DSI1;
-		if (pinfo->mipi.dual_dsi)
+		if (pinfo->lcdc.split_display)
 			flags |= MMSS_DSI_CLKS_FLAG_DSI0;
 	} else {
 		flags = MMSS_DSI_CLKS_FLAG_DSI0;
-		if (pinfo->mipi.dual_dsi)
+		if (pinfo->lcdc.split_display)
 			flags |= MMSS_DSI_CLKS_FLAG_DSI1;
 	}
 
@@ -574,7 +594,8 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 	dprintf(SPEW, "codes %d %d\n", pll_codes->codes[0],
 			        pll_codes->codes[1]);
 
-	if (pinfo->mipi.use_dsi1_pll)
+	if ((pinfo->mipi.use_dsi1_pll) ||
+		((pinfo->mipi.dual_dsi) && (pinfo->dest == DISPLAY_2)))
 		dsi_phy_pll_out = DSI1_PHY_PLL_OUT;
 	else
 		dsi_phy_pll_out = DSI0_PHY_PLL_OUT;
@@ -752,11 +773,18 @@ bool target_display_panel_node(char *pbuf, uint16_t buf_size)
 
 void target_set_switch_gpio(int enable_dsi2hdmibridge)
 {
-	gpio_tlmm_config(dsi2hdmi_switch_gpio.pin_id, 0,
+	gpio_tlmm_config(dsi2hdmi2_switch_gpio.pin_id, 0,
 				dsi2hdmi_switch_gpio.pin_direction,
 				dsi2hdmi_switch_gpio.pin_pull,
 				dsi2hdmi_switch_gpio.pin_strength,
 				dsi2hdmi_switch_gpio.pin_state);
+
+	gpio_tlmm_config(dsi2hdmi_switch_gpio.pin_id, 0,
+				dsi2hdmi2_switch_gpio.pin_direction,
+				dsi2hdmi2_switch_gpio.pin_pull,
+				dsi2hdmi2_switch_gpio.pin_strength,
+				dsi2hdmi2_switch_gpio.pin_state);
+
 	gpio_set(enable_gpio.pin_id, GPIO_STATE_HIGH);
 	if (enable_dsi2hdmibridge)
 		gpio_set(enable_gpio.pin_id, GPIO_STATE_LOW); /* DSI2HDMI Bridge */
@@ -810,6 +838,8 @@ static int target_layers_populate(struct target_layer_int *layers)
 	return 0;
 }
 
+extern void set_multi_panel(bool val);
+
 
 void target_display_init(const char *panel_name)
 {
@@ -830,9 +860,20 @@ void target_display_init(const char *panel_name)
 			oem.panel);
 		goto target_display_init_end;
 	} else if (!strcmp(oem.panel, HDMI_PANEL_NAME)) {
-		dprintf(INFO, "%s: HDMI is primary\n", __func__);
 		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
 		goto target_display_init_end;
+	} else if (!strcmp(oem.panel, "dual_720p_single_hdmi_video")) {
+		// Three display panels init, init native HDMI first
+		set_multi_panel(true);
+		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
+		gcdb_display_init("adv7533_720p_dsi0_video", MDP_REV_50,
+				(void *)MIPI_FB_ADDR);
+		// if the panel has different size or color format, they cannot use
+		// the same FB buffer
+		gcdb_display_init("adv7533_720p_dsi1_video", MDP_REV_50,
+				(void *)MIPI_FB_ADDR + 0x1000000);
+		goto target_display_init_end;
+>>>>>>> 732bf6b... target: msm8996: add three display support in target
 	}
 
 	if (gcdb_display_init(oem.panel, MDP_REV_50, (void *)MIPI_FB_ADDR)) {
@@ -913,7 +954,12 @@ void *target_display_acquire_layer(struct target_display * disp, char *client_na
 		return target_acquire_vig_pipe(disp);
 }
 
-int target_display_update(struct target_display_update * update, uint32_t size)
+struct fbcon_config* target_display_get_fb(uint32_t disp_id)
+{
+	return msm_display_get_fb(disp_id);
+}
+
+int target_display_update(struct target_display_update * update, uint32_t size, uint32_t disp_id)
 {
 	uint32_t i = 0;
 	uint32_t pipe_type, pipe_id, zorder;
@@ -949,7 +995,7 @@ int target_display_update(struct target_display_update * update, uint32_t size)
 		zorder = update[i].layer_list[0].z_order;
 
 		ret = msm_display_update(update[i].layer_list[0].fb, pipe_id, pipe_type, zorder,
-			update[i].layer_list[0].width, update[i].layer_list[0].height);
+			update[i].layer_list[0].width, update[i].layer_list[0].height, disp_id);
 		if (ret != 0)
 			dprintf(CRITICAL, "Error in display upadte ret=%u\n",ret);
 
