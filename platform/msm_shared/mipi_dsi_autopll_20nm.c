@@ -305,6 +305,18 @@ void mdss_dsi_auto_pll_20nm_config(struct msm_panel_info *pinfo)
 	mdss_dsi_pll_20nm_config_vco_rate(pll_base, pd);
 	mdss_dsi_pll_20nm_config_resetsm(pll_base);
 	mdss_dsi_pll_20nm_config_vco_start(pll_base);
+/*
+ * For bridge chip with dual dsi and using bridge chip, it needs to drive two interfaces
+ * independently.  It is necessary to program the secondary PLL
+ */
+	if ((pinfo->mipi.dual_dsi) && (pinfo->has_bridge_chip)) {
+		mdss_dsi_pll_20nm_config_common_block_1(spll_base);
+		mdss_dsi_pll_20nm_config_common_block_2(spll_base);
+		mdss_dsi_pll_20nm_config_loop_bw(spll_base);
+		mdss_dsi_pll_20nm_config_vco_rate(spll_base, pd);
+		mdss_dsi_pll_20nm_config_resetsm(spll_base);
+		mdss_dsi_pll_20nm_config_vco_start(spll_base);
+	}
 
 	udelay(1000);
 }
