@@ -366,7 +366,7 @@ int dsi_video_panel_config(struct msm_panel_info *pinfo,
 	uint32_t final_vfp, final_hpw, final_vpw, low_pwr_stop;
 	struct dsc_desc *dsc = NULL;
 
-	if (pinfo->mipi.dual_dsi)
+	if (pinfo->lcdc.split_display)
 		panel_width = panel_width / 2;
 
 	if (pinfo->mipi.data_lane0)
@@ -419,7 +419,7 @@ int dsi_video_panel_config(struct msm_panel_info *pinfo,
 			pinfo->mipi.interleave_mode,
 			pinfo->mipi.ctl_base);
 
-	if (pinfo->mipi.dual_dsi)
+	if (pinfo->lcdc.split_display)
 		ret = mdss_dsi_video_mode_config(pinfo,
 				final_width, final_height,
 				final_xres, final_yres,

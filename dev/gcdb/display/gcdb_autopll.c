@@ -44,7 +44,7 @@ static void calculate_bitclock(struct msm_panel_info *pinfo)
 	struct dsc_desc *dsc = NULL;
 	int bpp_lane;
 
-	if (pinfo->mipi.dual_dsi)
+	if (pinfo->lcdc.split_display)
 		width /= 2;
 
 	if (pinfo->compression_mode == COMPRESSION_DSC) {
