@@ -733,8 +733,6 @@ void earlydomain_init()
 /* early domain cleanup and exit */
 void earlydomain_exit()
 {
-    dprintf(INFO, "exit early domain on secondary CPU\n");
-
     isb();
 
     /* clean-up */
@@ -747,13 +745,8 @@ void earlydomain_exit()
 
     arch_disable_ints();
 
-    dprintf(INFO, "Turning off secondary CPU\n");
-
     /* turn off secondary cpu */
-    if (psci_cpu_off())
-    {
-        dprintf(CRITICAL, "Secondary CPU: Failed to turn off currnet cpu \n");
-    }
+    psci_cpu_off();
 }
 
 enum compression_type {
@@ -778,7 +771,7 @@ typedef struct animated_img_header {
 
 #define NUM_DISPLAYS 3
 void **buffers[NUM_DISPLAYS];
-struct animated_img_header g_head;
+struct animated_img_header g_head[NUM_DISPLAYS];
 
 int animated_splash_screen_mmc()
 {
@@ -792,7 +785,6 @@ int animated_splash_screen_mmc()
 	void *tmp;
 	void *head;
 	int ret = 0;
-	struct animated_img_header l_head;
 
 	index = partition_get_index(ANIMATED_SPLAH_PARTITION);
 	if (index == 0) {
@@ -813,8 +805,8 @@ int animated_splash_screen_mmc()
 		dprintf(CRITICAL, "ERROR:splash Partition invalid blocksize\n");
 		return -1;
 	}
-
-	fb_display = fbcon_display();
+	// Assume it is always for display ID 0
+	fb_display = target_display_get_fb(0);
 	if (!fb_display) {
 		dprintf(CRITICAL, "ERROR: fb config is not allocated\n");
 		return -1;
@@ -823,11 +815,7 @@ int animated_splash_screen_mmc()
 	buffer = (void *)ANIMATED_SPLASH_BUFFER;
 	for (j = 0; j < NUM_DISPLAYS; j++)
 	{
-		if (j == 0)
-			head = (void *)&g_head;
-		else
-			head = (void *)&l_head;
-
+		head = (void *)&(g_head[j]);
 		if (mmc_read(ptn, (uint32_t *)(head), blocksize)) {
 			dprintf(CRITICAL, "ERROR: Cannot read splash image header\n");
 			return -1;
@@ -866,6 +854,8 @@ int animated_splash_screen_mmc()
 				ret = -1;
 				goto end;
 			}
+			dprintf(INFO, "width:%d height:%d blocks:%d imgsize:%d num_frames:%d\n", header->width,
+			header->height, header->blocks, header->img_size,header->num_frames);
 
 			realsize =  header->blocks * blocksize;
 			if ((realsize % blocksize) != 0)
@@ -874,14 +864,12 @@ int animated_splash_screen_mmc()
 				readsize = realsize;
 			if (blocksize == LOGO_IMG_HEADER_SIZE) {
 				if (mmc_read((ptn + LOGO_IMG_HEADER_SIZE), (uint32_t *)buffer, readsize)) {
-					fbcon_clear();
 					dprintf(CRITICAL, "ERROR: Cannot read splash image from partition 1\n");
 					ret = -1;
 					goto end;
 				}
 			} else {
 				if (mmc_read(ptn + blocksize , (uint32_t *)buffer, realsize)) {
-					fbcon_clear();
 					dprintf(CRITICAL, "ERROR: Cannot read splash image from partition 2\n");
 					ret = -1;
 					goto end;
@@ -904,8 +892,9 @@ end:
 int animated_splash() {
 	void *disp_ptr, *layer_ptr;
 	uint32_t ret = 0, k = 0, j = 0;
-	struct target_display_update update;
-	struct target_layer layer;
+	uint32_t frame_cnt[NUM_DISPLAYS];
+	struct target_display_update update[NUM_DISPLAYS];
+	struct target_layer layer[NUM_DISPLAYS];
 	struct target_display * disp;
 	struct fbcon_config *fb;
 	uint32_t sleep_time;
@@ -914,54 +903,63 @@ int animated_splash() {
 		dprintf(CRITICAL, "Unexpected error in read\n");
 		return 0;
 	}
-
-	disp_ptr = target_display_open(0);
-	if (disp_ptr == NULL) {
-		dprintf(CRITICAL, "Display open failed\n");
-		return -1;
-	}
-	disp = target_get_display_info(disp_ptr);
-	if (disp == NULL){
-		dprintf(CRITICAL, "Display info failed\n");
-		return -1;
-	}
-	layer_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatRGB888);
-	if (layer_ptr == NULL){
-		dprintf(CRITICAL, "Layer acquire failed\n");
-		return -1;
-	}
-	fb = fbcon_display();
-
-	layer.layer = layer_ptr;
-	layer.z_order = 2;
-	update.disp = disp_ptr;
-	update.layer_list = &layer;
-	update.num_layers = 1;
-	layer.fb = fb;
-	sleep_time = 1000 / g_head.fps;
-	layer.width = fb->width;
-	layer.height = fb->height;
-	if (g_head.width < fb->width) {
-		dprintf(SPEW, "Modify width\n");
-		layer.width = g_head.width;
-	}
-	if (g_head.height < fb->height) {
-		dprintf(SPEW, "Modify height\n");
-		layer.height = g_head.height;
-	}
-	while (k < ANIMATED_SPLASH_LOOPS) {
-		for (j = 0; j < g_head.num_frames; j++) {
-			if (0xFEFEFEFE == readl_relaxed((void *)MDSS_SCRATCH_REG_1)) {
-				dprintf(INFO, "UI is up, finish animated_splash\n");
-				return 0;
-			}
-			layer.fb->base = buffers[0][j];
-			ret = target_display_update(&update,1);
-			mdelay(sleep_time);
+	for (j = 0; j < NUM_DISPLAYS; j ++) {
+		frame_cnt[j] = 0;
+		disp_ptr = target_display_open(j);
+		if (disp_ptr == NULL) {
+			dprintf(CRITICAL, "Display open failed\n");
+			return -1;
 		}
+		disp = target_get_display_info(disp_ptr);
+		if (disp == NULL){
+			dprintf(CRITICAL, "Display info failed\n");
+			return -1;
+		}
+		layer_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatRGB888);
+		if (layer_ptr == NULL){
+			dprintf(CRITICAL, "Layer acquire failed\n");
+			return -1;
+		}
+		fb = target_display_get_fb(j);
+
+		layer[j].layer = layer_ptr;
+		layer[j].z_order = 2;
+		update[j].disp = disp_ptr;
+		update[j].layer_list = &layer[j];
+		update[j].num_layers = 1;
+		layer[j].fb = fb;
+		sleep_time = 1000 / g_head[j].fps;
+		layer[j].width = fb->width;
+		layer[j].height = fb->height;
+		if (g_head[j].width < fb->width) {
+			dprintf(SPEW, "Modify width\n");
+			layer[j].width = g_head[j].width;
+		}
+		if (g_head[j].height < fb->height) {
+			dprintf(SPEW, "Modify height\n");
+			layer[j].height = g_head[j].height;
+		}
+	}
+
+	while (1) {
+		if (0xFEFEFEFE == readl_relaxed((void *)MDSS_SCRATCH_REG_1))
+			break;
+
+		for (j = 0; j < NUM_DISPLAYS; j++) {
+			layer[j].fb->base = buffers[j][frame_cnt[j]];
+			ret = target_display_update(&update[j],1, j);
+			frame_cnt[j]++;
+			if (frame_cnt[j] >= g_head[j].num_frames)
+				frame_cnt[j] = 0;
+		}
+		// assume all displays have the same fps
+		mdelay_optimal(sleep_time);
 		k++;
 	}
-	target_release_layer(&layer);
+
+	for (j = 0; j < NUM_DISPLAYS; j++)
+		target_release_layer(&layer[j]);
+
 	return ret;
 }
 
@@ -975,7 +973,7 @@ void earlydomain_services()
 
 	while((FALSE == target_display_is_init_done()) && (i < 100))
 	{
-		mdelay(10); // delay for 10ms
+		mdelay_optimal(10); // delay for 10ms
 		i++;
 	}
 

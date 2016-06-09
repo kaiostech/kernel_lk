@@ -42,6 +42,18 @@ static struct panel_config adv7533_720p_video_panel_data = {
 	10, 0, "DISPLAY_1", 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "NONE"
 };
 
+// This structure is for dual DSI setup, 720p video panel @ DSI0
+static struct panel_config adv7533_720p_video_DSI0_panel_data = {
+	"qcom,mdss_dual_dsi_adv7533_720p", "dsi:0:", "qcom,mdss-dsi-panel",
+	10, 0, "DISPLAY_1", 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, DUAL_DSI_FLAG, 0, 0, "NONE"
+};
+
+// This structure is for dual DSI setup, 720p video panel @ DSI1
+static struct panel_config adv7533_720p_video_DSI1_panel_data = {
+	"qcom,mdss_dual_dsi_adv7533_720p", "dsi:1:", "qcom,mdss-dsi-panel",
+	10, 0, "DISPLAY_2", 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, DUAL_DSI_FLAG, 0, 0, "NONE"
+};
+
 /*---------------------------------------------------------------------------*/
 /* Panel resolution                                                          */
 /*---------------------------------------------------------------------------*/
