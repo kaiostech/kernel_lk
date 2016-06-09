@@ -407,11 +407,11 @@ void mdss_dsi_auto_pll_thulium_config(struct msm_panel_info *pinfo)
 	uint32_t phy_1_base = pinfo->mipi.sphy_base;
 
 	mdss_dsi_phy_sw_reset(pinfo->mipi.ctl_base);
-	if (pinfo->mipi.dual_dsi)
+	if (pinfo->lcdc.split_display)
 		mdss_dsi_phy_sw_reset(pinfo->mipi.sctl_base);
 
 	mdss_dsi_phy_14nm_init(pinfo, phy_base);
-	if (pinfo->mipi.dual_dsi)
+	if (pinfo->lcdc.split_display)
 		mdss_dsi_phy_14nm_init(pinfo, phy_1_base);
 
 	mdss_mdp_pll_input_init(&pdb);
