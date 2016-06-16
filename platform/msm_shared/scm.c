@@ -1077,7 +1077,7 @@ int scm_random(uint32_t * rbuf, uint32_t  r_len)
 	struct tz_prng_data data;
 	scmcall_arg scm_arg = {0};
 	// Memory passed to TZ should be algined to cache line
-	BUF_DMA_ALIGN(rand_buf, uint32_t);
+	BUF_DMA_ALIGN(rand_buf, sizeof(uint32_t));
 
 	if (!is_scm_armv8_support())
 	{
