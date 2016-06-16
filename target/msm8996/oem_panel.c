@@ -760,7 +760,7 @@ int oem_panel_bridge_chip_init(struct msm_panel_info *pinfo) {
 		pinfo->adv7533.program_i2c_addr = false;
 		/* Read ADV Chip ID */
 		if (!mipi_dsi_i2c_read_byte(TARGET_ADV7533_MAIN_INST_1, 0x00, &rev)) {
-			dprintf(INFO, "second ADV7533 Rev ID: 0x%x\n",rev);
+			dprintf(SPEW, "second ADV7533 Rev ID: 0x%x\n",rev);
 		} else {
 			dprintf(CRITICAL, "error reading Rev ID from bridge chip\n");
 			return PANEL_TYPE_UNKNOWN;
@@ -772,7 +772,7 @@ int oem_panel_bridge_chip_init(struct msm_panel_info *pinfo) {
 		pinfo->adv7533.program_i2c_addr = false;
 		/* Read ADV Chip ID */
 		if (!mipi_dsi_i2c_read_byte(TARGET_ADV7533_MAIN_INST_0, 0x00, &rev)) {
-			dprintf(INFO, "ADV7533 Rev ID: 0x%x\n",rev);
+			dprintf(SPEW, "ADV7533 Rev ID: 0x%x\n",rev);
 		} else {
 			dprintf(CRITICAL, "error reading Rev ID from bridge chip\n");
 			return PANEL_TYPE_UNKNOWN;
@@ -804,8 +804,7 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		} else if (panel_override_id < UNKNOWN_PANEL) {
 			/* panel override using fastboot oem command */
 			panel_id = panel_override_id;
-
-			dprintf(INFO, "OEM panel override:%s\n",
+			dprintf(SPEW, "OEM panel override:%s\n",
 					panel_name);
 			switch(panel_id) {
 			case DUAL_720P_SINGLE_HDMI_PANELS:

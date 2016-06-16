@@ -299,7 +299,7 @@
 #define HDMI_PHY_PHY_REVISION_ID3             (HDMI_PHY_BASE_OFFSET + 0xC4)
 
 #define HDMI_PLL_POLL_MAX_READS                2500
-#define HDMI_PLL_POLL_TIMEOUT_US               150000
+#define HDMI_PLL_POLL_TIMEOUT_US               1000
 #define HDMI_CLK_RATE_148_MHZ		       148500000
 #define HDMI_CLK_RATE_74_MHZ		       74250000
 #define HDMI_CLK_RATE_25_MHZ		       25200000
@@ -761,7 +761,7 @@ int hdmi_vco_enable(void)
 		pll_locked = 0;
 	}
 
-	dprintf(INFO, "%s: pll_locked = %d\n", __func__, pll_locked);
+	dprintf(SPEW, "%s: pll_locked = %d\n", __func__, pll_locked);
 
 	writel(0x6F, HDMI_TX_L0_BASE_OFFSET +
 			QSERDES_TX_L0_HIGHZ_TRANSCEIVEREN_BIAS_DRVR_EN);
@@ -793,7 +793,7 @@ int hdmi_vco_enable(void)
 		phy_ready = 0;
 	}
 
-	dprintf(INFO, "%s: phy_ready = %d\n", __func__, phy_ready);
+	dprintf(SPEW, "%s: phy_ready = %d\n", __func__, phy_ready);
 
 	/* Restart the retiming buffer */
 	writel(0x18, HDMI_PHY_CFG);

@@ -148,7 +148,7 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->xres += (pinfo->border_left + pinfo->border_right);
 	pinfo->yres += (pinfo->border_top + pinfo->border_bottom);
 
-	dprintf(INFO, "panel_operating_mode=0x%x\n",
+	dprintf(SPEW, "panel_operating_mode=0x%x\n",
 		pstruct->paneldata->panel_operating_mode);
 	if (pstruct->paneldata->panel_operating_mode & DUAL_PIPE_FLAG)
 		pinfo->lcdc.dual_pipe = 1;

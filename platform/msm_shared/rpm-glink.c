@@ -248,7 +248,7 @@ void rpm_vector_glink_isr(glink_handle_type port, void *unused_open_data, void *
 	ret = rpm_glink_recv_data(rx_buffer, (uint32_t *)&size);
 	if(ret)
 	{
-		dprintf(CRITICAL, "Return value from recv_data: %x\n", ret);
+		dprintf(SPEW, "Return value from recv_data: %x\n", ret);
 	}
 	// Release the mutex
 #ifdef DEBUG_GLINK

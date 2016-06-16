@@ -135,7 +135,7 @@ uint32_t mdss_dsi_pll_20nm_lock_status(uint32_t pll_base)
 		status &= 0x20; /* bit 5 */
 		if (status)
 			break;
-		udelay(5000);
+		udelay(1000);
 	}
 
 	if (!status)
@@ -149,7 +149,7 @@ uint32_t mdss_dsi_pll_20nm_lock_status(uint32_t pll_base)
 		status &= 0x40; /* bit 6 */
 		if (status)
 			break;
-		udelay(5000);
+		udelay(1000);
 	}
 
 pll_done:

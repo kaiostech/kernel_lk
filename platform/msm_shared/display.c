@@ -95,13 +95,13 @@ int msm_display_config()
 	switch (pinfo->type) {
 #ifdef DISPLAY_TYPE_MDSS
 	case LVDS_PANEL:
-		dprintf(INFO, "Config LVDS_PANEL.\n");
+		dprintf(SPEW, "Config LVDS_PANEL.\n");
 		ret = mdp_lcdc_config(pinfo, &(panel->fb));
 		if (ret)
 			goto msm_display_config_out;
 		break;
 	case MIPI_VIDEO_PANEL:
-		dprintf(INFO, "Config MIPI_VIDEO_PANEL.\n");
+		dprintf(SPEW, "Config MIPI_VIDEO_PANEL.\n");
 
 		mdp_rev = mdp_get_revision();
 		if (pinfo->dest == DISPLAY_1) {
@@ -122,7 +122,7 @@ int msm_display_config()
 			goto msm_display_config_out;
 		break;
 	case MIPI_CMD_PANEL:
-		dprintf(INFO, "Config MIPI_CMD_PANEL.\n");
+		dprintf(SPEW, "Config MIPI_CMD_PANEL.\n");
 		mdp_rev = mdp_get_revision();
 		if (mdp_rev == MDP_REV_50 || mdp_rev == MDP_REV_304 ||
 						mdp_rev == MDP_REV_305)
@@ -137,19 +137,19 @@ int msm_display_config()
 			goto msm_display_config_out;
 		break;
 	case LCDC_PANEL:
-		dprintf(INFO, "Config LCDC PANEL.\n");
+		dprintf(SPEW, "Config LCDC PANEL.\n");
 		ret = mdp_lcdc_config(pinfo, &(panel->fb));
 		if (ret)
 			goto msm_display_config_out;
 		break;
 	case HDMI_PANEL:
-		dprintf(INFO, "Config HDMI PANEL.\n");
+		dprintf(SPEW, "Config HDMI PANEL.\n");
 		ret = mdss_hdmi_config(pinfo, &(panel->fb));
 		if (ret)
 			goto msm_display_config_out;
 		break;
 	case EDP_PANEL:
-		dprintf(INFO, "Config EDP PANEL.\n");
+		dprintf(SPEW, "Config EDP PANEL.\n");
 		ret = mdp_edp_config(pinfo, &(panel->fb));
 		if (ret)
 			goto msm_display_config_out;
@@ -157,7 +157,7 @@ int msm_display_config()
 #endif
 #ifdef DISPLAY_TYPE_QPIC
 	case QPIC_PANEL:
-		dprintf(INFO, "Config QPIC_PANEL.\n");
+		dprintf(SPEW, "Config QPIC_PANEL.\n");
 		qpic_init(pinfo, (int) panel->fb.base);
 		break;
 #endif
@@ -198,7 +198,7 @@ int msm_display_on()
 	switch (pinfo->type) {
 #ifdef DISPLAY_TYPE_MDSS
 	case LVDS_PANEL:
-		dprintf(INFO, "Turn on LVDS PANEL.\n");
+		dprintf(SPEW, "Turn on LVDS PANEL.\n");
 		ret = mdp_lcdc_on(panel);
 		if (ret)
 			goto msm_display_on_out;
@@ -207,7 +207,7 @@ int msm_display_on()
 			goto msm_display_on_out;
 		break;
 	case MIPI_VIDEO_PANEL:
-		dprintf(INFO, "Turn on MIPI_VIDEO_PANEL.\n");
+		dprintf(SPEW, "Turn on MIPI_VIDEO_PANEL.\n");
 		ret = mdp_dsi_video_on(pinfo);
 		if (ret)
 			goto msm_display_on_out;
@@ -221,7 +221,7 @@ int msm_display_on()
 			goto msm_display_on_out;
 		break;
 	case MIPI_CMD_PANEL:
-		dprintf(INFO, "Turn on MIPI_CMD_PANEL.\n");
+		dprintf(SPEW, "Turn on MIPI_CMD_PANEL.\n");
 		ret = mdp_dma_on(pinfo);
 		if (ret)
 			goto msm_display_on_out;
@@ -239,13 +239,13 @@ int msm_display_on()
 
 		break;
 	case LCDC_PANEL:
-		dprintf(INFO, "Turn on LCDC PANEL.\n");
+		dprintf(SPEW, "Turn on LCDC PANEL.\n");
 		ret = mdp_lcdc_on(panel);
 		if (ret)
 			goto msm_display_on_out;
 		break;
 	case HDMI_PANEL:
-		dprintf(INFO, "Turn on HDMI PANEL.\n");
+		dprintf(SPEW, "Turn on HDMI PANEL.\n");
 		ret = mdss_hdmi_init();
 		if (ret)
 			goto msm_display_on_out;
@@ -255,7 +255,7 @@ int msm_display_on()
 			goto msm_display_on_out;
 		break;
 	case EDP_PANEL:
-		dprintf(INFO, "Turn on EDP PANEL.\n");
+		dprintf(SPEW, "Turn on EDP PANEL.\n");
 		ret = mdp_edp_on(pinfo);
 		if (ret)
 			goto msm_display_on_out;
@@ -263,7 +263,7 @@ int msm_display_on()
 #endif
 #ifdef DISPLAY_TYPE_QPIC
 	case QPIC_PANEL:
-		dprintf(INFO, "Turn on QPIC_PANEL.\n");
+		dprintf(SPEW, "Turn on QPIC_PANEL.\n");
 		ret = qpic_on();
 		if (ret) {
 			dprintf(CRITICAL, "QPIC panel on failed\n");
@@ -471,7 +471,7 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 
 	// if panel init correctly, save the panel struct in the array
 	memcpy((void*) &panel_array[num_panel], (void*) panel, sizeof(struct  msm_fb_panel_data));
-	dprintf (INFO, "Panel %d init, width:%d height:%d\n", num_panel, panel->fb.width, panel->fb.height);
+	dprintf (SPEW, "Panel %d init, width:%d height:%d\n", num_panel, panel->fb.width, panel->fb.height);
 	num_panel ++;
 
 msm_display_init_out:

@@ -823,7 +823,7 @@ int mipi_dsi_on(struct msm_panel_info *pinfo)
 		}
 	}
 
-	dprintf(INFO, "Video lane tested successfully\n");
+	dprintf(SPEW, "Video lane tested successfully\n");
 	return ret;
 }
 

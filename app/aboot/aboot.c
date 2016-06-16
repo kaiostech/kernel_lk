@@ -3850,6 +3850,7 @@ void aboot_init(const struct app_descriptor *app)
 	}
 
 	/* Display splash screen if enabled */
+	place_marker("Display init start");
 #if DISPLAY_SPLASH_SCREEN
 #if NO_ALARM_DISPLAY
 	if (!check_alarm_boot()) {
@@ -3871,6 +3872,7 @@ void aboot_init(const struct app_descriptor *app)
 		target_display_init(device.display_panel);
 #endif
 		dprintf(SPEW, "Display Init: Done\n");
+		place_marker("Display init done");
 #if NO_ALARM_DISPLAY
 	}
 #endif
