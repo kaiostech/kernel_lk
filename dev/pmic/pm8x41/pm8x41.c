@@ -567,6 +567,11 @@ void pm8x41_clear_pmic_watchdog(void)
 	pm8x41_reg_write(PMIC_WD_RESET_S2_CTL2, 0x0);
 }
 
+void pm8x41_set_default_xo_adjust(void)
+{
+	pm8x41_reg_write(XO_XO_ADJ_FINE, XO_XO_ADJ_FINE_DEFAULT_VAL);
+}
+
 /* API to check for borken battery */
 int pm8xxx_is_battery_broken()
 {

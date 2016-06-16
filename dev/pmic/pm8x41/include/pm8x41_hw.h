@@ -88,6 +88,19 @@
 #define RESIN_BARK_INT_BIT                    4
 #define S2_RESET_EN_BIT                       7
 
+/* XO registers */
+/* 19M2_XO_ADJUST: 6-bit for adjusting the load capacitance.
+   Adjusts cap between XTAL1_IN_PAD and XTAL1_OUT_PAD = Adj Code X 0.2pF */
+#define XO_XO_ADJ_FINE                        0x505C /* Bits 0:% XO_ADJUST_CAP */
+
+/* XO register values */
+/* This setting has to do with the capacitance between the XTAL_IN and XTAL_OUT.
+   With the modem loaded, this value was 0x20.  Without it, it is 0x0.
+   So when the modem image is loaded, this setting is done by the DSP,
+   this is why everything is ok on Android. If you don't load the modem image,
+   the setting (which is needed for WLAN RF to work properly) is not done. */
+#define XO_XO_ADJ_FINE_DEFAULT_VAL            0x20 /* 6.4pF = 0x20 * 0.2pF */
+
 #define S2_RESET_TYPE_WARM                    0x1
 #define PON_RESIN_N_RESET_S2_TIMER_MAX_VALUE  0x7
 
