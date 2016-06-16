@@ -3597,6 +3597,18 @@ int splash_screen_mmc()
 
 int fetch_image_from_partition()
 {
+
+	/*
+	Skip fetching static splash image if
+	target supports animated splash and it is
+	enabled
+	*/
+	if (TRUE == target_animated_splash_screen() &&
+		TRUE == device.early_domain_enabled
+		) {
+		dprintf(INFO, "Skip fetching static splash image\n");
+		return 0;
+	}
 	if (target_is_emmc_boot()) {
 		return splash_screen_mmc();
 	} else {
