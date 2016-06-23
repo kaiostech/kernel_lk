@@ -234,5 +234,4 @@ uint8_t pm8x41_get_is_cold_boot();
 void pm8x41_diff_clock_ctrl(uint8_t enable);
 void pm8x41_clear_pmic_watchdog(void);
 void pm8x41_lnbb_clock_ctrl(uint8_t enable);
-void pm8x41_set_default_xo_adjust(void);
 #endif

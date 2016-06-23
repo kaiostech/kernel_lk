@@ -492,9 +492,6 @@ void target_uninit(void)
 /* Do any target specific intialization needed before entering fastboot mode */
 void target_fastboot_init(void)
 {
-	/* Adjust XO clock capacity for proper WLAN RF operation without modem */
-	pm8x41_set_default_xo_adjust();
-
 	/* Set the BOOT_DONE flag in PM8916 */
 	pm8x41_set_boot_done();
 
