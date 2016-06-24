@@ -204,6 +204,11 @@ void target_init(void)
 		ASSERT(0);
 	}
 
+	pm8x41_get_pon_set_trigger(CBLPWR_N,false);
+	pm8x41_get_pon_set_trigger(USB_CHG,false);
+	pm8x41_powerkey_configure(PON_PSHOLD_SHUTDOWN);
+	pm8x41_reset_configure(PON_PSHOLD_SHUTDOWN);
+
 #if LONG_PRESS_POWER_ON
 	shutdown_detect();
 #endif

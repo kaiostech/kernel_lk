@@ -353,6 +353,22 @@ void pm8x41_reset_configure(uint8_t reset_type)
 	REG_WRITE(PON_PS_HOLD_RESET_CTL2, BIT(S2_RESET_EN_BIT));
 }
 
+void pm8x41_powerkey_configure(uint8_t reset_type)
+{
+	/* disable PS_HOLD_RESET */
+	REG_WRITE(PON_KPDPWR_N_RESET_S2_CTL2, 0x0);
+
+	/* Delay needed for disable to kick in. */
+	udelay(300);
+
+	/* configure reset type */
+	REG_WRITE(PON_KPDPWR_N_RESET_S2_CTL, reset_type);
+
+	/* enable PS_HOLD_RESET */
+	REG_WRITE(PON_KPDPWR_N_RESET_S2_CTL2, BIT(S2_RESET_EN_BIT));
+}
+
+
 /*
  * LDO set voltage, takes ldo name & voltage in UV as input
  */
@@ -489,6 +505,27 @@ uint8_t pm8x41_get_pon_poff_reason1()
 uint8_t pm8x41_get_pon_poff_reason2()
 {
 	return REG_READ(PON_POFF_REASON2);
+}
+
+uint8_t pm8x41_get_pon_get_triggers()
+{
+	return REG_READ(PON_TRIGGER_EN);
+}
+
+uint8_t pm8x41_get_pon_set_trigger(uint8_t trigger, bool enable)
+{
+	uint8_t old_triggers = pm8x41_get_pon_get_triggers();
+	uint8_t new_triggers = old_triggers;
+
+	if (enable)
+		new_triggers |= trigger;
+	else
+		new_triggers &= ~trigger;
+
+	if (old_triggers != new_triggers)
+		REG_WRITE(PON_TRIGGER_EN,new_triggers);
+
+	return new_triggers;
 }
 
 void pm8x41_enable_mvs(struct pm8x41_mvs *mvs, enum mvs_en_ctl enable)
