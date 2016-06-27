@@ -985,3 +985,11 @@ int target_is_yuv_format(uint32_t format)
 int target_display_close(struct target_display * disp) {
 	return 0;
 }
+
+int target_get_max_display() {
+#ifdef NUM_TARGET_DISPLAYS
+    return NUM_TARGET_DISPLAYS;
+#else
+	return 1;
+#endif
+}
