@@ -136,3 +136,7 @@ __WEAK int target_display_dsi2hdmi_config(struct msm_panel_info *pinfo)
 {
 	return 0;
 }
+__WEAK int target_get_max_display()
+{
+	return 1;
+}
