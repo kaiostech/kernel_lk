@@ -344,6 +344,10 @@ unsigned board_machtype(void)
 void target_detect(struct board_data *board)
 {
 	/* This is already filled as part of board.c */
+
+#ifdef IPC_ENABLED
+	board->platform_hw = HW_PLATFORM_IPC;
+#endif
 }
 
 /* Detect the modem type */
