@@ -747,13 +747,6 @@ void earlydomain_exit()
 
     arch_disable_ints();
 
-    /* workaround to prevent calling psci_cpu_off */
-    /*TODO - remove this while loop when the PSCI_cpu_off fixes are available */
-    while(1)
-    {
-        arch_idle();
-    }
-
     /* turn off secondary cpu */
     psci_cpu_off();
 
