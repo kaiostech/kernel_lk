@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -190,7 +190,7 @@ static char auo_cx_qvga_cmd_on_cmd24[] = {
 };
 
 static char auo_cx_qvga_cmd_on_cmd25[] = {
-	0x35, 0x01, 0x15, 0x80,
+	0x35, 0x00, 0x15, 0x80,
 };
 
 static char auo_cx_qvga_cmd_on_cmd26[] = {
