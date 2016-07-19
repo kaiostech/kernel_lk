@@ -673,7 +673,7 @@ unsigned *atag_end(unsigned *ptr)
 void generate_atags(unsigned *ptr, const char *cmdline,
                     void *ramdisk, unsigned ramdisk_size)
 {
-
+	unsigned *orig_ptr = ptr;
 	ptr = atag_core(ptr);
 	ptr = atag_ramdisk(ptr, ramdisk, ramdisk_size);
 	ptr = target_atag_mem(ptr);
@@ -683,8 +683,18 @@ void generate_atags(unsigned *ptr, const char *cmdline,
 		ptr = atag_ptable(&ptr);
 	}
 
-	ptr = atag_cmdline(ptr, cmdline);
-	ptr = atag_end(ptr);
+	/*
+	 * Atags size filled till + cmdline size + 1 unsigned for 4-byte boundary + 4 unsigned
+	 * for atag identifier in atag_cmdline and atag_end should be with in MAX_TAGS_SIZE bytes
+	 */
+	if (((ptr - orig_ptr) + strlen(cmdline) + 5 * sizeof(unsigned)) <  MAX_TAGS_SIZE) {
+		ptr = atag_cmdline(ptr, cmdline);
+		ptr = atag_end(ptr);
+	}
+	else {
+		dprintf(CRITICAL,"Crossing ATAGs Max size allowed\n");
+		ASSERT(0);
+	}
 }
 
 typedef void entry_func_ptr(unsigned, unsigned, unsigned*);
@@ -1244,9 +1254,27 @@ int boot_linux_from_mmc(void)
 			return -1;
 		}
 
+		/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+		goes beyound hdr->dt_size*/
+		if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+			dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
+			return -1;
+		}
+
 		/* Find index of device tree within device tree table */
 		if(dev_tree_get_entry_info(table, &dt_entry) != 0){
 			dprintf(CRITICAL, "ERROR: Getting device tree address failed\n");
+			return -1;
+		}
+
+		if(dt_entry.offset > (UINT_MAX - dt_entry.size)) {
+			dprintf(CRITICAL, "ERROR: Device tree contents are Invalid\n");
+			return -1;
+		}
+
+		/* Ensure we are not overshooting dt_size with the dt_entry selected */
+		if ((dt_entry.offset + dt_entry.size) > hdr->dt_size) {
+			dprintf(CRITICAL, "ERROR: Device tree contents are Invalid\n");
 			return -1;
 		}
 
@@ -1535,6 +1563,13 @@ int boot_linux_from_flash(void)
 
 			if (dev_tree_validate(table, hdr->page_size, &dt_hdr_size) != 0) {
 				dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
+				return -1;
+			}
+
+			/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+			goes beyound hdr->dt_size*/
+			if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+				dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
 				return -1;
 			}
 
@@ -2092,6 +2127,14 @@ int copy_dtb(uint8_t *boot_image_start, unsigned int scratch_offset)
 			dprintf(CRITICAL, "ERROR: Cannot validate Device Tree Table \n");
 			return -1;
 		}
+
+		/* Its Error if, dt_hdr_size (table->num_entries * dt_entry size + Dev_Tree Header)
+		goes beyound hdr->dt_size*/
+		if (dt_hdr_size > ROUND_TO_PAGE(hdr->dt_size,hdr->page_size)) {
+			dprintf(CRITICAL, "ERROR: Invalid Device Tree size \n");
+			return -1;
+		}
+
 		/* Find index of device tree within device tree table */
 		if(dev_tree_get_entry_info(table, &dt_entry) != 0){
 			dprintf(CRITICAL, "ERROR: Getting device tree address failed\n");
@@ -2141,7 +2184,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	unsigned ramdisk_actual;
 	uint32_t image_actual;
 	uint32_t dt_actual = 0;
-	uint32_t sig_actual = SIGNATURE_SIZE;
+	uint32_t sig_actual = 0;
 	struct boot_img_hdr *hdr = NULL;
 	struct kernel64_hdr *kptr = NULL;
 	char *ptr = ((char*) data);
@@ -2189,8 +2232,12 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	image_actual = ADD_OF(image_actual, ramdisk_actual);
 	image_actual = ADD_OF(image_actual, dt_actual);
 
-	if (target_use_signed_kernel() && (!device.is_unlocked))
+	if (target_use_signed_kernel() && (!device.is_unlocked)) {
+		/* Calculate the signature length from boot image */
+		sig_actual = read_der_message_length(
+				(unsigned char*)(data + image_actual),sz);
 		image_actual = ADD_OF(image_actual, sig_actual);
+	}
 
 	/* sz should have atleast raw boot image */
 	if (image_actual > sz) {
@@ -2544,8 +2591,29 @@ void cmd_flash_meta_img(const char *arg, void *data, unsigned sz)
 	int i, images;
 	meta_header_t *meta_header;
 	img_header_entry_t *img_header_entry;
+	/*End of the image address*/
+	uintptr_t data_end;
+
+	if( (UINT_MAX - sz) > (uintptr_t)data )
+		data_end  = (uintptr_t)data + sz;
+	else
+	{
+		fastboot_fail("Cannot  flash: image header corrupt");
+		return;
+	}
+
+	if( data_end < ((uintptr_t)data + sizeof(meta_header_t)))
+	{
+		fastboot_fail("Cannot  flash: image header corrupt");
+		return;
+	}
 
 	meta_header = (meta_header_t*) data;
+	if( data_end < ((uintptr_t)data + meta_header->img_hdr_sz))
+	{
+		fastboot_fail("Cannot  flash: image header corrupt");
+		return;
+	}
 	img_header_entry = (img_header_entry_t*) (data+sizeof(meta_header_t));
 
 	images = meta_header->img_hdr_sz / sizeof(img_header_entry_t);
@@ -2556,6 +2624,13 @@ void cmd_flash_meta_img(const char *arg, void *data, unsigned sz)
 			(img_header_entry[i].start_offset == 0) ||
 			(img_header_entry[i].size == 0))
 			break;
+
+		if( data_end < ((uintptr_t)data + img_header_entry[i].start_offset
+						+ img_header_entry[i].size) )
+		{
+			fastboot_fail("Cannot  flash: image size mismatch");
+			break;
+		}
 
 		cmd_flash_mmc_img(img_header_entry[i].ptn_name,
 					(void *) data + img_header_entry[i].start_offset,
@@ -2739,6 +2814,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 
 			if (data_end < (uint32_t)data + sizeof(uint32_t)) {
 				fastboot_fail("buffer overreads occured due to invalid sparse header");
+				free(fill_buf);
 				return;
 			}
 			fill_val = *(uint32_t *)data;
@@ -2756,6 +2832,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				if ((uint64_t)total_blocks * (uint64_t)sparse_header->blk_sz + sparse_header->blk_sz > size)
 				{
 					fastboot_fail("Chunk data size for fill type exceeds partition size");
+					free(fill_buf);
 					return;
 				}
 
