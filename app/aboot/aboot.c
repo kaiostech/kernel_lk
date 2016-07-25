@@ -688,7 +688,7 @@ unsigned *atag_end(unsigned *ptr)
 void generate_atags(unsigned *ptr, const char *cmdline,
                     void *ramdisk, unsigned ramdisk_size)
 {
-
+	unsigned *orig_ptr = ptr;
 	ptr = atag_core(ptr);
 	ptr = atag_ramdisk(ptr, ramdisk, ramdisk_size);
 	ptr = target_atag_mem(ptr);
@@ -698,8 +698,18 @@ void generate_atags(unsigned *ptr, const char *cmdline,
 		ptr = atag_ptable(&ptr);
 	}
 
-	ptr = atag_cmdline(ptr, cmdline);
-	ptr = atag_end(ptr);
+	/*
+	 * Atags size filled till + cmdline size + 1 unsigned for 4-byte boundary + 4 unsigned
+	 * for atag identifier in atag_cmdline and atag_end should be with in MAX_TAGS_SIZE bytes
+	 */
+	if (((ptr - orig_ptr) + strlen(cmdline) + 5 * sizeof(unsigned)) <  MAX_TAGS_SIZE) {
+		ptr = atag_cmdline(ptr, cmdline);
+		ptr = atag_end(ptr);
+	}
+	else {
+		dprintf(CRITICAL,"Crossing ATAGs Max size allowed\n");
+		ASSERT(0);
+	}
 }
 
 typedef void entry_func_ptr(unsigned, unsigned, unsigned*);
@@ -2570,8 +2580,29 @@ void cmd_flash_meta_img(const char *arg, void *data, unsigned sz)
 	int i, images;
 	meta_header_t *meta_header;
 	img_header_entry_t *img_header_entry;
+	/*End of the image address*/
+	uintptr_t data_end;
+
+	if( (UINT_MAX - sz) > (uintptr_t)data )
+		data_end  = (uintptr_t)data + sz;
+	else
+	{
+		fastboot_fail("Cannot  flash: image header corrupt");
+		return;
+	}
+
+	if( data_end < ((uintptr_t)data + sizeof(meta_header_t)))
+	{
+		fastboot_fail("Cannot  flash: image header corrupt");
+		return;
+	}
 
 	meta_header = (meta_header_t*) data;
+	if( data_end < ((uintptr_t)data + meta_header->img_hdr_sz))
+	{
+		fastboot_fail("Cannot  flash: image header corrupt");
+		return;
+	}
 	img_header_entry = (img_header_entry_t*) (data+sizeof(meta_header_t));
 
 	images = meta_header->img_hdr_sz / sizeof(img_header_entry_t);
@@ -2582,6 +2613,13 @@ void cmd_flash_meta_img(const char *arg, void *data, unsigned sz)
 			(img_header_entry[i].start_offset == 0) ||
 			(img_header_entry[i].size == 0))
 			break;
+
+		if( data_end < ((uintptr_t)data + img_header_entry[i].start_offset
+						+ img_header_entry[i].size) )
+		{
+			fastboot_fail("Cannot  flash: image size mismatch");
+			break;
+		}
 
 		cmd_flash_mmc_img(img_header_entry[i].ptn_name,
 					(void *) data + img_header_entry[i].start_offset,
@@ -2765,6 +2803,7 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 
 			if (data_end < (uint32_t)data + sizeof(uint32_t)) {
 				fastboot_fail("buffer overreads occured due to invalid sparse header");
+				free(fill_buf);
 				return;
 			}
 			fill_val = *(uint32_t *)data;
@@ -2775,12 +2814,20 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				fill_buf[i] = fill_val;
 			}
 
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz))
+			{
+				fastboot_fail("bogus size for chunk FILL type");
+				free(fill_buf);
+				return;
+			}
+
 			for (i = 0; i < chunk_header->chunk_sz; i++)
 			{
 				/* Make sure that the data written to partition does not exceed partition size */
 				if ((uint64_t)total_blocks * (uint64_t)sparse_header->blk_sz + sparse_header->blk_sz > size)
 				{
 					fastboot_fail("Chunk data size for fill type exceeds partition size");
+					free(fill_buf);
 					return;
 				}
 
@@ -3066,7 +3113,8 @@ void cmd_continue(const char *arg, void *data, unsigned sz)
 	if (target_is_emmc_boot())
 	{
 #if FBCON_DISPLAY_MSG
-		keys_detect_init();
+		/* Exit keys' detection thread firstly */
+		exit_menu_keys_detection();
 #endif
 		boot_linux_from_mmc();
 	}

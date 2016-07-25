@@ -52,6 +52,8 @@
 #define MDTP_MAJOR_VERSION (0)
 #define MDTP_MINOR_VERSION (2)
 
+#define MDTP_CORRECT_PIN_DELAY_MSEC (1000)
+
 /** Extract major version number from complete version. */
 #define MDTP_GET_MAJOR_VERSION(version) ((version) >> 16)
 
@@ -64,6 +66,7 @@ static int is_mdtp_activated = -1;
 
 int check_aboot_addr_range_overlap(uint32_t start, uint32_t size);
 int scm_random(uint32_t * rbuf, uint32_t  r_len);
+extern void mdelay(unsigned msecs);
 void free_mdtp_image(void);
 
 /********************************************************************************/
@@ -397,7 +400,7 @@ static void display_mdtp_fail_recovery_ui(){
 static void display_recovery_ui(mdtp_cfg_t *mdtp_cfg)
 {
 	uint32_t pin_length = 0;
-	char entered_pin[MDTP_MAX_PIN_LEN+1] = {0};
+	char entered_pin[MDTP_PIN_LEN+1] = {0};
 	uint32_t i;
 	char pin_mismatch = 0;
 
@@ -407,7 +410,7 @@ static void display_recovery_ui(mdtp_cfg_t *mdtp_cfg)
 
 		pin_length = strlen(mdtp_cfg->mdtp_pin.mdtp_pin);
 
-		if (pin_length > MDTP_MAX_PIN_LEN || pin_length < MDTP_MIN_PIN_LEN)
+		if (pin_length != MDTP_PIN_LEN)
 		{
 			dprintf(CRITICAL, "mdtp: display_recovery_ui: Error, invalid PIN length\n");
 			display_error_msg(); /* This will never return */
@@ -458,6 +461,7 @@ static void display_recovery_ui(mdtp_cfg_t *mdtp_cfg)
 	out:
 	display_image_on_screen();
 	free_mdtp_image();
+	mdelay(MDTP_CORRECT_PIN_DELAY_MSEC);
 }
 
 /* Verify the boot or recovery partitions using boot_verifier. */
