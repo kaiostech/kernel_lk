@@ -17,12 +17,24 @@ OBJS += \
 	$(LOCAL_DIR)/boot_stats.o \
 	$(LOCAL_DIR)/crc32.o
 
+ifeq ($(ENABLE_WDOG_SUPPORT),1)
+OBJS += \
+	$(LOCAL_DIR)/wdog.o
+endif
+
+ifeq ($(ENABLE_SECAPP_LOADER), 1)
+OBJS += $(LOCAL_DIR)/secapp_loader.o
+endif
+
+ifeq ($(ENABLE_QGIC3), 1)
+OBJS += $(LOCAL_DIR)/qgic_v3.o
+endif
+
 ifeq ($(ENABLE_SMD_SUPPORT),1)
 OBJS += \
 	$(LOCAL_DIR)/rpm-smd.o \
 	$(LOCAL_DIR)/smd.o
 endif
-
 ifeq ($(ENABLE_SDHCI_SUPPORT),1)
 OBJS += \
 	$(LOCAL_DIR)/sdhci.o \
@@ -37,6 +49,12 @@ endif
 ifeq ($(VERIFIED_BOOT),1)
 OBJS += \
 	$(LOCAL_DIR)/boot_verifier.o
+endif
+
+ifeq ($(ENABLE_FBCON_DISPLAY_MSG),1)
+OBJS += \
+	$(LOCAL_DIR)/menu_keys_detect.o \
+	$(LOCAL_DIR)/display_menu.o
 endif
 
 ifeq ($(PLATFORM),msm8x60)
@@ -167,6 +185,7 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 		$(LOCAL_DIR)/dload_util.o \
 		$(LOCAL_DIR)/gpio.o \
 		$(LOCAL_DIR)/dev_tree.o \
+                $(LOCAL_DIR)/qseecom_lk.o \
 		$(LOCAL_DIR)/mdp5.o \
 		$(LOCAL_DIR)/display.o \
 		$(LOCAL_DIR)/mipi_dsi.o \
@@ -462,6 +481,7 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 			$(LOCAL_DIR)/spmi.o \
 			$(LOCAL_DIR)/bam.o \
 			$(LOCAL_DIR)/qpic_nand.o \
+			$(LOCAL_DIR)/flash-ubi.o \
 			$(LOCAL_DIR)/scm.o \
 			$(LOCAL_DIR)/dev_tree.o \
 			$(LOCAL_DIR)/gpio.o \
@@ -473,11 +493,23 @@ DEFINES += DISPLAY_TYPE_MDSS=1
 			$(LOCAL_DIR)/certificate.o \
 			$(LOCAL_DIR)/image_verify.o \
 			$(LOCAL_DIR)/i2c_qup.o \
+                        $(LOCAL_DIR)/qseecom_lk.o \
 			$(LOCAL_DIR)/mdp3.o \
 			$(LOCAL_DIR)/display.o \
 			$(LOCAL_DIR)/mipi_dsi.o \
 			$(LOCAL_DIR)/mipi_dsi_phy.o \
 			$(LOCAL_DIR)/mipi_dsi_autopll.o
+endif
+
+
+ifeq ($(ENABLE_UFS_SUPPORT), 1)
+	OBJS += \
+			$(LOCAL_DIR)/ufs.o \
+			$(LOCAL_DIR)/utp.o \
+			$(LOCAL_DIR)/uic.o \
+			$(LOCAL_DIR)/ucs.o \
+			$(LOCAL_DIR)/ufs_hci.o \
+			$(LOCAL_DIR)/dme.o
 endif
 
 ifeq ($(ENABLE_BOOT_CONFIG_SUPPORT), 1)
@@ -491,4 +523,15 @@ ifeq ($(ENABLE_USB30_SUPPORT),1)
 		$(LOCAL_DIR)/usb30_dwc_hw.o \
 		$(LOCAL_DIR)/usb30_udc.o \
 		$(LOCAL_DIR)/usb30_wrapper.o
+endif
+
+ifeq ($(ENABLE_REBOOT_MODULE), 1)
+	OBJS += $(LOCAL_DIR)/reboot.o
+endif
+
+ifeq ($(ENABLE_RPMB_SUPPORT), 1)
+include platform/msm_shared/rpmb/rules.mk
+ifeq ($(ENABLE_UFS_SUPPORT), 1)
+        OBJS += $(LOCAL_DIR)/rpmb_ufs.o
+endif
 endif

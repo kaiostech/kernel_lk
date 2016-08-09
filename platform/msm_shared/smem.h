@@ -131,6 +131,9 @@ typedef enum
 	PMIC_IS_PM8019    = 3,
 	PMIC_IS_PM8026    = 4,
 	PMIC_IS_PM8110    = 5,
+	PMIC_IS_PM8916    = 11,
+	PMIC_IS_PM8909    = 13,
+
 } pm_model_type_bfly;
 
 struct smem_board_info_v3 {
@@ -389,6 +392,8 @@ enum {
 	MSM8229  = 270,
 	APQ8029  = 271,
 	MSM8609  = 275,
+	MSM8909W = 300,
+	APQ8009W = 301,
 };
 
 enum platform {
@@ -422,10 +427,14 @@ enum platform_subtype {
 	HW_PLATFORM_SUBTYPE_CSFB = 1,
 	HW_PLATFORM_SUBTYPE_SVLTE1 = 2,
 	HW_PLATFORM_SUBTYPE_SVLTE2A = 3,
+	HW_PLATFORM_SUBTYPE_SURF_WEAR = 3,
+	HW_PLATFORM_SUBTYPE_MTP_WEAR = 5,
 	HW_PLATFORM_SUBTYPE_SGLTE = 6,
 	HW_PLATFORM_SUBTYPE_DSDA = 7,
+	HW_PLATFORM_SUBTYPE_IOE = 8,
 	HW_PLATFORM_SUBTYPE_DSDA2 = 8,
 	HW_PLATFORM_SUBTYPE_SGLTE2 = 9,
+	HW_PLATFORM_SUBTYPE_SWOC_WEAR = 9,
 	HW_PLATFORM_SUBTYPE_32BITS = 0x7FFFFFFF
 };
 
@@ -591,4 +600,7 @@ void smem_get_ram_ptable_entry(ram_partition*, uint32_t entry);
 uint32_t smem_get_ram_ptable_version(void);
 uint32_t smem_get_ram_ptable_len(void);
 void* smem_get_alloc_entry(smem_mem_type_t type, uint32_t* size);
+uint32_t get_ddr_start();
+uint64_t smem_get_ddr_size();
+size_t smem_get_hw_platform_name(void *buf, uint32_t buf_size);
 #endif				/* __PLATFORM_MSM_SHARED_SMEM_H */

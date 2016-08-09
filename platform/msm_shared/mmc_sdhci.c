@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -232,12 +232,22 @@ static uint32_t mmc_decode_and_save_csd(struct mmc_card *card)
 	memcpy((struct mmc_csd *)&card->csd,(struct mmc_csd *)&mmc_csd,
 			sizeof(struct mmc_csd));
 
-	/* Calculate the wp grp size */
-	if (card->ext_csd[MMC_ERASE_GRP_DEF])
-		card->wp_grp_size = MMC_HC_ERASE_MULT * card->ext_csd[MMC_HC_ERASE_GRP_SIZE] / MMC_BLK_SZ;
-	else
+	if (MMC_CARD_MMC(card)) {
+
+		/* Calculate the wp grp size */
+		if (card->ext_csd[MMC_ERASE_GRP_DEF])
+			card->wp_grp_size = MMC_HC_ERASE_MULT * card->ext_csd[MMC_HC_ERASE_GRP_SIZE] / MMC_BLK_SZ;
+		else
+			card->wp_grp_size = (card->csd.wp_grp_size + 1) * (card->csd.erase_grp_size + 1) \
+						  * (card->csd.erase_grp_mult + 1);
+
+		card->rpmb_size = RPMB_PART_MIN_SIZE * card->ext_csd[RPMB_SIZE_MULT];
+		card->rel_wr_count = card->ext_csd[REL_WR_SEC_C];
+	}
+	else {
 		card->wp_grp_size = (card->csd.wp_grp_size + 1) * (card->csd.erase_grp_size + 1) \
-					  * (card->csd.erase_grp_mult + 1);
+						* (card->csd.erase_grp_mult + 1);
+	}
 
 	dprintf(SPEW, "Decoded CSD fields:\n");
 	dprintf(SPEW, "cmmc_structure: %u\n", mmc_csd.cmmc_structure);
@@ -762,7 +772,6 @@ bool mmc_set_drv_type(struct sdhci_host *host, struct mmc_card *card, uint8_t dr
 		ret = mmc_switch_cmd(host, card, MMC_ACCESS_WRITE, MMC_EXT_MMC_HS_TIMING, value);
 	if (!ret)
 		drv_type_changed = true;
-
 	return drv_type_changed;
 }
 /*
@@ -1356,7 +1365,9 @@ static uint32_t mmc_sd_get_card_ssr(struct sdhci_host *host, struct mmc_card *ca
 	/* Card AU size in sectors */
 	card->ssr.au_size = 1 << (au_size + 4);
 	card->ssr.num_aus = UNPACK_BITS(status, MMC_SD_ERASE_SIZE_BIT, MMC_SD_ERASE_SIZE_LEN, 32);
-
+	/*if num_aus is 0 then host should assign number of AU erased at a time*/
+	if (!card->ssr.num_aus)
+		card->ssr.num_aus = 0x10;
 	return 0;
 }
 
@@ -1665,18 +1676,20 @@ static uint32_t mmc_card_init(struct mmc_device *dev)
 
 	card->block_size = MMC_BLK_SZ;
 
-	/* Enable RST_n_FUNCTION */
-	if (!card->ext_csd[MMC_EXT_CSD_RST_N_FUNC])
-	{
-		mmc_return = mmc_switch_cmd(host, card, MMC_SET_BIT, MMC_EXT_CSD_RST_N_FUNC, RST_N_FUNC_ENABLE);
-
-		if (mmc_return)
+	if (MMC_CARD_MMC(card)) {
+		/* Enable RST_n_FUNCTION */
+		if (!card->ext_csd[MMC_EXT_CSD_RST_N_FUNC])
 		{
-			dprintf(CRITICAL, "Failed to enable RST_n_FUNCTION\n");
-			return mmc_return;
-		}
-	}
+			mmc_return = mmc_switch_cmd(host, card, MMC_SET_BIT, MMC_EXT_CSD_RST_N_FUNC, RST_N_FUNC_ENABLE);
 
+			if (mmc_return)
+			{
+				dprintf(CRITICAL, "Failed to enable RST_n_FUNCTION\n");
+				return mmc_return;
+			}
+		}
+
+	}
 	return mmc_return;
 }
 
@@ -2173,7 +2186,10 @@ uint32_t mmc_sdhci_erase(struct mmc_device *dev, uint32_t blk_addr, uint64_t len
 	 * As per emmc 4.5 spec section 7.4.27, calculate the erase timeout
 	 * erase_timeout = 300ms * ERASE_TIMEOUT_MULT * num_erase_grps
 	 */
-	erase_timeout = (300 * 1000 * card->ext_csd[MMC_ERASE_TIMEOUT_MULT] * num_erase_grps);
+	if (MMC_CARD_MMC(card))
+		erase_timeout = ((uint64_t)300 * 1000 * card->ext_csd[MMC_ERASE_TIMEOUT_MULT] * num_erase_grps);
+	else
+		erase_timeout = ((uint64_t)300 * 1000 * num_erase_grps);
 
 	/* Send CMD38 to perform erase */
 	if (mmc_send_erase(dev, erase_timeout))
@@ -2354,13 +2370,119 @@ void mmc_put_card_to_sleep(struct mmc_device *dev)
 		dprintf(CRITICAL, "card deselect error: %s\n", __func__);
 		return;
 	}
+	if(MMC_CARD_MMC(card)){
+		/*CMD5 is reserved in SD card */
+		cmd.cmd_index = CMD5_SLEEP_AWAKE;
+		cmd.argument = (card->rca << MMC_CARD_RCA_BIT) | MMC_CARD_SLEEP;
+		cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
+		cmd.resp_type = SDHCI_CMD_RESP_R1B;
 
-	cmd.cmd_index = CMD5_SLEEP_AWAKE;
-	cmd.argument = (card->rca << MMC_CARD_RCA_BIT) | MMC_CARD_SLEEP;
+		/* send command */
+		if(sdhci_send_command(&dev->host, &cmd))
+			dprintf(CRITICAL, "card sleep error: %s\n", __func__);
+	}
+}
+
+/*
+ * Switch the partition access type to rpmb or default
+ */
+static uint32_t mmc_sdhci_switch_part(struct mmc_device *dev, uint32_t type)
+{
+	uint32_t part_access;
+	uint32_t ret;
+
+	/* Clear the partition access */
+	part_access = dev->card.ext_csd[MMC_PARTITION_CONFIG] & ~PARTITION_ACCESS_MASK;
+	part_access |= type;
+
+	ret = mmc_switch_cmd(&dev->host, &dev->card, MMC_ACCESS_WRITE, MMC_PARTITION_CONFIG, part_access);
+
+	if (ret)
+	{
+		dprintf(CRITICAL, "Failed to switch partition to type: %u\n", type);
+		return 1;
+	}
+
+	dev->card.ext_csd[MMC_PARTITION_CONFIG] = part_access;
+	return 0;
+}
+
+static uint32_t mmc_sdhci_set_blk_cnt(struct mmc_device *dev, uint32_t blk_cnt, uint32_t rel_write)
+{
+	struct mmc_command cmd = {0};
+
+	cmd.cmd_index = CMD23_SET_BLOCK_COUNT;
+	cmd.argument = blk_cnt & 0x0000ffff;
+	cmd.argument |= rel_write;
 	cmd.cmd_type = SDHCI_CMD_TYPE_NORMAL;
-	cmd.resp_type = SDHCI_CMD_RESP_R1B;
+	cmd.resp_type = SDHCI_CMD_RESP_R1;
 
-	/* send command */
-	if(sdhci_send_command(&dev->host, &cmd))
-		dprintf(CRITICAL, "card sleep error: %s\n", __func__);
+	if (sdhci_send_command(&dev->host, &cmd))
+	{
+		dprintf(CRITICAL, "Set block count failed: %s\n", __func__);
+		return 1;
+	}
+
+	return 0;
+}
+
+uint32_t mmc_sdhci_rpmb_send(struct mmc_device *dev, struct mmc_command *cmd)
+{
+	int i;
+	uint32_t retry = 5;
+	uint32_t status;
+	uint32_t rel_write = 0;
+	uint32_t ret = 1;
+
+	ASSERT(cmd);
+
+	/* 1. Set the partition type to rpmb */
+	if (mmc_sdhci_switch_part(dev, PART_ACCESS_RPMB))
+		return 1;
+
+	for (i = 0; i < MAX_RPMB_CMDS; i++)
+	{
+		if (!cmd[i].cmd_index)
+			break;
+
+		if (cmd[i].write_flag == true)
+			rel_write = BIT(31);
+		else
+			rel_write = 0;
+
+		/* 2. Set the block count using cmd23 */
+		if (mmc_sdhci_set_blk_cnt(dev, cmd[i].data.num_blocks, rel_write))
+			goto err;
+
+		/* 3. Send the command */
+		if (sdhci_send_command(&dev->host, &cmd[i]))
+			goto err;
+		do
+		{
+			/* 4. Poll for card status to ensure rpmb operation completeness */
+			if (mmc_get_card_status(&dev->host, &dev->card, &status))
+			{
+				dprintf(CRITICAL, "Failed to get card status after rpmb operations\n");
+				goto err;
+			}
+
+			retry--;
+			udelay(500);
+			if (!retry)
+			{
+				dprintf(CRITICAL, "Card status check timed out after rpmb operations\n");
+				goto err;
+			}
+		} while(!(status & MMC_READY_FOR_DATA) || (MMC_CARD_STATUS(status) == MMC_PROG_STATE));
+	}
+
+	/* If we reach here, that means success */
+	ret = 0;
+
+err:
+	/* 5. Switch the partition back to default type */
+	if (mmc_sdhci_switch_part(dev, PART_ACCESS_DEFAULT))
+		ret = 1;
+
+	return ret;
 }

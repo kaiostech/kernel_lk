@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -138,6 +138,8 @@ static uint32_t crypto_write_reg(struct bam_instance *bam_core,
 	writel(val, reg_addr);
 #else
 	ret = (uint32_t)bam_add_cmd_element(&cmd_list_ptr, reg_addr, val, CE_WRITE_TYPE);
+
+	arch_clean_invalidate_cache_range((addr_t)&cmd_list_ptr, sizeof(struct cmd_element));
 
 	/* Enqueue the desc for the above command */
 	ret = bam_add_one_desc(bam_core,
@@ -528,7 +530,14 @@ uint32_t crypto5_send_data(struct crypto_dev *dev,
 
 CRYPTO_SEND_DATA_ERR:
 
+	crypto5_unlock_pipes(dev);
+
 	return ret_status;
+}
+
+void crypto5_unlock_pipes(struct crypto_dev *dev)
+{
+	CLEAR_STATUS(dev);
 }
 
 void crypto5_cleanup(struct crypto_dev *dev)

@@ -441,7 +441,13 @@ static uint8_t sdhci_cmd_complete(struct sdhci_host *host, struct mmc_command *c
 
 		if (int_status  & SDHCI_INT_STS_CMD_COMPLETE)
 			break;
-		else if (int_status & SDHCI_ERR_INT_STAT_MASK && !host->tuning_in_progress)
+		/*
+		* Some controllers set the data timout first on issuing an erase & take time
+		* to set data complete interrupt. We need to wait hoping the controller would
+		* set data complete
+		*/
+		else if (int_status & SDHCI_ERR_INT_STAT_MASK && !host->tuning_in_progress &&
+				!((REG_READ16(host, SDHCI_ERR_INT_STS_REG) & SDHCI_DAT_TIMEOUT_MASK)))
 			goto err;
 
 		/*
@@ -862,13 +868,16 @@ uint32_t sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 		/* Enable auto cmd23 or cmd12 for multi block transfer
 		 * based on what command card supports
 		 */
-		if (cmd->data.num_blocks > 1) {
+		if ((cmd->data.num_blocks > 1) && !cmd->rel_write) {
 			if (cmd->cmd23_support) {
 				trans_mode |= SDHCI_TRANS_MULTI | SDHCI_AUTO_CMD23_EN | SDHCI_BLK_CNT_EN;
 				REG_WRITE32(host, cmd->data.num_blocks, SDHCI_ARG2_REG);
 			}
 			else
 				trans_mode |= SDHCI_TRANS_MULTI | SDHCI_AUTO_CMD12_EN | SDHCI_BLK_CNT_EN;
+		}
+		else if ((cmd->data.num_blocks > 1) && cmd->rel_write) {
+			trans_mode |= SDHCI_TRANS_MULTI | SDHCI_BLK_CNT_EN;
 		}
 	}
 

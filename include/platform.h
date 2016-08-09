@@ -53,6 +53,7 @@ unsigned board_machtype(void);
 unsigned board_platform_id(void);
 unsigned check_reboot_mode(void);
 unsigned check_hard_reboot_mode(void);
+uint32_t check_alarm_boot(void);
 void platform_uninit_timer(void);
 void reboot_device(unsigned);
 int set_download_mode(enum dload_mode mode);
@@ -60,4 +61,9 @@ uint32_t platform_get_smem_base_addr();
 int platform_is_msm8909();
 int boot_device_mask(int);
 uint32_t platform_detect_panel();
+void set_device_unlock_value(int type, bool status);
+void get_product_name(unsigned char *buf);
+void get_bootloader_version(unsigned char *buf);
+void get_baseband_version(unsigned char *buf);
+bool is_device_locked();
 #endif

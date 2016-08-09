@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -40,6 +40,7 @@
 #include <platform/timer.h>
 #include <err.h>
 #include <msm_panel.h>
+#include <arch/ops.h>
 
 extern void mdp_disable(void);
 extern int mipi_dsi_cmd_config(struct fbcon_config mipi_fb_cfg,
@@ -216,6 +217,7 @@ int mdss_dual_dsi_cmds_tx(struct mipi_dsi_cmd *cmds, int count)
 		}
 
 		memcpy((void *)off, (cm->payload), cm->size);
+		arch_clean_invalidate_cache_range((addr_t)(off), cm->size);
 		writel(off, MIPI_DSI0_BASE + DMA_CMD_OFFSET);
 		writel(cm->size, MIPI_DSI0_BASE + DMA_CMD_LENGTH);	// reg 0x48 for this build
 		writel(off, MIPI_DSI1_BASE + DMA_CMD_OFFSET);
@@ -312,6 +314,7 @@ int mipi_dsi_cmds_tx(struct mipi_dsi_cmd *cmds, int count)
 			mdelay(4);
 		}
 		memcpy((void *)off, (cm->payload), cm->size);
+		arch_clean_invalidate_cache_range((addr_t)(off), cm->size);
 		writel(off, DSI_DMA_CMD_OFFSET);
 		writel(cm->size, DSI_DMA_CMD_LENGTH);	// reg 0x48 for this build
 		dsb();
@@ -399,6 +402,21 @@ static int mipi_dsi_cmd_bta_sw_trigger(void)
 	if (cnt == 10000)
 		err = 1;
 	return err;
+}
+
+static void mdss_dsi_force_clk_lane_hs(uint32_t dual_dsi)
+{
+	uint32_t tmp;
+
+	if (dual_dsi) {
+		tmp = readl_relaxed(MIPI_DSI1_BASE + LANE_CTL);
+		tmp |= BIT(28);
+		writel_relaxed(tmp, MIPI_DSI1_BASE + LANE_CTL);
+	}
+
+	tmp = readl_relaxed(MIPI_DSI0_BASE + LANE_CTL);
+	tmp |= BIT(28);
+	writel_relaxed(tmp, MIPI_DSI0_BASE + LANE_CTL);
 }
 
 int mdss_dsi_host_init(struct mipi_dsi_panel_config *pinfo, uint32_t
@@ -758,6 +776,8 @@ int mdss_dsi_config(struct msm_fb_panel_data *panel)
 	if (!panel)
 		return ERR_INVALID_ARGS;
 
+	memset(&mipi_pinfo, 0, sizeof(mipi_pinfo));
+
 	pinfo = &(panel->panel_info);
 	mipi_pinfo.mode = pinfo->mipi.mode;
 	mipi_pinfo.num_of_lanes = pinfo->mipi.num_of_lanes;
@@ -769,6 +789,7 @@ int mdss_dsi_config(struct msm_fb_panel_data *panel)
 	mipi_pinfo.t_clk_pre = pinfo->mipi.t_clk_pre;
 	mipi_pinfo.t_clk_post = pinfo->mipi.t_clk_post;
 	mipi_pinfo.signature = pinfo->mipi.signature;
+	mipi_pinfo.force_clk_lane_hs = pinfo->mipi.force_clk_lane_hs;
 	mipi_pinfo.cmds_post_tg = pinfo->mipi.cmds_post_tg;
 
 	mdss_dsi_phy_init(&mipi_pinfo, MIPI_DSI0_BASE, DSI0_PHY_BASE);
@@ -791,6 +812,9 @@ int mdss_dsi_config(struct msm_fb_panel_data *panel)
 			goto error;
 		}
 	}
+
+	if (mipi_pinfo.force_clk_lane_hs)
+		mdss_dsi_force_clk_lane_hs(pinfo->mipi.dual_dsi);
 
 	if (!mipi_pinfo.cmds_post_tg) {
 		ret = mdss_dsi_panel_initialize(&mipi_pinfo, pinfo->mipi.broadcast);
@@ -887,6 +911,13 @@ int mdss_dsi_cmd_mode_config(uint16_t disp_width,
 	writel(0x14000000, ctl_base + COMMAND_MODE_DMA_CTRL);
 	writel(0x10000000, ctl_base + MISR_CMD_CTRL);
 	writel(0x1, ctl_base + EOT_PACKET_CTRL);
+
+	if (readl(MIPI_DSI0_BASE) >= DSI_HW_REV_103) {
+		uint32_t tmp;
+		tmp = readl(MIPI_DSI0_BASE + 0x01b8);
+		tmp |= BIT(16); /*enable cmd burst mode*/
+		writel(tmp, MIPI_DSI0_BASE + 0x01b8);
+	}
 #endif
 	return 0;
 }

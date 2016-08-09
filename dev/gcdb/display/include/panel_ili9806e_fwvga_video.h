@@ -87,7 +87,7 @@ static char ili9806e_fwvga_video_on_cmd3[] = {
 
 static char ili9806e_fwvga_video_on_cmd4[] = {
 	0x02, 0x00, 0x39, 0xC0,
-	0x31, 0x02, 0xFF, 0xFF,
+	0x31, 0x00, 0xFF, 0xFF,
 };
 
 static char ili9806e_fwvga_video_on_cmd5[] = {
@@ -3533,7 +3533,7 @@ static struct videopanel_info ili9806e_fwvga_video_video_panel = {
 /* Lane configuration                                                        */
 /*---------------------------------------------------------------------------*/
 static struct lane_configuration ili9806e_fwvga_video_lane_config = {
-	2, 0, 1, 1, 0, 0
+	2, 0, 1, 1, 0, 0, 0
 };
 
 /*---------------------------------------------------------------------------*/

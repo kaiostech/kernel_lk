@@ -2,7 +2,7 @@
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,18 +35,37 @@
 #define LOGO_IMG_OFFSET (12*1024*1024)
 #define LOGO_IMG_MAGIC "SPLASH!!"
 #define LOGO_IMG_MAGIC_SIZE sizeof(LOGO_IMG_MAGIC) - 1
+#define LOGO_IMG_HEADER_SIZE 512
 
+enum fbcon_msg_type {
+	/* type for menu */
+	FBCON_COMMON_MSG = 0,
+	FBCON_UNLOCK_TITLE_MSG,
+	FBCON_TITLE_MSG,
+	FBCON_SUBTITLE_MSG,
 
-struct logo_img_header {
-    unsigned char magic[LOGO_IMG_MAGIC_SIZE]; // "SPLASH!!"
-    uint32_t width; // logo's width, little endian
-    uint32_t height; // logo's height, little endian
-    uint32_t offset;
-    unsigned char reserved[512-20];
+	/* type for warning */
+	FBCON_YELLOW_MSG,
+	FBCON_ORANGE_MSG,
+	FBCON_RED_MSG,
+	FBCON_GREEN_MSG,
+
+	/* and the select message's background */
+	FBCON_SELECT_MSG_BG_COLOR,
 };
 
+typedef struct logo_img_header {
+	unsigned char magic[LOGO_IMG_MAGIC_SIZE]; // "SPLASH!!"
+	uint32_t width;  // logo's width, little endian
+	uint32_t height; // logo's height, little endian
+	uint32_t type;   // 0, Raw BGR data; 1, RLE24 Compressed data
+	uint32_t blocks; // block number, compressed data size / 512
+	uint32_t offset;
+	uint8_t  reserved[512-28];
+}logo_img_header;
+
 struct fbimage {
-	struct logo_img_header  header;
+	struct logo_img_header header;
 	void *image;
 };
 
@@ -71,5 +90,12 @@ void fbcon_setup(struct fbcon_config *cfg);
 void fbcon_putc(char c);
 void fbcon_clear(void);
 struct fbcon_config* fbcon_display(void);
-
+void fbcon_extract_to_screen(logo_img_header *header, void* address);
+void fbcon_putc_factor(char c, int type, unsigned scale_factor);
+void fbcon_draw_msg_background(unsigned y_start, unsigned y_end,
+	uint32_t paint, int update);
+void fbcon_draw_line(uint32_t type);
+uint32_t fbcon_get_current_line(void);
+uint32_t fbcon_get_current_bg(void);
+uint32_t fbcon_get_max_x(void);
 #endif /* __DEV_FBCON_H */

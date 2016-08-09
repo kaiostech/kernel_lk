@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -60,33 +60,125 @@ static void mdss_dsi_uniphy_pll_sw_reset_8909(uint32_t pll_base)
 	mdelay(1);
 }
 
-static uint32_t dsi_pll_enable_seq_8909(uint32_t pll_base)
+static void dsi_pll_toggle_lock_detect_8909(uint32_t pll_base)
 {
-	uint32_t pll_locked = 0;
+	writel(0x04, pll_base + 0x0064); /* LKDetect CFG2 */
+	udelay(1);
+	writel(0x05, pll_base + 0x0064); /* LKDetect CFG2 */
+	udelay(512);
+}
 
+static void dsi_pll_sw_reset_8909(uint32_t pll_base)
+{
 	writel(0x01, pll_base + 0x0068); /* PLL TEST CFG */
 	udelay(1);
 	writel(0x00, pll_base + 0x0068); /* PLL TEST CFG */
+}
+
+static uint32_t dsi_pll_enable_seq_1_8909(uint32_t pll_base)
+{
+	uint32_t rc;
+
+	dsi_pll_sw_reset_8909(pll_base);
+	/*
+	 * Add hardware recommended delays between register writes for
+	 * the updates to take effect. These delays are necessary for the
+	 * PLL to successfully lock
+	 */
+
+	writel(0x34, pll_base + 0x0070); /* CAL CFG1*/
+	writel(0x01, pll_base + 0x0020); /* GLB CFG */
+	writel(0x05, pll_base + 0x0020); /* GLB CFG */
+	writel(0x0f, pll_base + 0x0020); /* GLB CFG */
+	udelay(500);
+
+	dsi_pll_toggle_lock_detect_8909(pll_base);
+	rc = readl(pll_base + 0x00c0) & 0x01;
+
+	return rc;
+}
+
+static uint32_t dsi_pll_enable_seq_2_8909(uint32_t pll_base)
+{
+	uint32_t rc;
+
+	dsi_pll_sw_reset_8909(pll_base);
 
 	/*
 	 * Add hardware recommended delays between register writes for
 	 * the updates to take effect. These delays are necessary for the
 	 * PLL to successfully lock
 	 */
-	writel(0x34, pll_base + 0x0070); /* CAL CFG1*/
-	udelay(1);
+	writel(0x14, pll_base + 0x0070); /* CAL CFG1*/
 	writel(0x01, pll_base + 0x0020); /* GLB CFG */
-	udelay(1);
 	writel(0x05, pll_base + 0x0020); /* GLB CFG */
-	udelay(1);
+	udelay(3);
 	writel(0x0f, pll_base + 0x0020); /* GLB CFG */
-	udelay(1);
+	udelay(500);
 
-	writel(0x04, pll_base + 0x0064); /* LKDetect CFG2 */
-	udelay(1);
-	writel(0x05, pll_base + 0x0064); /* LKDetect CFG2 */
-	udelay(512);
-	pll_locked = readl(pll_base + 0x00c0) & 0x01;
+	dsi_pll_toggle_lock_detect_8909(pll_base);
+	rc = readl(pll_base + 0x00c0) & 0x01;
+
+	return rc;
+}
+
+static uint32_t dsi_pll_enable_seq_3_8909(uint32_t pll_base)
+{
+	uint32_t rc;
+
+	dsi_pll_sw_reset_8909(pll_base);
+
+	/*
+	 * Add hardware recommended delays between register writes for
+	 * the updates to take effect. These delays are necessary for the
+	 * PLL to successfully lock
+	 */
+	writel(0x04, pll_base + 0x0070); /* CAL CFG1*/
+	writel(0x01, pll_base + 0x0020); /* GLB CFG */
+	writel(0x05, pll_base + 0x0020); /* GLB CFG */
+	udelay(3);
+	writel(0x0f, pll_base + 0x0020); /* GLB CFG */
+	udelay(500);
+
+	dsi_pll_toggle_lock_detect_8909(pll_base);
+	rc = readl(pll_base + 0x00c0) & 0x01;
+
+	return rc;
+}
+
+static uint32_t dsi_pll_enable_seq_8909(uint32_t pll_base)
+{
+	uint32_t pll_locked = 0;
+	uint32_t counter = 0;
+
+	do {
+		pll_locked = dsi_pll_enable_seq_1_8909(pll_base);
+
+		dprintf(SPEW, "TSMC pll locked status is %d\n", pll_locked);
+		++counter;
+	} while (!pll_locked && (counter < 3));
+
+	if (!pll_locked) {
+		counter = 0;
+		do {
+			pll_locked = dsi_pll_enable_seq_2_8909(pll_base);
+
+			dprintf(SPEW, "GF P1 pll locked status is %d\n",
+				pll_locked);
+			++counter;
+		} while (!pll_locked && (counter < 3));
+	}
+
+	if (!pll_locked) {
+		counter = 0;
+		do {
+			pll_locked = dsi_pll_enable_seq_3_8909(pll_base);
+
+			dprintf(SPEW, "GF P2 pll locked status is %d\n",
+				pll_locked);
+			++counter;
+		} while (!pll_locked && (counter < 3));
+	}
 
 	return pll_locked;
 }
@@ -125,9 +217,13 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 	}
 	mdelay(20);
 
+	if (board_hardware_subtype() == HW_PLATFORM_SUBTYPE_IOE)
+		bkl_gpio.pin_id = 99;
+
 	if (enable) {
 		if (hw_id == HW_PLATFORM_SURF || (hw_id == HW_PLATFORM_MTP)) {
 			/* configure backlight gpio for CDP and MTP */
+
 			gpio_tlmm_config(bkl_gpio.pin_id, 0,
 				bkl_gpio.pin_direction, bkl_gpio.pin_pull,
 				bkl_gpio.pin_strength, bkl_gpio.pin_state);
@@ -156,7 +252,7 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 		 * Enable auto functional gating
 		 * on DSI CMD AXI fetch from DDR
 		 */
-		writel(0x3ffff, MDP_CGC_EN);
+		writel(0x3fbff, MDP_CGC_EN);
 		ret = restore_secure_cfg(SECURE_DEVICE_MDSS);
 		if (ret) {
 			dprintf(CRITICAL,
@@ -185,14 +281,45 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 	return 0;
 }
 
+static int target_panel_reset_skuq(uint8_t enable)
+{
+	if (enable) {
+		gpio_tlmm_config(enp_gpio.pin_id, 0,
+			enp_gpio.pin_direction, enp_gpio.pin_pull,
+			enp_gpio.pin_strength,
+			enp_gpio.pin_state);
+		gpio_set(enp_gpio.pin_id, 2);
+
+		gpio_tlmm_config(enn_gpio.pin_id, 0,
+			enn_gpio.pin_direction, enn_gpio.pin_pull,
+			enn_gpio.pin_strength,
+			enn_gpio.pin_state);
+		gpio_set(enn_gpio.pin_id, 2);
+	} else {
+		gpio_set(enp_gpio.pin_id, 0); /* ENP */
+		gpio_set(enn_gpio.pin_id, 0); /* ENN */
+	}
+	return 0;
+}
+
 int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 						struct msm_panel_info *pinfo)
 {
 	int ret = NO_ERROR;
 	uint32_t hw_id = board_hardware_id();
 	uint32_t hw_subtype = board_hardware_subtype();
+	uint32_t target_id = 0, plat_hw_ver_major = 0;
 
 	if (enable) {
+		if ((hw_id == HW_PLATFORM_QRD) && (hw_subtype == 0)) {
+			target_id = board_target_id();
+			plat_hw_ver_major = ((target_id >> 16) & 0xFF);
+			if (plat_hw_ver_major == 6) {
+				/* for SKUQ */
+				target_panel_reset_skuq(enable);
+			}
+		}
+
 		if (pinfo->mipi.use_enable_gpio) {
 			gpio_tlmm_config(enable_gpio.pin_id, 0,
 				enable_gpio.pin_direction, enable_gpio.pin_pull,
@@ -220,6 +347,15 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 		gpio_set(reset_gpio.pin_id, 0);
 		if (pinfo->mipi.use_enable_gpio)
 			gpio_set(enable_gpio.pin_id, 0);
+
+		if ((hw_id == HW_PLATFORM_QRD) && (hw_subtype == 0)) {
+			target_id = board_target_id();
+			plat_hw_ver_major = ((target_id >> 16) & 0xFF);
+			if (plat_hw_ver_major == 6) {
+				/* for SKUQ */
+				target_panel_reset_skuq(enable);
+			}
+		}
 	}
 
 	return ret;

@@ -159,6 +159,18 @@
 #define USB_HS_SYSTEM_CFG_RCGR      (CLK_CTL_BASE + 0x41014)
 
 
+/* RPMB send receive buffer needs to be mapped
+ * as device memory, define the start address
+ * and size in MB
+ */
+#define RPMB_SND_RCV_BUF            0x90000000
+#define RPMB_SND_RCV_BUF_SZ         0x1
+
+/* QSEECOM: Secure app region notification */
+#define APP_REGION_ADDR 0x87a00000
+#define APP_REGION_SIZE 0x200000
+
+
 /* MDSS */
 #define MIPI_DSI_BASE               (0x1AC8000)
 #define MIPI_DSI0_BASE              MIPI_DSI_BASE
@@ -186,6 +198,7 @@
 #define MDP_DMA_P_WATERMARK_2       REG_MDP(0x9009C)
 #define MDP_PANIC_ROBUST_CTRL       REG_MDP(0x900A0)
 #define MDP_PANIC_LUT0              REG_MDP(0x900A4)
+#define MDP_PANIC_LUT1              REG_MDP(0x900A8)
 #define MDP_ROBUST_LUT              REG_MDP(0x900AC)
 
 #define MDP_DSI_VIDEO_EN                 REG_MDP(0xF0000)
@@ -213,6 +226,12 @@
 #define MDP_INTR_STATUS             REG_MDP(0x00054)
 
 #define MDP_CGC_EN                  REG_MDP(0x100)
+#define MDP_AUTOREFRESH_CONFIG_P    REG_MDP(0x34C)
+#define MDP_AUTOREFRESH_EN          0x10000000
+/* Auto refresh fps = Panel fps / MDP_AUTOREFRESH_FRAME_NUM */
+/* Auto refresh fps = 60/10 = 6fps */
+#define MDP_AUTOREFRESH_FRAME_NUM   10
+#define MDP_SYNC_CONFIG_0           REG_MDP(0x300)
 
 #define SOFT_RESET                  0x118
 #define CLK_CTRL                    0x11C

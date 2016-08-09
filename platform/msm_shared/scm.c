@@ -55,15 +55,17 @@
 bool scm_arm_support;
 static uint32_t scm_io_write(addr_t address, uint32_t val);
 
-static void scm_arm_support_available(uint32_t svc_id, uint32_t cmd_id)
+bool is_scm_armv8_support()
+{
+	return scm_arm_support;
+}
+
+int is_scm_call_available(uint32_t svc_id, uint32_t cmd_id)
 {
 	uint32_t ret;
 	scmcall_arg scm_arg = {0};
-	scmcall_arg scm_ret = {0};
-	/* Make a call to check if SCM call available using new interface,
-	 * if this returns 0 then scm implementation as per arm spec
-	 * otherwise use the old interface for scm calls
-	 */
+	scmcall_ret scm_ret = {0};
+
 	scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_INFO, IS_CALL_AVAIL_CMD);
 	scm_arg.x1 = MAKE_SCM_ARGS(0x1);
 	scm_arg.x2 = MAKE_SIP_SCM_CMD(svc_id, cmd_id);
@@ -71,13 +73,31 @@ static void scm_arm_support_available(uint32_t svc_id, uint32_t cmd_id)
 	ret = scm_call2(&scm_arg, &scm_ret);
 
 	if (!ret)
-		scm_arm_support = true;
+		return scm_ret.x1;
+
+	return ret;
 }
 
+static int scm_arm_support_available(uint32_t svc_id, uint32_t cmd_id)
+{
+	int ret;
+
+	ret = is_scm_call_available(SCM_SVC_INFO, IS_CALL_AVAIL_CMD);
+
+	if (ret > 0)
+		scm_arm_support = true;
+
+	return ret;
+}
 
 void scm_init()
 {
-	scm_arm_support_available(SCM_SVC_INFO, IS_CALL_AVAIL_CMD);
+	int ret;
+
+	ret = scm_arm_support_available(SCM_SVC_INFO, IS_CALL_AVAIL_CMD);
+
+	if (ret)
+		dprintf(CRITICAL, "Failed to initialize SCM\n");
 }
 
 /**
@@ -1133,20 +1153,22 @@ static uint32_t scm_call_a32(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
 	register uint32_t r4 __asm__("r4") = x4;
 	register uint32_t r5 __asm__("r5") = x5;
 
-	__asm__ volatile(
-		__asmeq("%0", "r0")
-		__asmeq("%1", "r1")
-		__asmeq("%2", "r2")
-		__asmeq("%3", "r3")
-		__asmeq("%4", "r0")
-		__asmeq("%5", "r1")
-		__asmeq("%6", "r2")
-		__asmeq("%7", "r3")
-		__asmeq("%8", "r4")
-		__asmeq("%9", "r5")
-		"smc    #0  @ switch to secure world\n"
-		: "=r" (r0), "=r" (r1), "=r" (r2), "=r" (r3)
-		: "r" (r0), "r" (r1), "r" (r2), "r" (r3), "r" (r4), "r" (r5));
+	do {
+		__asm__ volatile(
+			__asmeq("%0", "r0")
+			__asmeq("%1", "r1")
+			__asmeq("%2", "r2")
+			__asmeq("%3", "r3")
+			__asmeq("%4", "r0")
+			__asmeq("%5", "r1")
+			__asmeq("%6", "r2")
+			__asmeq("%7", "r3")
+			__asmeq("%8", "r4")
+			__asmeq("%9", "r5")
+			"smc    #0  @ switch to secure world\n"
+			: "=r" (r0), "=r" (r1), "=r" (r2), "=r" (r3)
+			: "r" (r0), "r" (r1), "r" (r2), "r" (r3), "r" (r4), "r" (r5));
+	} while(r0 == 1);
 
 	if (ret)
 	{
@@ -1198,17 +1220,22 @@ uint32_t scm_call2(scmcall_arg *arg, scmcall_ret *ret)
 uint32_t is_secure_boot_enable()
 {
 	uint32_t ret = 0;
-	uint32_t resp[2];
+	uint32_t *resp = NULL;
 	scmcall_arg scm_arg = {0};
 	scmcall_ret scm_ret = {0};
 
+	resp =  memalign(CACHE_LINE,(2 *sizeof(uint32_t)));
+	ASSERT(resp);
 	if (!scm_arm_support) {
-		ret = scm_call_atomic2(TZBSP_SVC_INFO, IS_SECURE_BOOT_ENABLED, &resp, sizeof(resp));
+		ret = scm_call_atomic2(TZBSP_SVC_INFO, IS_SECURE_BOOT_ENABLED, resp, (2 * sizeof(uint32_t)));
 	} else {
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(TZBSP_SVC_INFO, IS_SECURE_BOOT_ENABLED);
 		ret = scm_call2(&scm_arg, &scm_ret);
 		resp[0] = scm_ret.x1;
 	}
+
+	/* Invalidate the resp buffer */
+	arch_clean_invalidate_cache_range((addr_t) resp, ROUNDUP((2 * sizeof(uint32_t)), CACHE_LINE));
 
 	/* Parse Bit 0 and Bit 2 of the response
 	* Bit 0 - SECBOOT_ENABLE_CHECK
@@ -1219,7 +1246,7 @@ uint32_t is_secure_boot_enable()
 			ret = 1;
 	} else
 		dprintf(CRITICAL, "scm call is_secure_boot_enable failed\n");
-
+	free(resp);
 	return ret;
 }
 
@@ -1293,14 +1320,16 @@ int scm_dload_mode(int mode)
 		dload_type = 0;
 
 	/* Write to the Boot MISC register */
-	ret = scm_call2_atomic(SCM_SVC_BOOT, SCM_DLOAD_CMD, dload_type, 0);
+	ret = is_scm_call_available(SCM_SVC_BOOT, SCM_DLOAD_CMD);
 
-	if (ret) {
+	if (ret > 0)
+		ret = scm_call2_atomic(SCM_SVC_BOOT, SCM_DLOAD_CMD, dload_type, 0);
+	else
 		ret = scm_io_write(TCSR_BOOT_MISC_DETECT,dload_type);
-		if(ret) {
-			dprintf(CRITICAL, "Failed to write to boot misc: %d\n", ret);
-			return ret;
-		}
+
+	if(ret) {
+		dprintf(CRITICAL, "Failed to write to boot misc: %d\n", ret);
+		return ret;
 	}
 
 	/* Make WDOG_DEBUG DISABLE scm call only in non-secure boot */
