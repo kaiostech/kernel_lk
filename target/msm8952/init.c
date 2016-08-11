@@ -559,6 +559,7 @@ static uint8_t splash_override;
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
 {
+#if DISPLAY_SPLASH_SCREEN
 	uint8_t splash_screen = 0;
 	if (!splash_override) {
 		switch (board_hardware_id()) {
@@ -575,6 +576,9 @@ int target_cont_splash_screen()
 		dprintf(SPEW, "Target_cont_splash=%d\n", splash_screen);
 	}
 	return splash_screen;
+#else
+	return 0;
+#endif
 }
 
 void target_force_cont_splash_disable(uint8_t override)
