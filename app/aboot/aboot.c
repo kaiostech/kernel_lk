@@ -1075,8 +1075,16 @@ int boot_linux_from_mmc(void)
 
 #if DEVICE_TREE
 	dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+	if (UINT_MAX < ((uint64_t)kernel_actual + (uint64_t)ramdisk_actual+ (uint64_t)dt_actual + page_size)) {
+		dprintf(CRITICAL, "Integer overflow detected in bootimage header fields at %u in %s\n",__LINE__,__FILE__);
+		return -1;
+	}
 	imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
 #else
+	if (UINT_MAX < ((uint64_t)kernel_actual + (uint64_t)ramdisk_actual + page_size)) {
+		dprintf(CRITICAL, "Integer overflow detected in bootimage header fields at %u in %s\n",__LINE__,__FILE__);
+		return -1;
+	}
 	imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
 #endif
 
@@ -1482,6 +1490,18 @@ int boot_linux_from_flash(void)
 		dprintf(INFO, "Loading boot image (%d): start\n", imagesize_actual);
 		bs_set_timestamp(BS_KERNEL_LOAD_START);
 
+		if (UINT_MAX - page_size < imagesize_actual)
+		{
+			dprintf(CRITICAL,"Integer overflow detected in bootimage header fields %u %s\n", __LINE__,__func__);
+			return -1;
+		}
+
+		/*Check the availability of RAM before reading boot image + max signature length from flash*/
+		if (target_get_max_flash_size() < (imagesize_actual + page_size))
+		{
+			dprintf(CRITICAL, "bootimage  size is greater than DDR can hold\n");
+			return -1;
+		}
 		/* Read image without signature */
 		if (flash_read(ptn, offset, (void *)image_addr, imagesize_actual))
 		{
