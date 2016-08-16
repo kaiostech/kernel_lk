@@ -157,7 +157,7 @@
  * and size in MB
  */
 #define RPMB_SND_RCV_BUF            0x90000000
-#define RPMB_SND_RCV_BUF_SZ         0x1
+#define RPMB_SND_RCV_BUF_SZ         0x2
 
 /* QSEECOM: Secure app region notification */
 #define APP_REGION_ADDR 0x85E00000
