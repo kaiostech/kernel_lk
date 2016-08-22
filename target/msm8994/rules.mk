@@ -9,11 +9,11 @@ endif
 PLATFORM := msm8994
 
 MEMBASE := 0x0F900000 # SDRAM
-MEMSIZE := 0x00100000 # 1MB
+MEMSIZE := 0x00200000 # 2MB
 
 BASE_ADDR    := 0x0000000
 
-SCRATCH_ADDR := 0x10000000
+SCRATCH_ADDR := 0x10100000
 
 SCRATCH_SIZE := 0x20000000
 
@@ -30,6 +30,7 @@ MODULES += \
 	dev/qpnp_led \
     lib/ptable \
 	dev/gcdb/display \
+	dev/pmic/pmi8994 \
     lib/libfdt
 
 DEFINES += \

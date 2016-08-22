@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -26,8 +26,8 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __IRQS_MSMTITANIUM_H
-#define __IRQS_MSMTITANIUM_H
+#ifndef __IRQS_MSM8953_H
+#define __IRQS_MSM8953_H
 
 /* MSM ACPU Interrupt Numbers */
 
@@ -44,14 +44,14 @@
 
 #define INT_QTMR_FRM_0_PHYSICAL_TIMER_EXP      (GIC_SPI_START + 257)
 
-#define USB30_EE1_IRQ                          (GIC_SPI_START + 134)
+#define USB30_EE1_IRQ                          (GIC_SPI_START + 140)
 #define USB1_HS_BAM_IRQ                        (GIC_SPI_START + 135)
 #define USB1_HS_IRQ                            (GIC_SPI_START + 134)
 #define SDCC1_PWRCTL_IRQ                       (GIC_SPI_START + 138)
 #define SDCC2_PWRCTL_IRQ                       (GIC_SPI_START + 221)
 
 /* Retrofit universal macro names */
-#define INT_USB_HS                             USB1_HS_IRQ
+#define INT_USB_HS                             USB30_EE1_IRQ
 
 #define EE0_KRAIT_HLOS_SPMI_PERIPH_IRQ         (GIC_SPI_START + 190)
 
@@ -63,4 +63,4 @@
                                                NR_BOARD_IRQS)
 
 #define SMD_IRQ                                (GIC_SPI_START + 168)
-#endif /* __IRQS_MSMTITANIUM_H */
+#endif /* __IRQS_MSM8953_H */

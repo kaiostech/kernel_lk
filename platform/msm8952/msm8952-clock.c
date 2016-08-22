@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -399,10 +399,15 @@ static struct clk_freq_tbl ftbl_mdss_esc1_1_clk[] = {
 };
 
 static struct clk_freq_tbl ftbl_mdp_clk[] = {
-	F( 80000000,  gpll0,   10,    0,    0),
-	F( 100000000, gpll0,    8,    0,    0),
-	F( 200000000, gpll0,    4,    0,    0),
-	F( 320000000, gpll0,  2.5,    0,    0),
+	F( 50000000,    gpll0,  16,     0,      0),
+	F( 80000000,    gpll0,  10,     0,      0),
+	F( 100000000,   gpll0,  8,      0,      0),
+	F( 145450000,   gpll0,  5.5,    0,      0),
+	F( 160000000,   gpll0,  5,      0,      0),
+	F( 177780000,   gpll0,  4.5,    0,      0),
+	F( 200000000,   gpll0,  4,      0,      0),
+	F( 266670000,   gpll0,  3,      0,      0),
+	F( 320000000,   gpll0,  2.5,    0,      0),
 	F_END
 };
 
@@ -630,6 +635,12 @@ void msm8976_v_1_1_sdcc_clock_modify()
 	sdcc1_apps_clk_src.freq_tbl = ftbl_gcc_sdcc1_apps_clk_8976_v_1_1;
 }
 
+void msm8937_clock_override()
+{
+	gpll0_clk_src.status_reg = (void *)GPLL0_MODE;
+	gpll0_clk_src.status_mask = BIT(30);
+}
+
 void platform_clock_init(void)
 {
 	if (platform_is_msm8956()) {
@@ -638,5 +649,9 @@ void platform_clock_init(void)
 			/*freq and GPLL change for 8976 v1.1 */
 			msm8976_v_1_1_sdcc_clock_modify();
 	}
+
+	if (platform_is_msm8937() || platform_is_msm8917())
+		msm8937_clock_override();
+
 	clk_init(msm_clocks_8952, ARRAY_SIZE(msm_clocks_8952));
 }

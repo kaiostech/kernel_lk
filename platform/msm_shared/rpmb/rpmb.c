@@ -25,18 +25,20 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdlib.h>
+#include <string.h>
 #include <platform.h>
 #include <rpmb.h>
+#include <km_main.h>
 #include <rpmb_listener.h>
 #include <mmc_sdhci.h>
 #include <boot_device.h>
 #include <debug.h>
 #include <target.h>
+#include <secapp_loader.h>
 
-static bool lksec_app_loaded;
 
 static void *dev;
-static int app_handle;
 struct rpmb_init_info info;
 
 int rpmb_init()
@@ -52,12 +54,13 @@ int rpmb_init()
 		info.size = mmc_dev->card.rpmb_size / RPMB_MIN_BLK_SZ;
 		if (mmc_dev->card.ext_csd[MMC_EXT_CSD_REV] < 8)
 		{
+			//as per emmc spec rel_wr_count should be 1 for emmc version < 5.1
 			dprintf(SPEW, "EMMC Version < 5.1\n");
-			info.rel_wr_count = mmc_dev->card.rel_wr_count;
+			info.rel_wr_count = 1;
 		}
 		else
 		{
-			if (mmc_dev->card.ext_csd[MMC_EXT_CSD_EN_RPMB_REL_WR] == 0)
+			if ( (mmc_dev->card.ext_csd[MMC_EXT_CSD_EN_RPMB_REL_WR] & BIT(4)) == 0)
 			{
 				dprintf(SPEW, "EMMC Version >= 5.1 EN_RPMB_REL_WR = 0\n");
 				// according to emmc version 5.1 and above if EN_RPMB_REL_WR in extended
@@ -76,6 +79,7 @@ int rpmb_init()
 		}
 		info.dev_type  = EMMC_RPMB;
 	}
+#ifdef UFS_SUPPORT
 	else
 	{
 		struct ufs_dev *ufs_dev = (struct ufs_dev *) dev;
@@ -84,30 +88,13 @@ int rpmb_init()
 		info.rel_wr_count = ufs_dev->rpmb_rw_size;
 		info.dev_type  = UFS_RPMB;
 	}
-
-	/* Initialize Qseecom */
-	ret = qseecom_init();
-
-	if (ret < 0)
-	{
-		dprintf(CRITICAL, "Failed to initialize qseecom, error: %d\n", ret);
-		goto err;
-	}
+#endif
 
 	/* Register & start the listener */
 	ret = rpmb_listener_start();
 	if (ret < 0)
 	{
 		dprintf(CRITICAL, "Error registering the handler\n");
-		goto err;
-	}
-
-	/* Start Qseecom */
-	ret = qseecom_tz_init();
-
-	if (ret < 0)
-	{
-		dprintf(CRITICAL, "Failed to start qseecom, error: %d\n", ret);
 		goto err;
 	}
 
@@ -122,18 +109,26 @@ struct rpmb_init_info *rpmb_get_init_info()
 
 int rpmb_read(uint32_t *req, uint32_t req_len, uint32_t *resp, uint32_t *resp_len)
 {
+	int ret = 0;
 	if (platform_boot_dev_isemmc())
-		return rpmb_read_emmc(dev, req, req_len, resp, resp_len);
+		ret = rpmb_read_emmc(dev, req, req_len, resp, resp_len);
+#ifdef UFS_SUPPORT
 	else
-		return rpmb_read_ufs(dev, req, req_len, resp, resp_len);
+		ret = rpmb_read_ufs(dev, req, req_len, resp, resp_len);
+#endif
+	return ret;
 }
 
 int rpmb_write(uint32_t *req, uint32_t req_len, uint32_t rel_wr_count, uint32_t *resp, uint32_t *resp_len)
 {
+	int ret = 0;
 	if (platform_boot_dev_isemmc())
-		return rpmb_write_emmc(dev, req, req_len, rel_wr_count, resp, resp_len);
+		ret = rpmb_write_emmc(dev, req, req_len, rel_wr_count, resp, resp_len);
+#ifdef UFS_SUPPORT
 	else
-		return rpmb_write_ufs(dev, req, req_len, rel_wr_count, resp, resp_len);
+		ret = rpmb_write_ufs(dev, req, req_len, rel_wr_count, resp, resp_len);
+#endif
+	return ret;
 }
 
 /* This API calls into TZ app to read device_info */
@@ -143,26 +138,13 @@ int read_device_info_rpmb(void *info, uint32_t sz)
 	struct send_cmd_req read_req = {0};
 	struct send_cmd_rsp read_rsp = {0};
 
-	/*
-	 * Load the sec app for first time
-	 */
-	if (!lksec_app_loaded)
-	{
-		if (load_sec_app() < 0)
-		{
-			dprintf(CRITICAL, "Failed to load App for rpmb\n");
-			ASSERT(0);
-		}
-		lksec_app_loaded = true;
-	}
-
-	read_req.cmd_id = CLIENT_CMD_READ_LK_DEVICE_STATE;
+	read_req.cmd_id = KEYMASTER_READ_LK_DEVICE_STATE;
 	read_req.data   = (uint32_t) info;
 	read_req.len    = sz;
 
 	/* Read the device info */
 	arch_clean_invalidate_cache_range((addr_t) info, sz);
-	ret = qseecom_send_command(app_handle, (void*) &read_req, sizeof(read_req), (void*) &read_rsp, sizeof(read_rsp));
+	ret = qseecom_send_command(get_secapp_handle(), (void*) &read_req, sizeof(read_req), (void*) &read_rsp, sizeof(read_rsp));
 	arch_invalidate_cache_range((addr_t) info, sz);
 
 	if (ret < 0 || read_rsp.status < 0)
@@ -181,13 +163,13 @@ int write_device_info_rpmb(void *info, uint32_t sz)
 	struct send_cmd_req write_req = {0};
 	struct send_cmd_rsp write_rsp = {0};
 
-	write_req.cmd_id = CLIENT_CMD_WRITE_LK_DEVICE_STATE;
+	write_req.cmd_id = KEYMASTER_WRITE_LK_DEVICE_STATE;
 	write_req.data   = (uint32_t) info;
 	write_req.len    = sz;
 
 	/* Write the device info */
 	arch_clean_invalidate_cache_range((addr_t) info, sz);
-	ret = qseecom_send_command(app_handle, (void *)&write_req, sizeof(write_req), (void *)&write_rsp, sizeof(write_rsp));
+	ret = qseecom_send_command(get_secapp_handle(), (void *)&write_req, sizeof(write_req), (void *)&write_rsp, sizeof(write_rsp));
 	arch_invalidate_cache_range((addr_t) info, sz);
 
 	if (ret < 0 || write_rsp.status < 0)
@@ -199,9 +181,33 @@ int write_device_info_rpmb(void *info, uint32_t sz)
 	return 0;
 }
 
-int rpmb_get_app_handle()
+/*
+ * SWP Write function is used to send a configuration block to rpmb
+ * for enabling a secure write protect based on LBAs. This function
+ * should is enabled by the keymaster secure app and this function
+ * can only be called before we send the milestone call to keymaster.
+ */
+int swp_write(qsee_stor_secure_wp_info_t swp_cb)
 {
-	return app_handle;
+	secure_write_prot_req_t *req;
+	secure_write_prot_rsp_t rsp;
+	int ret = 0;
+	uint32_t tlen = sizeof(secure_write_prot_req_t) + sizeof(swp_cb);
+	if(!(req = (secure_write_prot_req_t *) malloc(tlen)))
+		ASSERT(0);
+	void *cpy_ptr = (uint8_t *) req + sizeof(secure_write_prot_req_t);
+	req->cmd_id = KEYMASTER_SECURE_WRITE_PROTECT;
+	req->op = SWP_WRITE_CONFIG;
+	req->swp_write_data_offset = sizeof(secure_write_prot_req_t);
+	req->swp_write_data_len = sizeof(swp_cb);
+	memcpy(cpy_ptr, (void *)&swp_cb, sizeof(swp_cb));
+	ret = qseecom_send_command(get_secapp_handle(), (void *)req, tlen, (void *)&rsp, sizeof(rsp));
+	if(ret < 0 || rsp.status < 0)
+	{
+		dprintf(CRITICAL, "Setting secure write protect configuration failed\n");
+		return -1;
+	}
+	return 0;
 }
 
 int rpmb_uninit()
@@ -225,50 +231,4 @@ int rpmb_uninit()
 	return ret;
 }
 
-int load_sec_app()
-{
-	/* start TZ app */
-	app_handle = qseecom_start_app("lksecapp");
 
-	if (app_handle < 0)
-	{
-		dprintf(CRITICAL, "Failure to load TZ app: lksecapp, error: %d\n", app_handle);
-		return app_handle;
-	}
-
-	return 0;
-}
-
-int unload_sec_app()
-{
-	int ret = 0;
-
-	struct send_cmd_req req = {0};
-	struct send_cmd_rsp rsp = {0};
-
-	req.cmd_id = CLIENT_CMD_LK_END_MILESTONE;
-	rsp.cmd_id = CLIENT_CMD_LK_END_MILESTONE;
-
-	/* Milestone end command */
-	ret = qseecom_send_command(app_handle, (void *)&req, sizeof(req), (void *)&rsp, sizeof(rsp));
-
-	if (ret < 0 || rsp.status < 0)
-	{
-		dprintf(CRITICAL, "Failed to send milestone end command: Error: %x\n", rsp.status);
-		return ret;
-	}
-
-	if (qseecom_shutdown_app(app_handle) < 0)
-	{
-		dprintf(CRITICAL, "Failed to Shutdown sec app\n");
-		ASSERT(0);
-	}
-
-
-	return 0;
-}
-
-bool is_sec_app_loaded()
-{
-	return lksec_app_loaded;
-}

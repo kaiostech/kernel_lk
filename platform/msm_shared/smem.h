@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -136,6 +136,9 @@ typedef enum
 	PMIC_IS_PM8019    = 3,
 	PMIC_IS_PM8026    = 4,
 	PMIC_IS_PM8110    = 5,
+	PMIC_IS_PM8916    = 11,
+	PMIC_IS_PM8909    = 13,
+	PMIC_IS_PMI8950   = 17,
 	PMIC_IS_PMI8994   = 10,
 	PMIC_IS_PMI8996   = 19,
 } pm_model_type_bfly;
@@ -441,7 +444,20 @@ enum {
 	MDM9307  = 298,
 	MDM9628  = 299,
 	APQ8096  = 291,
-	MSMTITANIUM  = 293,
+	MSM8953  = 293,
+	MSM8937 = 294,
+	APQ8037 = 295,
+	MSM8940 = 313,
+	MSM8996L = 302,
+	MSM8917  = 303,
+	APQ8053 = 304,
+	MSM8996SG = 305,
+	APQ8017 = 307,
+	MSM8217 = 308,
+	MSM8617 = 309,
+	MSM8996AU = 310,
+	APQ8096AU = 311,
+	APQ8096SG = 312,
 };
 
 enum platform {
@@ -465,6 +481,7 @@ enum platform {
 	HW_PLATFORM_DMA = 22,
 	HW_PLATFORM_STP = 23,
 	HW_PLATFORM_SBC = 24,
+	HW_PLATFORM_ADP = 25,
 	HW_PLATFORM_32BITS = 0x7FFFFFFF,
 };
 
@@ -667,4 +684,5 @@ uint32_t smem_get_ram_ptable_len(void);
 void* smem_get_alloc_entry(smem_mem_type_t type, uint32_t* size);
 uint32_t get_ddr_start();
 uint64_t smem_get_ddr_size();
+size_t smem_get_hw_platform_name(void *buf, uint32 buf_size);
 #endif				/* __PLATFORM_MSM_SHARED_SMEM_H */

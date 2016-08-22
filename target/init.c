@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -34,8 +34,22 @@
 #include <board.h>
 #endif
 
+#include <smem.h>
+#include <pm8x41_adc.h>
+#include <pm8x41_hw.h>
+#include <scm.h>
+
+#if CHECK_BAT_VOLTAGE
+#include <pm_fg_adc_usr.h>
+#endif
+
 #define EXPAND(NAME) #NAME
 #define TARGET(NAME) EXPAND(NAME)
+
+#define BATTERY_MIN_VOLTAGE		3200000  //uv
+#define PMIC_SLAVE_ID                   0x20000
+#define BAT_IF_BAT_PRES_STATUS		0x1208
+
 /*
  * default implementations of these routines, if the target code
  * chooses not to implement.
@@ -97,9 +111,17 @@ __WEAK uint32_t is_user_force_reset(void)
 	return 0;
 }
 
-__WEAK int set_download_mode(enum dload_mode mode)
+__WEAK int set_download_mode(enum reboot_reason mode)
 {
-	return -1;
+	if(mode == NORMAL_DLOAD || mode == EMERGENCY_DLOAD) {
+#if PLATFORM_USE_SCM_DLOAD
+		return scm_dload_mode(mode);
+#else
+		return -1;
+#endif
+	}
+
+	return 0;
 }
 
 __WEAK unsigned target_pause_for_battery_charge(void)
@@ -227,21 +249,37 @@ __WEAK uint32_t target_ddr_cfg_val()
 }
 
 #if PON_VIB_SUPPORT
-uint32_t get_vibration_type()
+void get_vibration_type(struct qpnp_hap *config)
 {
-	uint32_t ret = VIB_ERM_TYPE;
 	uint32_t hw_id = board_hardware_id();
 	uint32_t platform = board_platform_id();
+
+	config->vib_type = VIB_ERM_TYPE;
+	config->hap_rate_cfg1 = QPNP_HAP_RATE_CFG1_1c;
+	config->hap_rate_cfg2 = QPNP_HAP_RATE_CFG2_04;
 	switch(hw_id){
 	case HW_PLATFORM_MTP:
 		switch(platform){
 		case MSM8952:
-			ret = VIB_ERM_TYPE;
+			config->vib_type = VIB_ERM_TYPE;
 			break;
 		case MSM8976:
 		case MSM8956:
 		case APQ8056:
-			ret = VIB_LRA_TYPE;
+			config->vib_type = VIB_LRA_TYPE;
+			break;
+		case MSM8937:
+		case MSM8940:
+		case APQ8037:
+		case MSM8917:
+		case MSM8217:
+		case MSM8617:
+		case APQ8017:
+		case MSM8953:
+		case APQ8053:
+			config->vib_type = VIB_LRA_TYPE;
+			config->hap_rate_cfg1 = QPNP_HAP_RATE_CFG1_41;
+			config->hap_rate_cfg2 = QPNP_HAP_RATE_CFG2_03;
 			break;
 		default:
 			dprintf(CRITICAL,"Unsupported platform id\n");
@@ -249,13 +287,12 @@ uint32_t get_vibration_type()
 		}
 		break;
 	case HW_PLATFORM_QRD:
-		ret = VIB_ERM_TYPE;
+		config->vib_type = VIB_ERM_TYPE;
 		break;
 	default:
-		dprintf(CRITICAL,"Unsupported platform id\n");
+		dprintf(CRITICAL,"Unsupported hardware id\n");
 		break;
 	}
-	return ret;
 }
 #endif
 
@@ -268,3 +305,91 @@ __WEAK bool target_build_variant_user()
 	return false;
 #endif
 }
+
+__WEAK uint32_t target_get_pmic()
+{
+	return PMIC_IS_UNKNOWN;
+}
+
+/* Check battery if it's exist */
+bool target_battery_is_present()
+{
+	bool batt_is_exist;
+	uint8_t value = 0;
+	uint32_t pmic;
+
+	pmic = target_get_pmic();
+
+	switch(pmic)
+	{
+		case PMIC_IS_PM8909:
+		case PMIC_IS_PM8916:
+		case PMIC_IS_PM8941:
+			value = REG_READ(BAT_IF_BAT_PRES_STATUS);
+			break;
+		case PMIC_IS_PMI8950:
+		case PMIC_IS_PMI8994:
+		case PMIC_IS_PMI8996:
+			value = REG_READ(PMIC_SLAVE_ID|
+			BAT_IF_BAT_PRES_STATUS);
+			break;
+		default:
+			dprintf(CRITICAL, "ERROR: Couldn't get the pmic type\n");
+			break;
+	}
+
+	batt_is_exist = value >> 7;
+
+	return batt_is_exist;
+
+}
+
+#if CHECK_BAT_VOLTAGE
+/* Return battery voltage */
+uint32_t target_get_battery_voltage()
+{
+	uint32_t pmic;
+	uint32_t vbat = 0;
+
+	pmic = target_get_pmic();
+
+	switch(pmic)
+	{
+		case PMIC_IS_PM8909:
+		case PMIC_IS_PM8916:
+		case PMIC_IS_PM8941:
+			vbat = pm8x41_get_batt_voltage(); //uv
+			break;
+		case PMIC_IS_PMI8950:
+		case PMIC_IS_PMI8994:
+		case PMIC_IS_PMI8996:
+			if (!pm_fg_usr_get_vbat(1, &vbat)) {
+				vbat = vbat*1000; //uv
+			} else {
+				dprintf(CRITICAL, "ERROR: Get battery voltage failed!!!\n");
+			}
+			break;
+		default:
+			dprintf(CRITICAL, "ERROR: Couldn't get the pmic type\n");
+			break;
+	}
+
+	return vbat;
+}
+
+/* Add safeguards such as refusing to flash if minimum battery levels
+ * are not present or be bypass if the device doesn't have a battery
+ */
+bool target_battery_soc_ok()
+{
+	if (!target_battery_is_present()) {
+		dprintf(INFO, "battery is not present\n");
+		return true;
+	}
+
+	if (target_get_battery_voltage() >= BATTERY_MIN_VOLTAGE)
+		return true;
+
+	return false;
+}
+#endif

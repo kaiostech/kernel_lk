@@ -26,47 +26,38 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <debug.h>
-#include <reg.h>
-#include <platform/iomap.h>
-#include <platform/gpio.h>
-#include <blsp_qup.h>
+#ifndef SAL_MAIN_H
+#define SAL_MAIN_H
 
-void gpio_tlmm_config(uint32_t gpio, uint8_t func,
-			uint8_t dir, uint8_t pull,
-			uint8_t drvstr, uint32_t enable)
+#include <km_main.h>
+
+enum app_commands
 {
-	uint32_t val = 0;
+	CLIENT_CMD_READ_LK_DEVICE_STATE = 0,
+	CLIENT_CMD_LK_END_MILESTONE,
+	CLIENT_CMD_GET_VERSION,
+	CLIENT_CMD_WRITE_LK_DEVICE_STATE,
+};
 
-	val |= pull;
-	val |= func << 2;
-	val |= drvstr << 6;
-	val |= enable << 9;
-
-	writel(val, (uint32_t *)GPIO_CONFIG_ADDR(gpio));
-	return;
-}
-
-void gpio_set_dir(uint32_t gpio, uint32_t dir)
+struct send_cmd_req
 {
-	writel(dir, (uint32_t *)GPIO_IN_OUT_ADDR(gpio));
+	uint32_t cmd_id;
+	uint32_t data;
+	uint32_t len;
+}__PACKED;
 
-	return;
-}
-
-uint32_t gpio_status(uint32_t gpio)
+struct send_cmd_rsp
 {
-	return readl(GPIO_IN_OUT_ADDR(gpio)) & GPIO_IN;
-}
+	uint32_t cmd_id;
+	uint32_t data;
+	int32_t status;
+}__PACKED;
 
-/* Configure gpio for blsp uart 2 */
-void gpio_config_uart_dm(uint8_t id)
-{
-	/* configure rx gpio */
-	gpio_tlmm_config(5, 2, GPIO_INPUT, GPIO_NO_PULL,
-				GPIO_8MA, GPIO_DISABLE);
+int get_secapp_handle();
+bool is_sec_app_loaded();
+int load_sec_app();
+int get_secapp_handle();
+int send_milestone_call_to_tz();
+int send_delete_keys_to_tz();
 
-	/* configure tx gpio */
-	gpio_tlmm_config(4, 2, GPIO_OUTPUT, GPIO_NO_PULL,
-				GPIO_8MA, GPIO_DISABLE);
-}
+#endif /* SAL_MAIN_H */

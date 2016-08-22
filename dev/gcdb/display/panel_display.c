@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -148,6 +148,8 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->xres += (pinfo->border_left + pinfo->border_right);
 	pinfo->yres += (pinfo->border_top + pinfo->border_bottom);
 
+	dprintf(INFO, "panel_operating_mode=0x%x\n",
+		pstruct->paneldata->panel_operating_mode);
 	if (pstruct->paneldata->panel_operating_mode & DUAL_PIPE_FLAG)
 		pinfo->lcdc.dual_pipe = 1;
 	if (pstruct->paneldata->panel_operating_mode & PIPE_SWAP_FLAG)
@@ -156,6 +158,14 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 		pinfo->lcdc.split_display = 1;
 	if (pstruct->paneldata->panel_operating_mode & DST_SPLIT_FLAG)
 		pinfo->lcdc.dst_split = 1;
+	if (pstruct->paneldata->panel_operating_mode & DUAL_DSI_FLAG)
+		pinfo->mipi.dual_dsi = 1;
+	if (pstruct->paneldata->panel_operating_mode & USE_DSI1_PLL_FLAG)
+		pinfo->mipi.use_dsi1_pll = 1;
+
+	dprintf(SPEW, "dual_pipe=%d pipe_swap=%d split_display=%d dst_split=%d\n",
+		pinfo->lcdc.dual_pipe, pinfo->lcdc.pipe_swap,
+		pinfo->lcdc.split_display, pinfo->lcdc.dst_split);
 
 	/* Color setting*/
 	pinfo->lcdc.border_clr = pstruct->color->border_color;
@@ -194,10 +204,6 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->mipi.vc = pstruct->paneldata->dsi_virtualchannel_id;
 	pinfo->mipi.frame_rate = pstruct->paneldata->panel_framerate;
 	pinfo->mipi.stream = pstruct->paneldata->dsi_stream;
-	if (pstruct->paneldata->panel_operating_mode & DUAL_DSI_FLAG)
-		pinfo->mipi.dual_dsi = 1;
-	if (pstruct->paneldata->panel_operating_mode & USE_DSI1_PLL_FLAG)
-		pinfo->mipi.use_dsi1_pll = 1;
 	pinfo->mipi.mode_gpio_state = pstruct->paneldata->mode_gpio_state;
 	pinfo->mipi.bitclock = pstruct->paneldata->panel_bitclock_freq;
 	if (pinfo->mipi.bitclock) {
@@ -229,6 +235,9 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->mipi.wr_mem_start
 			 = pstruct->commandpanel->tevsync_rdptr_irqline;
 	pinfo->mipi.te_sel = pstruct->commandpanel->tepin_select;
+	pinfo->autorefresh_enable = pstruct->commandpanel->autorefresh_enable;
+	pinfo->autorefresh_framenum =
+			pstruct->commandpanel->autorefresh_framenumdiv;
 
 	/* Data lane configuraiton */
 	pinfo->mipi.num_of_lanes = pstruct->laneconfig->dsi_lanes;
@@ -246,28 +255,35 @@ int dsi_panel_init(struct msm_panel_info *pinfo,
 	pinfo->fbc.comp_ratio = 1;
 
 	if (pinfo->compression_mode == COMPRESSION_DSC) {
-		struct dsc_desc *dsc = NULL;
+		struct dsc_desc *dsc = &pinfo->dsc;
+		struct dsc_parameters *dsc_params = NULL;
 
-		pinfo->dsc.major = pstruct->dsc_paras.major;
-		pinfo->dsc.minor = pstruct->dsc_paras.minor;
-		pinfo->dsc.pps_id = pstruct->dsc_paras.pps_id;
-		pinfo->dsc.slice_height = pstruct->dsc_paras.slice_height;
-		pinfo->dsc.slice_width = pstruct->dsc_paras.slice_width;
-		pinfo->dsc.bpp = pstruct->dsc_paras.bpp;
-		pinfo->dsc.bpc = pstruct->dsc_paras.bpc;
-		pinfo->dsc.slice_per_pkt = pstruct->dsc_paras.slice_per_pkt;
-		pinfo->dsc.ich_reset_value = pstruct->dsc_paras.ich_reset_value;
-		pinfo->dsc.ich_reset_override = pstruct->dsc_paras.ich_reset_override;
-		pinfo->dsc.block_pred_enable = pstruct->dsc_paras.block_prediction;
-		pinfo->dsc.enable_422 = 0;
-		pinfo->dsc.convert_rgb = 1;
-		pinfo->dsc.vbr_enable = 0;
+		if (!pstruct->config) {
+			dprintf(CRITICAL, "ERROR: DSC cannot be used without topology_config\n");
+			return ERR_NOT_ALLOWED;
+		}
+		dsc_params = pstruct->config->dsc;
+		if (!dsc_params) {
+			dprintf(CRITICAL, "ERROR: DSC params are NULL\n");
+			return ERR_INVALID_ARGS;
+		}
 
-		dsc = &pinfo->dsc;
-		if (dsc) {
-			if (dsc->parameter_calc)
-                                dsc->parameter_calc(pinfo);
-                }
+		dsc->major = dsc_params->major;
+		dsc->minor = dsc_params->minor;
+		dsc->scr_rev = dsc_params->scr_rev;
+		dsc->pps_id = dsc_params->pps_id;
+		dsc->slice_height = dsc_params->slice_height;
+		dsc->slice_width = dsc_params->slice_width;
+		dsc->bpp = dsc_params->bpp;
+		dsc->bpc = dsc_params->bpc;
+		dsc->slice_per_pkt = dsc_params->slice_per_pkt;
+		dsc->block_pred_enable = dsc_params->block_prediction;
+		dsc->enable_422 = 0;
+		dsc->convert_rgb = 1;
+		dsc->vbr_enable = 0;
+
+		if (dsc->parameter_calc)
+			dsc->parameter_calc(pinfo);
 	} else if (pinfo->compression_mode == COMPRESSION_FBC) {
 		pinfo->fbc.enabled = pstruct->fbcinfo.enabled;
 		if (pinfo->fbc.enabled) {

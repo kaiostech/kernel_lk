@@ -26,51 +26,76 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <debug.h>
-#include <reg.h>
-#include <platform/iomap.h>
-#include <platform/irqs.h>
-#include <platform/clock.h>
-#include <qgic.h>
-#include <qtimer.h>
-#include <mmu.h>
-#include <arch/arm/mmu.h>
-#include <smem.h>
-#include <board.h>
-#include <boot_stats.h>
-#include <platform.h>
+#include <stdlib.h>
+#include <string.h>
 
-void platform_early_init(void)
+#include <secapp_loader.h>
+#include <qseecom_lk_api.h>
+
+static bool lksec_app_loaded;
+static int app_handle;
+
+int load_sec_app()
 {
-	board_init();
-	platform_clock_init();
-	qgic_init();
-	qtimer_init();
-	scm_init();
+	/* start TZ app */
+	app_handle = qseecom_start_app("keymaster");
+
+	if (app_handle <= 0)
+	{
+		dprintf(CRITICAL, "Failure to load TZ app: lksecapp, error: %d\n", app_handle);
+		return -1;
+	}
+	lksec_app_loaded = true;
+	return 0;
 }
 
-void platform_init(void)
+int get_secapp_handle()
 {
-	dprintf(INFO, "platform_init()\n");
+	dprintf(INFO, "LK SEC APP Handle: 0x%x\n", app_handle);
+	return app_handle;
 }
 
-void platform_uninit(void)
+int send_delete_keys_to_tz()
 {
-	qtimer_uninit();
+	int ret = 0;
+	key_op_delete_all_req_t req = {0};
+	key_op_delete_all_rsp_t rsp = {0};
+	req.cmd_id = KEYMASTER_DELETE_ALL_KEYS;
+
+	// send delete all keys command
+	ret = qseecom_send_command(app_handle, (void *)&req, sizeof(req), (void *)&rsp, sizeof(rsp));
+
+	if (ret < 0 || rsp.status < 0)
+	{
+		dprintf(CRITICAL, "Failed to send delete keys command: Error: %x\n", rsp.status);
+		return -1;
+	}
+
+	return 0;
 }
 
-uint32_t platform_get_sclk_count(void)
+int send_milestone_call_to_tz()
 {
-	return readl(MPM2_MPM_SLEEP_TIMETICK_COUNT_VAL);
+	int ret = 0;
+
+	km_set_milestone_req_t req = {0};
+	km_set_milestone_rsp_t rsp = {0};
+
+	req.cmd_id = KEYMASTER_MILESTONE_CALL;
+
+	/* Milestone end command */
+	ret = qseecom_send_command(app_handle, (void *)&req, sizeof(req), (void *)&rsp, sizeof(rsp));
+
+	if (ret < 0 || rsp.status < 0)
+	{
+		dprintf(CRITICAL, "Failed to send milestone end command: Error: %x\n", rsp.status);
+		return -1;
+	}
+
+	return 0;
 }
 
-addr_t get_bs_info_addr()
+bool is_sec_app_loaded()
 {
-	return ((addr_t)BS_INFO_ADDR);
-}
-
-int platform_use_identity_mmu_mappings(void)
-{
-	/* Use only the mappings specified in this file. */
-	return 1;
+	return lksec_app_loaded;
 }

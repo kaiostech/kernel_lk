@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -76,8 +76,8 @@ unsigned check_hard_reboot_mode(void)
 	hard_restart_reason = REG_READ(PON_SOFT_RB_SPARE);
 	REG_WRITE(PON_SOFT_RB_SPARE, hard_restart_reason & 0x03);
 
-	/* Extract the bits 5 to 7 and return */
-	return hard_restart_reason & 0xFC;
+	/* Extract the bits 2 to 7 and return */
+	return (hard_restart_reason & 0xFC) >> 2;
 }
 
 /* Return true if it is triggered by alarm. */
@@ -103,30 +103,39 @@ void reboot_device(unsigned reboot_reason)
 	uint8_t value;
 #endif
 
-	/* Need to clear the SW_RESET_ENTRY register and
-	 * write to the BOOT_MISC_REG for known reset cases
-	 */
-	if(reboot_reason != DLOAD)
-		scm_dload_mode(NORMAL_MODE);
+	/* Set cookie for dload mode */
+	if(set_download_mode(reboot_reason)) {
+		dprintf(CRITICAL, "HALT: set_download_mode not supported\n");
+		return;
+	}
 
+	if (reboot_reason != NORMAL_DLOAD && reboot_reason != EMERGENCY_DLOAD) {
 #if USE_PON_REBOOT_REG
-	value = REG_READ(PON_SOFT_RB_SPARE);
-	value |= reboot_reason;
-	REG_WRITE(PON_SOFT_RB_SPARE, value);
+		value = REG_READ(PON_SOFT_RB_SPARE);
+		value |= (reboot_reason << 2);
+		REG_WRITE(PON_SOFT_RB_SPARE, value);
 #else
-	writel(reboot_reason, RESTART_REASON_ADDR);
+		writel(reboot_reason, RESTART_REASON_ADDR);
 #endif
+	}
+
 	/* For Dload cases do a warm reset
 	 * For other cases do a hard reset
 	 */
 #if USE_PON_REBOOT_REG
-	if(reboot_reason == DLOAD)
+	if(reboot_reason == NORMAL_DLOAD || reboot_reason == EMERGENCY_DLOAD) {
 #else
-	if(reboot_reason == FASTBOOT_MODE || (reboot_reason == DLOAD) || (reboot_reason == RECOVERY_MODE))
+	if(reboot_reason == FASTBOOT_MODE || reboot_reason == NORMAL_DLOAD ||
+		reboot_reason == EMERGENCY_DLOAD || reboot_reason == RECOVERY_MODE) {
 #endif
 		reset_type = PON_PSHOLD_WARM_RESET;
-	else
+#if DISABLE_DLOAD_MODE
+		if (reboot_reason == NORMAL_DLOAD)
+			reset_type = PON_PSHOLD_HARD_RESET;
+#endif
+	} else {
 		reset_type = PON_PSHOLD_HARD_RESET;
+	}
 
 	pmic_reset_configure(reset_type);
 

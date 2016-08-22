@@ -37,8 +37,8 @@
 #define DDR_START                          get_ddr_start()
 #define ABOOT_FORCE_KERNEL_ADDR            DDR_START + 0x8000
 #define ABOOT_FORCE_KERNEL64_ADDR          DDR_START + 0x80000
-#define ABOOT_FORCE_RAMDISK_ADDR           DDR_START + 0x2000000
-#define ABOOT_FORCE_TAGS_ADDR              DDR_START + 0x1E00000
+#define ABOOT_FORCE_TAGS_ADDR              DDR_START + 0x3400000
+#define ABOOT_FORCE_RAMDISK_ADDR           DDR_START + 0x3600000
 
 #define MSM_SHARED_BASE                    0x86300000
 #define MSM_SHARED_IMEM_BASE               0x08600000
@@ -56,7 +56,9 @@
 #define APPS_APCS_QTMR_AC_BASE             (APPS_SS_BASE + 0x00020000)
 #define APPS_APCS_F0_QTMR_V1_BASE          (APPS_SS_BASE + 0x00021000)
 #define QTMR_BASE                          APPS_APCS_F0_QTMR_V1_BASE
-#define APCS_ALIAS0_IPC_INTERRUPT          (APPS_SS_BASE + 0x00111008)
+#define APCS_ALIAS1_IPC_INTERRUPT_1        (APPS_SS_BASE + 0x00011008)
+#define APCS_ALIAS0_IPC_INTERRUPT_2        (APPS_SS_BASE + 0x00111008)
+#define APCS_ALIAS0_IPC_INTERRUPT          platform_get_apcs_ipc_base()
 
 #define PERIPH_SS_BASE                     0x07800000
 
@@ -103,6 +105,7 @@
 /* GPLL */
 #define GPLL0_STATUS                       (CLK_CTL_BASE + 0x2101C)
 #define GPLL2_STATUS                       (CLK_CTL_BASE + 0x4A01C)
+#define GPLL0_MODE                         (CLK_CTL_BASE + 0x21000)
 #define APCS_GPLL_ENA_VOTE                 (CLK_CTL_BASE + 0x45000)
 #define APCS_CLOCK_BRANCH_ENA_VOTE         (CLK_CTL_BASE + 0x45004)
 #define GPLL4_MODE                         (CLK_CTL_BASE + 0x24000)
@@ -154,6 +157,22 @@
 #define USB_HS_AHB_CBCR                    (CLK_CTL_BASE + 0x41008)
 #define USB_HS_SYSTEM_CMD_RCGR             (CLK_CTL_BASE + 0x41010)
 #define USB_HS_SYSTEM_CFG_RCGR             (CLK_CTL_BASE + 0x41014)
+
+
+/* RPMB send receive buffer needs to be mapped
+ * as device memory, define the start address
+ * and size in MB
+ */
+#define RPMB_SND_RCV_BUF            0xA0000000
+#define RPMB_SND_RCV_BUF_SZ         0x1
+
+/* QSEECOM: Secure app region notification */
+#define APP_REGION_ADDR platform_get_tz_app_add()
+#define APP_REGION_SIZE platform_get_tz_app_size()
+#define APP_REGION_ADDR_8952 0x85E00000
+#define APP_REGION_SIZE_8952 0x500000
+#define APP_REGION_ADDR_8937 0x85B00000
+#define APP_REGION_SIZE_8937 0x800000
 
 /* MDSS */
 #define MIPI_DSI_BASE               (0x1A98000)
@@ -413,9 +432,15 @@
 #endif
 #define MDSS_MDP_PP_DCE_DATA_OUT_SWAP		0x0CC
 
-#define MDP_DSC_0_BASE				REG_MDP(0x81000)
-#define MDP_DSC_1_BASE				REG_MDP(0x81400)
+#ifdef MDP_DSC_0_BASE
+#undef MDP_DSC_0_BASE
+#endif
+#define MDP_DSC_0_BASE              REG_MDP(0x81000)
 
+#ifdef MDP_DSC_1_BASE
+#undef MDP_DSC_1_BASE
+#endif
+#define MDP_DSC_1_BASE              REG_MDP(0x81400)
 
 #define SOFT_RESET                  0x118
 #define CLK_CTRL                    0x11C

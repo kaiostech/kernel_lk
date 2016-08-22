@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -44,7 +44,14 @@
 #define QPNP_WLED_SWITCH_FREQ_REG(b)           (b + 0x4C)
 #define QPNP_WLED_OVP_REG(b)                   (b + 0x4D)
 #define QPNP_WLED_ILIM_REG(b)                  (b + 0x4E)
+#define QPNP_WLED_VLOOP_COMP_RES(b)            (b + 0x55)
+#define QPNP_WLED_VLOOP_COMP_GM(b)             (b + 0x56)
+#define QPNP_WLED_PSM_CTRL(b)                  (b + 0x5B)
+#define QPNP_WLED_TEST4(b)                     (b + 0xE5)
+#define QPNP_WLED_CTRL_SPARE_REG(b)            (b + 0xDF)
+#define QPNP_WLED_REF_7P7_TRIM_REG(b)          (b + 0xF2)
 
+#define QPNP_WLED_7P7_TRIM_MASK                0xF
 #define QPNP_WLED_EN_MASK                      0x7F
 #define QPNP_WLED_EN_SHIFT                     7
 #define QPNP_WLED_FDBK_OP_MASK                 0xF8
@@ -134,6 +141,9 @@
 #define QPNP_WLED_MODULE_RDY_SHIFT             7
 #define QPNP_WLED_MODULE_EN_MASK               0x7F
 #define QPNP_WLED_MODULE_EN_SHIFT              7
+#define QPNP_IBB_SWIRE_RDY_MASK               0x40
+#define QPNP_IBB_SWIRE_RDY_SHIFT              6
+#define QPNP_IBB_MODULE_EN_MASK               0x80
 #define QPNP_WLED_DISP_SEL_MASK                0x7F
 #define QPNP_WLED_DISP_SEL_SHIFT               7
 
@@ -148,6 +158,7 @@
 #define QPNP_WLED_IBB_PWRDN_DLY_MAX_MS         3
 #define IBB_LAB_VREG_STEP_SIZE                 100000
 #define QPNP_LABIBB_OUTPUT_VOLTAGE             0x41
+#define QPNP_LABIBB_PS_CTL		       0x50
 #define QPNP_LAB_OUTPUT_OVERRIDE_EN            BIT(7)
 #define QPNP_LAB_SET_VOLTAGE_MASK              (BIT(4) - 1)
 #define QPNP_IBB_SET_VOLTAGE_MASK              (BIT(6) - 1)
@@ -156,11 +167,20 @@
 #define QPNP_WLED_LAB_FAST_PC_MASK             0xFB
 #define QPNP_WLED_LAB_START_DLY_US             8
 #define QPNP_WLED_LAB_FAST_PC_SHIFT            2
+#define QPNP_WLED_PRECHARGE_MASK               0xFC
+#define QPNP_WLED_PRECHARGE_US200              0x00
+#define QPNP_WLED_PRECHARGE_US300              0x01
+#define QPNP_WLED_PRECHARGE_US400              0x02
+#define QPNP_WLED_PRECHARGE_US500              0x03
 
 #define QPNP_WLED_SEC_ACCESS_REG(b)            (b + 0xD0)
 #define QPNP_WLED_SEC_UNLOCK                   0xA5
 
+#if TARGET_MAX_WLED_STRINGS
+#define QPNP_WLED_MAX_STRINGS                  TARGET_MAX_WLED_STRINGS
+#else
 #define QPNP_WLED_MAX_STRINGS                  4
+#endif
 #define WLED_MAX_LEVEL_511                     511
 #define WLED_MAX_LEVEL_4095                    4095
 #define QPNP_WLED_RAMP_DLY_MS                  20
@@ -170,6 +190,19 @@
 #define QPNP_WLED_MAX_BR_LEVEL                 1638
 
 #define PWRDN_DLY2_MASK                        0x3
+
+#define NUM_SUPPORTED_AVDD_VOLTAGES 		   6
+
+/* Supported values  7900, 7600, 7300, 6400, 6100, 5800 */
+#if TARGET_QPNP_WLED_AVDD_DEFAULT_VOLTAGE_MV
+#define QPNP_WLED_AVDD_DEFAULT_VOLTAGE_MV	   TARGET_QPNP_WLED_AVDD_DEFAULT_VOLTAGE_MV
+#else
+#define QPNP_WLED_AVDD_DEFAULT_VOLTAGE_MV	   7600
+#endif
+
+#define QPNP_WLED_AVDD_MIN_TRIM_VALUE          0x0
+#define QPNP_WLED_AVDD_MAX_TRIM_VALUE          0xF
+#define QPNP_WLED_AVDD_SET_BIT                 BIT(4)
 
 /* output feedback mode */
 enum qpnp_wled_fdbk_op {
@@ -254,12 +287,15 @@ struct qpnp_wled {
 	bool disp_type_amoled;
 	bool ibb_bias_active;
 	bool lab_fast_precharge;
+	uint8_t  lab_max_precharge_time;
 	uint32_t lab_min_volt;
 	uint32_t lab_max_volt;
 	uint32_t ibb_min_volt;
 	uint32_t ibb_max_volt;
 	uint32_t ibb_init_volt;
 	uint32_t lab_init_volt;
+	bool lab_ibb_swire_control;
+	bool wled_avdd_control;
 };
 
 struct qpnp_wled_config_data {
@@ -273,6 +309,8 @@ struct qpnp_wled_config_data {
 	uint32_t ibb_max_volt;
 	uint32_t ibb_init_volt;
 	uint32_t lab_init_volt;
+	bool lab_ibb_swire_control;
+	bool wled_avdd_control;
 };
 /* WLED Initial Setup */
 int qpnp_wled_init(struct qpnp_wled_config_data *config);

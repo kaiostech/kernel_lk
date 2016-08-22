@@ -317,6 +317,22 @@ static int mdss_dsi_cmd_bta_sw_trigger(uint32_t ctl_base)
 	return err;
 }
 
+static void mdss_dsi_force_clk_lane_hs(struct mipi_panel_info *mipi,
+		uint32_t dual_dsi)
+{
+	uint32_t tmp;
+
+	if (dual_dsi) {
+		tmp = readl(mipi->sctl_base + LANE_CTL);
+		tmp |= BIT(28);
+		writel(tmp, mipi->sctl_base + LANE_CTL);
+	}
+
+	tmp = readl(mipi->ctl_base + LANE_CTL);
+	tmp |= BIT(28);
+	writel(tmp, mipi->ctl_base + LANE_CTL);
+}
+
 int mdss_dsi_host_init(struct mipi_panel_info *mipi, uint32_t
 		dual_dsi, uint32_t broadcast)
 {
@@ -382,14 +398,6 @@ int mdss_dsi_host_init(struct mipi_panel_info *mipi, uint32_t
 		writel(lane_swap_dsi1, mipi->sctl_base + LANE_SWAP_CTL);
 		writel(timing_ctl, mipi->sctl_base + TIMING_CTL);
 
-		if (mipi->force_clk_lane_hs) {
-			uint32_t tmp;
-
-			tmp = readl(mipi->sctl_base + LANE_CTL);
-			tmp |= BIT(28);
-			writel(tmp, mipi->sctl_base + LANE_CTL);
-		}
-
 		if ((mipi->mode == DSI_CMD_MODE) &&
 				(readl(mipi->sctl_base) >= DSI_HW_REV_103)) {
 			uint32_t tmp;
@@ -413,14 +421,6 @@ int mdss_dsi_host_init(struct mipi_panel_info *mipi, uint32_t
 
 	writel(lane_swap, mipi->ctl_base + LANE_SWAP_CTL);
 	writel(timing_ctl, mipi->ctl_base + TIMING_CTL);
-
-	if (mipi->force_clk_lane_hs) {
-		uint32_t tmp;
-
-		tmp = readl(mipi->ctl_base + LANE_CTL);
-		tmp |= BIT(28);
-		writel(tmp, mipi->ctl_base + LANE_CTL);
-	}
 
 	if ((mipi->mode == DSI_CMD_MODE) &&
 			(readl(mipi->ctl_base) >= DSI_HW_REV_103)) {
@@ -677,6 +677,9 @@ int mdss_dsi_config(struct msm_fb_panel_data *panel)
 		}
 	}
 
+	if (mipi->force_clk_lane_hs)
+		mdss_dsi_force_clk_lane_hs(mipi, mipi->dual_dsi);
+
 	if (!mipi->cmds_post_tg) {
 		ret = mdss_dsi_panel_initialize(mipi, mipi->broadcast);
 		if (ret) {
@@ -833,7 +836,7 @@ int mipi_dsi_off(struct msm_panel_info *pinfo)
 	{
 		mdss_dsi_panel_shutdown(pinfo);
 		writel(0, pinfo->mipi.ctl_base + CLK_CTRL);
-		writel(0x1F1, pinfo->mipi.ctl_base + CTRL);
+		writel(0, pinfo->mipi.ctl_base + CTRL);
 	}
 
 	writel(0x1115501, pinfo->mipi.ctl_base + INT_CTRL);

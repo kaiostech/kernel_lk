@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -156,14 +156,24 @@ static struct backlight sharp_wqxga_dualdsi_video_backlight = {
 };
 
 static struct labibb_desc sharp_wqxga_dualdsi_video_labibb = {
-	0, 1, 5500000, 5500000, 5500000, 5500000, 3, 3, 1
+	0, 1, 5500000, 5500000, 5500000, 5500000, 3, 3, 1, 0
 };
 
 /*---------------------------------------------------------------------------*/
 /* Dynamic fps supported frequencies by panel                                */
 /*---------------------------------------------------------------------------*/
 static const struct dfps_panel_info sharp_wqxga_dualdsi_video_dfps = {
-	1, 8, {53, 54, 55, 56, 57, 58, 59, 60}
+	1, 9, {48, 53, 54, 55, 56, 57, 58, 59, 60}
+};
+
+/* 2LM + 2CTL */
+struct topology_config sharp_wqxga_dualdsi_video_config0 = {
+	"config0", {800, 800}, 0, NULL, false
+};
+
+/* 1LM + 1CTL + PP_SPLIT */
+struct topology_config sharp_wqxga_dualdsi_video_config1 = {
+	"config1", {-1, -1}, 0, NULL, true
 };
 
 #define SHARP_WQXGA_DUALDSI_VIDEO_SIGNATURE 0x210000

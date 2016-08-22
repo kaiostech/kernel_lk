@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -166,9 +166,10 @@ static int mdss_dsi_dfps_get_pll_codes_cal(struct msm_panel_info *pinfo)
 
 		err = mdss_dsi_panel_clock(1, pinfo);
 		if (!err) {
+			dprintf(SPEW, "frame_rate=%d, vcorate=%d success!\n",
+					pinfo->mipi.frame_rate,
+					pinfo->mipi.dsi_pll_config->vco_clock);
 			pinfo->dfps.codes_dfps[i].is_valid = 1;
-			pinfo->dfps.codes_dfps[i].frame_rate =
-				pinfo->mipi.frame_rate;
 			pinfo->dfps.codes_dfps[i].frame_rate =
 				pinfo->mipi.frame_rate;
 			pinfo->dfps.codes_dfps[i].clk_rate =
@@ -201,7 +202,7 @@ static int mdss_dsi_dfps_get_stored_pll_codes(struct msm_panel_info *pinfo)
 	index = partition_get_index("splash");
 	if (index == INVALID_PTN) {
 		dprintf(INFO, "%s: splash partition table not found\n", __func__);
-		ret = NO_ERROR;
+		ret = ERROR;
 		goto splash_err;
 	}
 
@@ -262,7 +263,7 @@ static int mdss_dsi_dfps_store_pll_codes(struct msm_panel_info *pinfo)
 	index = partition_get_index("splash");
 	if (index == INVALID_PTN) {
 		dprintf(INFO, "%s: splash partition table not found\n", __func__);
-		ret = NO_ERROR;
+		ret = ERROR;
 		goto store_err;
 	}
 
@@ -477,6 +478,36 @@ static void mdss_dsi_set_pll_src(void)
 			~USE_DSI1_PLL_FLAG;
 }
 
+static int update_dsi_display_config()
+{
+	int ret = NO_ERROR;
+
+	if ((panel.panel_info.lm_split[0] > 0) &&
+	    (panel.panel_info.lm_split[1] > 0))
+		panelstruct.paneldata->panel_operating_mode |= DUAL_PIPE_FLAG;
+
+	if (panelstruct.paneldata->panel_operating_mode & DUAL_PIPE_FLAG) {
+		if ((panel.panel_info.lm_split[0] <= 0) ||
+		    (panel.panel_info.lm_split[1] <= 0)) {
+			panel.panel_info.lm_split[0] =
+				panelstruct.panelres->panel_width / 2;
+			panel.panel_info.lm_split[1] =
+				panel.panel_info.lm_split[0];
+		}
+	}
+
+	if (panelstruct.config && panelstruct.config->use_pingpong_split)
+		panelstruct.paneldata->panel_operating_mode |= DST_SPLIT_FLAG;
+
+	if ((panelstruct.paneldata->panel_operating_mode & DUAL_PIPE_FLAG) &&
+	    (panelstruct.paneldata->panel_operating_mode & DST_SPLIT_FLAG)) {
+		dprintf(CRITICAL, "DUAL_PIPE_FLAG and DST_SPLIT_FLAG cannot be selected togather\n");
+		ret = ERROR;
+	}
+
+	return ret;
+}
+
 int gcdb_display_init(const char *panel_name, uint32_t rev, void *base)
 {
 	int ret = NO_ERROR;
@@ -487,6 +518,8 @@ int gcdb_display_init(const char *panel_name, uint32_t rev, void *base)
 				 &dsi_video_mode_phy_db);
 
 	if (pan_type == PANEL_TYPE_DSI) {
+		if (update_dsi_display_config())
+			goto error_gcdb_display_init;
 		target_dsi_phy_config(&dsi_video_mode_phy_db);
 		mdss_dsi_check_swap_status();
 		mdss_dsi_set_pll_src();
@@ -504,16 +537,15 @@ int gcdb_display_init(const char *panel_name, uint32_t rev, void *base)
 		panel.bl_func = mdss_dsi_bl_enable;
 		panel.dsi2HDMI_config = mdss_dsi2HDMI_config;
 		/*
-		 * If dfps enabled, reserve fb memory to store pll
-		 * codes and pass pll codes values to kernel.
+		 * Reserve fb memory to store pll codes and pass
+		 * pll codes values to kernel.
 		 */
-		if (panel.panel_info.dfps.panel_dfps.enabled) {
-			panel.panel_info.dfps.dfps_fb_base = base;
-			base += DFPS_PLL_CODES_SIZE;
-			dprintf(SPEW, "fb_base=0x%p!\n", base);
-		}
-
+		panel.panel_info.dfps.dfps_fb_base = base;
+		base += DFPS_PLL_CODES_SIZE;
 		panel.fb.base = base;
+		dprintf(SPEW, "dfps base=0x%p,d, fb_base=0x%p!\n",
+				panel.panel_info.dfps.dfps_fb_base, base);
+
 		panel.fb.width =  panel.panel_info.xres;
 		panel.fb.height =  panel.panel_info.yres;
 		panel.fb.stride =  panel.panel_info.xres;
@@ -530,7 +562,6 @@ int gcdb_display_init(const char *panel_name, uint32_t rev, void *base)
 		dprintf(CRITICAL, "Target panel init not found!\n");
 		ret = ERR_NOT_SUPPORTED;
 		goto error_gcdb_display_init;
-
 	}
 
 	panel.fb.base = base;

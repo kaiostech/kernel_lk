@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -54,6 +54,10 @@
 #include <spmi.h>
 #include <sdhci_msm.h>
 #include <clock.h>
+#include <boot_device.h>
+#include <secapp_loader.h>
+#include <rpmb.h>
+#include <smem.h>
 
 #include "target/display.h"
 
@@ -73,6 +77,8 @@
 #define PMIC_ARB_OWNER_ID       0
 #define TLMM_VOL_UP_BTN_GPIO    85
 #define TLMM_VOL_UP_BTN_GPIO_8956 113
+#define TLMM_VOL_UP_BTN_GPIO_8937 91
+#define TLMM_VOL_DOWN_BTN_GPIO    128
 
 #define FASTBOOT_MODE           0x77665500
 #define RECOVERY_MODE           0x77665502
@@ -86,6 +92,7 @@
 #define CE_READ_PIPE_LOCK_GRP   0
 #define CE_WRITE_PIPE_LOCK_GRP  0
 #define CE_ARRAY_SIZE           20
+#define SUB_TYPE_SKUT           0x0A
 
 struct mmc_device *dev;
 
@@ -174,19 +181,25 @@ void *target_mmc_device()
 /* Return 1 if vol_up pressed */
 int target_volume_up()
 {
+	static uint8_t first_time = 0;
 	uint8_t status = 0;
 	uint32_t vol_up_gpio;
 
 	if(platform_is_msm8956())
 		vol_up_gpio = TLMM_VOL_UP_BTN_GPIO_8956;
-
+	else if(platform_is_msm8937() || platform_is_msm8917())
+		vol_up_gpio = TLMM_VOL_UP_BTN_GPIO_8937;
 	else
 		vol_up_gpio = TLMM_VOL_UP_BTN_GPIO;
 
-	gpio_tlmm_config(vol_up_gpio, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_2MA, GPIO_ENABLE);
+	if (!first_time) {
+		gpio_tlmm_config(vol_up_gpio, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_2MA, GPIO_ENABLE);
 
-	/* Wait for the gpio config to take effect - debounce time */
-	thread_sleep(10);
+		/* Wait for the gpio config to take effect - debounce time */
+		udelay(10000);
+
+		first_time = 1;
+	}
 
 	/* Get status of GPIO */
 	status = gpio_status(vol_up_gpio);
@@ -198,8 +211,29 @@ int target_volume_up()
 /* Return 1 if vol_down pressed */
 uint32_t target_volume_down()
 {
-	/* Volume down button tied in with PMIC RESIN. */
-	return pm8x41_resin_status();
+	static  bool vol_down_key_init = false;
+
+	if ((board_hardware_id() == HW_PLATFORM_QRD) &&
+			(board_hardware_subtype() == SUB_TYPE_SKUT)) {
+		uint32_t status = 0;
+
+		if (!vol_down_key_init) {
+			gpio_tlmm_config(TLMM_VOL_DOWN_BTN_GPIO, 0, GPIO_INPUT, GPIO_PULL_UP,
+				 GPIO_2MA, GPIO_ENABLE);
+			/* Wait for the gpio config to take effect - debounce time */
+			thread_sleep(10);
+			vol_down_key_init = true;
+		}
+
+		/* Get status of GPIO */
+		status = gpio_status(TLMM_VOL_DOWN_BTN_GPIO);
+
+		/* Active low signal. */
+		return !status;
+	} else {
+		/* Volume down button tied in with PMIC RESIN. */
+		return pm8x41_resin_status();
+	}
 }
 
 uint32_t target_is_pwrkey_pon_reason()
@@ -243,9 +277,29 @@ void shutdown_device()
 
 void target_init(void)
 {
+#if VERIFIED_BOOT
+#if !VBOOT_MOTA
+	int ret = 0;
+#endif
+#endif
 	dprintf(INFO, "target_init()\n");
 
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
+
+	if(platform_is_msm8937() || platform_is_msm8917())
+	{
+		uint8_t pmi_rev = 0;
+		uint32_t pmi_type = 0;
+
+		pmi_type = board_pmic_target(1) & 0xffff;
+		if(pmi_type == PMIC_IS_PMI8950)
+		{
+			/* read pmic spare register for rev */
+			pmi_rev = pmi8950_get_pmi_subtype();
+			if(pmi_rev)
+				board_pmi_target_set(1,pmi_rev);
+		}
+	}
 
 	target_keystatus();
 
@@ -267,6 +321,45 @@ void target_init(void)
 
 	if (target_use_signed_kernel())
 		target_crypto_init_params();
+
+#if VERIFIED_BOOT
+#if !VBOOT_MOTA
+	clock_ce_enable(CE1_INSTANCE);
+
+	/* Initialize Qseecom */
+	ret = qseecom_init();
+
+	if (ret < 0)
+	{
+		dprintf(CRITICAL, "Failed to initialize qseecom, error: %d\n", ret);
+		ASSERT(0);
+	}
+
+	/* Start Qseecom */
+	ret = qseecom_tz_init();
+
+	if (ret < 0)
+	{
+		dprintf(CRITICAL, "Failed to start qseecom, error: %d\n", ret);
+		ASSERT(0);
+	}
+
+	if (rpmb_init() < 0)
+	{
+		dprintf(CRITICAL, "RPMB init failed\n");
+		ASSERT(0);
+	}
+
+	/*
+	 * Load the sec app for first time
+	 */
+	if (load_sec_app() < 0)
+	{
+		dprintf(CRITICAL, "Failed to load App for verified\n");
+		ASSERT(0);
+	}
+#endif
+#endif
 
 #if SMD_SUPPORT
 	rpm_smd_init();
@@ -304,11 +397,18 @@ void target_baseband_detect(struct board_data *board)
 	case MSM8952:
 	case MSM8956:
 	case MSM8976:
+	case MSM8937:
+	case MSM8940:
+	case MSM8917:
+	case MSM8217:
+	case MSM8617:
 		board->baseband = BASEBAND_MSM;
 		break;
 	case APQ8052:
 	case APQ8056:
 	case APQ8076:
+	case APQ8037:
+	case APQ8017:
 		board->baseband = BASEBAND_APQ;
 		break;
 	default:
@@ -348,7 +448,7 @@ unsigned check_hard_reboot_mode(void)
 	return hard_restart_reason;
 }
 
-int set_download_mode(enum dload_mode mode)
+int set_download_mode(enum reboot_reason mode)
 {
 	int ret = 0;
 	ret = scm_dload_mode(mode);
@@ -368,18 +468,19 @@ void reboot_device(unsigned reboot_reason)
 	uint8_t reset_type = 0;
 	uint32_t ret = 0;
 
-	/* Need to clear the SW_RESET_ENTRY register and
-	 * write to the BOOT_MISC_REG for known reset cases
-	 */
-	if(reboot_reason != DLOAD)
-		scm_dload_mode(NORMAL_MODE);
+	/* Set cookie for dload mode */
+	if(set_download_mode(reboot_reason)) {
+		dprintf(CRITICAL, "HALT: set_download_mode not supported\n");
+		return;
+	}
 
 	writel(reboot_reason, RESTART_REASON_ADDR);
 
 	/* For Reboot-bootloader and Dload cases do a warm reset
 	 * For Reboot cases do a hard reset
 	 */
-	if((reboot_reason == FASTBOOT_MODE) || (reboot_reason == DLOAD) || (reboot_reason == RECOVERY_MODE))
+	if((reboot_reason == FASTBOOT_MODE) || (reboot_reason == NORMAL_DLOAD) ||
+		(reboot_reason == EMERGENCY_DLOAD) || (reboot_reason == RECOVERY_MODE))
 		reset_type = PON_PSHOLD_WARM_RESET;
 	else
 		reset_type = PON_PSHOLD_HARD_RESET;
@@ -441,13 +542,40 @@ unsigned target_pause_for_battery_charge(void)
 
 void target_uninit(void)
 {
+#if PON_VIB_SUPPORT
+	turn_off_vib_early();
+#endif
 	mmc_put_card_to_sleep(dev);
 	sdhci_mode_disable(&dev->host);
 	if (crypto_initialized())
+	{
 		crypto_eng_cleanup();
+		clock_ce_disable(CE1_INSTANCE);
+	}
 
 	if (target_is_ssd_enabled())
 		clock_ce_disable(CE1_INSTANCE);
+
+#if VERIFIED_BOOT
+#if !VBOOT_MOTA
+	if (is_sec_app_loaded())
+	{
+		if (send_milestone_call_to_tz() < 0)
+		{
+			dprintf(CRITICAL, "Failed to unload App for rpmb\n");
+			ASSERT(0);
+		}
+	}
+
+	if (rpmb_uninit() < 0)
+	{
+		dprintf(CRITICAL, "RPMB uninit failed\n");
+		ASSERT(0);
+	}
+
+	clock_ce_disable(CE1_INSTANCE);
+#endif
+#endif
 
 #if SMD_SUPPORT
 	rpm_smd_uninit();
@@ -606,4 +734,9 @@ void target_crypto_init_params()
 	ce_params.do_bam_init      = 0;
 
 	crypto_init_params(&ce_params);
+}
+
+uint32_t target_get_pmic()
+{
+	return PMIC_IS_PMI8950;
 }

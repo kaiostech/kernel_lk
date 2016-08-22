@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -62,12 +62,13 @@
 
 static mmu_section_t mmu_section_table[] = {
 /*           Physical addr,         Virtual addr,            Size (in MB),     Flags */
-	{    MEMBASE,               MEMBASE,                 (MEMSIZE / MB),   LK_MEMORY},
-	{    MSM_IOMAP_BASE,        MSM_IOMAP_BASE,          MSM_IOMAP_SIZE,   IOMAP_MEMORY},
-	{    APPS_SS_BASE,          APPS_SS_BASE,            APPS_SS_SIZE,      IOMAP_MEMORY},
-	{    MSM_SHARED_IMEM_BASE,  MSM_SHARED_IMEM_BASE,    1,                COMMON_MEMORY},
-	{    SCRATCH_ADDR,          SCRATCH_ADDR,            512,              SCRATCH_MEMORY},
-	{    MIPI_FB_ADDR,          MIPI_FB_ADDR,            42,              COMMON_MEMORY},
+	{    MEMBASE,               MEMBASE,                 (MEMSIZE / MB),         LK_MEMORY},
+	{    MSM_IOMAP_BASE,        MSM_IOMAP_BASE,          MSM_IOMAP_SIZE,         IOMAP_MEMORY},
+	{    APPS_SS_BASE,          APPS_SS_BASE,            APPS_SS_SIZE,           IOMAP_MEMORY},
+	{    MSM_SHARED_IMEM_BASE,  MSM_SHARED_IMEM_BASE,    1,                      COMMON_MEMORY},
+	{    SCRATCH_ADDR,          SCRATCH_ADDR,            511,                    SCRATCH_MEMORY},
+	{    MIPI_FB_ADDR,          MIPI_FB_ADDR,            20,                     COMMON_MEMORY},
+	{    RPMB_SND_RCV_BUF,      RPMB_SND_RCV_BUF,        RPMB_SND_RCV_BUF_SZ,    IOMAP_MEMORY},
 };
 
 void platform_early_init(void)
@@ -176,6 +177,63 @@ uint32_t platform_get_max_periph()
 	return 256;
 }
 
+int platform_is_msm8917()
+{
+	uint32_t platform = board_platform_id();
+	uint32_t ret = 0;
+
+	switch(platform)
+	{
+		case MSM8917:
+		case MSM8217:
+		case MSM8617:
+		case APQ8017:
+			ret = 1;
+			break;
+		default:
+			ret = 0;
+	};
+
+	return ret;
+}
+
+int platform_is_msm8937()
+{
+	uint32_t platform = board_platform_id();
+	uint32_t ret = 0;
+
+	switch(platform)
+	{
+		case MSM8937:
+		case MSM8940:
+		case APQ8037:
+			ret = 1;
+			break;
+		default:
+			ret = 0;
+		};
+
+	return ret;
+}
+
+int platform_is_msm8952()
+{
+	uint32_t platform = board_platform_id();
+	uint32_t ret = 0;
+
+	switch(platform)
+	{
+	case MSM8952:
+	case APQ8052:
+		ret = 1;
+		break;
+	default:
+		ret = 0;
+	};
+
+	return ret;
+}
+
 int platform_is_msm8956()
 {
 	uint32_t platform = board_platform_id();
@@ -194,6 +252,30 @@ int platform_is_msm8956()
 	};
 
 	return ret;
+}
+
+uint32_t platform_get_tz_app_add()
+{
+	if(platform_is_msm8937() || platform_is_msm8917())
+		return APP_REGION_ADDR_8937;
+	else
+		return APP_REGION_ADDR_8952;
+}
+
+uint32_t platform_get_tz_app_size()
+{
+	if(platform_is_msm8937() || platform_is_msm8917())
+		return APP_REGION_SIZE_8937;
+	else
+		return APP_REGION_SIZE_8952;
+}
+
+uint32_t platform_get_apcs_ipc_base()
+{
+	if(platform_is_msm8917())
+		return APCS_ALIAS1_IPC_INTERRUPT_1;
+	else
+		return APCS_ALIAS0_IPC_INTERRUPT_2;
 }
 
 uint32_t platform_is_msm8976_v_1_1()

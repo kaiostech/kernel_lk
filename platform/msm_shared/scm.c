@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -36,6 +36,7 @@
 #include <image_verify.h>
 #include <dload_util.h>
 #include <platform/iomap.h>
+#include <board.h>
 #include "scm.h"
 
 #pragma GCC optimize ("O0")
@@ -64,7 +65,6 @@ bool is_scm_armv8_support()
 	if (!scm_initialized)
 	{
 		scm_init();
-		scm_initialized = true;
 	}
 #endif
 
@@ -112,6 +112,12 @@ void scm_init()
 
 	if (ret < 0)
 		dprintf(CRITICAL, "Failed to initialize SCM\n");
+
+	scm_initialized = true;
+
+#if DISABLE_DLOAD_MODE
+	scm_disable_sdi();
+#endif
 }
 
 /**
@@ -1071,13 +1077,13 @@ void scm_elexec_call(paddr_t kernel_entry, paddr_t dtb_offset)
 }
 
 /* SCM Random Command */
-int scm_random(uint32_t * rbuf, uint32_t  r_len)
+int scm_random(uintptr_t * rbuf, uint32_t  r_len)
 {
 	int ret;
 	struct tz_prng_data data;
 	scmcall_arg scm_arg = {0};
 	// Memory passed to TZ should be algined to cache line
-	BUF_DMA_ALIGN(rand_buf, uint32_t);
+	BUF_DMA_ALIGN(rand_buf, sizeof(uintptr_t));
 
 	if (!is_scm_armv8_support())
 	{
@@ -1101,6 +1107,8 @@ int scm_random(uint32_t * rbuf, uint32_t  r_len)
 		scm_arg.x2 = (uint32_t) rand_buf;
 		scm_arg.x3 = r_len;
 
+		arch_clean_invalidate_cache_range((addr_t) rand_buf, r_len);
+
 		ret = scm_call2(&scm_arg, NULL);
 		if (!ret)
 			arch_clean_invalidate_cache_range((addr_t) rand_buf, r_len);
@@ -1109,19 +1117,19 @@ int scm_random(uint32_t * rbuf, uint32_t  r_len)
 	}
 
 	//Copy back into the return buffer
-	memcpy(rbuf, rand_buf, r_len);
+	*rbuf = *rand_buf;
 	return ret;
 }
 
-void * get_canary()
+uintptr_t get_canary()
 {
-	void * canary;
-	if(scm_random((uint32_t *)&canary, sizeof(canary))) {
+	uintptr_t canary;
+	if(scm_random(&canary, sizeof(canary))) {
 		dprintf(CRITICAL,"scm_call for random failed !!!");
 		/*
 		* fall back to use lib rand API if scm call failed.
 		*/
-		canary =  (void *)rand();
+		canary =  rand();
 	}
 
 	return canary;
@@ -1331,16 +1339,34 @@ int scm_call2_atomic(uint32_t svc, uint32_t cmd, uint32_t arg1, uint32_t arg2)
 	return ret;
 }
 
+int scm_disable_sdi()
+{
+	int ret = 0;
+
+	scm_check_boot_fuses();
+
+	/* Make WDOG_DEBUG DISABLE scm call only in non-secure boot */
+	if(!(secure_boot_enabled || wdog_debug_fuse_disabled)) {
+		ret = scm_call2_atomic(SCM_SVC_BOOT, WDOG_DEBUG_DISABLE, 1, 0);
+		if(ret)
+			dprintf(CRITICAL, "Failed to disable secure wdog debug: %d\n", ret);
+	}
+	return ret;
+}
+
 #if PLATFORM_USE_SCM_DLOAD
-int scm_dload_mode(int mode)
+int scm_dload_mode(enum reboot_reason mode)
 {
 	int ret = 0;
 	uint32_t dload_type;
 
 	dprintf(SPEW, "DLOAD mode: %d\n", mode);
-	if (mode == NORMAL_DLOAD)
+	if (mode == NORMAL_DLOAD) {
 		dload_type = SCM_DLOAD_MODE;
-	else if(mode == EMERGENCY_DLOAD)
+#if DISABLE_DLOAD_MODE
+		return 0;
+#endif
+	} else if(mode == EMERGENCY_DLOAD)
 		dload_type = SCM_EDLOAD_MODE;
 	else
 		dload_type = 0;
@@ -1358,21 +1384,17 @@ int scm_dload_mode(int mode)
 		return ret;
 	}
 
-	scm_check_boot_fuses();
-
-	/* Make WDOG_DEBUG DISABLE scm call only in non-secure boot */
-	if(!(secure_boot_enabled || wdog_debug_fuse_disabled)) {
-		ret = scm_call2_atomic(SCM_SVC_BOOT, WDOG_DEBUG_DISABLE, 1, 0);
-		if(ret)
-			dprintf(CRITICAL, "Failed to disable the wdog debug \n");
-	}
-
+#if !DISABLE_DLOAD_MODE
+	return scm_disable_sdi();
+#else
 	return ret;
+#endif
 }
 
 bool scm_device_enter_dload()
 {
 	uint32_t ret = 0;
+	uint32_t dload_mode = 0;
 
 	scmcall_arg scm_arg = {0};
 	scmcall_ret scm_ret = {0};
@@ -1382,7 +1404,14 @@ bool scm_device_enter_dload()
 	if (ret)
 		dprintf(CRITICAL, "SCM call to check dload mode failed: %x\n", ret);
 
-	if (!ret && (scm_io_read(TCSR_BOOT_MISC_DETECT) == SCM_DLOAD_MODE))
+	if (!ret)
+	{
+		dload_mode = scm_io_read(TCSR_BOOT_MISC_DETECT);
+		if (board_soc_version() < 0x30000)
+			dload_mode = (dload_mode >> 16) & 0xFFFF;
+	}
+
+	if (dload_mode == SCM_DLOAD_MODE)
 		return true;
 
 	return false;

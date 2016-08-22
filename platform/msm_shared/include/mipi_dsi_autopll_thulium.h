@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -59,6 +59,7 @@
 
 #define DSIPHY_PLL_KVCO_COUNT1		0x0448
 #define DSIPHY_PLL_KVCO_COUNT2		0x044c
+#define DSIPHY_PLL_KVCO_CODE		0x0458
 
 #define DSIPHY_PLL_VCO_DIV_REF1		0x046c
 #define DSIPHY_PLL_VCO_DIV_REF2		0x0470
@@ -70,6 +71,13 @@
 #define DSIPHY_PLL_PLLLOCK_CMP_EN	0x0488
 
 #define DSIPHY_PLL_DEC_START		0x0490
+#define DSIPHY_PLL_SSC_EN_CENTER	0x0494
+#define DSIPHY_PLL_SSC_ADJ_PER1		0x0498
+#define DSIPHY_PLL_SSC_ADJ_PER2		0x049c
+#define DSIPHY_PLL_SSC_PER1		0x04a0
+#define DSIPHY_PLL_SSC_PER2		0x04a4
+#define DSIPHY_PLL_SSC_STEP_SIZE1	0x04a8
+#define DSIPHY_PLL_SSC_STEP_SIZE2	0x04ac
 #define DSIPHY_PLL_DIV_FRAC_START1	0x04b4
 #define DSIPHY_PLL_DIV_FRAC_START2	0x04b8
 #define DSIPHY_PLL_DIV_FRAC_START3	0x04bc
@@ -125,7 +133,7 @@ struct dsi_pll_input {
 
 	uint32_t pll_lpf_res1;	/* 3, reg: 0x0504, bit 0 - 3 */
 	uint32_t pll_lpf_cap1;	/* 11, reg: 0x0500, bit 0 - 3 */
-	uint32_t pll_lpf_cap2;	/* 14, reg: 0x0500, bit 4 - 7 */
+	uint32_t pll_lpf_cap2;	/* 1, reg: 0x0500, bit 4 - 7 */
 	uint32_t pll_c3ctrl;		/* 2, reg: 0x04c4 */
 	uint32_t pll_r3ctrl;		/* 1, reg: 0x04c4 */
 };

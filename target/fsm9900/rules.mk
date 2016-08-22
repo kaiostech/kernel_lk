@@ -13,6 +13,7 @@ SCRATCH_ADDR     := 0x08b00000
 
 MODULES += \
 	dev/keys \
+	dev/pmic/pm8x41 \
     lib/ptable \
     lib/libfdt
 
