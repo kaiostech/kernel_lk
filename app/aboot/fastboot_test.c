@@ -35,6 +35,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <app/tests.h>
 #include <target.h>
 #include <boot_device.h>
+#include "mdtp.h"
 #if USE_RPMB_FOR_DEVINFO
 #include <rpmb.h>
 #endif
@@ -45,11 +46,17 @@ extern void kauth_test();
 extern int ufs_get_boot_lun();
 extern int ufs_set_boot_lun(uint32_t bootlunid);
 extern int fastboot_init();
+static bool enable_test_mode = false;
+
+bool is_test_mode_enabled(void)
+{
+	return enable_test_mode;
+}
 
 void cmd_oem_runtests()
 {
 	dprintf(INFO, "Running LK tests ... \n");
-
+	enable_test_mode = true;
 	// Test boot lun enable for UFS
 	if (!platform_boot_dev_isemmc())
 	{
@@ -81,6 +88,13 @@ void cmd_oem_runtests()
 	dprintf(INFO, "Running RPMB test case, please make sure RPMB key is provisioned ...\n");
 	struct device_info *write_info = memalign(PAGE_SIZE, 4096);
 	struct device_info *read_info = memalign(PAGE_SIZE, 4096);
+
+	if((write_info == NULL)||(read_info == NULL))
+	{
+		dprintf(CRITICAL, "Failed to allocate memory for devinfo %s %d \n",__FUNCTION__,__LINE__);
+		goto err;
+	}
+
 	if((read_device_info_rpmb((void*) read_info, PAGE_SIZE)) < 0)
 		dprintf(INFO, "RPMB READ TEST : [ FAIL ]\n");
 
@@ -97,6 +111,7 @@ void cmd_oem_runtests()
 	else
 		dprintf(INFO, "RPMB READ/WRITE TEST: [ FAIL ]\n");
 
+err:
 	free(read_info);
 	free(write_info);
 #endif
@@ -117,5 +132,11 @@ void cmd_oem_runtests()
 
 	printf_tests();
 
+#ifdef MDTP_SUPPORT
+	dprintf(INFO, "Running mdtp LK tests ... \n");
+	cmd_mdtp_runtests();
+#endif
+
 	fastboot_okay("");
+	enable_test_mode = false;
 }

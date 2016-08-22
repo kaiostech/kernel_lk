@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -60,6 +60,9 @@
 #include <sdhci_msm.h>
 #include <pm8x41_wled.h>
 #include <qpnp_led.h>
+#include <boot_device.h>
+#include <secapp_loader.h>
+#include <rpmb.h>
 
 #include "target/display.h"
 
@@ -107,19 +110,24 @@ void target_early_init(void)
 /* Return 1 if vol_up pressed */
 int target_volume_up()
 {
+	static uint8_t first_time = 0;
 	uint8_t status = 0;
 	struct pm8x41_gpio gpio;
 
-	/* Configure the GPIO */
-	gpio.direction = PM_GPIO_DIR_IN;
-	gpio.function  = 0;
-	gpio.pull      = PM_GPIO_PULL_UP_30;
-	gpio.vin_sel   = 2;
+	if (!first_time) {
+		/* Configure the GPIO */
+		gpio.direction = PM_GPIO_DIR_IN;
+		gpio.function  = 0;
+		gpio.pull      = PM_GPIO_PULL_UP_30;
+		gpio.vin_sel   = 2;
 
-	pm8x41_gpio_config(3, &gpio);
+		pm8x41_gpio_config(3, &gpio);
 
-	/* Wait for the pmic gpio config to take effect */
-	thread_sleep(1);
+		/* Wait for the pmic gpio config to take effect */
+		udelay(10000);
+
+		first_time = 1;
+	}
 
 	/* Get status of P_GPIO_5 */
 	pm8x41_gpio_get(3, &status);
@@ -159,6 +167,20 @@ void target_uninit(void)
 		clock_ce_disable(CE_INSTANCE);
 	}
 
+	if (is_sec_app_loaded())
+	{
+		if (send_milestone_call_to_tz() < 0)
+		{
+			dprintf(CRITICAL, "Failed to unload App for rpmb\n");
+			ASSERT(0);
+		}
+	}
+
+	if (rpmb_uninit() < 0)
+	{
+		dprintf(CRITICAL, "RPMB uninit failed\n");
+		ASSERT(0);
+	}
 	rpm_smd_uninit();
 }
 
@@ -310,6 +332,7 @@ void *target_mmc_device()
 
 void target_init(void)
 {
+	int ret = 0;
 	dprintf(INFO, "target_init()\n");
 
 	spmi_init(PMIC_ARB_CHANNEL_NUM, PMIC_ARB_OWNER_ID);
@@ -337,6 +360,40 @@ void target_init(void)
 #endif
 	/* Storage initialization is complete, read the partition table info */
 	mmc_read_partition_table(0);
+
+	/* Initialize Qseecom */
+	ret = qseecom_init();
+
+	if (ret < 0)
+	{
+		dprintf(CRITICAL, "Failed to initialize qseecom, error: %d\n", ret);
+		ASSERT(0);
+	}
+
+	/* Start Qseecom */
+	ret = qseecom_tz_init();
+
+	if (ret < 0)
+	{
+		dprintf(CRITICAL, "Failed to start qseecom, error: %d\n", ret);
+		ASSERT(0);
+	}
+
+	/*
+	 * Load the sec app for first time
+	 */
+	if (load_sec_app() < 0)
+	{
+		dprintf(CRITICAL, "Failed to load App for verified\n");
+		ASSERT(0);
+	}
+
+	if (rpmb_init() < 0)
+	{
+		dprintf(CRITICAL, "RPMB init failed\n");
+		ASSERT(0);
+	}
+
 
 	rpm_smd_init();
 
@@ -443,10 +500,30 @@ unsigned check_reboot_mode(void)
 	return restart_reason;
 }
 
+int set_download_mode(enum reboot_reason mode)
+{
+	if (mode == NORMAL_DLOAD || mode == EMERGENCY_DLOAD) {
+		if (platform_is_msm8994())
+			dload_util_write_cookie(mode == NORMAL_DLOAD ?
+				DLOAD_MODE_ADDR : EMERGENCY_DLOAD_MODE_ADDR, mode);
+		else
+			dload_util_write_cookie(mode == NORMAL_DLOAD ?
+				DLOAD_MODE_ADDR_V2 : EMERGENCY_DLOAD_MODE_ADDR_V2, mode);
+	}
+
+	return 0;
+}
+
 void reboot_device(unsigned reboot_reason)
 {
 	uint8_t reset_type = 0;
 	uint32_t restart_reason_addr;
+
+	/* Set cookie for dload mode */
+	if(set_download_mode(reboot_reason)) {
+		dprintf(CRITICAL, "HALT: set_download_mode not supported\n");
+		return;
+	}
 
 	if (platform_is_msm8994())
 		restart_reason_addr = RESTART_REASON_ADDR;
@@ -579,14 +656,7 @@ uint32_t target_ddr_cfg_val()
 	return DDR_CFG_DLY_VAL;
 }
 
-int set_download_mode(enum dload_mode mode)
+uint32_t target_get_pmic()
 {
-	if (platform_is_msm8994())
-		dload_util_write_cookie(mode == NORMAL_DLOAD ?
-			DLOAD_MODE_ADDR : EMERGENCY_DLOAD_MODE_ADDR, mode);
-	else
-		dload_util_write_cookie(mode == NORMAL_DLOAD ?
-			DLOAD_MODE_ADDR_V2 : EMERGENCY_DLOAD_MODE_ADDR_V2, mode);
-
-	return 0;
+	return PMIC_IS_PMI8994;
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -26,19 +26,28 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __MSMTITANIUM_CLOCK_H
-#define __MSMTITANIUM_CLOCK_H
 
-#include <clock.h>
-#include <clock_lib2.h>
+#include <stdlib.h>
+#include "mdtp.h"
+#include "mdtp_defs.h"
+#include "fastboot_test.h"
 
-#define UART_DM_CLK_RX_TX_BIT_RATE 0xCC
 
-void platform_clock_init(void);
+/** External UT Functions **/
+void cmd_mdtp_runtests(){
+	bool res = false;
+	int tests_res = 0;
+	struct mdtp_target_efuse target_efuse;
 
-void clock_init_mmc(uint32_t interface);
-void clock_config_mmc(uint32_t interface, uint32_t freq);
-void clock_config_uart_dm(uint8_t id);
-void hsusb_clock_init(void);
-void clock_config_ce(uint8_t instance);
-#endif
+	tests_res += mdtp_fuse_get_enabled(&res);
+	tests_res += mdtp_get_target_efuse(&target_efuse);
+	tests_res += mdtp_verify_hash_ut();
+	tests_res += mdtp_validate_partition_params_ut();
+	tests_res += mdtp_verify_partition_ut();
+
+	if(!tests_res){
+		dprintf(INFO, "MDTP LK UT: [ PASS ]\n");
+	}else{
+		dprintf(INFO, "MDTP LK UT: [ FAILED ]\n");
+	}
+}

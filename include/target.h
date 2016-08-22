@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
- * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -26,6 +26,7 @@
 #define __TARGET_H
 #include <qmp_phy.h>
 
+#define TARGET_MAX_CMDLNBUF 64
 /* Target helper functions exposed to USB driver */
 typedef struct {
 	void (*mux_config) ();
@@ -69,6 +70,7 @@ uint32_t target_get_boot_device();
 
 const char * target_usb_controller();
 void target_usb_phy_reset(void);
+void target_usb_phy_sec_reset(void);
 void target_usb_phy_mux_configure(void);
 target_usb_iface_t * target_usb30_init();
 bool target_is_cdp_qvga();
@@ -93,7 +95,16 @@ struct qmp_reg *target_get_qmp_settings();
 int target_get_qmp_regsize();
 
 #if PON_VIB_SUPPORT
-uint32_t get_vibration_type();
+void get_vibration_type();
 #endif
 
+#if CHECK_BAT_VOLTAGE
+void update_battery_status(void);
+#endif
+
+uint32_t target_get_battery_voltage();
+bool target_battery_soc_ok();
+bool target_battery_is_present();
+uint32_t target_get_pmic();
+int target_update_cmdline(char *cmdline);
 #endif

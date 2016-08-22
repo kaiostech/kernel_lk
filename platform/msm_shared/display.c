@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -332,7 +332,7 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 	fbcon_setup(&(panel->fb));
 	display_image_on_screen();
 
-	if (panel->dsi2HDMI_config)
+	if ((panel->dsi2HDMI_config) && (panel->panel_info.has_bridge_chip))
 		ret = panel->dsi2HDMI_config(&(panel->panel_info));
 	if (ret)
 		goto msm_display_init_out;
@@ -411,6 +411,11 @@ int msm_display_off()
 		if (ret)
 			goto msm_display_off_out;
 		break;
+	case HDMI_PANEL:
+		dprintf(INFO, "Turn off HDMI PANEL.\n");
+		ret = mdss_hdmi_off(pinfo);
+		break;
+
 #endif
 #ifdef DISPLAY_TYPE_QPIC
 	case QPIC_PANEL:

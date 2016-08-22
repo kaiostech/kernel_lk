@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,8 +33,9 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <dev/fbcon.h>
+#include <sys/types.h>
 
-#define DFPS_MAX_FRAME_RATE 10
+#define DFPS_MAX_FRAME_RATE 20
 #define DFPS_PLL_CODES_SIZE 0x1000 /* One page */
 
 /* panel type list */
@@ -132,9 +133,6 @@ enum {
 struct msm_panel_info;
 
 struct dsc_desc {
-	int data_path_model;            /* multiplex + split_panel */
-	int ich_reset_value;
-	int ich_reset_override;
 	int initial_lines;
 	int slice_last_group_size;
 	int bpp;        /* target bit per pixel */
@@ -150,6 +148,7 @@ struct dsc_desc {
 
 	int major;
 	int minor;
+	int scr_rev;
 	int pps_id;
 
 	int pic_height;
@@ -197,8 +196,9 @@ struct dsc_desc {
 	void (*parameter_calc) (struct msm_panel_info *pinfo);
 	int (*dsc2buf) (struct msm_panel_info *pinfo);
 	void (*dsi_dsc_config) (uint32_t base, int mode, struct dsc_desc *dsc);
-	void (*mdp_dsc_config) (struct msm_panel_info *pinfo);
-
+	void (*mdp_dsc_config) (struct msm_panel_info *pinfo,
+		unsigned int pp_base, unsigned int dsc_base,
+		bool mux, bool split_mode);
 };
 
 struct fbc_panel_info {
@@ -351,6 +351,9 @@ struct dsi2HDMI_panel_info {
 	struct mipi_dsi_i2c_cmd *dsi_setup_cfg_i2c_cmd;
 	int num_of_tg_i2c_cmds;
 	int num_of_cfg_i2c_cmds;
+	uint8_t i2c_main_addr;
+	uint8_t i2c_cec_addr;
+	bool program_i2c_addr;
 };
 
 enum lvds_mode {
@@ -374,6 +377,7 @@ struct labibb_desc {
 	char pwr_up_delay; /* ndx to => 1250, 2500, 5000 and 10000 us */
 	char pwr_down_delay; /* ndx to => 1250, 2500, 5000 and 10000 us */
 	char ibb_discharge_en;
+	bool swire_control;
 };
 
 struct msm_panel_info {
@@ -395,6 +399,9 @@ struct msm_panel_info {
 	uint32_t border_left;
 	uint32_t border_right;
 
+	int lm_split[2];
+	int num_dsc_enc;
+
 	struct lcd_panel_info lcd;
 	struct lcdc_panel_info lcdc;
 	struct fbc_panel_info fbc;
@@ -404,6 +411,7 @@ struct msm_panel_info {
 	struct hdmi_panel_info hdmi;
 	struct edp_panel_info edp;
 	struct dsi2HDMI_panel_info adv7533;
+	bool has_bridge_chip;
 
 	struct dfps_info dfps;
 
@@ -417,6 +425,9 @@ struct msm_panel_info {
 	int (*early_config) (void *pdata);
 	int (*config) (void *pdata);
 	int (*rotate) (void);
+
+	char autorefresh_enable;
+	uint32_t autorefresh_framenum;
 };
 
 struct msm_fb_panel_data {

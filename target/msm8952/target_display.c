@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -310,6 +310,14 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 	pll_data = pinfo->mipi.dsi_pll_config;
 	pll_data->vco_delay = VCO_DELAY_USEC;
 
+	/* SSC parameters */
+	if (platform_is_msm8937() || platform_is_msm8917()) {
+		pll_data->ssc_en = true;
+		pll_data->is_center_spread = false;
+		pll_data->ssc_freq = 30000;
+		pll_data->ssc_ppm = 5000;
+	}
+
 	if (enable) {
 		mdp_gdsc_ctrl(enable);
 		mdss_bus_clocks_enable();
@@ -360,6 +368,14 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 	if (platform_is_msm8956()) {
 		reset_gpio.pin_id = 25;
 		bkl_gpio.pin_id = 66;
+	} else if (platform_is_msm8937()) {
+		reset_gpio.pin_id = 60;
+		bkl_gpio.pin_id = 98;
+		enable_gpio.pin_id = 99;
+	} else if (platform_is_msm8917()) {
+		reset_gpio.pin_id = 60;
+		bkl_gpio.pin_id = 98;
+		pinfo->mipi.use_enable_gpio = 0;
 	} else if ((hw_id == HW_PLATFORM_QRD) &&
 		   (hw_subtype == HW_PLATFORM_SUBTYPE_POLARIS)) {
 		enable_gpio.pin_id = 19;
@@ -417,44 +433,59 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 	return ret;
 }
 
-static void wled_init(struct msm_panel_info *pinfo)
+static int wled_init(struct msm_panel_info *pinfo)
 {
 	struct qpnp_wled_config_data config = {0};
 	struct labibb_desc *labibb;
 	int display_type = 0;
+	bool swire_control = 0;
+	bool wled_avdd_control = 0;
+	int rc = NO_ERROR;
 
 	labibb = pinfo->labibb;
 
 	if (labibb)
 		display_type = labibb->amoled_panel;
 
+	if (display_type) {
+		swire_control = labibb->swire_control;
+		wled_avdd_control = true;
+	} else {
+		swire_control = false;
+		wled_avdd_control = false;
+	}
+
 	config.display_type = display_type;
 	config.lab_init_volt = 4600000;	/* fixed, see pmi register */
 	config.ibb_init_volt = 1400000;	/* fixed, see pmi register */
+	config.lab_ibb_swire_control = swire_control;
+	config.wled_avdd_control = wled_avdd_control;
 
-	if (labibb && labibb->force_config) {
-		config.lab_min_volt = labibb->lab_min_volt;
-		config.lab_max_volt = labibb->lab_max_volt;
-		config.ibb_min_volt = labibb->ibb_min_volt;
-		config.ibb_max_volt = labibb->ibb_max_volt;
-		config.pwr_up_delay = labibb->pwr_up_delay;
-		config.pwr_down_delay = labibb->pwr_down_delay;
-		config.ibb_discharge_en = labibb->ibb_discharge_en;
-	} else {
-		/* default */
-		config.pwr_up_delay = 3;
-		config.pwr_down_delay =  3;
-		config.ibb_discharge_en = 1;
-		if (display_type) {	/* amoled */
-			config.lab_min_volt = 4600000;
-			config.lab_max_volt = 4600000;
-			config.ibb_min_volt = 4000000;
-			config.ibb_max_volt = 4000000;
-		} else { /* lcd */
-			config.lab_min_volt = 5500000;
-			config.lab_max_volt = 5500000;
-			config.ibb_min_volt = 5500000;
-			config.ibb_max_volt = 5500000;
+	if(!swire_control) {
+		if (labibb && labibb->force_config) {
+			config.lab_min_volt = labibb->lab_min_volt;
+			config.lab_max_volt = labibb->lab_max_volt;
+			config.ibb_min_volt = labibb->ibb_min_volt;
+			config.ibb_max_volt = labibb->ibb_max_volt;
+			config.pwr_up_delay = labibb->pwr_up_delay;
+			config.pwr_down_delay = labibb->pwr_down_delay;
+			config.ibb_discharge_en = labibb->ibb_discharge_en;
+		} else {
+			/* default */
+			config.pwr_up_delay = 3;
+			config.pwr_down_delay =  3;
+			config.ibb_discharge_en = 1;
+			if (display_type) {	/* amoled */
+				config.lab_min_volt = 4600000;
+				config.lab_max_volt = 4600000;
+				config.ibb_min_volt = 4000000;
+				config.ibb_max_volt = 4000000;
+			} else { /* lcd */
+				config.lab_min_volt = 5500000;
+				config.lab_max_volt = 5500000;
+				config.ibb_min_volt = 5500000;
+				config.ibb_max_volt = 5500000;
+			}
 		}
 	}
 
@@ -469,7 +500,9 @@ static void wled_init(struct msm_panel_info *pinfo)
 	/* QPNP WLED init for display backlight */
 	pm8x41_wled_config_slave_id(PMIC_WLED_SLAVE_ID);
 
-	qpnp_wled_init(&config);
+	rc = qpnp_wled_init(&config);
+
+	return rc;
 }
 
 int target_dsi_phy_config(struct mdss_dsi_phy_ctrl *phy_db)
@@ -484,7 +517,8 @@ int target_dsi_phy_config(struct mdss_dsi_phy_ctrl *phy_db)
 
 int target_display_get_base_offset(uint32_t base)
 {
-	if(platform_is_msm8956()) {
+	if(platform_is_msm8956() || platform_is_msm8937() ||
+			platform_is_msm8917()) {
 		if (base == MIPI_DSI0_BASE)
 			return DSI0_BASE_ADJUST;
 		else if (base == DSI0_PHY_BASE)
@@ -500,6 +534,7 @@ int target_display_get_base_offset(uint32_t base)
 
 int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 {
+	int rc = 0;
 	uint32_t ldo_num = REG_LDO6 | REG_LDO17;
 
 	if (platform_is_msm8956())
@@ -510,8 +545,16 @@ int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 	if (enable) {
 		regulator_enable(ldo_num);
 		mdelay(10);
-		wled_init(pinfo);
-		qpnp_ibb_enable(true); /*5V boost*/
+		rc = wled_init(pinfo);
+		if (rc) {
+			dprintf(CRITICAL, "%s: wled init failed\n", __func__);
+			return rc;
+		}
+		rc = qpnp_ibb_enable(true); /*5V boost*/
+		if (rc) {
+			dprintf(CRITICAL, "%s: qpnp_ibb failed\n", __func__);
+			return rc;
+		}
 		mdelay(50);
 	} else {
 		/*

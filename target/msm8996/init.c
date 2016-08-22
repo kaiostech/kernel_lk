@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -18,7 +18,8 @@
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
  * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
  * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, nit
+ * PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
  * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
@@ -56,6 +57,7 @@
 #include <qmp_phy.h>
 #include <sdhci_msm.h>
 #include <qusb2_phy.h>
+#include <secapp_loader.h>
 #include <rpmb.h>
 #include <rpm-glink.h>
 #if ENABLE_WBC
@@ -71,6 +73,8 @@
 #define VIBRATE_TIME 250
 #endif
 
+#include <pm_smbchg_usb_chgpth.h>
+
 #define CE_INSTANCE             1
 #define CE_EE                   0
 #define CE_FIFO_SIZE            64
@@ -82,6 +86,17 @@
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
+
+enum
+{
+	FUSION_I2S_MTP = 1,
+	FUSION_SLIMBUS = 2,
+} mtp_subtype;
+
+enum
+{
+	FUSION_I2S_CDP = 2,
+} cdp_subtype;
 
 static void set_sdc_power_ctrl(void);
 static uint32_t mmc_pwrctl_base[] =
@@ -106,19 +121,24 @@ void target_early_init(void)
 /* Return 1 if vol_up pressed */
 int target_volume_up()
 {
+	static uint8_t first_time = 0;
 	uint8_t status = 0;
 	struct pm8x41_gpio gpio;
 
-	/* Configure the GPIO */
-	gpio.direction = PM_GPIO_DIR_IN;
-	gpio.function  = 0;
-	gpio.pull      = PM_GPIO_PULL_UP_30;
-	gpio.vin_sel   = 2;
+	if (!first_time) {
+		/* Configure the GPIO */
+		gpio.direction = PM_GPIO_DIR_IN;
+		gpio.function  = 0;
+		gpio.pull      = PM_GPIO_PULL_UP_30;
+		gpio.vin_sel   = 2;
 
-	pm8x41_gpio_config(2, &gpio);
+		pm8x41_gpio_config(2, &gpio);
 
-	/* Wait for the pmic gpio config to take effect */
-	thread_sleep(1);
+		/* Wait for the pmic gpio config to take effect */
+		udelay(10000);
+
+		first_time = 1;
+	}
 
 	/* Get status of P_GPIO_5 */
 	pm8x41_gpio_get(2, &status);
@@ -152,7 +172,7 @@ void target_uninit(void)
 
 	if (is_sec_app_loaded())
 	{
-		if (unload_sec_app() < 0)
+		if (send_milestone_call_to_tz() < 0)
 		{
 			dprintf(CRITICAL, "Failed to unload App for rpmb\n");
 			ASSERT(0);
@@ -265,6 +285,7 @@ void *target_mmc_device()
 
 void target_init(void)
 {
+	int ret = 0;
 	dprintf(INFO, "target_init()\n");
 
 	pmic_info_populate();
@@ -322,6 +343,7 @@ void target_init(void)
 	{
 		case HW_PLATFORM_MTP:
 		case HW_PLATFORM_FLUID:
+		case HW_PLATFORM_QRD:
 			pm_appsbl_chg_check_weak_battery_status(1);
 			break;
 		default:
@@ -330,9 +352,36 @@ void target_init(void)
 	};
 #endif
 
+	/* Initialize Qseecom */
+	ret = qseecom_init();
+
+	if (ret < 0)
+	{
+		dprintf(CRITICAL, "Failed to initialize qseecom, error: %d\n", ret);
+		ASSERT(0);
+	}
+
+	/* Start Qseecom */
+	ret = qseecom_tz_init();
+
+	if (ret < 0)
+	{
+		dprintf(CRITICAL, "Failed to start qseecom, error: %d\n", ret);
+		ASSERT(0);
+	}
+
 	if (rpmb_init() < 0)
 	{
 		dprintf(CRITICAL, "RPMB init failed\n");
+		ASSERT(0);
+	}
+
+	/*
+	 * Load the sec app for first time
+	 */
+	if (load_sec_app() < 0)
+	{
+		dprintf(CRITICAL, "Failed to load App for verified\n");
 		ASSERT(0);
 	}
 }
@@ -360,6 +409,9 @@ int target_cont_splash_screen()
 			case HW_PLATFORM_MTP:
 			case HW_PLATFORM_FLUID:
 			case HW_PLATFORM_QRD:
+			case HW_PLATFORM_LIQUID:
+			case HW_PLATFORM_DRAGON:
+			case HW_PLATFORM_ADP:
 				dprintf(SPEW, "Target_cont_splash=1\n");
 				splash_screen = 1;
 				break;
@@ -380,24 +432,49 @@ void target_force_cont_splash_disable(uint8_t override)
 void target_baseband_detect(struct board_data *board)
 {
 	uint32_t platform;
+	uint32_t platform_hardware;
+	uint32_t platform_subtype;
 
 	platform = board->platform;
+	platform_hardware = board->platform_hw;
+	platform_subtype = board->platform_subtype;
 
-	switch(platform) {
-	case APQ8096:
-		board->baseband = BASEBAND_APQ;
-		break;
-	case MSM8996:
-		if (board->platform_version == 0x10000)
+	if (platform_hardware == HW_PLATFORM_SURF)
+	{
+		if (platform_subtype == FUSION_I2S_CDP)
+			board->baseband = BASEBAND_MDM;
+	}
+	else if (platform_hardware == HW_PLATFORM_MTP)
+	{
+		if (platform_subtype == FUSION_I2S_MTP ||
+			platform_subtype == FUSION_SLIMBUS)
+			board->baseband = BASEBAND_MDM;
+	}
+	/*
+	 * Special case if MDM is not set look for chip info to decide
+	 * platform subtype
+	 */
+	if (board->baseband != BASEBAND_MDM)
+	{
+		switch(platform) {
+		case APQ8096:
+		case APQ8096AU:
+		case APQ8096SG:
 			board->baseband = BASEBAND_APQ;
-		else
+			break;
+		case MSM8996:
+		case MSM8996SG:
+		case MSM8996AU:
+		case MSM8996L:
 			board->baseband = BASEBAND_MSM;
-		break;
-	default:
-		dprintf(CRITICAL, "Platform type: %u is not supported\n",platform);
-		ASSERT(0);
-	};
+			break;
+		default:
+			dprintf(CRITICAL, "Platform type: %u is not supported\n",platform);
+			ASSERT(0);
+		};
+	}
 }
+
 unsigned target_baseband()
 {
 	return board_baseband();
@@ -423,6 +500,11 @@ void target_usb_phy_reset()
 	qusb2_phy_reset();
 }
 
+void target_usb_phy_sec_reset()
+{
+	qusb2_phy_reset();
+}
+
 target_usb_iface_t* target_usb30_init()
 {
 	target_usb_iface_t *t_usb_iface;
@@ -430,9 +512,20 @@ target_usb_iface_t* target_usb30_init()
 	t_usb_iface = calloc(1, sizeof(target_usb_iface_t));
 	ASSERT(t_usb_iface);
 
-	t_usb_iface->phy_init   = usb30_qmp_phy_init;
-	t_usb_iface->phy_reset  = target_usb_phy_reset;
-	t_usb_iface->clock_init = clock_usb30_init;
+
+	/* for SBC we use secondary port */
+	if (board_hardware_id() == HW_PLATFORM_SBC)
+	{
+		/* secondary port have no QMP phy,use only QUSB2 phy that have only reset */
+		t_usb_iface->phy_init   = NULL;
+		t_usb_iface->phy_reset  = target_usb_phy_sec_reset;
+		t_usb_iface->clock_init = clock_usb20_init;
+	} else {
+		t_usb_iface->phy_init   = usb30_qmp_phy_init;
+		t_usb_iface->phy_reset  = target_usb_phy_reset;
+		t_usb_iface->clock_init = clock_usb30_init;
+	}
+
 	t_usb_iface->vbus_override = 1;
 
 	return t_usb_iface;
@@ -492,23 +585,28 @@ unsigned target_pause_for_battery_charge(void)
 {
 	uint8_t pon_reason = pm8x41_get_pon_reason();
 	uint8_t is_cold_boot = pm8x41_get_is_cold_boot();
-	dprintf(INFO, "%s : pon_reason is %d cold_boot:%d\n", __func__,
-		pon_reason, is_cold_boot);
+	pm_smbchg_usb_chgpth_pwr_pth_type charger_path = PM_SMBCHG_USB_CHGPTH_PWR_PATH__INVALID;
+	dprintf(INFO, "%s : pon_reason is %d cold_boot:%d charger path: %d\n", __func__,
+		pon_reason, is_cold_boot, charger_path);
 	/* In case of fastboot reboot,adb reboot or if we see the power key
 	* pressed we do not want go into charger mode.
 	* fastboot reboot is warm boot with PON hard reset bit not set
 	* adb reboot is a cold boot with PON hard reset bit set
 	*/
+	pm_smbchg_get_charger_path(1, &charger_path);
 	if (is_cold_boot &&
 			(!(pon_reason & HARD_RST)) &&
 			(!(pon_reason & KPDPWR_N)) &&
-			((pon_reason & PON1)))
+			((pon_reason & PON1)) &&
+			((charger_path == PM_SMBCHG_USB_CHGPTH_PWR_PATH__DC_CHARGER) ||
+			(charger_path == PM_SMBCHG_USB_CHGPTH_PWR_PATH__USB_CHARGER)))
+
 		return 1;
 	else
 		return 0;
 }
 
-int set_download_mode(enum dload_mode mode)
+int set_download_mode(enum reboot_reason mode)
 {
 	int ret = 0;
 	ret = scm_dload_mode(mode);
@@ -519,4 +617,28 @@ int set_download_mode(enum dload_mode mode)
 void pmic_reset_configure(uint8_t reset_type)
 {
 	pm8994_reset_configure(reset_type);
+}
+
+uint32_t target_get_pmic()
+{
+	return PMIC_IS_PMI8996;
+}
+
+int target_update_cmdline(char *cmdline)
+{
+	uint32_t platform_id = board_platform_id();
+	int len = 0;
+	if (platform_id == APQ8096SG || platform_id == MSM8996SG)
+	{
+		strlcpy(cmdline, " fpsimd.fpsimd_settings=0", TARGET_MAX_CMDLNBUF);
+		len = strlen (cmdline);
+
+		/* App settings are not required for other than v1.0 SoC */
+		if (board_soc_version() > 0x10000) {
+			strlcpy(cmdline + len, " app_setting.use_app_setting=0", TARGET_MAX_CMDLNBUF - len);
+			len = strlen (cmdline);
+		}
+	}
+
+	return len;
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -25,66 +25,48 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <err.h>
-#include <assert.h>
-#include <debug.h>
-#include <reg.h>
-#include <platform/timer.h>
-#include <platform/iomap.h>
-#include <mmc.h>
-#include <clock.h>
-#include <platform/clock.h>
-#include <platform.h>
 
-#define MAX_LOOPS	500
+#ifndef __PLATFORM_MSM8953_GPIO_H
+#define __PLATFORM_MSM8953_GPIO_H
 
-void hsusb_clock_init(void)
-{
-}
+#include <bits.h>
+#include <gpio.h>
 
-void clock_init_mmc(uint32_t interface)
-{
-}
+/* GPIO TLMM: Direction */
+#define GPIO_INPUT      0
+#define GPIO_OUTPUT     1
 
-/* Configure MMC clock */
-void clock_config_mmc(uint32_t interface, uint32_t freq)
-{
-	char clk_name[64];
+/* GPIO TLMM: Pullup/Pulldown */
+#define GPIO_NO_PULL    0
+#define GPIO_PULL_DOWN  1
+#define GPIO_KEEPER     2
+#define GPIO_PULL_UP    3
 
-	snprintf(clk_name, sizeof(clk_name), "sdc%u_core_clk", interface);
-}
+/* GPIO TLMM: Drive Strength */
+#define GPIO_2MA        0
+#define GPIO_4MA        1
+#define GPIO_6MA        2
+#define GPIO_8MA        3
+#define GPIO_10MA       4
+#define GPIO_12MA       5
+#define GPIO_14MA       6
+#define GPIO_16MA       7
 
-/* Configure UART clock based on the UART block id*/
-void clock_config_uart_dm(uint8_t id)
-{
-}
+/* GPIO TLMM: Status */
+#define GPIO_ENABLE     0
+#define GPIO_DISABLE    1
 
-/* Function to asynchronously reset CE.
- * Function assumes that all the CE clocks are off.
- */
-static void ce_async_reset(uint8_t instance)
-{
-}
+/* GPIO_IN_OUT register shifts. */
+#define GPIO_IN         BIT(0)
+#define GPIO_OUT        BIT(1)
 
-void clock_ce_enable(uint8_t instance)
-{
-}
-
-void clock_ce_disable(uint8_t instance)
-{
-}
-
-void clock_config_ce(uint8_t instance)
-{
-	/* Need to enable the clock before disabling since the clk_disable()
-	 * has a check to default to nop when the clk_enable() is not called
-	 * on that particular clock.
-	 */
-	clock_ce_enable(instance);
-
-	clock_ce_disable(instance);
-
-	ce_async_reset(instance);
-
-	clock_ce_enable(instance);
-}
+void gpio_config_uart_dm(uint8_t id);
+uint32_t gpio_status(uint32_t gpio);
+void gpio_set_dir(uint32_t gpio, uint32_t dir);
+void gpio_tlmm_config(uint32_t gpio,
+			uint8_t func,
+			uint8_t dir,
+			uint8_t pull,
+			uint8_t drvstr,
+			uint32_t enable);
+#endif

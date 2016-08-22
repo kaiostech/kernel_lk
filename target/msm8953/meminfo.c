@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -26,47 +26,60 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __PLATFORM_MSMTITANIUM_GPIO_H
-#define __PLATFORM_MSMTITANIUM_GPIO_H
+#include <reg.h>
+#include <debug.h>
+#include <malloc.h>
+#include <smem.h>
+#include <stdint.h>
+#include <libfdt.h>
+#include <platform/iomap.h>
+#include <dev_tree.h>
 
-#include <bits.h>
-#include <gpio.h>
+uint32_t target_dev_tree_mem(void *fdt, uint32_t memory_node_offset)
+{
+	ram_partition ptn_entry;
+	unsigned int index;
+	int ret = 0;
+	uint32_t len = 0;
 
-/* GPIO TLMM: Direction */
-#define GPIO_INPUT      0
-#define GPIO_OUTPUT     1
+	/* Make sure RAM partition table is initialized */
+	ASSERT(smem_ram_ptable_init_v1());
 
-/* GPIO TLMM: Pullup/Pulldown */
-#define GPIO_NO_PULL    0
-#define GPIO_PULL_DOWN  1
-#define GPIO_KEEPER     2
-#define GPIO_PULL_UP    3
+	len = smem_get_ram_ptable_len();
 
-/* GPIO TLMM: Drive Strength */
-#define GPIO_2MA        0
-#define GPIO_4MA        1
-#define GPIO_6MA        2
-#define GPIO_8MA        3
-#define GPIO_10MA       4
-#define GPIO_12MA       5
-#define GPIO_14MA       6
-#define GPIO_16MA       7
+	/* Calculating the size of the mem_info_ptr */
+	for (index = 0 ; index < len; index++)
+	{
+		smem_get_ram_ptable_entry(&ptn_entry, index);
 
-/* GPIO TLMM: Status */
-#define GPIO_ENABLE     0
-#define GPIO_DISABLE    1
+		if((ptn_entry.category == SDRAM) &&
+			(ptn_entry.type == SYS_MEMORY))
+		{
 
-/* GPIO_IN_OUT register shifts. */
-#define GPIO_IN         BIT(0)
-#define GPIO_OUT        BIT(1)
+			/* Pass along all other usable memory regions to Linux */
+			ret = dev_tree_add_mem_info(fdt,
+							memory_node_offset,
+							ptn_entry.start,
+							ptn_entry.size);
 
-void gpio_config_uart_dm(uint8_t id);
-uint32_t gpio_status(uint32_t gpio);
-void gpio_set_dir(uint32_t gpio, uint32_t dir);
-void gpio_tlmm_config(uint32_t gpio,
-			uint8_t func,
-			uint8_t dir,
-			uint8_t pull,
-			uint8_t drvstr,
-			uint32_t enable);
-#endif
+			if (ret)
+			{
+				dprintf(CRITICAL, "Failed to add secondary banks memory addresses\n");
+				goto target_dev_tree_mem_err;
+			}
+		}
+	}
+target_dev_tree_mem_err:
+
+	return ret;
+}
+
+void *target_get_scratch_address(void)
+{
+	return ((void *)SCRATCH_ADDR);
+}
+
+unsigned target_get_max_flash_size(void)
+{
+	return (512 * 1024 * 1024);
+}

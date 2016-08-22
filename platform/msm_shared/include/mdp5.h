@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -93,6 +93,9 @@
 #define MDSS_MDP_HW_REV_110    MDSS_MDP_REV(1, 10, 0) /* 8992 v1.0 */
 #define MDSS_MDP_HW_REV_111    MDSS_MDP_REV(1, 11, 0) /* 8956 v1.0 */
 #define MDSS_MDP_HW_REV_112    MDSS_MDP_REV(1, 12, 0) /* 8952 v1.0 */
+#define MDSS_MDP_HW_REV_114    MDSS_MDP_REV(1, 14, 0) /* 8937 v1.0 */
+#define MDSS_MDP_HW_REV_116    MDSS_MDP_REV(1, 16, 0) /* msm8953 */
+#define MDSS_MDP_HW_REV_115    MDSS_MDP_REV(1, 15, 0) /* msm8917 v1.0 */
 #define MDSS_MDP_HW_REV_200    MDSS_MDP_REV(2, 0, 0) /* 8092 v1.0 */
 
 #define MDSS_MAX_LINE_BUF_WIDTH 2048
@@ -117,6 +120,9 @@
 
 #define MDP_PP_0_BASE                           REG_MDP(0x12D00)
 #define MDP_PP_1_BASE                           REG_MDP(0x12E00)
+
+#define MDP_DSC_0_BASE                          REG_MDP(0x81000)
+#define MDP_DSC_1_BASE                          REG_MDP(0x81400)
 
 #define CTL_LAYER_0                             0x00
 #define CTL_LAYER_1                             0x04
@@ -221,6 +227,23 @@
 #define MDSS_MDP_DSC_RANGE_MAX_QP		0xB0	/* 15 bytes */
 #define MDSS_MDP_DSC_RANGE_BPG_OFFSET		0xEc	/* 15 bytes */
 
+/* Autorefresh related registers */
+#define MDP_REG_PP_0_SYNC_CONFIG_VSYNC		REG_MDP(0x71004)
+#define MDP_REG_PP_1_SYNC_CONFIG_VSYNC		REG_MDP(0x71804)
+#define MDP_REG_PP_SLAVE_SYNC_CONFIG_VSYNC	REG_MDP(0x73004)
+#define MDP_REG_PP_0_AUTOREFRESH_CONFIG		REG_MDP(0x71030)
+#define MDP_REG_PP_1_AUTOREFRESH_CONFIG		REG_MDP(0x71830)
+#define MDP_REG_PP_SLAVE_AUTOREFRESH_CONFIG	REG_MDP(0x73030)
+
+/* Registers for programming the CDM hardware in bypass mode. */
+#define CDM_HDMI_PACK_OP_MODE 		REG_MDP(0x7A400)
+#define MDP_OUT_CTL_0 			REG_MDP(0x01410)
+#define MDP_INTF_3_INTF_CONFIG 		REG_MDP(0x6C804)
+#define CDM_CDWN2_OUT_SIZE 		REG_MDP(0x7A330)
+#define CDM_CDWN2_OP_MODE 		REG_MDP(0x7A300)
+#define CDM_CDWN2_CLAMP_OUT 		REG_MDP(0x7A304)
+#define CDM_CSC_10_OP_MODE 		REG_MDP(0x7A200)
+
 void mdp_set_revision(int rev);
 int mdp_get_revision();
 int mdp_dsi_video_config(struct msm_panel_info *pinfo, struct fbcon_config *fb);
@@ -242,15 +265,20 @@ int target_edp_panel_enable(void);
 int target_edp_panel_disable(void);
 int target_edp_bl_ctrl(int enable);
 int mdss_hdmi_init(void);
+void mdss_hdmi_display_init(uint32_t rev, void *base);
 int mdss_hdmi_on(struct msm_panel_info *pinfo);
+int mdss_hdmi_off(struct msm_panel_info *pinfo);
 int mdss_hdmi_config(struct msm_panel_info *pinfo, struct fbcon_config *fb);
 void mdss_hdmi_get_vic(char *buf);
+void hdmi_phy_init(void);
 int msm_display_off();
 void display_shutdown(void);
 
 void mdss_dsc_parameters_calc(struct msm_panel_info *pinfo);
 int mdss_dsc_to_buf(struct msm_panel_info *pinfo);
 void mdss_dsc_dsi_config(uint32_t ctl_base, int mode, struct dsc_desc *dsc);
-void mdss_dsc_mdp_config(struct msm_panel_info *pinfo);
+void mdss_dsc_mdp_config(struct msm_panel_info *pinfo,
+	unsigned int pp_base, unsigned int dsc_base,
+	bool mux, bool split_mode);
 
 #endif

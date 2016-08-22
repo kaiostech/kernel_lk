@@ -769,10 +769,12 @@ bool mmc_set_drv_type(struct sdhci_host *host, struct mmc_card *card, uint8_t dr
 
 	uint32_t value = ((drv_type << 4) | MMC_HS200_TIMING);
 
-	if (card->ext_csd[MMC_EXT_MMC_DRV_STRENGTH] & (1 << drv_type))
-		ret = mmc_switch_cmd(host, card, MMC_ACCESS_WRITE, MMC_EXT_MMC_HS_TIMING, value);
-	if (!ret)
-		drv_type_changed = true;
+	if (MMC_CARD_MMC(card)) {
+		if (card->ext_csd[MMC_EXT_MMC_DRV_STRENGTH] & (1 << drv_type))
+			ret = mmc_switch_cmd(host, card, MMC_ACCESS_WRITE, MMC_EXT_MMC_HS_TIMING, value);
+		if (!ret)
+			drv_type_changed = true;
+	}
 	return drv_type_changed;
 }
 /*
@@ -807,8 +809,12 @@ static uint32_t mmc_set_bus_width(struct sdhci_host *host,
  */
 static uint8_t mmc_card_supports_hs400_mode(struct mmc_card *card)
 {
-	if (card->ext_csd[MMC_DEVICE_TYPE] & MMC_HS_HS400_MODE)
-		return 1;
+	if (MMC_CARD_MMC(card)) {
+		if (card->ext_csd[MMC_DEVICE_TYPE] & MMC_HS_HS400_MODE)
+			return 1;
+		else
+			return 0;
+	}
 	else
 		return 0;
 }
@@ -821,8 +827,12 @@ static uint8_t mmc_card_supports_hs400_mode(struct mmc_card *card)
  */
 static uint8_t mmc_card_supports_hs200_mode(struct mmc_card *card)
 {
-	if (card->ext_csd[MMC_DEVICE_TYPE] & MMC_HS_HS200_MODE)
-		return 1;
+	if (MMC_CARD_MMC(card)) {
+		if (card->ext_csd[MMC_DEVICE_TYPE] & MMC_HS_HS200_MODE)
+			return 1;
+		else
+			return 0;
+	}
 	else
 		return 0;
 }
@@ -835,8 +845,12 @@ static uint8_t mmc_card_supports_hs200_mode(struct mmc_card *card)
  */
 static uint8_t mmc_card_supports_ddr_mode(struct mmc_card *card)
 {
-	if (card->ext_csd[MMC_DEVICE_TYPE] & MMC_HS_DDR_MODE)
-		return 1;
+	if (MMC_CARD_MMC(card)) {
+		if (card->ext_csd[MMC_DEVICE_TYPE] & MMC_HS_DDR_MODE)
+			return 1;
+		else
+			return 0;
+	}
 	else
 		return 0;
 }
@@ -2189,9 +2203,9 @@ uint32_t mmc_sdhci_erase(struct mmc_device *dev, uint32_t blk_addr, uint64_t len
 	 * erase_timeout = 300ms * ERASE_TIMEOUT_MULT * num_erase_grps
 	 */
 	if (MMC_CARD_MMC(card))
-		erase_timeout = ((uint64_t)300 * 1000 * card->ext_csd[MMC_ERASE_TIMEOUT_MULT] * num_erase_grps);
+		erase_timeout = (300 * 1000 * card->ext_csd[MMC_ERASE_TIMEOUT_MULT] * num_erase_grps);
 	else
-		erase_timeout = ((uint64_t)300 * 1000 * num_erase_grps);
+		erase_timeout = (300 * 1000 * num_erase_grps);
 
 	/* Send CMD38 to perform erase */
 	if (mmc_send_erase(dev, erase_timeout))

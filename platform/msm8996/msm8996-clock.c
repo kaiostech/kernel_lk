@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -46,6 +46,7 @@
 #define mmpll1_mm_source_val 2
 #define mmpll3_mm_source_val 3
 #define gpll0_mm_source_val 5
+#define hdmipll_mm_source_val 1
 
 struct clk_freq_tbl rcg_dummy_freq = F_END;
 
@@ -237,6 +238,40 @@ static struct vote_clk gcc_blsp2_ahb_clk = {
 	},
 };
 
+static struct clk_freq_tbl ftbl_gcc_blsp1_qup2_i2c_apps_clk_src[] = {
+	F(      96000,    cxo,  10,   1,  2),
+	F(    4800000,    cxo,   4,   0,  0),
+	F(    9600000,    cxo,   2,   0,  0),
+	F(   16000000,  gpll0,  10,   1,  5),
+	F(   19200000,  gpll0,   1,   0,  0),
+	F(   25000000,  gpll0,  16,   1,  2),
+	F(   50000000,  gpll0,  16,   0,  0),
+	F_END
+};
+
+static struct rcg_clk gcc_blsp2_qup2_i2c_apps_clk_src = {
+	.cmd_reg      = (uint32_t *) GCC_BLSP2_QUP2_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) GCC_BLSP2_QUP2_CFG_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl     = ftbl_gcc_blsp1_qup2_i2c_apps_clk_src,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "gcc_blsp2_qup2_i2c_apps_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
+static struct branch_clk gcc_blsp2_qup2_i2c_apps_clk = {
+	.cbcr_reg = (uint32_t *) GCC_BLSP2_QUP2_APPS_CBCR,
+	.parent   = &gcc_blsp2_qup2_i2c_apps_clk_src.c,
+
+	.c = {
+		.dbg_name = "gcc_blsp2_qup2_i2c_apps_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
 /* SDCC Clocks */
 static struct clk_freq_tbl ftbl_gcc_sdcc1_4_apps_clk[] =
 {
@@ -301,7 +336,24 @@ static struct branch_clk gcc_sys_noc_usb30_axi_clk = {
 	},
 };
 
+static struct branch_clk gcc_periph_noc_usb20_ahb_clk = {
+	.cbcr_reg    = (uint32_t *) PERIPH_NOC_USB20_AHB_CBCR,
+	.has_sibling = 1,
+
+	.c = {
+		.dbg_name = "periph_noc_usb20_ahb_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
 static struct clk_freq_tbl ftbl_gcc_usb30_master_clk[] = {
+	F(  19200000, cxo,    1,    0,    0),
+	F( 120000000, gpll0,    5,    0,    0),
+	F( 150000000, gpll0,    4,    0,    0),
+	F_END
+};
+
+static struct clk_freq_tbl ftbl_gcc_usb20_master_clk[] = {
 	F(  19200000, cxo,    1,    0,    0),
 	F( 120000000, gpll0,    5,    0,    0),
 	F( 150000000, gpll0,    4,    0,    0),
@@ -325,6 +377,23 @@ static struct rcg_clk usb30_master_clk_src = {
 	},
 };
 
+static struct rcg_clk usb20_master_clk_src = {
+	.cmd_reg      = (uint32_t *) USB20_MASTER_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) USB20_MASTER_CFG_RCGR,
+	.m_reg        = (uint32_t *) USB20_MASTER_M,
+	.n_reg        = (uint32_t *) USB20_MASTER_N,
+	.d_reg        = (uint32_t *) USB20_MASTER_D,
+
+	.set_rate     = clock_lib2_rcg_set_rate_mnd,
+	.freq_tbl     = ftbl_gcc_usb20_master_clk,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "usb20_master_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
 static struct branch_clk gcc_usb30_master_clk = {
 	.cbcr_reg = (uint32_t *) USB30_MASTER_CBCR,
 	.bcr_reg  = (uint32_t *) USB_30_BCR,
@@ -332,6 +401,17 @@ static struct branch_clk gcc_usb30_master_clk = {
 
 	.c = {
 		.dbg_name = "usb30_master_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_usb20_master_clk = {
+	.cbcr_reg = (uint32_t *) USB20_MASTER_CBCR,
+	.bcr_reg  = (uint32_t *) USB_20_BCR,
+	.parent   = &usb20_master_clk_src.c,
+
+	.c = {
+		.dbg_name = "usb20_master_clk",
 		.ops      = &clk_ops_branch,
 	},
 };
@@ -351,6 +431,11 @@ static struct clk_freq_tbl ftbl_gcc_usb30_mock_utmi_clk_src[] = {
 	F_END
 };
 
+static struct clk_freq_tbl ftbl_gcc_usb20_mock_utmi_clk_src[] = {
+	F(  60000000, gpll0,   10,    0,     0),
+	F_END
+};
+
 static struct rcg_clk usb30_mock_utmi_clk_src = {
 	.cmd_reg      = (uint32_t *) USB30_MOCK_UTMI_CMD_RCGR,
 	.cfg_reg      = (uint32_t *) USB30_MOCK_UTMI_CFG_RCGR,
@@ -360,6 +445,19 @@ static struct rcg_clk usb30_mock_utmi_clk_src = {
 
 	.c = {
 		.dbg_name = "usb30_mock_utmi_clk_src",
+		.ops      = &clk_ops_rcg,
+	},
+};
+
+static struct rcg_clk usb20_mock_utmi_clk_src = {
+	.cmd_reg      = (uint32_t *) USB20_MOCK_UTMI_CMD_RCGR,
+	.cfg_reg      = (uint32_t *) USB20_MOCK_UTMI_CFG_RCGR,
+	.set_rate     = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl     = ftbl_gcc_usb20_mock_utmi_clk_src,
+	.current_freq = &rcg_dummy_freq,
+
+	.c = {
+		.dbg_name = "usb20_mock_utmi_clk_src",
 		.ops      = &clk_ops_rcg,
 	},
 };
@@ -375,12 +473,34 @@ static struct branch_clk gcc_usb30_mock_utmi_clk = {
 	},
 };
 
+static struct branch_clk gcc_usb20_mock_utmi_clk = {
+	.cbcr_reg    = (uint32_t *) USB20_MOCK_UTMI_CBCR,
+	.has_sibling = 0,
+	.parent      = &usb20_mock_utmi_clk_src.c,
+
+	.c = {
+		.dbg_name = "usb20_mock_utmi_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+
 static struct branch_clk gcc_usb30_sleep_clk = {
 	.cbcr_reg    = (uint32_t *) USB30_SLEEP_CBCR,
 	.has_sibling = 1,
 
 	.c = {
 		.dbg_name = "usb30_sleep_clk",
+		.ops      = &clk_ops_branch,
+	},
+};
+
+static struct branch_clk gcc_usb20_sleep_clk = {
+	.cbcr_reg    = (uint32_t *) USB20_SLEEP_CBCR,
+	.has_sibling = 1,
+
+	.c = {
+		.dbg_name = "usb20_sleep_clk",
 		.ops      = &clk_ops_branch,
 	},
 };
@@ -694,6 +814,78 @@ static struct branch_clk mdss_vsync_clk = {
 	},
 };
 
+static struct branch_clk mdss_hdmi_ahb_clk = {
+	.cbcr_reg = (uint32_t *) MDSS_HDMI_AHB_CBCR,
+	.has_sibling = 1,
+	.c = {
+		.dbg_name = "mdss_hdmi_ahb_clk",
+		.ops = &clk_ops_branch,
+	},
+};
+
+static struct clk_freq_tbl ftbl_mdss_hdmi_clk[] = {
+	F_MM( 19200000,  cxo,    1, 0, 0),
+	F_END
+};
+
+static struct rcg_clk hdmi_clk_src = {
+	.cmd_reg = (uint32_t *) HDMI_CMD_RCGR,
+	.cfg_reg = (uint32_t *) HDMI_CFG_RCGR,
+	.set_rate = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl = ftbl_mdss_hdmi_clk,
+	.current_freq = &rcg_dummy_freq,
+	.c = {
+		.dbg_name = "hdmi_clk_src",
+		.ops = &clk_ops_rcg,
+	},
+};
+
+static struct branch_clk mdss_hdmi_clk = {
+	.cbcr_reg = (uint32_t *) MDSS_HDMI_CBCR,
+	.has_sibling = 0,
+	.parent = &hdmi_clk_src.c,
+	.c = {
+		.dbg_name = "mdss_hdmi_clk",
+		.ops = &clk_ops_branch,
+	},
+};
+
+static struct clk_freq_tbl ftbl_mdss_extpclk_clk[] = {
+	F_MDSS( 74250000, hdmipll, 1, 0, 0),
+	F_MDSS( 25200000, hdmipll, 1, 0, 0),
+	F_MDSS( 27000000, hdmipll, 1, 0, 0),
+	F_MDSS( 27030000, hdmipll, 1, 0, 0),
+	F_MDSS( 27070000, hdmipll, 1, 0, 0),
+	F_MDSS( 65000000, hdmipll, 1, 0, 0),
+	F_MDSS(108000000, hdmipll, 1, 0, 0),
+	F_MDSS(148500000, hdmipll, 1, 0, 0),
+	F_MDSS(268500000, hdmipll, 1, 0, 0),
+	F_MDSS(297000000, hdmipll, 1, 0, 0),
+	F_MDSS(594000000, hdmipll, 1, 0, 0),
+	F_END
+};
+
+static struct rcg_clk extpclk_clk_src = {
+	.cmd_reg = (uint32_t *) EXTPCLK_CMD_RCGR,
+	.cfg_reg = (uint32_t *) EXTPCLK_CFG_RCGR,
+	.set_rate = clock_lib2_rcg_set_rate_hid,
+	.freq_tbl = ftbl_mdss_extpclk_clk,
+	.current_freq = &rcg_dummy_freq,
+	.c = {
+		.dbg_name = "extpclk_clk_src",
+		.ops = &clk_ops_rcg,
+	},
+};
+
+static struct branch_clk mdss_extpclk_clk = {
+	.cbcr_reg = (uint32_t *) MDSS_EXTPCLK_CBCR,
+	.has_sibling = 0,
+	.parent = &extpclk_clk_src.c,
+	.c = {
+		.dbg_name = "mdss_extpclk_clk",
+		.ops = &clk_ops_branch,
+	},
+};
 
 /* Clock lookup table */
 static struct clk_lookup msm_msm8996_clocks[] =
@@ -716,6 +908,12 @@ static struct clk_lookup msm_msm8996_clocks[] =
 
 	CLK_LOOKUP("usb_phy_cfg_ahb2phy_clk",     gcc_usb_phy_cfg_ahb2phy_clk.c),
 
+	/* USB20 clocks */
+	CLK_LOOKUP("usb20_noc_usb20_clk",     gcc_periph_noc_usb20_ahb_clk.c),
+	CLK_LOOKUP("usb20_master_clk",    gcc_usb20_master_clk.c),
+	CLK_LOOKUP("usb20_mock_utmi_clk", gcc_usb20_mock_utmi_clk.c),
+	CLK_LOOKUP("usb20_sleep_clk",     gcc_usb20_sleep_clk.c),
+
 	/* mdss clocks */
 	CLK_LOOKUP("mdss_mdp_clk",     mdss_mdp_clk.c),
 	CLK_LOOKUP("mdss_vsync_clk",       mdss_vsync_clk.c),
@@ -731,6 +929,18 @@ static struct clk_lookup msm_msm8996_clocks[] =
 	CLK_LOOKUP("mmss_mmagic_ahb_clk",       mmss_mmagic_ahb_clk.c),
 	CLK_LOOKUP("smmu_mdp_ahb_clk",     smmu_mdp_ahb_clk.c),
 	CLK_LOOKUP("mdp_ahb_clk",          mdp_ahb_clk.c),
+
+	/* BLSP CLOCKS */
+	CLK_LOOKUP("blsp2_qup2_ahb_iface_clk", gcc_blsp2_ahb_clk.c),
+	CLK_LOOKUP("gcc_blsp2_qup2_i2c_apps_clk_src",
+		gcc_blsp2_qup2_i2c_apps_clk_src.c),
+	CLK_LOOKUP("gcc_blsp2_qup2_i2c_apps_clk",
+		gcc_blsp2_qup2_i2c_apps_clk.c),
+
+	/* HDMI clocks*/
+	CLK_LOOKUP("hdmi_ahb_clk",         mdss_hdmi_ahb_clk.c),
+	CLK_LOOKUP("hdmi_core_clk",        mdss_hdmi_clk.c),
+	CLK_LOOKUP("hdmi_extp_clk",        mdss_extpclk_clk.c),
 };
 
 void platform_clock_init(void)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -49,6 +49,7 @@
 #include <gpio.h>
 #include <rpm-smd.h>
 #include <qpic_nand.h>
+#include <smem.h>
 
 #if LONG_PRESS_POWER_ON
 #include <shutdown_detect.h>
@@ -66,6 +67,7 @@
 #if PON_VIB_SUPPORT
 #define VIBRATE_TIME    250
 #endif
+#define HW_SUBTYPE_APQ_NOWGR 0xA
 
 #define CE1_INSTANCE            1
 #define CE_EE                   1
@@ -205,14 +207,19 @@ void *target_mmc_device()
 }
 
 /* Return 1 if vol_up pressed */
-static int target_volume_up()
+int target_volume_up()
 {
+	static uint8_t first_time = 0;
 	uint8_t status = 0;
 
-	gpio_tlmm_config(TLMM_VOL_UP_BTN_GPIO, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_2MA, GPIO_ENABLE);
+	if (!first_time) {
+		gpio_tlmm_config(TLMM_VOL_UP_BTN_GPIO, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_2MA, GPIO_ENABLE);
 
-	/* Wait for the gpio config to take effect - debounce time */
-	thread_sleep(10);
+		/* Wait for the gpio config to take effect - debounce time */
+		udelay(10000);
+
+		first_time = 1;
+	}
 
 	/* Get status of GPIO */
 	status = gpio_status(TLMM_VOL_UP_BTN_GPIO);
@@ -419,7 +426,11 @@ void target_baseband_detect(struct board_data *board)
 		break;
 
 	case APQ8009:
-		board->baseband = BASEBAND_APQ;
+		if ((board->platform_hw == HW_PLATFORM_MTP) &&
+				(board->platform_subtype == HW_SUBTYPE_APQ_NOWGR))
+			board->baseband = BASEBAND_APQ_NOWGR;
+		else
+			board->baseband = BASEBAND_APQ;
 		break;
 
 	default:
@@ -466,40 +477,41 @@ void target_force_cont_splash_disable(uint8_t override)
         splash_override = override;
 }
 
+/*Update this command line only for LE based builds*/
 int get_target_boot_params(const char *cmdline, const char *part, char **buf)
 {
 	struct ptable *ptable;
 	int system_ptn_index = -1;
-	uint32_t buflen;
+	int le_based = -1;
 
-	if (!target_is_emmc_boot()) {
-		if (!cmdline || !part || !buf || buflen < 0) {
-			dprintf(CRITICAL, "WARN: Invalid input param\n");
-			return -1;
-		}
-		buflen = strlen(" root=/dev/mtdblock") + sizeof(int) + 1; /*1 character for null termination*/
-		*buf = (char *)malloc(buflen);
-		if(!(*buf)) {
-			dprintf(CRITICAL,"Unable to allocate memory for boot params\n");
-			return -1;
-		}
+	/*LE partition.xml will have recoveryfs partition*/
+	if (target_is_emmc_boot())
+		le_based = partition_get_index("recoveryfs");
+	else
+		/*Nand targets by default have this*/
+		le_based = 1;
 
-		ptable = flash_get_ptable();
-		if (!ptable) {
-			dprintf(CRITICAL,
-				"WARN: Cannot get flash partition table\n");
-			free(*buf);
-			return -1;
+	if (le_based != -1)
+	{
+		if (!target_is_emmc_boot())
+		{
+			ptable = flash_get_ptable();
+			if (!ptable)
+			{
+				dprintf(CRITICAL,
+					"WARN: Cannot get flash partition table\n");
+				return -1;
+			}
+			system_ptn_index = ptable_get_index(ptable, part);
 		}
-
-		system_ptn_index = ptable_get_index(ptable, part);
+		else
+			system_ptn_index = partition_get_index(part);
 		if (system_ptn_index < 0) {
 			dprintf(CRITICAL,
 				"WARN: Cannot get partition index for %s\n", part);
 			free(*buf);
 			return -1;
 		}
-
 		/*
 		* check if cmdline contains "root=" at the beginning of buffer or
 		* " root=" in the middle of buffer.
@@ -508,11 +520,15 @@ int get_target_boot_params(const char *cmdline, const char *part, char **buf)
 			(strstr(cmdline, " root="))))
 			dprintf(DEBUG, "DEBUG: cmdline has root=\n");
 		else
-			snprintf(*buf, buflen, " root=/dev/mtdblock%d",
-                                 system_ptn_index);
 		/*in success case buf will be freed in the calling function of this*/
+		{
+			if (!target_is_emmc_boot())
+				snprintf(buf, buflen, " root=/dev/mtdblock%d",system_ptn_index);
+			else
+				/*For Emmc case increase the ptn_index by 1*/
+				snprintf(buf, buflen, " root=/dev/mmcblk0p%d",system_ptn_index + 1);
+		}
 	}
-
 	return 0;
 }
 
@@ -606,7 +622,7 @@ void target_fastboot_init(void)
 	}
 }
 
-int set_download_mode(enum dload_mode mode)
+int set_download_mode(enum reboot_reason mode)
 {
 	int ret = 0;
 	ret = scm_dload_mode(mode);
@@ -701,4 +717,9 @@ uint32_t target_get_hlos_subtype()
 void pmic_reset_configure(uint8_t reset_type)
 {
 	pm8x41_reset_configure(reset_type);
+}
+
+uint32_t target_get_pmic()
+{
+	return PMIC_IS_PM8909;
 }

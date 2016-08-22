@@ -45,7 +45,13 @@
 
 #define INT_QTMR_FRM_0_PHYSICAL_TIMER_EXP      (GIC_SPI_START + 31)
 
-#define USB30_EE1_IRQ                          (GIC_SPI_START + 131)
+/* to support secondary port usage, secondary port Interrupt*/
+int usb_irq();
+
+#define USB30_EE1_IRQ  			   (usb_irq())
+
+#define USB30_IRQ                          (GIC_SPI_START + 131)
+#define USB20_IRQ                          (GIC_SPI_START + 138)
 
 #define GLINK_IPC_IRQ                          (GIC_SPI_START + 168)
 
@@ -67,4 +73,6 @@
 #define NR_IRQS                                (NR_MSM_IRQS + NR_GPIO_IRQS + \
                                                NR_BOARD_IRQS)
 
+#define BLSP_QUP_IRQ(blsp_id, qup_id)          (GIC_SPI_START + 95 + blsp_id * \
+                                               6 + qup_id)
 #endif	/* __IRQS_THULIUM_H */

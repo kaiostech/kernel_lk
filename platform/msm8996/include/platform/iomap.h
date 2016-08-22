@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -68,15 +68,40 @@
 
 #define BLSP2_UART1_BASE            (PERIPH_SS_BASE + 0x001B0000)
 
+/* I2C */
+#define BLSP_QUP_BASE(blsp_id, qup_id) (PERIPH_SS_BASE + ((blsp_id) - 1) * 0x100000 \
+                                       + 0xB5000 + 0x1000 * (qup_id))
+#define GCC_BLSP2_QUP2_APPS_CBCR    (CLK_CTL_BASE + 0x28008)
+#define GCC_BLSP2_QUP2_CFG_RCGR     (CLK_CTL_BASE + 0x28010)
+#define GCC_BLSP2_QUP2_CMD_RCGR     (CLK_CTL_BASE + 0x2800C)
+
+/* USB platform specific bases*/
+unsigned int usb_ctrl_base();
+unsigned int usb_qscratch_base();
+unsigned int usb_phy_base();
+unsigned int usb_phy_bcr();
+
+#define MSM_USB30_BASE              (usb_ctrl_base())
+#define MSM_USB30_QSCRATCH_BASE     (usb_qscratch_base())
+#define QUSB2_PHY_BASE              (usb_phy_base())
+#define GCC_QUSB2_PHY_BCR           (usb_phy_bcr())
+
 /* USB3.0 */
-#define MSM_USB30_BASE              0x6A00000
-#define MSM_USB30_QSCRATCH_BASE     0x6AF8800
+#define MSM_USB30_PRIM_BASE              0x6A00000
+#define MSM_USB30_QSCRATCH_PRIM_BASE     0x6AF8800
+/* USB2.0 */
+#define MSM_USB20_SEC_BASE              0x7600000
+#define MSM_USB20_SEC_QSCRATCH_BASE     0x76F8800
 /* SS QMP (Qulacomm Multi Protocol) */
 #define QMP_PHY_BASE                0x7410000
 
-/* QUSB2 PHY */
-#define QUSB2_PHY_BASE              0x7411000
-#define GCC_QUSB2_PHY_BCR           (CLK_CTL_BASE + 0x00012038)
+/* QUSB2 PHY primary */
+#define QUSB2_PRIM_PHY_BASE              0x7411000
+#define GCC_QUSB2_PRIM_PHY_BCR           (CLK_CTL_BASE + 0x00012038)
+
+/* QUSB2 PHY secondary */
+#define QUSB2_SEC_PHY_BASE              0x7412000
+#define GCC_QUSB2_SEC_PHY_BCR           (CLK_CTL_BASE + 0x0001203C)
 
 #define AHB2_PHY_BASE               0x7416000
 #define PERIPH_SS_AHB2PHY_TOP_CFG   (AHB2_PHY_BASE + 0x10)
@@ -130,6 +155,20 @@
 #define USB30PHY_PHY_BCR            (CLK_CTL_BASE + 0x50024)
 #define USB_PHY_CFG_AHB2PHY_CBCR    (CLK_CTL_BASE + 0x6A004)
 #define GCC_AGGRE2_USB3_AXI_CBCR    (CLK_CTL_BASE + 0x83018)
+
+/* USB20 clocks */
+#define USB_20_BCR                  (CLK_CTL_BASE + 0x12000)
+#define USB20_MASTER_CBCR           (CLK_CTL_BASE + 0x12004)
+#define USB20_SLEEP_CBCR            (CLK_CTL_BASE + 0x12008)
+#define USB20_MOCK_UTMI_CBCR        (CLK_CTL_BASE + 0x1200C)
+#define USB20_MASTER_CMD_RCGR       (CLK_CTL_BASE + 0x12010)
+#define USB20_MASTER_CFG_RCGR       (CLK_CTL_BASE + 0x12014)
+#define USB20_MASTER_M              (CLK_CTL_BASE + 0x12018)
+#define USB20_MASTER_N              (CLK_CTL_BASE + 0x1201c)
+#define USB20_MASTER_D              (CLK_CTL_BASE + 0x12020)
+#define USB20_MOCK_UTMI_CMD_RCGR    (CLK_CTL_BASE + 0x12024)
+#define USB20_MOCK_UTMI_CFG_RCGR    (CLK_CTL_BASE + 0x12028)
+#define PERIPH_NOC_USB20_AHB_CBCR   (CLK_CTL_BASE + 0x06010)
 
 /* SDCC */
 #define SDCC1_BCR                   (CLK_CTL_BASE + 0x13000) /* block reset */
@@ -202,7 +241,7 @@
  * as device memory, define the start address
  * and size in MB
  */
-#define RPMB_SND_RCV_BUF            0x91A00000
+#define RPMB_SND_RCV_BUF            0x91C00000
 #define RPMB_SND_RCV_BUF_SZ         0x2
 
 #define TCSR_BOOT_MISC_DETECT       0x007B3000
@@ -220,8 +259,8 @@
 #define DSI0_REGULATOR_BASE         (0x994000)
 #define DSI1_REGULATOR_BASE         (0x996000)
 
-#define MMSS_DSI_PHY_PLL_CORE_VCO_TUNE  0x0160
-#define MMSS_DSI_PHY_PLL_CORE_KVCO_CODE 0x0168
+#define MMSS_DSI_PHY_PLL_CORE_VCO_TUNE  0x0D0
+#define MMSS_DSI_PHY_PLL_CORE_KVCO_CODE 0x0D4
 
 #define MDP_BASE                    (0x900000)
 #define REG_MDP(off)                (MDP_BASE + (off))
@@ -236,8 +275,15 @@
 #endif
 #define MDP_PP_1_BASE               REG_MDP(0x71800)
 
-#define MDP_DSC_0_BASE			REG_MDP(0x81000)
-#define MDP_DSC_1_BASE			REG_MDP(0x81400)
+#ifdef MDP_DSC_0_BASE
+#undef MDP_DSC_0_BASE
+#endif
+#define MDP_DSC_0_BASE              REG_MDP(0x81000)
+
+#ifdef MDP_DSC_1_BASE
+#undef MDP_DSC_1_BASE
+#endif
+#define MDP_DSC_1_BASE              REG_MDP(0x81400)
 
 #ifdef MDP_HW_REV
 #undef MDP_HW_REV
@@ -294,6 +340,11 @@
 #endif
 #define MDP_INTF_2_TIMING_ENGINE_EN             REG_MDP(0x6C000)
 
+#ifdef MDP_INTF_3_TIMING_ENGINE_EN
+#undef MDP_INTF_3_TIMING_ENGINE_EN
+#endif
+#define MDP_INTF_3_TIMING_ENGINE_EN             REG_MDP(0x6C800)
+
 #ifdef MDP_CTL_0_BASE
 #undef MDP_CTL_0_BASE
 #endif
@@ -333,6 +384,11 @@
 #undef MDP_INTF_2_BASE
 #endif
 #define MDP_INTF_2_BASE                         REG_MDP(0x6c000)
+
+#ifdef MDP_INTF_3_BASE
+#undef MDP_INTF_3_BASE
+#endif
+#define MDP_INTF_3_BASE                         REG_MDP(0x6c800)
 
 #ifdef MDP_CLK_CTRL0
 #undef MDP_CLK_CTRL0
@@ -551,4 +607,77 @@
 #define APPS_WDOG_RESET_REG         (APSS_WDOG_BASE + 0x04)
 #define APPS_WDOG_CTL_REG           (APSS_WDOG_BASE + 0x08)
 
+/* HDMI reg addresses */
+#define HDMI_BASE               0x9A0000
+#define REG_HDMI(off)           (HDMI_BASE + (off))
+
+#define HDMI_ACR_32_0           REG_HDMI(0xC4)
+#define HDMI_ACR_32_1           REG_HDMI(0xC8)
+#define HDMI_ACR_44_0           REG_HDMI(0xCC)
+#define HDMI_ACR_44_1           REG_HDMI(0xD0)
+#define HDMI_ACR_48_0           REG_HDMI(0xD4)
+#define HDMI_ACR_48_1           REG_HDMI(0xD8)
+#define HDMI_AUDIO_PKT_CTRL2    REG_HDMI(0x44)
+#define HDMI_ACR_PKT_CTRL       REG_HDMI(0x24)
+#define HDMI_INFOFRAME_CTRL0    REG_HDMI(0x2C)
+#define HDMI_INFOFRAME_CTRL1    REG_HDMI(0x30)
+#define HDMI_AUDIO_INFO0        REG_HDMI(0xE4)
+#define HDMI_AUDIO_INFO1        REG_HDMI(0xE8)
+#define HDMI_AUDIO_PKT_CTRL     REG_HDMI(0x20)
+#define HDMI_VBI_PKT_CTRL       REG_HDMI(0x28)
+#define HDMI_GEN_PKT_CTRL       REG_HDMI(0x34)
+#define HDMI_GC                 REG_HDMI(0x40)
+#define HDMI_AUDIO_CFG          REG_HDMI(0x1D0)
+
+#define HDMI_DDC_SPEED          REG_HDMI(0x220)
+#define HDMI_DDC_SETUP          REG_HDMI(0x224)
+#define HDMI_DDC_REF            REG_HDMI(0x27C)
+#define HDMI_DDC_DATA           REG_HDMI(0x238)
+#define HDMI_DDC_TRANS0         REG_HDMI(0x228)
+#define HDMI_DDC_TRANS1         REG_HDMI(0x22C)
+#define HDMI_DDC_TRANS2         REG_HDMI(0x230)
+#define HDMI_DDC_TRANS3         REG_HDMI(0x234)
+#define HDMI_DDC_CTRL           REG_HDMI(0x20C)
+#define HDMI_DDC_INT_CTRL       REG_HDMI(0x214)
+#define HDMI_DDC_SW_STATUS      REG_HDMI(0x218)
+#define HDMI_DDC_ARBITRATION    REG_HDMI(0x210)
+#define HDMI_HW_DDC_CTRL        REG_HDMI(0x4CC)
+#define HDMI_DDC_INT_CTRL0      REG_HDMI(0x430)
+#define HDMI_DDC_INT_CTRL1      REG_HDMI(0x434)
+#define HDMI_DDC_INT_CTRL2      REG_HDMI(0x438)
+#define HDMI_DDC_INT_CTRL3      REG_HDMI(0x43C)
+#define HDMI_DDC_INT_CTRL4      REG_HDMI(0x440)
+#define HDMI_DDC_INT_CTRL5      REG_HDMI(0x444)
+#define HDMI_DDC_HW_STATUS      REG_HDMI(0x21C)
+#define HDMI_SCRAMBLER_STATUS_DDC_CTRL   REG_HDMI(0x464)
+#define HDMI_SCRAMBLER_STATUS_DDC_TIMER_CTRL    REG_HDMI(0x468)
+#define HDMI_SCRAMBLER_STATUS_DDC_TIMER_CTRL2   REG_HDMI(0x46C)
+#define HDMI_SCRAMBLER_STATUS_DDC_STATUS        REG_HDMI(0x470)
+#define HDMI_SCRAMBLER_STATUS_DDC_TIMER_STATUS  REG_HDMI(0x474)
+#define HDMI_SCRAMBLER_STATUS_DDC_TIMER_STATUS2 REG_HDMI(0x478)
+
+#define HDMI_USEC_REFTIMER      REG_HDMI(0x208)
+#define HDMI_CTRL               REG_HDMI(0x000)
+#define HDMI_VERSION            REG_HDMI(0x2E4)
+#define HDMI_HPD_INT_STATUS     REG_HDMI(0x250)
+#define HDMI_HPD_INT_CTRL       REG_HDMI(0x254)
+#define HDMI_HPD_CTRL           REG_HDMI(0x258)
+#define HDMI_PHY_CTRL           REG_HDMI(0x2D4)
+#define HDMI_TOTAL              REG_HDMI(0x2C0)
+#define HDMI_ACTIVE_H           REG_HDMI(0x2B4)
+#define HDMI_ACTIVE_V           REG_HDMI(0x2B8)
+#define HDMI_V_TOTAL_F2         REG_HDMI(0x2C4)
+#define HDMI_ACTIVE_V_F2        REG_HDMI(0x2BC)
+#define HDMI_FRAME_CTRL         REG_HDMI(0x2C8)
+
+#define HDMI_AVI_INFO0          REG_HDMI(0x06C)
+#define HDMI_AVI_INFO1          REG_HDMI(0x070)
+#define HDMI_AVI_INFO2          REG_HDMI(0x074)
+#define HDMI_AVI_INFO3          REG_HDMI(0x078)
+
+#define LPASS_LPAIF_RDDMA_CTL0       0x0910D000
+#define LPASS_LPAIF_RDDMA_BASE0      0x0910D004
+#define LPASS_LPAIF_RDDMA_BUFF_LEN0  0x0910D008
+#define LPASS_LPAIF_RDDMA_PER_LEN0   0x0910D010
+#define LPASS_LPAIF_DEBUG_CTL        0x0910000C
 #endif

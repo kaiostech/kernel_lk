@@ -1,8 +1,8 @@
-# top level project rules for the MSMTITANIUM project
+# top level project rules for the MSM8953 project
 #
 LOCAL_DIR := $(GET_LOCAL_DIR)
 
-TARGET := msmtitanium
+TARGET := msm8953
 
 MODULES += app/aboot
 
@@ -13,6 +13,17 @@ DEBUG := 1
 endif
 
 EMMC_BOOT := 1
+
+ifeq ($(VERIFIED_BOOT),1)
+ifeq ($(ENABLE_VBOOT_MOTA_SUPPORT),1)
+DEFINES += VBOOT_MOTA=1
+else
+ENABLE_SECAPP_LOADER := 1
+ENABLE_RPMB_SUPPORT := 1
+#enable fbcon display menu
+ENABLE_FBCON_DISPLAY_MSG := 1
+endif
+endif
 
 ENABLE_SMD_SUPPORT := 1
 #ENABLE_PWM_SUPPORT := true
@@ -30,7 +41,11 @@ DEFINES += ABOOT_IGNORE_BOOT_HEADER_ADDRS=1
 DEFINES += BAM_V170=1
 
 #Enable the feature of long press power on
-#DEFINES += LONG_PRESS_POWER_ON=1
+DEFINES += LONG_PRESS_POWER_ON=1
+
+ifeq ($(ENABLE_RPMB_SUPPORT),1)
+DEFINES += USE_RPMB_FOR_DEVINFO=1
+endif
 
 #Disable thumb mode
 ENABLE_THUMB := false
@@ -42,11 +57,19 @@ ifeq ($(ENABLE_SDHCI_SUPPORT),1)
 DEFINES += MMC_SDHCI_SUPPORT=1
 endif
 
+ifeq ($(ENABLE_FBCON_DISPLAY_MSG),1)
+DEFINES += FBCON_DISPLAY_MSG=1
+endif
+
 #enable power on vibrator feature
-#ENABLE_PON_VIB_SUPPORT := true
+ENABLE_HAP_VIB_SUPPORT := true
 
 ifeq ($(EMMC_BOOT),1)
 DEFINES += _EMMC_BOOT=1
+endif
+
+ifeq ($(ENABLE_HAP_VIB_SUPPORT),true)
+DEFINES += PON_VIB_SUPPORT=1
 endif
 
 ifeq ($(ENABLE_PON_VIB_SUPPORT),true)
@@ -66,7 +89,27 @@ DEFINES += PLATFORM_USE_SCM_DLOAD=1
 
 CFLAGS += -Werror
 
+#enable user force reset feature
+DEFINES += USER_FORCE_RESET_SUPPORT=1
+
+# Reset USB clock from target code
+DEFINES += USB_RESET_FROM_CLK=1
+
+DEFINES += USE_TARGET_QMP_SETTINGS=1
+
 DEFINES += USE_TARGET_HS200_DELAY=1
 
 #Enable the external reboot functions
-#ENABLE_REBOOT_MODULE := 1
+ENABLE_REBOOT_MODULE := 1
+
+ifeq ($(VERIFIED_BOOT),1)
+#Enable MDTP feature
+ENABLE_MDTP_SUPPORT := 1
+endif
+
+ifeq ($(ENABLE_MDTP_SUPPORT),1)
+DEFINES += MDTP_SUPPORT=1
+endif
+
+#enable battery voltage check
+DEFINES += CHECK_BAT_VOLTAGE=1

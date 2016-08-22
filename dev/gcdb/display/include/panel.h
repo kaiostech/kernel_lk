@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -217,9 +217,19 @@ struct dsc_parameters {
 	uint32_t bpc;		/* target bpc, byte per component */
 	uint32_t slice_per_pkt;
 	uint32_t block_prediction;
-	uint32_t ich_reset_override;
-	uint32_t ich_reset_value;
-	uint32_t data_path_mode;
+	uint32_t scr_rev;
+};
+
+struct topology_config {
+	char *config_name; /* matches with kernel cmdline */
+	/*
+	 * lm_split: -ve value means that lm_split is not used.
+	 *           If lm_split is used then DUAL_PIPE flag will be added.
+	 */
+	int lm_split[2];
+	int num_dsc_enc; /* how many encoder to use */
+	struct dsc_parameters *dsc;
+	int use_pingpong_split;
 };
 
 #endif /*_PANEL_H_ */
