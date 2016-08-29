@@ -1547,16 +1547,26 @@ int boot_linux_from_flash(void)
 				kernel_actual + ramdisk_actual);
 		bs_set_timestamp(BS_KERNEL_LOAD_START);
 
+		if (UINT_MAX - offset < kernel_actual)
+		{
+			dprintf(CRITICAL, "ERROR: Integer overflow in boot image header %s\t%d\n",__func__,__LINE__);
+			return -1;
+		}
 		if (flash_read(ptn, offset, (void *)hdr->kernel_addr, kernel_actual)) {
 			dprintf(CRITICAL, "ERROR: Cannot read kernel image\n");
 			return -1;
 		}
 		offset += kernel_actual;
-
+		if (UINT_MAX - offset < ramdisk_actual)
+		{
+			dprintf(CRITICAL, "ERROR: Integer overflow in boot image header %s\t%d\n",__func__,__LINE__);
+			return -1;
+		}
 		if (flash_read(ptn, offset, (void *)hdr->ramdisk_addr, ramdisk_actual)) {
 			dprintf(CRITICAL, "ERROR: Cannot read ramdisk image\n");
 			return -1;
 		}
+
 		offset += ramdisk_actual;
 
 		dprintf(INFO, "Loading boot image (%d): done\n",
@@ -1564,6 +1574,11 @@ int boot_linux_from_flash(void)
 		bs_set_timestamp(BS_KERNEL_LOAD_DONE);
 
 		if(hdr->second_size != 0) {
+			if (UINT_MAX - offset < second_actual)
+			{
+				dprintf(CRITICAL, "ERROR: Integer overflow in boot image header %s\t%d\n",__func__,__LINE__);
+				return -1;
+			}
 			offset += second_actual;
 			/* Second image loading not implemented. */
 			ASSERT(0);
@@ -2846,6 +2861,13 @@ void cmd_flash_mmc_sparse_img(const char *arg, void *data, unsigned sz)
 				fill_buf[i] = fill_val;
 			}
 
+			if(total_blocks > (UINT_MAX - chunk_header->chunk_sz))
+			{
+				fastboot_fail("bogus size for chunk FILL type");
+				free(fill_buf);
+				return;
+			}
+
 			for (i = 0; i < chunk_blk_cnt; i++)
 			{
 				/* Make sure that the data written to partition does not exceed partition size */
@@ -3376,17 +3398,19 @@ int splash_screen_mmc()
 	}
 
 	fb_display = fbcon_display();
-	base = (uint8_t *) fb_display->base;
+	if (fb_display) {
+		base = (uint8_t *) fb_display->base;
 
-	if (mmc_read(ptn, (uint32_t *)(base + LOGO_IMG_OFFSET), blocksize)) {
-		dprintf(CRITICAL, "ERROR: Cannot read splash image header\n");
-		return -1;
-	}
+		if (mmc_read(ptn, (uint32_t *)(base + LOGO_IMG_OFFSET), blocksize)) {
+			dprintf(CRITICAL, "ERROR: Cannot read splash image header\n");
+			return -1;
+		}
 
-	header = (struct logo_img_header *)(base + LOGO_IMG_OFFSET);
-	if (splash_screen_check_header(header)) {
-		dprintf(CRITICAL, "ERROR: Splash image header invalid\n");
-		return -1;
+		header = (struct logo_img_header *)(base + LOGO_IMG_OFFSET);
+		if (splash_screen_check_header(header)) {
+			dprintf(CRITICAL, "ERROR: Splash image header invalid\n");
+			return -1;
+		}
 	}
 
 	if (fb_display) {
