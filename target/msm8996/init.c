@@ -898,6 +898,8 @@ int animated_splash() {
 	struct target_display * disp;
 	struct fbcon_config *fb;
 	uint32_t sleep_time;
+	uint32_t disp_cnt = NUM_DISPLAYS;
+	uint32_t reg_value;
 
 	if (!buffers[0]) {
 		dprintf(CRITICAL, "Unexpected error in read\n");
@@ -942,16 +944,27 @@ int animated_splash() {
 	}
 
 	while (1) {
-		if (0xFEFEFEFE == readl_relaxed((void *)MDSS_SCRATCH_REG_1))
+		reg_value = readl_relaxed((void *)MDSS_SCRATCH_REG_1);
+		if (0xFEFEFEFE == reg_value) {
+			//This value indicates kernel request LK to shutdown immediately
 			break;
+		}
+		else if (0xDEADDEAD == reg_value) {
+			// This value means kernel is started
+			// LK should notify kernel by writing 0xDEADBEEF to
+			// MDSS_SCRATCH_REG_1 when it is ready to exit
+			break;
+		}
 
-		for (j = 0; j < NUM_DISPLAYS; j++) {
+		for (j = 0; j < disp_cnt; j++) {
 			layer[j].fb->base = buffers[j][frame_cnt[j]];
 			ret = target_display_update(&update[j],1, j);
 			frame_cnt[j]++;
-			if (frame_cnt[j] >= g_head[j].num_frames)
+			if (frame_cnt[j] >= g_head[j].num_frames) {
 				frame_cnt[j] = 0;
+			}
 		}
+
 		// assume all displays have the same fps
 		mdelay_optimal(sleep_time);
 		k++;
@@ -960,6 +973,8 @@ int animated_splash() {
 	for (j = 0; j < NUM_DISPLAYS; j++)
 		target_release_layer(&layer[j]);
 
+	// Notify Kernel that LK is shutdown
+	writel(0xDEADBEEF, MDSS_SCRATCH_REG_1);
 	return ret;
 }
 
@@ -977,7 +992,9 @@ void earlydomain_services()
 		i++;
 	}
 
-    dprintf(CRITICAL, "earlydomain_services: Display init done\n");
+	dprintf(CRITICAL, "earlydomain_services: Display init done\n");
+	// Notify Kernel that LK is running
+	writel(0xC001CAFE, MDSS_SCRATCH_REG_1);
 
 	/*Create Animated splash thread
 	if target supports it*/
