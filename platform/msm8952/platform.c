@@ -33,8 +33,8 @@
 #include <platform/clock.h>
 #include <qgic.h>
 #include <qtimer.h>
-#include <mmu.h>
 #include <arch/arm/mmu.h>
+#include <mmu.h>
 #include <smem.h>
 #include <board.h>
 #include <boot_stats.h>
@@ -44,7 +44,6 @@
 #define MSM8976_SOC_V11 0x10001
 #define MSM_IOMAP_SIZE ((MSM_IOMAP_END - MSM_IOMAP_BASE)/MB)
 #define APPS_SS_SIZE   ((APPS_SS_END - APPS_SS_BASE)/MB)
-
 /* LK memory - cacheable, write through */
 #define LK_MEMORY         (MMU_MEMORY_TYPE_NORMAL_WRITE_BACK_ALLOCATE | \
 				MMU_MEMORY_AP_READ_WRITE)
@@ -60,7 +59,21 @@
 #define SCRATCH_MEMORY    (MMU_MEMORY_TYPE_NORMAL_WRITE_BACK_ALLOCATE | \
 				MMU_MEMORY_AP_READ_WRITE | MMU_MEMORY_XN)
 
-static mmu_section_t mmu_section_table[] = {
+#if LPAE
+static mmu_section_t mmu_section_table[] =
+{
+/*       Physical addr,          Virtual addr,          Mapping type ,              Size (in MB),            Flags */
+    {    MEMBASE,                MEMBASE,               MMU_L2_NS_SECTION_MAPPING,  (MEMSIZE / MB),      LK_MEMORY},
+    {    MSM_IOMAP_BASE,         MSM_IOMAP_BASE,        MMU_L2_NS_SECTION_MAPPING,  MSM_IOMAP_SIZE,      IOMAP_MEMORY},
+	{    APPS_SS_BASE,           APPS_SS_BASE,          MMU_L2_NS_SECTION_MAPPING,  APPS_SS_SIZE,        IOMAP_MEMORY},
+    {    MSM_SHARED_IMEM_BASE,   MSM_SHARED_IMEM_BASE,  MMU_L2_NS_SECTION_MAPPING,  2,                   COMMON_MEMORY},
+    {    SCRATCH_ADDR,           SCRATCH_ADDR,          MMU_L2_NS_SECTION_MAPPING,  512,                 SCRATCH_MEMORY},
+	{    MIPI_FB_ADDR,           MIPI_FB_ADDR,          MMU_L2_NS_SECTION_MAPPING,  42,                  COMMON_MEMORY},
+    {    RPMB_SND_RCV_BUF,       RPMB_SND_RCV_BUF,      MMU_L2_NS_SECTION_MAPPING,  RPMB_SND_RCV_BUF_SZ, IOMAP_MEMORY},
+};
+#else
+static mmu_section_t mmu_section_table[] =
+{
 /*           Physical addr,         Virtual addr,            Size (in MB),     Flags */
 	{    MEMBASE,               MEMBASE,                 (MEMSIZE / MB),         LK_MEMORY},
 	{    MSM_IOMAP_BASE,        MSM_IOMAP_BASE,          MSM_IOMAP_SIZE,         IOMAP_MEMORY},
@@ -70,6 +83,7 @@ static mmu_section_t mmu_section_table[] = {
 	{    MIPI_FB_ADDR,          MIPI_FB_ADDR,            42,                     COMMON_MEMORY},
 	{    RPMB_SND_RCV_BUF,      RPMB_SND_RCV_BUF,        RPMB_SND_RCV_BUF_SZ,    IOMAP_MEMORY},
 };
+#endif
 
 void platform_early_init(void)
 {
@@ -106,6 +120,34 @@ int platform_use_identity_mmu_mappings(void)
 	return 0;
 }
 
+#if LPAE
+/* Setup memory for this platform */
+void platform_init_mmu_mappings(void)
+{
+	int i;
+	int table_sz = ARRAY_SIZE(mmu_section_table);
+	uint32_t ddr_start = get_ddr_start();
+	uint32_t smem_addr = platform_get_smem_base_addr();
+	mmu_section_t entry;
+
+	/*Mapping the ddr start address for loading the kernel about 90 MB*/
+	entry.paddress = entry.vaddress = ddr_start;
+	entry.type = MMU_L2_NS_SECTION_MAPPING;
+	entry.size = 90;
+	entry.flags = SCRATCH_MEMORY;
+	arm_mmu_map_entry(&entry);
+
+	entry.paddress = entry.vaddress = smem_addr;
+	entry.size = 2;
+	entry.flags = COMMON_MEMORY;
+	arm_mmu_map_entry(&entry);
+
+	/* Map default memory needed for lk , scratch, rpmb & iomap */
+	for (i = 0 ; i < table_sz; i++)
+		arm_mmu_map_entry(&mmu_section_table[i]);
+
+}
+#else
 /* Setup MMU mapping for this platform */
 void platform_init_mmu_mappings(void)
 {
@@ -142,17 +184,25 @@ void platform_init_mmu_mappings(void)
 		}
 	}
 }
-
+#endif
 addr_t platform_get_virt_to_phys_mapping(addr_t virt_addr)
 {
+#if LPAE
+	return virtual_to_physical_mapping(virt_addr);
+#else
 	/* Using 1-1 mapping on this platform. */
 	return virt_addr;
+#endif
 }
 
 addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr)
 {
+#if LPAE
+	return physical_to_virtual_mapping(phys_addr);
+#else
 	/* Using 1-1 mapping on this platform. */
 	return phys_addr;
+#endif
 }
 
 /* DYNAMIC SMEM REGION feature enables LK to dynamically
