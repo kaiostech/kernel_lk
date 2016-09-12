@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,6 +48,7 @@
 #include "include/panel_fl10802_fwvga_video.h"
 #include "include/panel_auo_qvga_cmd.h"
 #include "include/panel_auo_cx_qvga_cmd.h"
+#include "include/panel_auo_400p_cmd.h"
 
 #define DISPLAY_MAX_PANEL_DETECTION 0
 #define ILI9806E_FWVGA_VIDEO_PANEL_POST_INIT_DELAY 68
@@ -83,6 +84,7 @@ enum {
 	FL10802_FWVGA_VIDEO_PANEL,
 	AUO_QVGA_CMD_PANEL,
 	AUO_CX_QVGA_CMD_PANEL,
+	AUO_400P_CMD_PANEL,
 	UNKNOWN_PANEL
 };
 
@@ -102,6 +104,7 @@ static struct panel_list supp_panels[] = {
 	{"fl10802_fwvga_video", FL10802_FWVGA_VIDEO_PANEL},
 	{"auo_qvga_cmd", AUO_QVGA_CMD_PANEL},
 	{"auo_cx_qvga_cmd", AUO_CX_QVGA_CMD_PANEL},
+	{"auo_400p_cmd", AUO_400P_CMD_PANEL},
 };
 
 static uint32_t panel_id;
@@ -365,6 +368,26 @@ static int init_panel_data(struct panel_struct *panelstruct,
 		pinfo->mipi.num_of_panel_cmds
 					= auo_cx_QVGA_CMD_ON_COMMAND;
 		memcpy(phy_db->timing, auo_cx_qvga_cmd_timings, TIMING_SIZE);
+		break;
+	case AUO_400P_CMD_PANEL:
+		panelstruct->paneldata    = &auo_400p_cmd_panel_data;
+		panelstruct->panelres     = &auo_400p_cmd_panel_res;
+		panelstruct->color        = &auo_400p_cmd_color;
+		panelstruct->videopanel   = &auo_400p_cmd_video_panel;
+		panelstruct->commandpanel = &auo_400p_cmd_command_panel;
+		panelstruct->state        = &auo_400p_cmd_state;
+		panelstruct->laneconfig   = &auo_400p_cmd_lane_config;
+		panelstruct->paneltiminginfo
+					= &auo_400p_cmd_timing_info;
+		panelstruct->panelresetseq
+					= &auo_400p_cmd_panel_reset_seq;
+		panelstruct->backlightinfo
+					= &auo_400p_cmd_backlight;
+		pinfo->mipi.panel_cmds
+					= auo_400p_cmd_on_command;
+		pinfo->mipi.num_of_panel_cmds
+					= auo_400P_CMD_ON_COMMAND;
+		memcpy(phy_db->timing, auo_400p_cmd_timings, TIMING_SIZE);
 		break;
 	case UNKNOWN_PANEL:
 	default:
