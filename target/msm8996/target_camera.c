@@ -47,6 +47,9 @@
 #define SW_FORMAT_CORRECTION
 #endif
 
+#define EARLY_CAMERA_SIGNAL_DONE 0xa5a5a5a5
+#define EARLY_CAMERA_SIGNAL_DISABLED 0x5a5a5a5a
+
 #define VFE_PING_ADDR 0xB1C00000
 #define VFE_PONG_ADDR 0xB1EA3C80
 #define DISPLAY_PING_ADDR 	0x8510b280
@@ -1605,6 +1608,18 @@ void target_early_camera_init(void)
 #endif
 }
 
+void target_early_camera_disable(void)
+{
+#ifdef EARLY_CAMERA
+	camera_gdsc_enable(1);
+	camera_clocks_enable(1);
+
+	// Signal Kernel were disabled to allow camera daemon to start.
+	msm_camera_io_w_mb(EARLY_CAMERA_SIGNAL_DISABLED,
+						MMSS_A_VFE_0_SPARE);
+#endif
+}
+
 static void early_camera_setup_layer(int display_id)
 {
 
@@ -1763,7 +1778,8 @@ void early_camera_stop(void) {
 	target_release_layer(&layer_cam);
 
 	// Signal Kernel were done to allow camera daemon to start.
-	msm_camera_io_w_mb(0xa5a5a5a5,MMSS_A_VFE_0_SPARE);
+	msm_camera_io_w_mb(EARLY_CAMERA_SIGNAL_DONE,
+						MMSS_A_VFE_0_SPARE);
 }
 void early_camera_flip(void)
 {
