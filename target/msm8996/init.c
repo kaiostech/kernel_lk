@@ -1009,6 +1009,7 @@ void earlydomain_services()
 	/* starting early domain services */
 	if (early_camera_init() == -1) {
 		early_camera_enabled = 0;
+		target_early_camera_disable();
 		dprintf(CRITICAL, "earlydomain_services: Early Camera exit init failed\n");
 	} else {
 		dprintf(CRITICAL, "earlydomain_services: Early Camera starting\n");
@@ -1026,8 +1027,12 @@ void earlydomain_services()
 		} else {
 			animated_splash();
 		}
+	} else {
+		// Notify Kernel that LK is shutdown
+		writel(0xDEADBEEF, MDSS_SCRATCH_REG_1);
 	}
-  /* starting eraly domain services */
+
+  /* starting early domain services */
 }
 
 #else
