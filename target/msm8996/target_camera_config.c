@@ -44,32 +44,8 @@
 
 
 #define CAMERA_SLAVEADDR 0x48
-//#define BRIDGE_REV_1  // For adashub rev 1 of TI 960 Bridge chip.
+#define BRIDGE_SLAVEADDR 0x7a
 
-#ifdef BRIDGE_REV_1
-#define BRIDGE_SLAVEADDR 0x7a
-static struct camera_i2c_reg_array ti960_init_regs[] =
-{
-	{ 0x10, 0x81, 0},
-	{ 0x11, 0x85, 0},
-	{ 0x12, 0x89, 0},
-	{ 0x13, 0x8d, 0},
-	{ 0x1f, 0x5, 0},
-	{ 0x32, 0x1, 0},
-	{ 0x33, 0x1, 0},
-	{ 0x4c, 0x1, 0},
-	{ 0x6e, 0x8, 5000},
-	{ 0x6e, 0x9, 5000},
-	{ 0x70, 0x1f, 0},
-	{ 0x58, 0x58, 0},
-	{ 0x5c, 0x18, 0},
-	{ 0x5d, 0x60, 0},
-	{ 0x65, 0x48, 0},
-	{ 0x7c, 0x81, 0},
-	{ 0x6f, 0x8, 0},
-	{ 0x6d, 0x7f, 0}, };
-#else
-#define BRIDGE_SLAVEADDR 0x7a
 static struct camera_i2c_reg_array ti960_init_regs[] =
 {
 	/* Global Settings */
@@ -91,7 +67,7 @@ static struct camera_i2c_reg_array ti960_init_regs[] =
 	{ 0x7c, 0x81, 0},
 	{ 0x6f, 0x8, 0},
 	{ 0x6d, 0x7f, 0}, };
-#endif
+
 // Start TI 960 RX 0 port
 static struct camera_i2c_reg_array ti960_start_regs[] = {
 	{ 0xb0, 0x1c, 0},
@@ -106,7 +82,6 @@ static struct camera_i2c_reg_array ti960_stop_regs[] = {
 	{ 0x4c, 0x1, 0},
 	{ 0x6e, 0x8, 5000},
 };
-
 
 // Camera init registers
 struct camera_i2c_reg_array ov10635_regs[] = {
@@ -714,11 +689,12 @@ int get_cam_data(struct i2c_config_data **cam_data) {
 	config_data[0].i2c_regs = &ti960_init_regs[0];
 	config_data[0].i2c_num_bytes_address = 1;
 	config_data[0].i2c_num_bytes_data = 1;
-#ifdef BRIDGE_REV_1
-	config_data[0].i2c_revision_id_val = 0x10;
-#else
-	config_data[0].i2c_revision_id_val = 0x20;
-#endif
+
+	// Support for revision 2 and 3
+	config_data[0].i2c_revision_id_val[0] = 0x20;
+	config_data[0].i2c_revision_id_val[1] = 0x30;
+	config_data[0].i2c_revision_id_num = 2;
+
 	config_data[0].i2c_revision_id_reg = 0x3;
 	number_config_elements++;
 
@@ -729,7 +705,8 @@ int get_cam_data(struct i2c_config_data **cam_data) {
 	config_data[1].i2c_regs = &ov10635_regs[0];
 	config_data[1].i2c_num_bytes_address = 2;
 	config_data[1].i2c_num_bytes_data = 1;
-	config_data[1].i2c_revision_id_val = 0xa6;
+	config_data[1].i2c_revision_id_val[0] = 0xa6;
+	config_data[1].i2c_revision_id_num = 1;
 	config_data[1].i2c_revision_id_reg = 0x300A;
 	number_config_elements++;
 
@@ -739,11 +716,11 @@ int get_cam_data(struct i2c_config_data **cam_data) {
 	config_data[2].i2c_regs = &ti960_start_regs[0];
 	config_data[2].i2c_num_bytes_address = 1;
 	config_data[2].i2c_num_bytes_data = 1;
-#ifdef BRIDGE_REV_1
-	config_data[2].i2c_revision_id_val = 0x10;
-#else
-	config_data[2].i2c_revision_id_val = 0x20;
-#endif
+	// Support for revision 2 and 3
+	config_data[2].i2c_revision_id_val[0] = 0x20;
+	config_data[2].i2c_revision_id_val[1] = 0x30;
+	config_data[2].i2c_revision_id_num = 2;
+
 	config_data[2].i2c_revision_id_reg = 0x3;
 	number_config_elements++;
 
@@ -753,11 +730,11 @@ int get_cam_data(struct i2c_config_data **cam_data) {
 	config_data[3].i2c_regs = &ti960_stop_regs[0];
 	config_data[3].i2c_num_bytes_address = 1;
 	config_data[3].i2c_num_bytes_data = 1;
-#ifdef BRIDGE_REV_1
-	config_data[3].i2c_revision_id_val = 0x10;
-#else
-	config_data[3].i2c_revision_id_val = 0x20;
-#endif
+
+	// Support for revision 2 and 3
+	config_data[3].i2c_revision_id_val[0] = 0x20;
+	config_data[3].i2c_revision_id_val[1] = 0x30;
+	config_data[3].i2c_revision_id_num = 2;
 	config_data[3].i2c_revision_id_reg = 0x3;
 	number_config_elements++;
 
