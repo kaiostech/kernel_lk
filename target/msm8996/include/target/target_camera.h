@@ -34,6 +34,8 @@
 //#define BRIDGE_REV_1  // For adashub rev 1 of TI 960 Bridge chip.
 #define DISPLAY_ID 1 // Use dsi 1
 
+#define MAX_REV_ID 2
+
 struct camera_i2c_reg_array {
 	unsigned short reg_addr;
 	unsigned short reg_data;
@@ -46,7 +48,8 @@ struct i2c_config_data {
 	unsigned int	i2c_slave_address;		// Slave address to use for the write
 	unsigned int	i2c_num_bytes_address;// Number of bytes used for i2c address
 	unsigned int	i2c_num_bytes_data;	// Number of bytes used for i2c data
-	unsigned int	i2c_revision_id_val;		// Expected revision id of the device
+	unsigned int	i2c_revision_id_num;	// Number of revision id's to check
+	unsigned int	i2c_revision_id_val[MAX_REV_ID];	// Expected revision id's of the device
 	unsigned int	i2c_revision_id_reg;	// Address of the expected revision id of the device
 };
 
