@@ -70,8 +70,10 @@ static const uint32_t panel_physical_ctrl[] = { };
 #define MIPI_FB_ADDR  0x83401900
 #define HDMI_FB_ADDR  0xB1C00000
 #define KERNEL_TRIGGER_VALUE         0xFEFEFEFE
+#define KERNEL_STOP_SPLASH_VALUE     0xDEADDEAD
 #define MDSS_SCRATCH_REG_0           0x00900014
 #define MDSS_SCRATCH_REG_1           0x00900018
+#define MDSS_SCRATCH_REG_2           0x0090001C
 
 #define MIPI_HSYNC_PULSE_WIDTH       16
 #define MIPI_HSYNC_BACK_PORCH_DCLK   32

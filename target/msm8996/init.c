@@ -78,6 +78,7 @@
 
 #include <msm_panel.h>
 #include <target/display.h>
+#include <target/target_camera.h>
 
 #define ANIMATED_SPLAH_PARTITION "splash"
 #define ANIMATED_SPLASH_BUFFER   0x836a5580
@@ -94,6 +95,7 @@
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
+int early_camera_enabled = 1;
 
 enum
 {
@@ -791,7 +793,6 @@ int animated_splash_screen_mmc()
 		dprintf(CRITICAL, "ERROR: splash Partition table not found\n");
 		return -1;
 	}
-
 	ptn = partition_get_offset(index);
 	if (ptn == 0) {
 		dprintf(CRITICAL, "ERROR: splash Partition invalid\n");
@@ -807,6 +808,7 @@ int animated_splash_screen_mmc()
 	}
 	// Assume it is always for display ID 0
 	fb_display = target_display_get_fb(0);
+
 	if (!fb_display) {
 		dprintf(CRITICAL, "ERROR: fb config is not allocated\n");
 		return -1;
@@ -856,7 +858,6 @@ int animated_splash_screen_mmc()
 			}
 			dprintf(INFO, "width:%d height:%d blocks:%d imgsize:%d num_frames:%d\n", header->width,
 			header->height, header->blocks, header->img_size,header->num_frames);
-
 			realsize =  header->blocks * blocksize;
 			if ((realsize % blocksize) != 0)
 				readsize =  ROUNDUP(realsize, blocksize) - blocksize;
@@ -898,6 +899,8 @@ int animated_splash() {
 	struct target_display * disp;
 	struct fbcon_config *fb;
 	uint32_t sleep_time;
+	uint32_t disp_cnt = NUM_DISPLAYS;
+	uint32_t reg_value;
 
 	if (!buffers[0]) {
 		dprintf(CRITICAL, "Unexpected error in read\n");
@@ -942,24 +945,46 @@ int animated_splash() {
 	}
 
 	while (1) {
-		if (0xFEFEFEFE == readl_relaxed((void *)MDSS_SCRATCH_REG_1))
+		reg_value = readl_relaxed((void *)MDSS_SCRATCH_REG_1);
+		if (0xFEFEFEFE == reg_value) {
+			//This value indicates kernel request LK to shutdown immediately
 			break;
+		}
+		else if (0xDEADDEAD == reg_value) {
+			// This value means kernel is started
+			// LK should notify kernel by writing 0xDEADBEEF to
+			// MDSS_SCRATCH_REG_1 when it is ready to exit
+			break;
+		}
 
-		for (j = 0; j < NUM_DISPLAYS; j++) {
+		for (j = 0; j < disp_cnt; j++) {
+			if (j == 1 && early_camera_enabled == 1)
+				continue;
 			layer[j].fb->base = buffers[j][frame_cnt[j]];
+			layer[j].fb->format = kFormatRGB888;
 			ret = target_display_update(&update[j],1, j);
 			frame_cnt[j]++;
-			if (frame_cnt[j] >= g_head[j].num_frames)
+			if (frame_cnt[j] >= g_head[j].num_frames) {
 				frame_cnt[j] = 0;
+			}
 		}
-		// assume all displays have the same fps
-		mdelay_optimal(sleep_time);
+
+		if(early_camera_enabled == 1)
+			// Rely on camera timing to flip.
+			early_camera_flip();
+		else
+			// assume all displays have the same fps
+			mdelay_optimal(sleep_time);
 		k++;
 	}
-
-	for (j = 0; j < NUM_DISPLAYS; j++)
+	if (early_camera_enabled == 1)
+		early_camera_stop();
+	for (j = 0; j < NUM_DISPLAYS; j++) {
 		target_release_layer(&layer[j]);
+	}
 
+	// Notify Kernel that LK is shutdown
+	writel(0xDEADBEEF, MDSS_SCRATCH_REG_1);
 	return ret;
 }
 
@@ -977,7 +1002,17 @@ void earlydomain_services()
 		i++;
 	}
 
-    dprintf(CRITICAL, "earlydomain_services: Display init done\n");
+	dprintf(CRITICAL, "earlydomain_services: Display init done\n");
+	// Notify Kernel that LK is running
+	writel(0xC001CAFE, MDSS_SCRATCH_REG_1);
+
+	/* starting early domain services */
+	if (early_camera_init() == -1) {
+		early_camera_enabled = 0;
+		dprintf(CRITICAL, "earlydomain_services: Early Camera exit init failed\n");
+	} else {
+		dprintf(CRITICAL, "earlydomain_services: Early Camera starting\n");
+	}
 
 	/*Create Animated splash thread
 	if target supports it*/
