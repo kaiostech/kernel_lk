@@ -51,7 +51,7 @@ int rpmb_write_emmc(struct mmc_device *dev,uint32_t *req_buf, uint32_t blk_cnt, 
 {
 	uint32_t i, num_trans = 0;
 	int ret = 0;
-	struct mmc_command cmd[3] = {{0},{0},{0}};
+        struct mmc_command cmd[3];
 	struct rpmb_frame *result = (struct rpmb_frame *)resp_buf;
 
 	dprintf(INFO, "rpmb write command called with blk_cnt and rel_wr_count: 0x%x 0x%x\n", blk_cnt, rel_wr_count);
@@ -150,7 +150,7 @@ int rpmb_write_emmc(struct mmc_device *dev,uint32_t *req_buf, uint32_t blk_cnt, 
 
 int rpmb_read_emmc(struct mmc_device *dev, uint32_t *req_buf, uint32_t blk_cnt, uint32_t *resp_buf, uint32_t *resp_len)
 {
-	struct mmc_command cmd[3] = {{0}, {0}, {0}};
+        struct mmc_command cmd[3];
 	int ret = 0;
 	struct rpmb_frame *result = (struct rpmb_frame *)resp_buf;
 
