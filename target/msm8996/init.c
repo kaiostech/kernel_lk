@@ -995,10 +995,24 @@ int animated_splash() {
 		}
 
 		for (j = 0; j < disp_cnt; j++) {
-			if (j == 1 && early_camera_enabled == 1)
-				continue;
+			if (j == 0 && early_camera_enabled == 1) {
+				if (early_camera_on()) {
+					if(layer[j].layer) {
+						target_release_layer(&layer[j]);
+						layer[j].layer = NULL;
+					}
+					continue;
+				} else {
+					if(!layer[j].layer) {
+						layer_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatRGB888);
+						layer[j].layer = layer_ptr;
+						layer[j].z_order = 2;
+					}
+				}
+			}
 			layer[j].fb->base = buffers[j][frame_cnt[j]];
 			layer[j].fb->format = kFormatRGB888;
+			layer[j].fb->bpp = 24;
 			ret = target_display_update(&update[j],1, j);
 			frame_cnt[j]++;
 			if (frame_cnt[j] >= g_head[j].num_frames) {
@@ -1020,8 +1034,6 @@ int animated_splash() {
 		target_release_layer(&layer[j]);
 	}
 
-	// Notify Kernel that LK is shutdown
-	writel(0xDEADBEEF, MDSS_SCRATCH_REG_1);
 	return ret;
 }
 
@@ -1064,10 +1076,10 @@ void earlydomain_services()
 		} else {
 			animated_splash();
 		}
-	} else {
-		// Notify Kernel that LK is shutdown
-		writel(0xDEADBEEF, MDSS_SCRATCH_REG_1);
 	}
+
+	// Notify Kernel that LK is shutdown
+	writel(0xDEADBEEF, MDSS_SCRATCH_REG_1);
 
   /* starting early domain services */
 }
