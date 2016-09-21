@@ -72,6 +72,9 @@ uint32 frame_counter = 0;
 int index = 0;
 uint32_t read_val = 0;
 int ping = 0;
+int gpio_triggered = 0;
+int toggle =0;
+int delay_to_attach_t32 = 0;
 
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
@@ -81,6 +84,7 @@ enum msm_camera_i2c_reg_addr_type {
 };
 
 #define TIMER_KHZ 32768
+int target_is_yuv_format(uint32_t format);
 
 static unsigned int cam_place_kpi_marker(char *marker_name)
 {
@@ -1619,11 +1623,14 @@ int early_camera_check_rev(unsigned int *pExpected_rev_id, unsigned int num_id, 
 static void early_camera_setup_layer(int display_id)
 {
 
-	layer_cam_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatYCbCr422H2V1Packed);
+	if(!layer_cam_ptr)
+		layer_cam_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatYCbCr422H2V1Packed);
+
+
 	if (layer_cam_ptr == NULL){
 		dprintf(CRITICAL, "Layer acquire failed\n");
 	}
-	fb = target_display_get_fb(1);
+	fb = target_display_get_fb(DISPLAY_ID);
 	layer_cam.layer = layer_cam_ptr;
 	layer_cam.z_order = 1;
 	update_cam.disp = disp_ptr;
@@ -1644,6 +1651,25 @@ static void early_camera_setup_layer(int display_id)
 	}
 
 }
+static void early_camera_remove_layer(void)
+{
+	target_release_layer(&layer_cam);
+}
+
+static int early_camera_setup_display(void)
+{
+	disp_ptr = target_display_open(DISPLAY_ID);
+	if (disp_ptr == NULL) {
+		dprintf(CRITICAL, "Display open failed\n");
+		return -1;
+	}
+	disp = target_get_display_info(disp_ptr);
+	if (disp == NULL){
+		dprintf(CRITICAL, "Display info failed\n");
+		return -1;
+	}
+	return 0;
+}
 static int early_camera_start(void *arg) {
 	int rc = -1;
 	num_configs = get_cam_data(&cam_data);
@@ -1653,6 +1679,8 @@ static int early_camera_start(void *arg) {
 			"Early Camera not configured for this target exiting\n");
 		return -1;
 	}
+
+	early_camera_setup_display();
 
 	hw_vfe0_init_regs[46].reg_data = (unsigned int)VFE_PING_ADDR;
 	hw_vfe0_init_regs[47].reg_data = hw_vfe0_init_regs[46].reg_data +raw_size;
@@ -1722,18 +1750,6 @@ static int early_camera_start(void *arg) {
 						0);
 	}
 
-	disp_ptr = target_display_open(DISPLAY_ID);
-	if (disp_ptr == NULL) {
-		dprintf(CRITICAL, "Display open failed\n");
-		return -1;
-	}
-	disp = target_get_display_info(disp_ptr);
-	if (disp == NULL){
-		dprintf(CRITICAL, "Display info failed\n");
-		return -1;
-	}
-
-	early_camera_setup_layer(DISPLAY_ID);
 	// SMMU and anything else missed.
 	msm_hw_init(&other_init_regs[0],
 		sizeof(other_init_regs) / sizeof(other_init_regs[0]),0);
@@ -1786,47 +1802,62 @@ void early_camera_stop(void) {
 	msm_camera_io_w_mb(EARLY_CAMERA_SIGNAL_DONE,
 						MMSS_A_VFE_0_SPARE);
 }
+int early_camera_on(void)
+{
+#ifdef DEBUG_T32
+	while(delay_to_attach_t32 != 1)
+	{
+		mdelay_optimal(1000);
+		dprintf(CRITICAL, "Waiting to attach to t.32\n");
+	}
+#endif
+
+	gpio_triggered = gpio_get(103);
+
+	return gpio_triggered;
+}
 void early_camera_flip(void)
 {
-		int gpio103;
+#ifdef DEBUG_T32
+	while(delay_to_attach_t32 != 1)
+	{
+		mdelay_optimal(1000);
+		dprintf(CRITICAL, "Waiting to attach to t.32\n");
+	}
+#endif
 		// wait for ping pong irq;
 		ping = msm_vfe_poll_irq(PING_PONG_IRQ_MASK);
-
-		gpio103 = gpio_get(103);
 
 		if (firstframe == 0) {
 			dprintf(CRITICAL,
 				"Early Camera - First Camera image frame KPI\n");
 			cam_place_kpi_marker("Camera Image in memory");
 		}
-		if(early_cam_on == 1) {
-
-		if(ping) {
-			layer_cam.fb->base = (void *)VFE_PING_ADDR;
-			}
-		else {
-				layer_cam.fb->base = (void *)VFE_PONG_ADDR;
-		}
-
-		if (gpio103)
-		{
-			int i = 0;
-			char *tempdstPtr = (char *)DISPLAY_PONG_ADDR;
-			layer_cam.fb->base = (void *)DISPLAY_PONG_ADDR;
-
-			for(i=0;i<raw_size/2;i++) {
-				*tempdstPtr = 0;
-				tempdstPtr++;
-				*tempdstPtr = 0x80;
-				tempdstPtr++;
-			}
-		}
-	}
 
 		frame_counter++;
 		if(early_cam_on == 1) {
+			if (gpio_triggered) {
+				if(toggle ==0) {
+					toggle = 1;
+					early_camera_setup_layer(DISPLAY_ID);
+				}
+
+				if(ping)
+					layer_cam.fb->base = (void *)VFE_PING_ADDR;
+				else
+					layer_cam.fb->base = (void *)VFE_PONG_ADDR;
+				layer_cam.z_order = 1;
 				layer_cam.fb->format = kFormatYCbCr422H2V1Packed;
 				target_display_update(&update_cam,1,DISPLAY_ID);
+			} else {
+				if(toggle ==1) {
+					layer_cam.z_order = 0;
+					early_camera_remove_layer();
+					layer_cam_ptr = NULL;
+					layer_cam.layer = layer_cam_ptr;
+					toggle = 0;
+				}
+			}
 			if (firstframe == 0) {
 				cam_place_kpi_marker("Camera display post done");
 				firstframe = 1;

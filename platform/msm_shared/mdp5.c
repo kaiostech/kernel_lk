@@ -290,7 +290,7 @@ static void mdss_mdp_set_flush(struct msm_panel_info *pinfo,
 		(mdss_mdp_rev == MDSS_MDP_HW_REV_110)) {
 		if (pinfo->dest == DISPLAY_2) {
 			//clear the default mixer and DSPP
-			*ctl0_reg_val &= 0xFFFF182F;
+			*ctl0_reg_val &= 0xFFFF183F;
 			// Set to use Mixer1 and DSPP1
 			*ctl0_reg_val |= BIT(14) | BIT(7) | BIT(29);
 			*ctl1_reg_val |= BIT(30);
@@ -901,7 +901,6 @@ int mdss_layer_mixer_remove_pipe(struct msm_panel_info *pinfo) {
 	}
 	left_staging_level = left_staging_level & left_bitmask;
 	right_staging_level = right_staging_level & right_bitmask;
-
 	if ((pinfo->type == HDMI_PANEL) && (multi_panel == true))
 		writel(left_staging_level, MDP_CTL_2_BASE + CTL_LAYER_2);
 	else if (pinfo->dest == DISPLAY_2)
@@ -952,7 +951,7 @@ void mdss_layer_mixer_setup(struct fbcon_config *fb, struct msm_panel_info
 		writel(0xFF, MDP_VP_0_MIXER_2_BASE + LAYER_4_BLEND0_FG_ALPHA);
 		writel(0x100, MDP_VP_0_MIXER_2_BASE + LAYER_5_BLEND_OP);
 		writel(0xFF, MDP_VP_0_MIXER_2_BASE + LAYER_5_BLEND0_FG_ALPHA);
-		left_staging_level = readl(MDP_CTL_2_BASE + CTL_LAYER_0);
+		left_staging_level = readl(MDP_CTL_2_BASE + CTL_LAYER_2);
 		right_staging_level = readl(MDP_CTL_1_BASE + CTL_LAYER_1);
 	} else if (pinfo->dest == DISPLAY_2) {
 		writel(mdp_rgb_size, MDP_VP_0_MIXER_1_BASE + LAYER_0_OUT_SIZE);
@@ -1432,6 +1431,11 @@ int mdss_hdmi_config(struct msm_panel_info *pinfo, struct fbcon_config *fb)
 	mdss_intf_tg_setup(pinfo, MDP_INTF_3_BASE + mdss_mdp_intf_offset());
 	mdss_intf_fetch_start_config(pinfo, MDP_INTF_3_BASE + mdss_mdp_intf_offset());
 	pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
+	if (multi_panel == true){
+		pinfo->pipe_id = 2;
+		pinfo->zorder = 2;
+	}
+
 	mdp_select_pipe_type(pinfo, &left_pipe, &right_pipe);
 
 	mdp_clk_gating_ctrl();
@@ -1690,7 +1694,7 @@ int mdss_hdmi_on(struct msm_panel_info *pinfo)
 	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
 
 	if (multi_panel == true)
-		writel(0x28108, MDP_CTL_2_BASE + CTL_FLUSH);
+		writel(0x28120, MDP_CTL_2_BASE + CTL_FLUSH);
 	else
 		writel(0x24048, MDP_CTL_0_BASE + CTL_FLUSH);
 
@@ -1706,7 +1710,7 @@ int mdss_hdmi_update(struct msm_panel_info *pinfo)
 	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
 
 	if (multi_panel == true)
-		writel(0x28108, MDP_CTL_2_BASE + CTL_FLUSH);
+		writel(0x28120, MDP_CTL_2_BASE + CTL_FLUSH);
 	else
 		writel(0x24048, MDP_CTL_0_BASE + CTL_FLUSH);
 

@@ -119,7 +119,7 @@ struct target_layer_int layers[NUM_TARGET_LAYERS];
 
 extern int msm_display_update(struct fbcon_config *fb, uint32_t pipe_id,
 	uint32_t pipe_type, uint32_t zorder, uint32_t width, uint32_t height, uint32_t disp_id);
-extern int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type);
+extern int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type, uint32_t disp_id);
 extern struct fbcon_config* msm_display_get_fb(uint32_t disp_id);
 
 bool display_init_done = false;
@@ -795,6 +795,7 @@ void target_set_switch_gpio(int enable_dsi2hdmibridge)
 /* Populate the default resolutions for each display */
 static int target_display_populate(struct target_display *displays)
 {
+	// the display_id is following the order in targe_disp_init()
 	displays[0].display_id = 0;
 	displays[0].width = 1280;
 	displays[0].height = 720;
@@ -818,13 +819,13 @@ static int target_layers_populate(struct target_layer_int *layers)
 	int i = 0;
 
 	for (i = 0; i < NUM_RGB_PIPES; i++) {
-		layers[RGB_PIPE_START + i].layer_id = RGB_ID_START + i;
+		layers[RGB_PIPE_START + i].layer_id = i;
 		layers[RGB_PIPE_START + i].layer_type = RGB_TYPE;
 		layers[RGB_PIPE_START + i].assigned = 0;
 	}
 
 	for (i = 0; i < NUM_VIG_PIPES; i++) {
-		layers[VIG_PIPE_START + i].layer_id = VIG_ID_START + i;
+		layers[VIG_PIPE_START + i].layer_id = i;
 		layers[VIG_PIPE_START + i].layer_type = VIG_TYPE;
 		layers[VIG_PIPE_START + i].assigned = 0;
 	}
@@ -863,15 +864,16 @@ void target_display_init(const char *panel_name)
 		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
 		goto target_display_init_end;
 	} else if (!strcmp(oem.panel, "dual_720p_single_hdmi_video")) {
-		// Three display panels init, init native HDMI first
+		// Three display panels init, init DSI0 first
 		set_multi_panel(true);
-		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
 		gcdb_display_init("adv7533_720p_dsi0_video", MDP_REV_50,
 				(void *)MIPI_FB_ADDR);
 		// if the panel has different size or color format, they cannot use
 		// the same FB buffer
 		gcdb_display_init("adv7533_720p_dsi1_video", MDP_REV_50,
 				(void *)MIPI_FB_ADDR + 0x1000000);
+		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
+
 		goto target_display_init_end;
 	}
 
@@ -904,6 +906,7 @@ void target_display_shutdown(void)
 void * target_acquire_rbg_pipe(struct target_display *disp)
 {
 	int i = 0;
+
 	for (i = 0; i < NUM_RGB_PIPES &&
 		(RGB_PIPE_START + i) < NUM_TARGET_LAYERS; i++) {
 		if (!layers[RGB_PIPE_START + i].assigned) {
@@ -974,11 +977,11 @@ int target_display_update(struct target_display_update * update, uint32_t size, 
 			// Remove Animated splash layer
 			lyr = (struct target_layer_int *)update[i].layer_list[0].layer;
 			if (lyr != NULL)
-				msm_display_remove_pipe(lyr->layer_id, lyr->layer_type);
+				msm_display_remove_pipe(lyr->layer_id, lyr->layer_type, disp_id);
 			else
 				dprintf(CRITICAL, "No layer to remove\n");
 			// Remove static splash layer
-			msm_display_remove_pipe(0, 0);
+			msm_display_remove_pipe(0, 0, disp_id);
 		return 1;
 	}
 
@@ -1006,8 +1009,7 @@ int target_release_layer(struct target_layer *layer)
 {
 	struct target_layer_int *cur_layer = NULL;
 
-	if (!layer) {
-		dprintf(CRITICAL, "Invalid params\n");
+	if ((!layer) || (NULL == layer->layer)) {
 		return ERR_INVALID_ARGS;
 	}
 
@@ -1015,7 +1017,7 @@ int target_release_layer(struct target_layer *layer)
 	cur_layer->assigned = false;
 	cur_layer->disp = NULL;
 
-	msm_display_remove_pipe(cur_layer->layer_id, cur_layer->layer_type);
+	msm_display_remove_pipe(cur_layer->layer_id, cur_layer->layer_type, 0);
 	return 0;
 }
 

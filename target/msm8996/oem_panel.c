@@ -614,7 +614,8 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 		pinfo->adv7533.dsi_setup_cfg_i2c_cmd = adv7533_1080p_common_cfg;
 		pinfo->adv7533.num_of_cfg_i2c_cmds = ADV7533_1080P_CONFIG_COMMANDS;
 		pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
-		pinfo->pipe_id = 1;
+		pinfo->pipe_id = 0;
+		pinfo->zorder = 2;
 		memcpy(phy_db->timing,
 				adv7533_1080p_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));
@@ -635,7 +636,8 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 		pinfo->adv7533.dsi_setup_cfg_i2c_cmd = adv7533_1080p_common_cfg;
 		pinfo->adv7533.num_of_cfg_i2c_cmds = ADV7533_1080P_CONFIG_COMMANDS;
 		pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
-		pinfo->pipe_id = 2;
+		pinfo->pipe_id = 1;
+		pinfo->zorder = 2;
 		memcpy(phy_db->timing,
 				adv7533_1080p_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));
@@ -675,7 +677,8 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 		pinfo->adv7533.dsi_setup_cfg_i2c_cmd = adv7533_720p_common_cfg;
 		pinfo->adv7533.num_of_cfg_i2c_cmds = ADV7533_720P_CONFIG_COMMANDS;
 		pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
-		pinfo->pipe_id = 1;
+		pinfo->pipe_id = 0;
+		pinfo->zorder = 2;
 		memcpy(phy_db->timing,
 				adv7533_720p_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));
@@ -725,7 +728,8 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 		pinfo->adv7533.dsi_setup_cfg_i2c_cmd = adv7533_720p_common_cfg;
 		pinfo->adv7533.num_of_cfg_i2c_cmds = ADV7533_720P_CONFIG_COMMANDS;
 		pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
-		pinfo->pipe_id = 2;
+		pinfo->pipe_id = 1;
+		pinfo->zorder = 2;
 		memcpy(phy_db->timing,
 				adv7533_720p_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));
