@@ -29,6 +29,7 @@
 #include <rpmb.h>
 #include <mmc_sdhci.h>
 #include <debug.h>
+#include <string.h>
 
 static const char *str_err[] =
 {
@@ -53,6 +54,8 @@ int rpmb_write_emmc(struct mmc_device *dev,uint32_t *req_buf, uint32_t blk_cnt, 
 	int ret = 0;
         struct mmc_command cmd[3];
 	struct rpmb_frame *result = (struct rpmb_frame *)resp_buf;
+
+	memset(&cmd,0,sizeof(cmd));
 
 	dprintf(INFO, "rpmb write command called with blk_cnt and rel_wr_count: 0x%x 0x%x\n", blk_cnt, rel_wr_count);
 	if (rel_wr_count == 0x2)
@@ -153,6 +156,8 @@ int rpmb_read_emmc(struct mmc_device *dev, uint32_t *req_buf, uint32_t blk_cnt, 
         struct mmc_command cmd[3];
 	int ret = 0;
 	struct rpmb_frame *result = (struct rpmb_frame *)resp_buf;
+
+	memset(&cmd,0,sizeof(cmd));
 
 #if DEBUG_RPMB
 	dump_rpmb_frame((uint8_t *)req_buf, "request");
