@@ -43,9 +43,6 @@
 #include <target/target_camera.h>
 #include <dev/keys.h>
 
-#ifdef BRIDGE_REV_1
-#define SW_FORMAT_CORRECTION
-#endif
 
 #define EARLY_CAMERA_SIGNAL_DONE 0xa5a5a5a5
 #define EARLY_CAMERA_SIGNAL_DISABLED 0x5a5a5a5a
@@ -69,24 +66,12 @@ struct target_display * disp;
 struct fbcon_config *fb;
 int num_configs = 0;
 int firstframe = 0;
-#ifdef SW_FORMAT_CORRECTION
-int raw_size = 1280*720*2.5;
-#else
 int raw_size = 1280*720*2.0;
-#endif
 int early_cam_on = 1;
 uint32 frame_counter = 0;
 int index = 0;
 uint32_t read_val = 0;
 int ping = 0;
-#ifdef SW_FORMAT_CORRECTION
-int i = 0;
-char *tempsrcPtr = (char *)DISPLAY_PONG_ADDR;
-char *tempdstPtr = (char *)VFE_PING_ADDR;
-#endif
-
-
-
 
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
@@ -1620,6 +1605,17 @@ void target_early_camera_disable(void)
 #endif
 }
 
+int early_camera_check_rev(unsigned int *pExpected_rev_id, unsigned int num_id, unsigned int revision)
+{
+	unsigned int i = 0;
+	for (i=0; i < num_id; i++) {
+		if (*pExpected_rev_id == revision)
+			return 0;
+		pExpected_rev_id++;
+	}
+	return -1;
+}
+
 static void early_camera_setup_layer(int display_id)
 {
 
@@ -1649,7 +1645,7 @@ static void early_camera_setup_layer(int display_id)
 
 }
 static int early_camera_start(void *arg) {
-
+	int rc = -1;
 	num_configs = get_cam_data(&cam_data);
 
 	if(num_configs == 0) {
@@ -1672,14 +1668,17 @@ static int early_camera_start(void *arg) {
 					cam_data[0].i2c_num_bytes_address,
 					cam_data[0].i2c_num_bytes_data);
 
+	rc = early_camera_check_rev(&cam_data[0].i2c_revision_id_val[0],
+		cam_data[0].i2c_revision_id_num, read_val);
 
-
-
-	if(cam_data[0].i2c_revision_id_val != read_val) {
-		dprintf(CRITICAL,
-			"Early Camera - I2c revision %d doesn't match for this target %d exiting\n",
-			read_val,
-			cam_data[0].i2c_revision_id_val);
+	if (rc == -1) {
+		unsigned int i = 0;
+		for (i = 0; i < cam_data[0].i2c_revision_id_num; i++) {
+			dprintf(CRITICAL,
+				"Early Camera - I2c revision %d doesn't match for this target %d exiting\n",
+				read_val,
+				cam_data[0].i2c_revision_id_val[i]);
+		}
 		goto exit;
 	} else {
 		dprintf(CRITICAL,
@@ -1699,11 +1698,17 @@ static int early_camera_start(void *arg) {
 							1,
 							cam_data[index].i2c_num_bytes_address,
 							cam_data[index].i2c_num_bytes_data);
-			if(read_val != cam_data[index].i2c_revision_id_val) {
-				dprintf(CRITICAL,
-				"Early Camera - I2c sensor rev id %d doesn't match for this target %d exiting\n",
-				read_val,
-				cam_data[index].i2c_revision_id_val);
+			rc = -1;
+			rc = early_camera_check_rev(&cam_data[index].i2c_revision_id_val[0],
+				cam_data[index].i2c_revision_id_num, read_val);
+			if (rc == -1) {
+				unsigned int i = 0;
+				for (i = 0; i < cam_data[index].i2c_revision_id_num; i++) {
+					dprintf(CRITICAL,
+					"Early Camera - I2c sensor rev id %d doesn't match for this target %d exiting\n",
+					read_val,
+					cam_data[index].i2c_revision_id_val[i]);
+				}
 				goto exit;
 			}
 		}
@@ -1789,33 +1794,18 @@ void early_camera_flip(void)
 
 		gpio103 = gpio_get(103);
 
-		//dprintf(CRITICAL,
-		//"Early Camera - gpio13 %x\n",
-		//gpio103);
-
 		if (firstframe == 0) {
 			dprintf(CRITICAL,
 				"Early Camera - First Camera image frame KPI\n");
 			cam_place_kpi_marker("Camera Image in memory");
 		}
 		if(early_cam_on == 1) {
+
 		if(ping) {
-#ifdef SW_FORMAT_CORRECTION
-			layer_cam.fb->base = (void *)DISPLAY_PING_ADDR;
-			tempdstPtr = (char *)DISPLAY_PING_ADDR;
-			tempsrcPtr = (char *)VFE_PONG_ADDR;
-#else
 			layer_cam.fb->base = (void *)VFE_PING_ADDR;
-#endif
 			}
 		else {
-#ifdef SW_FORMAT_CORRECTION
-				layer_cam.fb->base = (void *)DISPLAY_PONG_ADDR;
-				tempdstPtr = (char *)DISPLAY_PONG_ADDR;
-				tempsrcPtr = (char *)VFE_PING_ADDR;
-#else
 				layer_cam.fb->base = (void *)VFE_PONG_ADDR;
-#endif
 		}
 
 		if (gpio103)
@@ -1831,20 +1821,8 @@ void early_camera_flip(void)
 				tempdstPtr++;
 			}
 		}
+	}
 
-
-		}
-
-#ifdef SW_FORMAT_CORRECTION
-		// Remove every fifth byte.
-		for(i=0;i<raw_size;i++) {
-			if( (i%5) != 4) {
-				*tempdstPtr = *tempsrcPtr;
-				tempdstPtr++;
-			}
-			tempsrcPtr++;
-		}
-#endif
 		frame_counter++;
 		if(early_cam_on == 1) {
 				layer_cam.fb->format = kFormatYCbCr422H2V1Packed;
@@ -1854,7 +1832,7 @@ void early_camera_flip(void)
 				firstframe = 1;
 			}
 		}
-	}
+}
 
 int early_camera_init(void)
 {
