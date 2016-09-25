@@ -890,6 +890,35 @@ end:
 	return ret;
 }
 
+#if EARLYCAMERA_NO_GPIO
+
+inline bool get_reverse_camera_gpio() {
+	return TRUE;
+}
+
+#else
+
+inline bool get_reverse_camera_gpio() {
+	/* if gpio == 1, it is ON
+	   if gpio == 0, it is OFF */
+	return (1 == gpio_get(103));
+}
+
+#endif
+
+/* checks if GPIO or equivalent trigger to enable early camera is set to ON
+   If this function retuns FALSE, only animated splash may be shown.
+   This is also a check to see if early-camera/animated splash can exit*/
+bool is_reverse_camera_on() {
+	uint32_t trigger_reg = 0;
+	trigger_reg = readl_relaxed((void *)MDSS_SCRATCH_REG_2);
+	if ((FALSE == get_reverse_camera_gpio()) ||
+		(0xF5F5F5F5 == trigger_reg))
+		return FALSE; /* trigger to exit */
+	else
+		return TRUE;
+}
+
 int animated_splash() {
 	void *disp_ptr, *layer_ptr;
 	uint32_t ret = 0, k = 0, j = 0;
@@ -901,6 +930,7 @@ int animated_splash() {
 	uint32_t sleep_time;
 	uint32_t disp_cnt = NUM_DISPLAYS;
 	uint32_t reg_value;
+	bool camera_on = FALSE;
 
 	if (!buffers[0]) {
 		dprintf(CRITICAL, "Unexpected error in read\n");
@@ -945,16 +975,23 @@ int animated_splash() {
 	}
 
 	while (1) {
+		camera_on = is_reverse_camera_on();
+
 		reg_value = readl_relaxed((void *)MDSS_SCRATCH_REG_1);
 		if (0xFEFEFEFE == reg_value) {
 			//This value indicates kernel request LK to shutdown immediately
 			break;
 		}
 		else if (0xDEADDEAD == reg_value) {
-			// This value means kernel is started
+			// This reg value means kernel is started
 			// LK should notify kernel by writing 0xDEADBEEF to
 			// MDSS_SCRATCH_REG_1 when it is ready to exit
-			break;
+
+			if (0 == early_camera_enabled)
+				break;
+			else if ((1 == early_camera_enabled) &&
+					(FALSE == camera_on))
+				break;
 		}
 
 		for (j = 0; j < disp_cnt; j++) {
