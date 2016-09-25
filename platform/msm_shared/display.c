@@ -345,17 +345,18 @@ msm_display_update_out:
 	return ret;
 }
 
-int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type)
+int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type, uint32_t disp_id)
 {
 	struct msm_panel_info *pinfo;
+	struct msm_fb_panel_data *panel_local;
 	int ret = 0;
+	panel_local = &(panel_array[disp_id]);
 
-	if (!panel) {
+	if (!panel_array) {
 		dprintf(CRITICAL, "Error! Inalid args\n");
 		return ERR_INVALID_ARGS;
 	}
-
-	pinfo = &(panel->panel_info);
+	pinfo = &(panel_local->panel_info);
 	pinfo->pipe_type = pipe_type;
 	pinfo->pipe_id = pipe_id;
 

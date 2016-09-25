@@ -32,7 +32,7 @@
 #define EARLY_CAMERA
 
 //#define BRIDGE_REV_1  // For adashub rev 1 of TI 960 Bridge chip.
-#define DISPLAY_ID 1 // Use dsi 1
+#define DISPLAY_ID 0 // Use dsi 0
 
 #define MAX_REV_ID 2
 
@@ -58,6 +58,8 @@ int early_camera_init(void);
 void target_early_camera_init(void);
 void target_early_camera_disable(void);
 void early_camera_flip(void);
+int early_camera_on(void);
+
 void early_camera_stop(void);
 
 #endif
