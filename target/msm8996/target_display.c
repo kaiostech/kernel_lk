@@ -121,6 +121,7 @@ extern int msm_display_update(struct fbcon_config *fb, uint32_t pipe_id,
 	uint32_t pipe_type, uint32_t zorder, uint32_t width, uint32_t height, uint32_t disp_id);
 extern int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type, uint32_t disp_id);
 extern struct fbcon_config* msm_display_get_fb(uint32_t disp_id);
+extern int msm_display_init_count();
 
 bool display_init_done = false;
 
@@ -851,9 +852,6 @@ static int target_layers_populate(struct target_layer_int *layers)
 	return 0;
 }
 
-extern void set_multi_panel(bool val);
-
-
 void target_display_init(const char *panel_name)
 {
 	struct oem_panel_data oem;
@@ -877,13 +875,18 @@ void target_display_init(const char *panel_name)
 		goto target_display_init_end;
 	} else if (!strcmp(oem.panel, "dual_720p_single_hdmi_video")) {
 		// Three display panels init, init DSI0 first
-		set_multi_panel(true);
 		gcdb_display_init("adv7533_720p_dsi0_video", MDP_REV_50,
 				(void *)MIPI_FB_ADDR);
 		// if the panel has different size or color format, they cannot use
 		// the same FB buffer
 		gcdb_display_init("adv7533_720p_dsi1_video", MDP_REV_50,
 				(void *)MIPI_FB_ADDR + 0x1000000);
+		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
+		goto target_display_init_end;
+	} else if (!strcmp(oem.panel, "single_720p_single_hdmi_video")) {
+		// Dual display panels init, init DSI0 first
+		gcdb_display_init("adv7533_720p_video", MDP_REV_50,
+				(void *)MIPI_FB_ADDR);
 		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
 		goto target_display_init_end;
 	}
@@ -1050,4 +1053,8 @@ int target_get_max_display() {
 #else
 	return 1;
 #endif
+}
+
+int target_display_init_count() {
+	return msm_display_init_count();
 }

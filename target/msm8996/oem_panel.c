@@ -82,6 +82,7 @@ enum {
 	ADV7533_720P_VIDEO_DSI1_PANEL,
 	TRULY_FWVGA_VIDEO_PANEL,
 	DUAL_720P_SINGLE_HDMI_PANELS,
+	SINGLE_720P_SINGLE_HDMI_PANELS,
 	UNKNOWN_PANEL
 };
 
@@ -107,6 +108,7 @@ static struct panel_list supp_panels[] = {
 	{"adv7533_720p_dsi1_video", ADV7533_720P_VIDEO_DSI1_PANEL},
 	{"truly_fwvga_video", TRULY_FWVGA_VIDEO_PANEL},
 	{"dual_720p_single_hdmi_video", DUAL_720P_SINGLE_HDMI_PANELS},
+	{"single_720p_single_hdmi_video", SINGLE_720P_SINGLE_HDMI_PANELS}
 };
 
 #define TARGET_ADV7533_MAIN_INST_0    (0x3D)
@@ -594,6 +596,9 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 		pinfo->adv7533.num_of_tg_i2c_cmds = ADV7533_1080P_TG_COMMANDS;
 		pinfo->adv7533.dsi_setup_cfg_i2c_cmd = adv7533_1080p_common_cfg;
 		pinfo->adv7533.num_of_cfg_i2c_cmds = ADV7533_1080P_CONFIG_COMMANDS;
+		pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
+		pinfo->pipe_id = 0;
+		pinfo->zorder = 2;
 		memcpy(phy_db->timing,
 				adv7533_1080p_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));
@@ -642,6 +647,7 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 				adv7533_1080p_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));
 		break;
+	case SINGLE_720P_SINGLE_HDMI_PANELS:
 	case ADV7533_720P_VIDEO_PANEL:
 		pan_type = PANEL_TYPE_DSI;
 		panelstruct->paneldata    = &adv7533_720p_video_panel_data;
@@ -657,6 +663,9 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 		pinfo->adv7533.num_of_tg_i2c_cmds = ADV7533_720P_TG_COMMANDS;
 		pinfo->adv7533.dsi_setup_cfg_i2c_cmd = adv7533_720p_common_cfg;
 		pinfo->adv7533.num_of_cfg_i2c_cmds = ADV7533_720P_CONFIG_COMMANDS;
+		pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
+		pinfo->pipe_id = 0;
+		pinfo->zorder = 2;
 		memcpy(phy_db->timing,
 				adv7533_720p_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));

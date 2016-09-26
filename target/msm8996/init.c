@@ -942,7 +942,7 @@ int animated_splash() {
 	struct target_display * disp;
 	struct fbcon_config *fb;
 	uint32_t sleep_time;
-	uint32_t disp_cnt = NUM_DISPLAYS;
+	uint32_t disp_cnt = target_display_init_count();
 	uint32_t reg_value;
 	bool camera_on = FALSE;
 	bool camera_frame_on = false;
@@ -1047,7 +1047,7 @@ int animated_splash() {
 	}
 	if (early_camera_enabled == 1)
 		early_camera_stop();
-	for (j = 0; j < NUM_DISPLAYS; j++) {
+	for (j = 0; j < disp_cnt; j++) {
 		target_release_layer(&layer[j]);
 	}
 

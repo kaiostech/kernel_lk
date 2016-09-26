@@ -57,6 +57,7 @@
 #define DISPLAY_UNKNOWN		0
 #define DISPLAY_1		1
 #define DISPLAY_2		2
+#define DISPLAY_3		3
 
 enum mdss_mdp_pipe_type {
 	MDSS_MDP_PIPE_TYPE_VIG,

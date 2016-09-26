@@ -318,6 +318,7 @@ int msm_display_update(struct fbcon_config *fb, uint32_t pipe_id, uint32_t pipe_
 				dprintf(CRITICAL, "ERROR in display config\n");
 				goto msm_display_update_out;
 			}
+
 			ret = mdp_dsi_video_update(pinfo);
 			if (ret) {
 				dprintf(CRITICAL, "ERROR in display upate\n");
@@ -387,6 +388,9 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 		goto msm_display_init_out;
 	}
 
+	// HDMI needs explicit assign its destination
+	if (!panel->panel_info.dest)
+		panel->panel_info.dest = num_panel + 1;
 	/* Turn on panel */
 	if (pdata->power_func)
 		ret = pdata->power_func(1, &(panel->panel_info));
@@ -476,6 +480,10 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 
 msm_display_init_out:
 	return ret;
+}
+
+int msm_display_init_count() {
+	return num_panel;
 }
 
 int msm_display_off()
