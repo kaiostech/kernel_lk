@@ -159,8 +159,7 @@ err_clk_reset:
 
 void clock_config_mmc(uint32_t interface, uint32_t freq)
 {
-	int ret;
-	uint32_t reg;
+	int ret = 0;
 	char clk_name[64];
 
 	clock_reset_mmc(interface);
