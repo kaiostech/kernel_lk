@@ -478,6 +478,10 @@ msm_display_init_out:
 	return ret;
 }
 
+int msm_display_init_count() {
+	return num_panel;
+}
+
 int msm_display_off()
 {
 	int ret = NO_ERROR;
