@@ -137,7 +137,7 @@ void clock_reset_mmc(uint32_t interface)
 	if(ret)
 	{
 		dprintf(CRITICAL, "sdc%d %s clk_reset assert failed\n",
-			interface, clk);
+			interface, clk_name);
 		goto err_clk_reset;
 	}
 
@@ -147,7 +147,7 @@ void clock_reset_mmc(uint32_t interface)
 	if(ret)
 	{
 		dprintf(CRITICAL, "sdc%d %s clk_reset deassert failed\n",
-			interface, clk);
+			interface, clk_name);
 	}
 
 err_clk_reset:
