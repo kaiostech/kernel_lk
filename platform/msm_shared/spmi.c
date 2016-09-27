@@ -60,6 +60,8 @@ static void spmi_lookup_chnl_number()
 	chnl_tbl = (uint8_t *) malloc(chnl_tbl_sz);
 	ASSERT(chnl_tbl);
 
+	if (!chnl_tbl)
+		return;
 	for(i = 0; i < max_peripherals; i++)
 	{
 #if SPMI_CORE_V2
