@@ -41,6 +41,23 @@ void platform_read_boot_config()
 	board_update_boot_dev(boot_device);
 }
 
+void platform_set_boot_dev(uint32_t device)
+{
+	switch(device)
+	{
+		case BOOT_EMMC:
+		case BOOT_UFS:
+		case BOOT_UFS_REDIRECT:
+		{
+			boot_device = device;
+			break;
+		}
+		default:
+		platform_read_boot_config();
+	}
+	return;
+}
+
 uint32_t platform_get_boot_dev()
 {
 	return boot_device;
@@ -68,6 +85,21 @@ uint32_t platform_boot_dev_isemmc()
 	return boot_dev_type;
 }
 
+/*
+ * Return 1 if boot from emmc and redirect to ufs else 0
+ */
+uint32_t platform_boot_dev_isredirect()
+{
+	uint32_t boot_dev_type;
+	boot_dev_type =  BOOT_DEVICE_MASK(readl(BOOT_CONFIG_REG));
+
+	if (boot_dev_type == BOOT_UFS_REDIRECT)
+		boot_dev_type = 1;
+	else
+		boot_dev_type = 0;
+
+	return boot_dev_type;
+}
 void platform_boot_dev_cmdline(char *buf)
 {
 	uint32_t val = 0;

@@ -37,6 +37,7 @@ int ucs_do_scsi_cmd(struct ufs_dev *dev, struct scsi_req_build_type *req)
 {
 	struct upiu_req_build_type req_upiu;
 	struct upiu_basic_resp_hdr      resp_upiu;
+	uint32_t retries = 10;
 
 	memset(&req_upiu, 0 , sizeof(struct upiu_req_build_type));
 
@@ -55,13 +56,15 @@ int ucs_do_scsi_cmd(struct ufs_dev *dev, struct scsi_req_build_type *req)
 	req_upiu.resp_ptr		   = &resp_upiu;
 	req_upiu.resp_len		   = sizeof(resp_upiu);
 	req_upiu.timeout_msecs	   = UTP_GENERIC_CMD_TIMEOUT;
-
-	if (utp_enqueue_upiu(dev, &req_upiu))
-	{
-		dprintf(CRITICAL, "ucs_do_scsi_cmd: enqueue failed\n");
-		return -UFS_FAILURE;
-	}
-
+   
+	do{
+		if (utp_enqueue_upiu(dev, &req_upiu))
+		{
+			dprintf(CRITICAL, "ucs_do_scsi_cmd: enqueue failed\n");
+			return -UFS_FAILURE;
+		}
+	}while(retries-- && (resp_upiu.status != SCSI_STATUS_GOOD));
+	
 	if (resp_upiu.status != SCSI_STATUS_GOOD)
 	{
 		if (resp_upiu.status == SCSI_STATUS_CHK_COND && (*((uint8_t *)(req->cdb)) != SCSI_CMD_SENSE_REQ))
@@ -135,7 +138,7 @@ int parse_sense_key(uint32_t sense_data)
 }
 
 int ucs_do_scsi_rpmb_read(struct ufs_dev *dev, uint32_t *req_buf, uint32_t blk_cnt,
-                                 uint32_t *resp_buf, uint32_t *resp_len)
+								uint32_t *resp_buf, uint32_t *resp_len)
 {
 	// validate input parameters
 	ASSERT(req_buf);
@@ -163,7 +166,7 @@ int ucs_do_scsi_rpmb_read(struct ufs_dev *dev, uint32_t *req_buf, uint32_t blk_c
 #ifdef DEBUG_UFS
 	dprintf(INFO, "rpmb_read: req_buf: 0x%x blk_count: 0x%x\n", *req_buf, blk_cnt);
 	dprintf(INFO, "rpmb_read: bytes_to_transfer: 0x%x blks_to_transfer: 0x%x\n",
-                   bytes_to_transfer, blks_to_transfer);
+						(uint32_t)bytes_to_transfer, blks_to_transfer);
 #endif
 	// send the request
 	cdb_out_param = (struct scsi_sec_protocol_cdb*) cdb;
@@ -503,7 +506,7 @@ int ucs_do_request_sense(struct ufs_dev *dev, uint8_t lun)
 	/* Flush buffer. */
 	arch_invalidate_cache_range((addr_t) buf, SCSI_INQUIRY_LEN);
 
-#if DEBUG_UFS
+#ifdef DEBUG_UFS
 	dump_sense_buffer(buf, SCSI_SENSE_BUF_LEN);
 #endif
 

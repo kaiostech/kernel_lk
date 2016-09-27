@@ -309,6 +309,15 @@ void *target_mmc_device()
 		return (void *) &ufs_device;
 }
 
+int target_is_emmc_boot(void)
+{
+	if (platform_boot_dev_isemmc() || platform_boot_dev_isredirect())
+	{
+		return 1;
+	}
+	return 0;
+}
+
 void target_init(void)
 {
 	int ret = 0;
@@ -331,6 +340,7 @@ void target_init(void)
 			shutdown_detect();
 #endif
 #if PON_VIB_SUPPORT
+	
 			vib_timed_turn_on(VIBRATE_TIME);
 #endif
 			break;
@@ -349,10 +359,19 @@ void target_init(void)
 	}
 #endif
 #ifdef UFS_SUPPORT
+
+	/* Check if we are booting from SD and redirecting fastboot to UFS */
+	if (platform_boot_dev_isredirect())
+	{
+		/* First set EMMC as boot device before Init */
+		platform_set_boot_dev(BOOT_EMMC);
+		target_sdc_init();
+	}
 	if (!platform_boot_dev_isemmc())
 	{
 		ufs_device.base = UFS_BASE;
 		ufs_init(&ufs_device);
+		dprintf(CRITICAL,"ufs_init done\n");
 	}
 #endif
 
@@ -410,6 +429,45 @@ void target_init(void)
 		dprintf(CRITICAL, "Failed to load App for verified\n");
 		ASSERT(0);
 	}
+
+	/* Redirect to UFS if needed */
+	if (platform_boot_dev_isredirect())
+	{
+		platform_set_boot_dev(BOOT_DEFAULT);
+		
+		if (rpmb_uninit() < 0)
+		{
+			dprintf(CRITICAL, "RPMB rpmb uninit failed\n");
+			ASSERT(0);
+		}
+		
+		ufs_device.base = UFS_BASE;
+		if (ufs_init(&ufs_device) < 0)
+		{
+			dprintf(CRITICAL, "ufs  init failed\n");
+			ASSERT(0);
+		}
+		
+		dprintf(CRITICAL,"ufs init for redirection done\n");
+
+		/* Storage initialization is complete, read the partition table info */
+		mmc_read_partition_table(0);
+
+		/* Initialize Qseecom */
+		ret = qseecom_init();
+
+		if (ret < 0)
+		{
+			dprintf(CRITICAL, "Failed to initialize qseecom, error: %d\n", ret);
+			ASSERT(0);
+		}
+
+		if (rpmb_init() < 0)
+		{
+			dprintf(CRITICAL, "ufs RPMB init failed\n");
+			ASSERT(0);
+		}
+	}
 }
 
 unsigned board_machtype(void)
@@ -452,7 +510,7 @@ int target_cont_splash_screen()
 
 void target_force_cont_splash_disable(uint8_t override)
 {
-        splash_override = override;
+	splash_override = override;
 }
 
 /* Detect the modem type */

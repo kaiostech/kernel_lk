@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <arch/ops.h>
 #include <sys/types.h>
+#include <platform/timer.h>
 #include <reg.h>
 #include <platform/interrupts.h>
 #include <platform/iomap.h>
@@ -41,7 +42,7 @@ uint64_t ufs_alloc_trans_req_list()
 {
 	void *ptr;
 
-	ptr = memalign(lcm(CACHE_LINE, 1024), 32 * sizeof(struct utp_trans_req_desc));
+	ptr = memalign(lcm(CACHE_LINE, 4096), 32 * sizeof(struct utp_trans_req_desc));
 
 	if (!ptr)
 	{
@@ -53,7 +54,7 @@ uint64_t ufs_alloc_trans_req_list()
 
 uint64_t ufs_alloc_task_mgmt_req_list()
 {
-	addr_t ptr = (addr_t) memalign(1024, 1024);
+	addr_t ptr = (addr_t) memalign(4096, 1024);
 
 	if (!ptr)
 	{

@@ -49,14 +49,17 @@ enum boot_device
 enum boot_device
 {
 	BOOT_DEFAULT=0, /* EMMC */
+	BOOT_UFS_REDIRECT=1,
 	BOOT_EMMC=2,
 	BOOT_UFS=4,
 };
 #endif
 
 void platform_read_boot_config();
+void platform_set_boot_dev(uint32_t);
 uint32_t platform_get_boot_dev();
 uint32_t platform_boot_dev_isemmc();
+uint32_t platform_boot_dev_isredirect();
 void platform_boot_dev_cmdline(char *buf);
 
 void *target_mmc_device();
