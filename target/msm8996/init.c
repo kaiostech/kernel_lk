@@ -931,6 +931,7 @@ int animated_splash() {
 	uint32_t disp_cnt = NUM_DISPLAYS;
 	uint32_t reg_value;
 	bool camera_on = FALSE;
+	bool camera_frame_on = false;
 
 	if (!buffers[0]) {
 		dprintf(CRITICAL, "Unexpected error in read\n");
@@ -990,7 +991,7 @@ int animated_splash() {
 			if (0 == early_camera_enabled)
 				break;
 			else if ((1 == early_camera_enabled) &&
-					(FALSE == camera_on))
+					(FALSE == camera_on) && (false == camera_frame_on))
 				break;
 		}
 
@@ -1001,12 +1002,14 @@ int animated_splash() {
 						target_release_layer(&layer[j]);
 						layer[j].layer = NULL;
 					}
+					camera_frame_on = true;
 					continue;
 				} else {
 					if(!layer[j].layer) {
 						layer_ptr = target_display_acquire_layer(disp_ptr, "as", kFormatRGB888);
 						layer[j].layer = layer_ptr;
 						layer[j].z_order = 2;
+						camera_frame_on = false;
 					}
 				}
 			}
