@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -48,8 +48,11 @@ uint32_t target_dev_tree_mem(void *fdt, uint32_t memory_node_offset)
 	int ret = 0;
 	uint32_t len = 0;
 
-	/* Make sure RAM partition table is initialized */
-	ASSERT(smem_ram_ptable_init_v1());
+	/* Initialize RAM partition table */
+	ret = smem_ram_ptable_init_v1();
+
+	/* Assert if RAM partition table is failed to initialize */
+	ASSERT(ret);
 
 	len = smem_get_ram_ptable_len();
 

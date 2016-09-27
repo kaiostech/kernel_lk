@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -237,6 +237,9 @@ usb_wrapper_dev_t * usb_wrapper_init(usb_wrapper_config_t *config)
 	/* create a wrapper device */
 	wrapper = (usb_wrapper_dev_t*) malloc(sizeof(usb_wrapper_dev_t));
 	ASSERT(wrapper);
+
+	if (!wrapper)
+		return NULL;
 
 	/* save qscratch base */
 	wrapper->base = config->qscratch_base;

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
- * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -641,6 +641,9 @@ qpic_nand_onfi_probe(struct flash_info *flash)
 	/* Allocate memory required to read the onfi param page */
 	buffer = (unsigned char*) malloc(ONFI_READ_PARAM_PAGE_BUFFER_SIZE);
 	ASSERT(buffer != NULL);
+
+	if (!buffer)
+		return -1;
 
 	/* Read the vld and dev_cmd1 registers before modifying */
 	vld = qpic_nand_read_reg(NAND_DEV_CMD_VLD, 0);

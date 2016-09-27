@@ -301,6 +301,9 @@ int usb30_udc_init(struct udc_device *dev_info)
 	udc_dev = (udc_t*) malloc(sizeof(udc_t));
 	ASSERT(udc_dev);
 
+	if (!udc_dev)
+		return -1;
+
 	/* initialize everything to 0 */
 	memset(udc_dev, 0 , sizeof(udc_t));
 
@@ -308,8 +311,14 @@ int usb30_udc_init(struct udc_device *dev_info)
 	udc_dev->ctrl_rx_buf = memalign(CACHE_LINE, ROUNDUP(UDC_CONTROL_RX_BUF_SIZE, CACHE_LINE));
 	ASSERT(udc_dev->ctrl_rx_buf);
 
+	if (udc_dev->ctrl_rx_buf == NULL)
+		return -1;
+
 	udc_dev->ctrl_tx_buf = memalign(CACHE_LINE, ROUNDUP(UDC_CONTROL_TX_BUF_SIZE, CACHE_LINE));
 	ASSERT(udc_dev->ctrl_tx_buf);
+
+	if (udc_dev->ctrl_rx_buf == NULL)
+		return -1;
 
 	/* initialize string id */
 	udc_dev->next_string_id  = 1;
@@ -1024,6 +1033,9 @@ static struct udc_endpoint *_udc_endpoint_alloc(uint8_t num,
 	ept = malloc(sizeof(*ept));
 	ASSERT(ept);
 
+	if (!ept)
+		return NULL;
+
 	ept->maxpkt     = max_pkt;
 	ept->num        = num;
 	ept->type       = type;
@@ -1032,6 +1044,9 @@ static struct udc_endpoint *_udc_endpoint_alloc(uint8_t num,
 	ept->trb_count  = 66;     /* each trb can transfer (16MB - 1). 65 for 1GB transfer + 1 for roundup/zero length pkt. */
 	ept->trb        = memalign(lcm(CACHE_LINE, 16), ROUNDUP(ept->trb_count*sizeof(dwc_trb_t), CACHE_LINE)); /* TRB must be aligned to 16 */
 	ASSERT(ept->trb);
+
+	if (ept->trb == NULL)
+		return NULL;
 
 	/* push it on top of ept_list */
 	ept->next      = udc->ept_list;
@@ -1388,6 +1403,9 @@ static struct udc_descriptor *udc_descriptor_alloc(uint32_t type,
 	desc = malloc(sizeof(struct udc_descriptor) + len);
 	ASSERT(desc);
 
+	if (!desc)
+		return NULL;
+
 	desc->next    = 0;
 	desc->tag     = (type << 8) | num;
 	desc->len     = len;
@@ -1413,6 +1431,9 @@ struct udc_request *usb30_udc_request_alloc(void)
 
 	req = malloc(sizeof(*req));
 	ASSERT(req);
+
+	if (!req)
+		return NULL;
 
 	req->buf      = 0;
 	req->length   = 0;

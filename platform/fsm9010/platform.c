@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -119,8 +119,13 @@ void platform_init_mmu_mappings(void)
 	ram_partition ptn_entry;
 	uint32_t table_size = ARRAY_SIZE(mmu_section_table);
 	uint32_t len = 0;
+	int ret = 0;
 
-	ASSERT(smem_ram_ptable_init_v1());
+	/* Initialize RAM partition table */
+	ret = smem_ram_ptable_init_v1();
+
+	/* Assert if RAM partition table is failed to initialize */
+	ASSERT(ret);
 
 	len = smem_get_ram_ptable_len();
 

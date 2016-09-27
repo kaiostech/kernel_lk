@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -211,6 +211,9 @@ dwc_dev_t* dwc_init(dwc_config_t *config)
 	dwc_dev_t *dev = (dwc_dev_t*) malloc(sizeof(dwc_dev_t));
 	ASSERT(dev);
 
+	if (!dev)
+		return NULL;
+
 	memset(dev, 0, sizeof(dwc_dev_t));
 
 	/* save config info */
@@ -226,6 +229,9 @@ dwc_dev_t* dwc_init(dwc_config_t *config)
 	/* allocate buffer for receiving setup packet */
 	dev->setup_pkt           =  memalign(CACHE_LINE, ROUNDUP(DWC_SETUP_PKT_LEN, CACHE_LINE));
 	ASSERT(dev->setup_pkt);
+
+	if (dev->setup_pkt == NULL)
+		return NULL;
 
 	/* callback function to handler setup packet */
 	dev->setup_context       = config->setup_context;

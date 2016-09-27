@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2012,2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2016 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -302,8 +302,13 @@ uint32_t get_ddr_start()
 	uint32_t i;
 	ram_partition ptn_entry;
 	uint32_t len = 0;
+	int ret = 0;
 
-	ASSERT(smem_ram_ptable_init_v1());
+	/* Initialize RAM partition table */
+	ret = smem_ram_ptable_init_v1();
+
+	/* Assert if RAM partition table is failed to initialize */
+	ASSERT(ret);
 
 	len = smem_get_ram_ptable_len();
 
@@ -332,8 +337,13 @@ uint64_t smem_get_ddr_size()
 	ram_partition ptn_entry;
 	uint32_t len = 0;
 	uint64_t size = 0;
+	int ret = 0;
 
-	ASSERT(smem_ram_ptable_init_v1());
+	/* Initialize RAM partition table */
+	ret = smem_ram_ptable_init_v1();
+
+	/* Assert if RAM partition table is failed to initialize */
+	ASSERT(ret);
 
 	len = smem_get_ram_ptable_len();
 
