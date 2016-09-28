@@ -190,5 +190,5 @@ int target_release_layer(struct target_layer *layer);
 int target_display_close(struct target_display * disp);
 int target_get_max_display();
 bool target_display_is_init_done();
-int target_display_init_count();
+
 #endif

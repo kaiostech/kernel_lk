@@ -121,7 +121,6 @@ extern int msm_display_update(struct fbcon_config *fb, uint32_t pipe_id,
 	uint32_t pipe_type, uint32_t zorder, uint32_t width, uint32_t height, uint32_t disp_id);
 extern int msm_display_remove_pipe(uint32_t pipe_id, uint32_t pipe_type, uint32_t disp_id);
 extern struct fbcon_config* msm_display_get_fb(uint32_t disp_id);
-extern int msm_display_init_count();
 
 bool display_init_done = false;
 
@@ -1040,8 +1039,4 @@ int target_get_max_display() {
 #else
 	return 1;
 #endif
-}
-
-int target_display_init_count() {
-	return msm_display_init_count();
 }
