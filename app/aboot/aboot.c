@@ -3808,10 +3808,6 @@ void aboot_init(const struct app_descriptor *app)
 		target_early_camera_init();
 #endif
 		enable_secondary_core();
-	} else {
-#ifdef EARLY_CAMERA_SUPPORT
-		target_early_camera_disable();
-#endif
 	}
 
 	/* Display splash screen if enabled */

@@ -45,7 +45,7 @@
 
 
 #define EARLY_CAMERA_SIGNAL_DONE 0xa5a5a5a5
-#define EARLY_CAMERA_SIGNAL_DISABLED 0x5a5a5a5a
+#define EARLY_CAMERA_SIGNAL_ENABLED 0x5a5a5a5a
 
 #define VFE_PING_ADDR 0xB1C00000
 #define VFE_PONG_ADDR 0xB1EA3C80
@@ -1597,18 +1597,6 @@ void target_early_camera_init(void)
 #endif
 }
 
-void target_early_camera_disable(void)
-{
-#ifdef EARLY_CAMERA
-	camera_gdsc_enable(1);
-	camera_clocks_enable(1);
-
-	// Signal Kernel were disabled to allow camera daemon to start.
-	msm_camera_io_w_mb(EARLY_CAMERA_SIGNAL_DISABLED,
-						MMSS_A_VFE_0_SPARE);
-#endif
-}
-
 int early_camera_check_rev(unsigned int *pExpected_rev_id, unsigned int num_id, unsigned int revision)
 {
 	unsigned int i = 0;
@@ -1775,6 +1763,11 @@ static int early_camera_start(void *arg) {
 					cam_data[num_configs-2].i2c_num_bytes_address,
 					cam_data[num_configs-2].i2c_num_bytes_data,
 					0);
+
+	// Signal Kernel early camera is active.
+	msm_camera_io_w_mb(EARLY_CAMERA_SIGNAL_ENABLED,
+		MMSS_A_VFE_0_SPARE);
+
 	return 0;
 	exit:
 	return -1;

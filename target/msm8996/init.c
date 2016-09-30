@@ -1058,7 +1058,6 @@ void earlydomain_services()
 	/* starting early domain services */
 	if (early_camera_init() == -1) {
 		early_camera_enabled = 0;
-		target_early_camera_disable();
 		dprintf(CRITICAL, "earlydomain_services: Early Camera exit init failed\n");
 	} else {
 		dprintf(CRITICAL, "earlydomain_services: Early Camera starting\n");
