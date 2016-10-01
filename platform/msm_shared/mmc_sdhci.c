@@ -1112,6 +1112,9 @@ static uint8_t mmc_host_init(struct mmc_device *dev)
 	data = (struct sdhci_msm_data *) malloc(sizeof(struct sdhci_msm_data));
 	ASSERT(data);
 
+	if (!data)
+		return -1;
+
 	data->sdhc_event = &sdhc_event;
 	data->pwrctl_base = cfg->pwrctl_base;
 	data->pwr_irq = cfg->pwr_irq;

@@ -642,6 +642,9 @@ qpic_nand_onfi_probe(struct flash_info *flash)
 	buffer = (unsigned char*) malloc(ONFI_READ_PARAM_PAGE_BUFFER_SIZE);
 	ASSERT(buffer != NULL);
 
+	if (!buffer)
+		return -1;
+
 	/* Read the vld and dev_cmd1 registers before modifying */
 	vld = qpic_nand_read_reg(NAND_DEV_CMD_VLD, 0);
 	dev_cmd1 = qpic_nand_read_reg(NAND_DEV_CMD1, 0);
