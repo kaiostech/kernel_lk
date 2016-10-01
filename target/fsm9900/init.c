@@ -49,6 +49,7 @@
 #include <platform/clock.h>
 #include <platform/gpio.h>
 #include <stdlib.h>
+#include <qtimer.h>
 
 extern  bool target_use_signed_kernel(void);
 static void set_sdc_power_ctrl();
@@ -166,7 +167,7 @@ static void target_mmc_sdhci_init()
 		MMC_CLK_200MHZ, MMC_CLK_96MHZ };
 
 	struct mmc_config_data config = {0};
-	int i;
+	uint32_t i;
 
 	config.bus_width = DATA_BUS_WIDTH_8BIT;
 
@@ -484,17 +485,40 @@ static void set_sdc_power_ctrl()
 	/* Drive strength configs for sdc pins */
 	struct tlmm_cfgs sdc1_hdrv_cfg[] =
 	{
-		{ SDC1_CLK_HDRV_CTL_OFF,  TLMM_CUR_VAL_10MA, TLMM_HDRV_MASK },
-		{ SDC1_CMD_HDRV_CTL_OFF,  TLMM_CUR_VAL_10MA, TLMM_HDRV_MASK },
-		{ SDC1_DATA_HDRV_CTL_OFF, TLMM_CUR_VAL_10MA, TLMM_HDRV_MASK },
+		{
+			off: SDC1_CLK_HDRV_CTL_OFF,
+			val: TLMM_CUR_VAL_10MA,
+			mask: TLMM_HDRV_MASK
+		},
+		{
+			off: SDC1_CMD_HDRV_CTL_OFF,
+			val: TLMM_CUR_VAL_10MA,
+			mask: TLMM_HDRV_MASK
+		},
+		{
+			off: SDC1_DATA_HDRV_CTL_OFF,
+			val: TLMM_CUR_VAL_10MA,
+			mask: TLMM_HDRV_MASK },
 	};
 
 	/* Pull configs for sdc pins */
 	struct tlmm_cfgs sdc1_pull_cfg[] =
 	{
-		{ SDC1_CLK_PULL_CTL_OFF,  TLMM_NO_PULL, TLMM_PULL_MASK },
-		{ SDC1_CMD_PULL_CTL_OFF,  TLMM_PULL_UP, TLMM_PULL_MASK },
-		{ SDC1_DATA_PULL_CTL_OFF, TLMM_PULL_UP, TLMM_PULL_MASK },
+		{
+			off: SDC1_CLK_PULL_CTL_OFF,
+			val: TLMM_NO_PULL,
+			mask: TLMM_PULL_MASK
+		},
+		{
+			off: SDC1_CMD_PULL_CTL_OFF,
+			val: TLMM_PULL_UP,
+			mask: TLMM_PULL_MASK
+		},
+		{
+			off: SDC1_DATA_PULL_CTL_OFF,
+			val: TLMM_PULL_UP,
+			mask: TLMM_PULL_MASK
+		},
 	};
 
 	/* Set the drive strength & pull control values */

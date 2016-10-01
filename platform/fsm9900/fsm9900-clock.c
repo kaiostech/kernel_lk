@@ -749,7 +749,7 @@ static struct vote_clk gcc_ce1_axi_clk = {
 
 
 struct branch_clk gcc_blsp2_qup5_i2c_apps_clk = {
-	.cbcr_reg = BLSP2_QUP5_I2C_APPS_CBCR,
+	.cbcr_reg = (uint32_t *)BLSP2_QUP5_I2C_APPS_CBCR,
 	.parent   = &cxo_clk_src.c,
 
 	.c = {
