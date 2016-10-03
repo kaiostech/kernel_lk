@@ -165,7 +165,7 @@ void clock_config_uart_dm(uint8_t id)
 	int ret;
 	char str[256];
 
-	sprintf(str, "uart%d_iface_clk", id);
+	snprintf(str, sizeof(str), "uart%d_iface_clk", id);
 	ret = clk_get_set_enable(str, 0, 1);
     	if(ret)
 	{
@@ -173,7 +173,7 @@ void clock_config_uart_dm(uint8_t id)
 		ASSERT(0);
 	}
 
-	sprintf(str, "uart%d_core_clk", id);
+	snprintf(str, sizeof(str), "uart%d_core_clk", id);
 	ret = clk_get_set_enable(str, 7372800, 1);
 	if(ret)
 	{

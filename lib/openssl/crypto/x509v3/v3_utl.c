@@ -377,7 +377,7 @@ char *hex_to_string(const unsigned char *buffer, long len)
 		*q++ = hexdig[*p & 0xf];
 		*q++ = ':';
 	}
-	q[-1] = 0;
+	*(--q) = 0;
 #ifdef CHARSET_EBCDIC
 	ebcdic2ascii(tmp, tmp, q - tmp - 1);
 #endif
