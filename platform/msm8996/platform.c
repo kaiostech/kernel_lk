@@ -76,7 +76,7 @@ static mmu_section_t default_mmu_section_table[] =
 /*       Physical addr,    Virtual addr,     Mapping type ,              Size (in MB),            Flags */
     {    0x00000000,        0x00000000,       MMU_L2_NS_SECTION_MAPPING,  512,                IOMAP_MEMORY},
     {    MEMBASE,           MEMBASE,          MMU_L2_NS_SECTION_MAPPING,  (MEMSIZE / MB),      LK_MEMORY},
-    {    KERNEL_ADDR,       KERNEL_ADDR,      MMU_L2_NS_SECTION_MAPPING,  KERNEL_SIZE,         SCRATCH_MEMORY},
+    {    MIPI_FB_ADDR,      MIPI_FB_ADDR,     MMU_L2_NS_SECTION_MAPPING,  42,                  COMMON_MEMORY},
     {    SCRATCH_ADDR,      SCRATCH_ADDR,     MMU_L2_NS_SECTION_MAPPING,  SCRATCH_SIZE,        SCRATCH_MEMORY},
     {    MSM_SHARED_BASE,   MSM_SHARED_BASE,  MMU_L2_NS_SECTION_MAPPING,  MSM_SHARED_SIZE,     COMMON_MEMORY},
     {    RPMB_SND_RCV_BUF,  RPMB_SND_RCV_BUF, MMU_L2_NS_SECTION_MAPPING,  RPMB_SND_RCV_BUF_SZ, IOMAP_MEMORY},
@@ -123,6 +123,17 @@ void platform_init_mmu_mappings(void)
 {
 	int i;
 	int table_sz = ARRAY_SIZE(default_mmu_section_table);
+	uint32_t ddr_start = get_ddr_start();
+	mmu_section_t section_kernel_map;
+
+	section_kernel_map.paddress = ddr_start;
+	section_kernel_map.vaddress = ddr_start;
+	section_kernel_map.type = MMU_L2_NS_SECTION_MAPPING;
+	section_kernel_map.size = 90;
+	section_kernel_map.flags = SCRATCH_MEMORY;
+
+	/* Create identity mapping of 90MB from ddr start for loading kernel */
+	arm_mmu_map_entry(&section_kernel_map);
 
 	/* Map default memory needed for lk , scratch, rpmb & iomap */
 	for (i = 0 ; i < table_sz; i++)

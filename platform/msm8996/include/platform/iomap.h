@@ -29,6 +29,12 @@
 #ifndef _PLATFORM_THULIUM_IOMAP_H_
 #define _PLATFORM_THULIUM_IOMAP_H_
 
+#define DDR_START                          get_ddr_start()
+#define ABOOT_FORCE_KERNEL_ADDR            DDR_START + 0x8000
+#define ABOOT_FORCE_KERNEL64_ADDR          DDR_START + 0x80000
+#define ABOOT_FORCE_RAMDISK_ADDR           DDR_START + 0x2200000
+#define ABOOT_FORCE_TAGS_ADDR              DDR_START + 0x2000000
+
 #define MSM_SHARED_BASE             0x86000000
 
 #define MSM_IOMAP_HMSS_START        0x09800000
