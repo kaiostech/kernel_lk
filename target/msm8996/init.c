@@ -95,7 +95,7 @@
 
 #define PMIC_ARB_CHANNEL_NUM    0
 #define PMIC_ARB_OWNER_ID       0
-int early_camera_enabled = 1;
+static int early_camera_enabled = 1;
 
 enum
 {

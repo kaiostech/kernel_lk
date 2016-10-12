@@ -75,6 +75,7 @@ int ping = 0;
 int gpio_triggered = 0;
 int toggle =0;
 int delay_to_attach_t32 = 0;
+static bool early_camera_enabled = FALSE;
 
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
@@ -1862,8 +1863,21 @@ int early_camera_init(void)
 {
 	int msg = 0;
 	int rc = 0;
-	rc  = early_camera_start(&msg);
+
+	if (early_camera_enabled) {
+		rc  = early_camera_start(&msg);
+	}
+	else {
+		rc =-1;
+	}
+
 	return rc;
 }
 
+/* Sets early camera enabled or disabled */
+void set_early_camera_enabled(bool enabled)
+{
+	early_camera_enabled = enabled;
+	dprintf(CRITICAL, "set_early_camera_enabled : %d\n", enabled);
+}
 
