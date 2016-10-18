@@ -66,6 +66,7 @@ struct device_info
 	char bootloader_version[MAX_VERSION_LEN];
 	char radio_version[MAX_VERSION_LEN];
 	bool verity_mode; // 1 = enforcing, 0 = logging
+	bool early_camera_enabled;
 };
 #endif
 #endif

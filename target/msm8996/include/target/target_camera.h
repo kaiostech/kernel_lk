@@ -61,4 +61,6 @@ int early_camera_on(void);
 
 void early_camera_stop(void);
 
+void set_early_camera_enabled(bool enabled);
+
 #endif
