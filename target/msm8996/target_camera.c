@@ -1806,7 +1806,14 @@ int early_camera_on(void)
 	}
 #endif
 
+#if EARLYCAMERA_NO_GPIO
+	// when there is no GPIO present always set this to TRUE
+	// exit will be based on a scratch register inside
+	// the animated_splash loop
+	gpio_triggered = TRUE;
+#else
 	gpio_triggered = gpio_get(103);
+#endif
 
 	return gpio_triggered;
 }
