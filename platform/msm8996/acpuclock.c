@@ -743,7 +743,7 @@ void hdmi_core_ahb_clk_disable(void)
 	clk_disable(clk_get("hdmi_ahb_clk"));
 }
 
-#ifdef EARLY_CAMERA_SUPPORT
+#ifdef EARLYDOMAIN_SUPPORT
 /* Configure camera clocks */
 void camera_clocks_enable(int enable)
 {
