@@ -139,6 +139,14 @@ bool target_charging_supported();
 /* is charging in progress */
 bool target_charging_in_progress();
 
+/* This is for openssl assembly to execute neon optimized code.
+ * Refer to lib/openssl/crypto/arm_arch.h file
+ * ARMV8_SHA256 indicates support for hardware SHA-256 instructions */
+#define ARMV8_SHA256 (1 << 4)
+
+/* Enable openssl ARMv8 implemetation */
+unsigned int OPENSSL_armcap_P = ARMV8_SHA256;
+
 void target_early_init(void)
 {
 #if WITH_DEBUG_UART
@@ -344,8 +352,10 @@ void target_init(void)
 	}
 #endif
 
-	if (target_use_signed_kernel())
+	if ((CRYPTO_ENGINE_TYPE_HW == board_ce_type()) && target_use_signed_kernel())
+	{
 		target_crypto_init_params();
+	}
 
 	platform_read_boot_config();
 
@@ -579,7 +589,11 @@ uint32_t target_override_pll()
 
 crypto_engine_type board_ce_type(void)
 {
+#if ENABLE_HW_CRYPTO
 	return CRYPTO_ENGINE_TYPE_HW;
+#else
+	return CRYPTO_ENGINE_TYPE_SW;
+#endif
 }
 
 /* Set up params for h/w CE. */

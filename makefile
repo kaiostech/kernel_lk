@@ -60,6 +60,11 @@ ifeq ($(SIGNED_KERNEL),1)
   CFLAGS += -D_SIGNED_KERNEL=1
 endif
 
+ifeq ($(ENABLE_HW_CRYPTO),1)
+  CFLAGS += -DENABLE_HW_CRYPTO=1
+endif
+
+
 ifeq ($(TARGET_BUILD_VARIANT),user)
   CFLAGS += -DDISABLE_FASTBOOT_CMDS=1
 endif
