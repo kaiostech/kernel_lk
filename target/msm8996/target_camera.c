@@ -1587,7 +1587,7 @@ ERROR:
 
 void target_early_camera_init(void)
 {
-#ifdef EARLY_CAMERA
+#ifdef EARLYDOMAIN_SUPPORT
 	num_configs = get_cam_data(&cam_data);
 	if (num_configs) {
 	camera_gdsc_enable(1);

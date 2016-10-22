@@ -801,7 +801,7 @@ static struct branch_clk mdss_extpclk_clk = {
 	},
 };
 
-#ifdef EARLY_CAMERA_SUPPORT
+#ifdef EARLYDOMAIN_SUPPORT
 static struct clk_freq_tbl ftbl_csi2phytimer_clk_src[] = {
 	F_MM( 200000000, gpll0,    3,    0,     0),
 	F_END
@@ -1320,7 +1320,7 @@ static struct clk_lookup msm_msm8996_clocks[] =
 	CLK_LOOKUP("hdmi_core_clk",        mdss_hdmi_clk.c),
 	CLK_LOOKUP("hdmi_extp_clk",        mdss_extpclk_clk.c),
 
-#ifdef EARLY_CAMERA_SUPPORT
+#ifdef EARLYDOMAIN_SUPPORT
 	/* camera clocks */
 	CLK_LOOKUP("camss_ahb_clk",        camss_ahb_clk.c),
 	CLK_LOOKUP("camss_cci_ahb_clk",    camss_cci_ahb_clk.c),

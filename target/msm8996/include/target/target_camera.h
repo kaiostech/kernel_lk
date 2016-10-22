@@ -29,8 +29,6 @@
 #ifndef _TARGET_CAMERA_H
 #define _TARGET_CAMERA_H
 
-#define EARLY_CAMERA
-
 //#define BRIDGE_REV_1  // For adashub rev 1 of TI 960 Bridge chip.
 #define DISPLAY_ID 0 // Use dsi 0
 

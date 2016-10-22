@@ -60,7 +60,7 @@ OBJS += \
 	$(LOCAL_DIR)/target_display.o \
 	$(LOCAL_DIR)/oem_panel.o
 
-ifeq ($(ENABLE_EARLY_CAMERA_SUPPORT),1)
+ifeq ($(ENABLE_EARLYDOMAIN_SUPPORT),1)
 OBJS += \
     $(LOCAL_DIR)/target_camera.o \
     $(LOCAL_DIR)/target_camera_config.o
