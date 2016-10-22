@@ -155,7 +155,7 @@ static void target_hdmi_mpp4_enable(uint8_t enable)
 	}
 
 	/* Need delay before power on regulators */
-	mdelay(20);
+	mdelay(1);
 }
 
 int target_hdmi_regulator_ctrl(uint8_t enable)
@@ -645,6 +645,10 @@ static void wled_init(struct msm_panel_info *pinfo)
 	struct labibb_desc *labibb;
 	int display_type = 0;
 
+	// avoid backlight init if bridge chip is being used
+	if (pinfo->has_bridge_chip == true)
+		return;
+
 	labibb = pinfo->labibb;
 
 	if (labibb)
@@ -695,24 +699,32 @@ static void wled_init(struct msm_panel_info *pinfo)
 	qpnp_wled_init(&config);
 }
 
+int ldo_ref_cnt = 0;
 int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 {
 	uint32_t val = BIT(1) | BIT(13) | BIT(27);
 
 	if (enable) {
-		regulator_enable(val);
-		mdelay(10);
-		wled_init(pinfo);
-		qpnp_ibb_enable(true);	/* +5V and -5V */
-		mdelay(20);
+		if (ldo_ref_cnt == 0) {
 
-		if (pinfo->lcd_reg_en)
-			lcd_reg_enable();
+			regulator_enable(val);
+			mdelay(1);
+			wled_init(pinfo);
+			qpnp_ibb_enable(true);	/* +5V and -5V */
+			mdelay(2);
+			if (pinfo->lcd_reg_en)
+				lcd_reg_enable();
+
+			ldo_ref_cnt++;
+		}
 	} else {
-		if (pinfo->lcd_reg_en)
-			lcd_reg_disable();
+		if (ldo_ref_cnt > 0) {
+			if (pinfo->lcd_reg_en)
+				lcd_reg_disable();
 
-		regulator_disable(val);
+			regulator_disable(val);
+			ldo_ref_cnt--;
+		}
 	}
 
 	return NO_ERROR;
@@ -873,7 +885,6 @@ void target_display_init(const char *panel_name)
 		gcdb_display_init("adv7533_720p_dsi1_video", MDP_REV_50,
 				(void *)MIPI_FB_ADDR + 0x1000000);
 		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
-
 		goto target_display_init_end;
 	}
 

@@ -749,7 +749,7 @@ again:
 		mdss_hdmi_edid_buf[ndx] = (uint8_t)((reg_val & 0x0000FF00) >> 8);
 	}
 
-	dprintf(INFO, "%s: EDID read successful\n", __func__);
+	dprintf(SPEW, "%s: EDID read successful\n", __func__);
 
 	return NO_ERROR;
 }
@@ -929,7 +929,7 @@ static int mdss_hdmi_video_setup(void)
 	if (ret)
 		return ERROR;
 
-	dprintf(INFO, "hdmi resolution %dx%d@p%dHz (%d)\n",
+	dprintf(SPEW, "hdmi resolution %dx%d@p%dHz (%d)\n",
 		tinfo.active_h, tinfo.active_v, tinfo.refresh_rate/1000,
 		mdss_hdmi_video_fmt);
 
