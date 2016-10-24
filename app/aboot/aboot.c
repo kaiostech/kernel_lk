@@ -2389,7 +2389,12 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		}
 	}
 
-	mdtp_activated(&is_mdtp_activated);
+	/* If mdtp state cannot be validate, block fastboot boot*/
+	if(mdtp_activated(&is_mdtp_activated)){
+		dprintf(CRITICAL, "mdtp_activated cannot validate state.\n");
+		dprintf(CRITICAL, "Can not proceed with fastboot boot command.\n");
+		goto boot_failed;
+	}
 	if(is_mdtp_activated){
 		dprintf(CRITICAL, "fastboot boot command is not available.\n");
 		return;
