@@ -3798,6 +3798,7 @@ void aboot_fastboot_register_commands(void)
 #endif
 #if defined(MULTIPLE_BOOT_SLOT)
 	fastboot_publish("slot-suffixes", "_a,_b");
+	fastboot_publish("slot-count", "2");
 #if defined(GETVAR_DYNAMIC_GETTERS)
 	fastboot_publish_ex("current-slot", cmd_current_slot, NULL);
 	fastboot_publish_ex("has-slot", cmd_has_slot, part_basename_list);
