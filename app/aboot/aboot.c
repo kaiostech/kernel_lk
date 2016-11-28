@@ -3646,6 +3646,15 @@ void aboot_init(const struct app_descriptor *app)
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
+	/* Disable display by default for now, this can be changed with
+	 * fastboot oem select-display-panel hdmi
+	 * if needed
+	 */
+	if (!strlen(device.display_panel)) {
+		dprintf(INFO, "Setting display_panel to none\n");
+		strlcpy(device.display_panel, "none",
+			sizeof(device.display_panel));
+	}
 #if NO_ALARM_DISPLAY
 	if (!check_alarm_boot()) {
 #endif
