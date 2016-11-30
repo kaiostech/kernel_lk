@@ -257,6 +257,9 @@ uint32_t board_get_ddr_subtype(void)
 	case DDR_512MB:
 		ret = SUBTYPE_512MB;
 	break;
+	case DDR_256MB:
+		ret = SUBTYPE_256MB;
+		break;
 	default:
 		ret = 0;
 	break;
