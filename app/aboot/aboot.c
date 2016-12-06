@@ -3888,6 +3888,7 @@ void aboot_init(const struct app_descriptor *app)
 
 	/* enable secondary core for early domain services */
 	if (device.early_domain_enabled) {
+		bs_set_timestamp(BS_EARLY_DOMAIN_START);
 		if (device.early_camera_enabled) {
 			set_early_camera_enabled(TRUE);
 			target_early_camera_init();

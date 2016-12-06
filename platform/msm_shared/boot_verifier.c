@@ -44,6 +44,7 @@
 #include <qseecom_lk_api.h>
 #include <secapp_loader.h>
 #include <target.h>
+#include <boot_stats.h>
 
 #define ASN1_ENCODED_SHA256_SIZE 0x33
 #define ASN1_ENCODED_SHA256_OFFSET 0x13
@@ -583,7 +584,9 @@ bool boot_verify_image(unsigned char* img_addr, uint32_t img_size, char *pname)
 		dprintf(INFO,"Fail to create certificate fingerprint.\n");
 	}
 
+	bs_set_timestamp(BS_BOOTIMAGE_CHECKSUM_START);
 	ret = verify_image_with_sig(img_addr, img_size, pname, sig, user_keystore);
+	bs_set_timestamp(BS_BOOTIMAGE_CHECKSUM_DONE);
 
 	if(sig != NULL)
 		VERIFIED_BOOT_SIG_free(sig);
