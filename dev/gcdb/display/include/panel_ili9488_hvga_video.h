@@ -54,7 +54,7 @@ static struct panel_config ili9488_hvga_video_panel_data = {
 /* Panel resolution                                                          */
 /*---------------------------------------------------------------------------*/
 static struct panel_resolution ili9488_hvga_video_panel_res = {
-  320, 480, 160, 20, 10, 0, 80, 16, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  320, 432, 160, 20, 10, 0, 80, 16, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 /*---------------------------------------------------------------------------*/
@@ -223,7 +223,7 @@ static struct lane_configuration ili9488_hvga_video_lane_config = {
 /* Panel Timing                                                              */
 /*---------------------------------------------------------------------------*/
 const uint32_t ili9488_hvga_video_timings[] = {
-0x50, 0x12, 0x0C, 0x00, 0x33, 0x38, 0x10, 0x16, 0x1E, 0x03, 0x04, 0x00
+0x76, 0x18, 0x10, 0x00, 0x3C, 0x3E, 0x14, 0x1C, 0x12, 0x03, 0x04, 0x00
   //0x46, 0x1d, 0x20, 0x00, 0x39, 0x3a, 0x21, 0x21, 0x32, 0x03, 0x04, 0x00
   //0x7d, 0x25, 0x1d, 0x00, 0x37, 0x33, 0x22, 0x27, 0x1e, 0x03, 0x04, 0x00
 };
@@ -236,7 +236,7 @@ static struct mipi_dsi_cmd ili9488_hvga_video_rotation[] = {
 
 
 static struct panel_timing ili9488_hvga_video_timing_info = {
-  0, 4, 0x70, 0x42
+  0, 4, 0x04, 0x19
 };
 
 static struct panel_reset_sequence ili9488_hvga_video_panel_reset_seq = {
