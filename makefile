@@ -64,6 +64,8 @@ ifeq ($(TARGET_BUILD_VARIANT),user)
   CFLAGS += -DDISABLE_FASTBOOT_CMDS=1
 endif
 
+CFLAGS += -DBUILD_VERSION='"$(shell if git rev-parse --git-dir > /dev/null 2>&1; then git describe --dirty | sed 's/\./_/g'; else echo 'unknown'; fi )"'
+
 # setup toolchain prefix
 TOOLCHAIN_PREFIX ?= arm-eabi-
 CFLAGS += -fstack-protector-all
