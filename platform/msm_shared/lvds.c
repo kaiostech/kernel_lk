@@ -77,23 +77,28 @@ void lvds_init(struct msm_panel_info *pinfo)
 			MDP_OUTP(MDP_BASE + 0xc301c, 0x02);
 			MDP_OUTP(MDP_BASE + 0xc3020, 0x42);
 			MDP_OUTP(MDP_BASE + 0xc3024, 0x14);
+		} else if (pinfo->clk_rate == 74250000) {
+			MDP_OUTP(MDP_BASE + 0xc3004, 0x4c);
+			MDP_OUTP(MDP_BASE + 0xc3008, 0x30);
+			MDP_OUTP(MDP_BASE + 0xc300c, 0xc3);
+			MDP_OUTP(MDP_BASE + 0xc3014, 0x10);
+			MDP_OUTP(MDP_BASE + 0xc3018, 0x04);
+			MDP_OUTP(MDP_BASE + 0xc301c, 0x62);
+			MDP_OUTP(MDP_BASE + 0xc3020, 0x41);
+			MDP_OUTP(MDP_BASE + 0xc3024, 0x0d);
 		}
-		MDP_OUTP(MDP_BASE + 0xc3028, 0x07);
+
+		MDP_OUTP(MDP_BASE + 0xc3028, 0x06);
 		MDP_OUTP(MDP_BASE + 0xc302c, 0x00);
-		MDP_OUTP(MDP_BASE + 0xc3030, 0x1c);
-		MDP_OUTP(MDP_BASE + 0xc3034, 0x01);
 		MDP_OUTP(MDP_BASE + 0xc3038, 0x00);
-		MDP_OUTP(MDP_BASE + 0xc3040, 0xC0);
+		MDP_OUTP(MDP_BASE + 0xc3040, 0x30);
 		MDP_OUTP(MDP_BASE + 0xc3044, 0x00);
 		MDP_OUTP(MDP_BASE + 0xc3048, 0x30);
 		MDP_OUTP(MDP_BASE + 0xc304c, 0x00);
 
-		MDP_OUTP(MDP_BASE + 0xc3000, 0x11);
+		MDP_OUTP(MDP_BASE + 0xc3000, 0x09);
 		MDP_OUTP(MDP_BASE + 0xc3064, 0x05);
 		MDP_OUTP(MDP_BASE + 0xc3050, 0x20);
-
-		/*2. Enable LVDS PHY PLL in MDP_LVDSPHY_PLL_CTRL_0*/
-		MDP_OUTP(MDP_BASE + 0xc3000, 0x01);
 
 		/*3. Poll the MDP_LVDSPHY_PLL_RDY register until it is 1*/
 		/* Wait until LVDS PLL is locked and ready */
