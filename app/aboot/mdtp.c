@@ -230,7 +230,7 @@ static int verify_partition_single_hash(char *name, uint64_t size, DIP_hash_tabl
 /* Validate a hash table calculated per block of a given partition */
 static int verify_partition_block_hash(char *name,
 								uint64_t size,
-								uint32_t verify_num_blocks,
+								uint32_t verify_ratio,
 								DIP_hash_table_entry_t *hash_table,
 								uint8_t *force_verify_block)
 {
@@ -240,7 +240,6 @@ static int verify_partition_block_hash(char *name,
 	unsigned char *buf = (unsigned char *)target_get_scratch_address() + MDTP_SCRATCH_OFFSET;
 	uint32_t bytes_to_read;
 	uint32_t block_num = 0;
-	uint32_t total_num_blocks = ((size - 1) / MDTP_FWLOCK_BLOCK_SIZE) + 1;
 	uint32_t rand_int;
 	uint32_t block_size = mmc_get_device_blocksize();
 
@@ -278,7 +277,7 @@ static int verify_partition_block_hash(char *name,
 			}
 
 			/* Skip validation of this block with probability of verify_num_blocks / total_num_blocks */
-			if ((rand_int % total_num_blocks) >= verify_num_blocks)
+			if ((rand_int % 100) >= verify_ratio)
 			{
 				block_num++;
 				hash_table += 1;
@@ -341,7 +340,7 @@ static int validate_partition_params(uint64_t size,
 static int verify_partition(char *name,
 						uint64_t size,
 						mdtp_fwlock_mode_t hash_mode,
-						uint32_t verify_num_blocks,
+						uint32_t verify_ratio,
 						DIP_hash_table_entry_t *hash_table,
 						uint8_t *force_verify_block)
 {
@@ -350,7 +349,7 @@ static int verify_partition(char *name,
 		return verify_partition_single_hash(name, size, hash_table);
 	} else if (hash_mode == MDTP_FWLOCK_MODE_BLOCK || hash_mode == MDTP_FWLOCK_MODE_FILES)
 	{
-		return verify_partition_block_hash(name, size, verify_num_blocks, hash_table, force_verify_block);
+		return verify_partition_block_hash(name, size, verify_ratio, hash_table, force_verify_block);
 	}
 
 	/* Illegal value of hash_mode */
@@ -565,7 +564,6 @@ static void verify_all_partitions(DIP_t *dip,
 	int verify_failure = 0;
 	int verify_temp_result = 0;
 	int ext_partition_verify_failure = 0;
-	uint32_t total_num_blocks;
 
 	ASSERT(dip != NULL);
 	ASSERT(verify_result != NULL);
@@ -592,7 +590,6 @@ static void verify_all_partitions(DIP_t *dip,
 				verify_temp_result = 0;
 				if(dip->partition_cfg[i].lock_enabled && dip->partition_cfg[i].size)
 				{
-					total_num_blocks = ((dip->partition_cfg[i].size - 1) / MDTP_FWLOCK_BLOCK_SIZE);
 					if (validate_partition_params(dip->partition_cfg[i].size,
 							dip->partition_cfg[i].hash_mode,
 							dip->partition_cfg[i].verify_ratio))
@@ -605,7 +602,7 @@ static void verify_all_partitions(DIP_t *dip,
 					verify_temp_result |= (verify_partition(dip->partition_cfg[i].name,
 							dip->partition_cfg[i].size,
 							dip->partition_cfg[i].hash_mode,
-							(dip->partition_cfg[i].verify_ratio * total_num_blocks) / 100,
+							dip->partition_cfg[i].verify_ratio,
 							dip->partition_cfg[i].hash_table,
 							dip->partition_cfg[i].force_verify_block) != 0);
 
