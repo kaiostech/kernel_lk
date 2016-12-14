@@ -93,12 +93,12 @@ static const uint32_t panel_physical_ctrl[] = {
   0x5f, 0x00, 0x00, 0x10
 };
 
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Other Configuration                                                       */
 /*---------------------------------------------------------------------------*/
 #define DISPLAY_CMDLINE_PREFIX " mdss_mdp3.panel="
 
-#define MIPI_FB_ADDR 0x86E00000
+#define MIPI_FB_ADDR 0x86C00000
 
 #define MIPI_HSYNC_PULSE_WIDTH       12
 #define MIPI_HSYNC_BACK_PORCH_DCLK   32
