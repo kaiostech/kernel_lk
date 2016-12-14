@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Google Inc.
+ * Copyright (c) 2009,2016 Google Inc.
  * All rights reserved.
  *
  * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
@@ -394,6 +394,7 @@ enum {
 	MSM8609  = 275,
 	MSM8909W = 300,
 	APQ8009W = 301,
+	MSM8905  = 331,
 };
 
 enum platform {
