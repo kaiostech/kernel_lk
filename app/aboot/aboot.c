@@ -979,6 +979,11 @@ int boot_linux_from_mmc(void)
 
 #if DEVICE_TREE
 		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
+
+		if (UINT_MAX < ((uint64_t)kernel_actual + (uint64_t)ramdisk_actual+ (uint64_t)dt_actual + page_size)) {
+			dprintf(CRITICAL, "Integer overflow detected in bootimage header fields at %u in %s\n",__LINE__,__FILE__);
+			return -1;
+		}
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual + dt_actual);
 
 		if (check_aboot_addr_range_overlap(hdr->tags_addr, dt_actual))
@@ -987,6 +992,11 @@ int boot_linux_from_mmc(void)
 			return -1;
 		}
 #else
+		if (UINT_MAX < ((uint64_t)kernel_actual + (uint64_t)ramdisk_actual + page_size)) {
+                        dprintf(CRITICAL, "Integer overflow detected in bootimage header fields at %u in %s\n",__LINE__,__FILE__);
+                        return -1;
+                }
+
 		imagesize_actual = (page_size + kernel_actual + ramdisk_actual);
 
 #endif
