@@ -67,11 +67,11 @@ struct mmc_device *dev;
 
 #define WDOG_DEBUG_DISABLE_BIT  17
 
-#define CE_INSTANCE             2
+#define CE_INSTANCE             1
 #define CE_EE                   1
 #define CE_FIFO_SIZE            64
-#define CE_READ_PIPE            3
-#define CE_WRITE_PIPE           2
+#define CE_READ_PIPE            1
+#define CE_WRITE_PIPE           0
 #define CE_READ_PIPE_LOCK_GRP   0
 #define CE_WRITE_PIPE_LOCK_GRP  0
 #define CE_ARRAY_SIZE           20
@@ -127,8 +127,8 @@ void target_crypto_init_params()
 
 	/* Set up base addresses and instance. */
 	ce_params.crypto_instance  = CE_INSTANCE;
-	ce_params.crypto_base      = MSM_CE2_BASE;
-	ce_params.bam_base         = MSM_CE2_BAM_BASE;
+	ce_params.crypto_base      = MSM_CE1_BASE;
+	ce_params.bam_base         = MSM_CE1_BAM_BASE;
 
 	/* Set up BAM config. */
 	ce_params.bam_ee               = CE_EE;

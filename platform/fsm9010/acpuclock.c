@@ -246,19 +246,13 @@ static void ce_async_reset(uint8_t instance)
 {
 	if (instance == 1)
 	{
-		/* TODO: Add support for instance 1. */
-		dprintf(CRITICAL, "CE instance not supported instance = %d", instance);
-		ASSERT(0);
-	}
-	else if (instance == 2)
-	{
 		/* Start the block reset for CE */
-		writel(1, GCC_CE2_BCR);
+		writel(1, GCC_CE1_BCR);
 
 		udelay(2);
 
 		/* Take CE block out of reset */
-		writel(0, GCC_CE2_BCR);
+		writel(0, GCC_CE1_BCR);
 
 		udelay(2);
 	}
