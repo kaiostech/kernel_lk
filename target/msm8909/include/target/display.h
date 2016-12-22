@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014,2016 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -98,7 +98,7 @@ static const uint32_t panel_physical_ctrl[] = {
 /*---------------------------------------------------------------------------*/
 #define DISPLAY_CMDLINE_PREFIX " mdss_mdp3.panel="
 
-#define MIPI_FB_ADDR 0x83200000
+#define MIPI_FB_ADDR 0x86E00000
 
 #define MIPI_HSYNC_PULSE_WIDTH       12
 #define MIPI_HSYNC_BACK_PORCH_DCLK   32

@@ -34,10 +34,11 @@
 #include <sys/types.h>
 #include <platform/iomap.h>
 #include <lib/ptable.h>
+#include <board.h>
 
 #include "smem.h"
 
-
+#define RUGGED_RAM_SIZE	(512 * 1024 * 1024)
 /* partition table from SMEM */
 static struct smem_ptable smem_ptable;
 static unsigned smem_apps_flash_start = 0xFFFFFFFF;
@@ -157,6 +158,8 @@ static void smem_copy_ram_ptable(void *buf)
 	struct smem_ram_ptable *table_v0;
 	struct smem_ram_ptable_v1 *table_v1;
 	uint32_t pentry = 0;
+	uint32_t hw_id = board_hardware_id();
+	uint32_t hw_subtype = board_hardware_subtype();
 
 	ptable.hdr = *(struct smem_ram_ptable_hdr*)buf;
 
@@ -166,6 +169,13 @@ static void smem_copy_ram_ptable(void *buf)
 		table_v1 = (struct smem_ram_ptable_v1*)buf;
 
 		memcpy(&ptable, table_v1, sizeof(ram_partition_table));
+		if ((hw_id == HW_PLATFORM_QRD) && (hw_subtype == 2)) {
+			for(pentry = 0; pentry < 2; pentry++)
+			{
+				ptable.parts[pentry].size = RUGGED_RAM_SIZE;
+			}
+		}
+
 	}
 	else if(ptable.hdr.version == SMEM_RAM_PTABLE_VERSION_0)
 	{

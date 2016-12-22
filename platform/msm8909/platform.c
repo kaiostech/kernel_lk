@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -34,7 +34,7 @@
 #include <mmu.h>
 #include <arch/arm/mmu.h>
 #include <smem.h>
-
+#include <target/display.h>
 #define MB (1024*1024)
 
 #define MSM_IOMAP_SIZE ((MSM_IOMAP_END - MSM_IOMAP_BASE)/MB)
@@ -43,6 +43,9 @@
 /* LK memory - cacheable, write through */
 #define LK_MEMORY         (MMU_MEMORY_TYPE_NORMAL_WRITE_THROUGH | \
                                         MMU_MEMORY_AP_READ_WRITE)
+
+#define COMMON_MEMORY       (MMU_MEMORY_TYPE_NORMAL_WRITE_THROUGH | \
+                           MMU_MEMORY_AP_READ_WRITE | MMU_MEMORY_XN)
 
 /* Peripherals - non-shared device */
 #define IOMAP_MEMORY      (MMU_MEMORY_TYPE_DEVICE_SHARED | \
@@ -58,7 +61,9 @@ static mmu_section_t mmu_section_table[] = {
 	{    MSM_IOMAP_BASE,    MSM_IOMAP_BASE,   MSM_IOMAP_SIZE,   IOMAP_MEMORY},
 	{    A7_SS_BASE,        A7_SS_BASE,       A7_SS_SIZE,       IOMAP_MEMORY},
 	{    SYSTEM_IMEM_BASE,  SYSTEM_IMEM_BASE, 1,                IMEM_MEMORY},
-};
+        {    MIPI_FB_ADDR,      MIPI_FB_ADDR,     10,               COMMON_MEMORY},
+        {    SCRATCH_ADDR,	SCRATCH_ADDR,      SCRATCH_SIZE,     COMMON_MEMORY},
+} ;
 
 static struct smem_ram_ptable ram_ptable;
 
