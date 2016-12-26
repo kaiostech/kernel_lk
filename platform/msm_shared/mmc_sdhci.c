@@ -686,6 +686,9 @@ static uint32_t mmc_get_ext_csd(struct sdhci_host *host, struct mmc_card *card)
 
 	memset(card->ext_csd, 0, sizeof(card->ext_csd));
 
+	/* invalidate any cached buf data (controller updates main memory) */
+	arch_invalidate_cache_range((addr_t) card->ext_csd, 512);
+
 	memset((struct mmc_command *)&cmd, 0, sizeof(struct mmc_command));
 
 	/* CMD8 */
@@ -770,10 +773,11 @@ bool mmc_set_drv_type(struct sdhci_host *host, struct mmc_card *card, uint8_t dr
 	uint32_t value = ((drv_type << 4) | MMC_HS200_TIMING);
 
 	if (MMC_CARD_MMC(card)) {
-		if (card->ext_csd[MMC_EXT_MMC_DRV_STRENGTH] & (1 << drv_type))
+		if (card->ext_csd[MMC_EXT_MMC_DRV_STRENGTH] & (1 << drv_type)){
 			ret = mmc_switch_cmd(host, card, MMC_ACCESS_WRITE, MMC_EXT_MMC_HS_TIMING, value);
-		if (!ret)
-			drv_type_changed = true;
+			if (!ret)
+				drv_type_changed = true;
+		}
 	}
 	return drv_type_changed;
 }

@@ -556,7 +556,7 @@ static uint32_t sdhci_msm_cm_dll_sdc4_calibration(struct sdhci_host *host)
 	DBG("\n CM_DLL_SDC4 Calibration Start\n");
 
 	/*1.Write the DDR config value to SDCC_HC_REG_DDR_CONFIG register*/
-	REG_WRITE32(host, target_ddr_cfg_val(), SDCC_HC_REG_DDR_CONFIG);
+	REG_WRITE32(host, target_ddr_cfg_val(), target_ddr_cfg_reg());
 
 	/*2. Write DDR_CAL_EN to '1' */
 	REG_WRITE32(host, (REG_READ32(host, SDCC_HC_REG_DLL_CONFIG_2) | DDR_CAL_EN), SDCC_HC_REG_DLL_CONFIG_2);
@@ -812,11 +812,9 @@ retry_tuning:
 		/* Change the driver type & rerun tuning */
 		while(++drv_type <= MX_DRV_SUPPORTED_HS200)
 		{
-			drv_type_changed = mmc_set_drv_type(host, card, drv_type);
-			if (drv_type_changed)
-			{
+			if (mmc_set_drv_type(host, card, drv_type))
 				goto retry_tuning;
-			}
+			drv_type_changed = true;
 		}
 	}
 
