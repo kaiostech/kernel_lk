@@ -3403,7 +3403,11 @@ void cmd_set_active(const char *arg, void *data, unsigned sz)
 
 	int is_valid_slot = 0;
 
-	strcpy(target_slot, "boot");
+	if( '_' != arg[0] ) {
+          strcpy(target_slot, "boot_");
+        }else{
+          strcpy(target_slot, "boot");// Legacy support
+        }
 	strcat(target_slot, arg);
 
 	if (!strcmp(target_slot,"boot_a")) {
