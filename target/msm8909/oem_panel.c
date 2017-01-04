@@ -52,6 +52,7 @@
 enum {
 	QRD_SKUA = 0x00,
 	QRD_RJIL = 0x02,
+	QRD_RUGGED256 = 0x04,
 	QRD_SKUC = 0x08,
 	QRD_SKUE = 0x09,
 };
@@ -343,6 +344,10 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 				break;
 			case QRD_RJIL:
 				dprintf(CRITICAL,"HW_ID QRD_RJIL");
+				panel_id = ILI9488_HVGA_VIDEO_PANEL;
+				break;
+			case QRD_RUGGED256:
+				dprintf(CRITICAL,"HW_ID QRD_RJIL_256");
 				panel_id = ILI9488_HVGA_VIDEO_PANEL;
 				break;
 			case QRD_SKUC:

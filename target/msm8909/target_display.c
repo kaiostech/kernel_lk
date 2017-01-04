@@ -45,6 +45,7 @@
 #include "include/display_resource.h"
 
 #define QRD_RJIL 2
+#define QRD_RUGGED256 4
 #define VCO_DELAY_USEC 1000
 #define GPIO_STATE_LOW 0
 #define GPIO_STATE_HIGH 2
@@ -194,7 +195,7 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 	uint32_t hw_subtype = board_hardware_subtype();
 
 	if (enable) {
-		if (!((hw_id == HW_PLATFORM_QRD) && (hw_subtype == QRD_RJIL)))
+		if (!((hw_id == HW_PLATFORM_QRD) && (hw_subtype == QRD_RJIL) && (hw_subtype == QRD_RUGGED256)))
 			if (pinfo->mipi.use_enable_gpio) {
 				gpio_tlmm_config(enable_gpio.pin_id, 0,
 						enable_gpio.pin_direction, enable_gpio.pin_pull,

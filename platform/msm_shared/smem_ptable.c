@@ -39,6 +39,7 @@
 #include "smem.h"
 
 #define RUGGED_RAM_SIZE	(512 * 1024 * 1024)
+#define RUGGED256_RAM_SIZE	(256 * 1024 * 1024)
 /* partition table from SMEM */
 static struct smem_ptable smem_ptable;
 static unsigned smem_apps_flash_start = 0xFFFFFFFF;
@@ -173,6 +174,11 @@ static void smem_copy_ram_ptable(void *buf)
 			for(pentry = 0; pentry < 2; pentry++)
 			{
 				ptable.parts[pentry].size = RUGGED_RAM_SIZE;
+			}
+		} else if ((hw_id == HW_PLATFORM_QRD) && (hw_subtype == 4)) {
+			for(pentry = 0; pentry < 2; pentry++)
+			{
+				ptable.parts[pentry].size = RUGGED256_RAM_SIZE;
 			}
 		}
 
