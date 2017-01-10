@@ -53,7 +53,6 @@
 
 enum {
 	QRD_SKUA = 0x00,
-	QRD_RJIL = 0x02,
 	QRD_SKUC = 0x08,
 	QRD_SKUE = 0x09,
 };
@@ -253,7 +252,6 @@ static int init_panel_data(struct panel_struct *panelstruct,
                 pinfo->mipi.signature = ILI9806E_FWVGA_VIDEO_SIGNATURE;
                 break;
 	case ILI9488_HVGA_VIDEO_PANEL:
-		dprintf(CRITICAL,"RJIL_RUGGED seleceted ILI9488_HVGA_VIDEO_PANEL %s:%d",__func__,__LINE__);
 		panelstruct->paneldata    = &ili9488_hvga_video_panel_data;
 		panelstruct->panelres     = &ili9488_hvga_video_panel_res;
 		panelstruct->color        = &ili9488_hvga_video_color;
@@ -389,8 +387,7 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 			case QRD_SKUA:
 				panel_id = HX8379A_FWVGA_SKUA_VIDEO_PANEL;
 				break;
-			case QRD_RJIL:
-				dprintf(CRITICAL,"HW_ID QRD_RJIL");
+			case HW_PLATFORM_SUBTYPE_QRD_RUGGED:
 				panel_id = ILI9488_HVGA_VIDEO_PANEL;
 				break;
 			case QRD_SKUC:

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,7 +44,6 @@
 #include "include/panel.h"
 #include "include/display_resource.h"
 
-#define QRD_RJIL 2
 #define VCO_DELAY_USEC 1000
 #define GPIO_STATE_LOW 0
 #define GPIO_STATE_HIGH 2
@@ -96,6 +95,7 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 {
 	struct pm8x41_mpp mpp;
 	uint32_t hw_id = board_hardware_id();
+	uint32_t hw_subtype = board_hardware_subtype();
 	struct board_pmic_data pmic_info;
 	int rc;
 
@@ -129,6 +129,8 @@ int target_backlight_ctrl(struct backlight *bl, uint8_t enable)
 	if (enable) {
 		if (hw_id == HW_PLATFORM_SURF || (hw_id == HW_PLATFORM_MTP) || (hw_id == HW_PLATFORM_QRD)) {
 			/* configure backlight gpio for CDP and MTP */
+			if (hw_subtype == HW_PLATFORM_SUBTYPE_QRD_RUGGED)
+				 bkl_gpio.pin_id = 3;
 			gpio_tlmm_config(bkl_gpio.pin_id, 0,
 				bkl_gpio.pin_direction, bkl_gpio.pin_pull,
 				bkl_gpio.pin_strength, bkl_gpio.pin_state);
@@ -194,7 +196,7 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 	uint32_t hw_subtype = board_hardware_subtype();
 
 	if (enable) {
-		if (!((hw_id == HW_PLATFORM_QRD) && (hw_subtype == QRD_RJIL)))
+		if (!((hw_id == HW_PLATFORM_QRD) && (hw_subtype == HW_PLATFORM_SUBTYPE_QRD_RUGGED)))
 			if (pinfo->mipi.use_enable_gpio) {
 				gpio_tlmm_config(enable_gpio.pin_id, 0,
 						enable_gpio.pin_direction, enable_gpio.pin_pull,

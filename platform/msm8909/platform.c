@@ -45,6 +45,9 @@
 #define LK_MEMORY         (MMU_MEMORY_TYPE_NORMAL_WRITE_THROUGH | \
                                         MMU_MEMORY_AP_READ_WRITE)
 
+#define COMMON_MEMORY       (MMU_MEMORY_TYPE_NORMAL_WRITE_THROUGH | \
+                           MMU_MEMORY_AP_READ_WRITE | MMU_MEMORY_XN)
+
 /* Peripherals - non-shared device */
 #define IOMAP_MEMORY      (MMU_MEMORY_TYPE_DEVICE_SHARED | \
                         MMU_MEMORY_AP_READ_WRITE | MMU_MEMORY_XN)
