@@ -110,7 +110,7 @@ static int mdss_dsi_panel_power(uint8_t enable,
 				return ret;
 			}
 		}
-		dprintf(SPEW, "Panel power on done\n");
+		dprintf(INFO, "Panel power on done\n");
 	} else {
 		/* Disable panel and ldo */
 		ret = mdss_dsi_panel_reset(enable);
