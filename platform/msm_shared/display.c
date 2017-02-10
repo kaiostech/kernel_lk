@@ -35,6 +35,15 @@
 
 static struct msm_fb_panel_data *panel;
 
+
+#define spi_panel_reset_gpio 25
+#define spi_panel_cs_gpio 18
+#define spi_panel_data_gpio 16
+#define spi_panel_clk_gpio 19
+#define spi_panel_dc_gpio 110
+#define BIT(x)  (1<<(x))
+
+
 extern int lvds_on(struct msm_fb_panel_data *pdata);
 
 static int msm_fb_alloc(struct fbcon_config *fb)
@@ -231,6 +240,223 @@ int msm_display_on()
 msm_display_on_out:
 	return ret;
 }
+static int spi_write_byte(char data)
+{
+		
+	 int i;  
+	 for (i=7; i>=0; i--) {  
+		 gpio_set(spi_panel_clk_gpio, 0);  
+		 gpio_set(spi_panel_data_gpio, (((data>>i)&BIT(0))<<1));  
+		// udelay(1);
+		 gpio_set(spi_panel_clk_gpio, 2);
+		// udelay(1);	   
+	 }	
+	return 0;
+}
+void mdss_spi_write (unsigned char* buf, int len)  
+{  
+	int i;	
+	gpio_set(spi_panel_cs_gpio, 0);
+	//udelay(1);
+	for (i=0; i<len; i++)  
+		spi_write_byte(buf[i]);  
+	//udelay(1);  
+	gpio_set(spi_panel_cs_gpio, 2);
+}  
+
+static int spidev_write_cmd(char cmd)
+{
+    char buf[2];
+
+    buf[0] = cmd;
+
+    gpio_set(spi_panel_dc_gpio, 0);
+    mdss_spi_write(&buf[0], 1);
+    gpio_set(spi_panel_dc_gpio, 2);
+
+    return 0;
+}
+
+static int spidev_write_data(char data)
+{
+    char buf[2];
+    buf[0] = data;
+    gpio_set(spi_panel_dc_gpio, 2);
+
+    mdss_spi_write(&buf[0], 1);
+
+    return 0;
+
+}
+
+
+typedef struct gpio_pin{
+
+	char    *pin_source;
+	uint32_t pin_id;
+	uint32_t pin_strength;
+	uint32_t pin_direction;
+	uint32_t pin_pull;
+	uint32_t pin_state;
+};
+
+int mdss_spi_panel_init()
+{
+	gpio_tlmm_config(spi_panel_reset_gpio, 0,
+			1, 0,
+			3, 1);
+	mdelay(1);
+	gpio_tlmm_config(spi_panel_cs_gpio, 0,
+			1, 1,
+			2, 1);
+	mdelay(1);
+	gpio_tlmm_config(spi_panel_data_gpio, 0,
+			1, 0,
+			12, 1);
+	mdelay(1);
+	gpio_tlmm_config(spi_panel_clk_gpio, 0,
+			1, 0,
+			12, 1);
+	mdelay(1);
+	gpio_tlmm_config(spi_panel_dc_gpio, 0,
+			1, 0,
+			3, 1);
+	
+	mdelay(1);
+
+
+	//gpio_set(reset_gpio.pin_id, 2);
+
+#if 1
+	gpio_set(spi_panel_reset_gpio, 2);
+	gpio_set(spi_panel_dc_gpio, 1);
+	gpio_set(spi_panel_reset_gpio, 2);
+	mdelay(120);
+	gpio_set(spi_panel_reset_gpio, 0);
+	mdelay(120);
+	gpio_set(spi_panel_reset_gpio, 2);
+	mdelay(120);
+
+
+	spidev_write_cmd(0xfe);
+	spidev_write_cmd(0xef);
+	spidev_write_cmd(0x36);
+	spidev_write_data(0x48);
+	spidev_write_cmd(0x3a);
+	spidev_write_data(0x05);//RGB565
+	//spidev_write_data(0x06);//RGB666
+	spidev_write_cmd(0x35);
+	spidev_write_data(0x00);
+	//------------------------------end display control setting--------------------------------//
+	//------------------------------Power Control Registers Initial------------------------------//
+	spidev_write_cmd(0xa4);
+	spidev_write_data(0x44);
+	spidev_write_data(0x44);
+	spidev_write_cmd(0xa5);
+	spidev_write_data(0x42);
+	spidev_write_data(0x42);
+	spidev_write_cmd(0xaa);
+	spidev_write_data(0x88);
+	spidev_write_data(0x88);
+	spidev_write_cmd(0xe8);
+	//spidev_write_data(0x11);
+	//spidev_write_data(0x0b);
+	spidev_write_data(0x12);//54.1
+	//spidev_write_data(0x13);//46.9
+	spidev_write_data(0x40);
+	spidev_write_cmd(0xe3);
+	spidev_write_data(0x01);
+	spidev_write_data(0x10);
+	spidev_write_cmd(0xff);
+	spidev_write_data(0x61);
+	spidev_write_cmd(0xAC);
+	spidev_write_data(0x00);
+	spidev_write_cmd(0xa6);
+	spidev_write_data(0x2a);
+	spidev_write_data(0x2a);
+	spidev_write_cmd(0xa7);
+	spidev_write_data(0x2b);
+	spidev_write_data(0x2b);
+	spidev_write_cmd(0xa8);
+	spidev_write_data(0x18);
+	spidev_write_data(0x18);
+	spidev_write_cmd(0xa9);
+	spidev_write_data(0x2a);
+	spidev_write_data(0x2a);
+	spidev_write_cmd(0xad);
+	spidev_write_data(0x33);
+	spidev_write_cmd(0xaf);
+	spidev_write_data(0x55);
+	spidev_write_cmd(0xae);
+	spidev_write_data(0x2b);
+	//------------------------end Power Control Registers Initial------------------------------//
+	//----------------------------display window 240X320------------------------------------//
+	spidev_write_cmd(0x2a);
+	spidev_write_data(0x00);
+	spidev_write_data(0x00);
+	spidev_write_data(0x00);
+	spidev_write_data(0xef);
+	spidev_write_cmd(0x2b);
+	spidev_write_data(0x00);
+	spidev_write_data(0x00);
+	spidev_write_data(0x01);
+	spidev_write_data(0x3f);
+	spidev_write_cmd(0x2c);
+	//----------------------------------end display window ----------------------------------------//
+	//----------------------------------------gamma setting-----------------------------------------//
+	spidev_write_cmd(0xf0);
+	spidev_write_data(0x2);
+	spidev_write_data(0x2);
+	spidev_write_data(0x0);
+	spidev_write_data(0x8);
+	spidev_write_data(0xC);
+	spidev_write_data(0x10);
+	spidev_write_cmd(0xf1);
+	spidev_write_data(0x1);
+	spidev_write_data(0x0);
+	spidev_write_data(0x0);
+	spidev_write_data(0x14);
+	spidev_write_data(0x1D);
+	spidev_write_data(0xE);
+	spidev_write_cmd(0xf2);
+	spidev_write_data(0x10);
+	spidev_write_data(0x9);
+	spidev_write_data(0x37);
+	spidev_write_data(0x4);
+	spidev_write_data(0x4);
+	spidev_write_data(0x48);
+	spidev_write_cmd(0xf3);
+	spidev_write_data(0x10);
+	spidev_write_data(0xB);
+	spidev_write_data(0x3F);
+	spidev_write_data(0x5);
+	spidev_write_data(0x5);
+	spidev_write_data(0x4E);
+	spidev_write_cmd(0xf4);
+	spidev_write_data(0xD);
+	spidev_write_data(0x19);
+	spidev_write_data(0x17);
+	spidev_write_data(0x1D);
+	spidev_write_data(0x1E);
+	spidev_write_data(0xF);
+	spidev_write_cmd(0xf5);
+	spidev_write_data(0x6);
+	spidev_write_data(0x12);
+	spidev_write_data(0x13);
+	spidev_write_data(0x1A);
+	spidev_write_data(0x1B);
+	spidev_write_data(0xF);
+	//------------------------------------end gamma setting-----------------------------------------//
+	spidev_write_cmd(0x11);
+	mdelay(120);
+	spidev_write_cmd(0x29);
+	spidev_write_cmd(0x2c);
+
+
+#endif
+	return 0;
+}
+
 
 int msm_display_init(struct msm_fb_panel_data *pdata)
 {
@@ -248,6 +474,30 @@ int msm_display_init(struct msm_fb_panel_data *pdata)
 
 	if (ret)
 		goto msm_display_init_out;
+
+	{
+		char *tx_buf1;
+		int data_size = 240*320*2;
+		tx_buf1 = malloc(data_size);
+
+		mdss_spi_panel_init();
+
+		mdelay(120);
+		{
+				int i,j,k;	 
+				k = 0;
+				for (i = 0; i < 320; i++) { 	   
+					for (j = 0; j < 240; j++) { 		   
+						tx_buf1[k] = 0xF8;
+						tx_buf1[k+1] = 0x00;
+						k = k+2;
+					}	 
+				}
+		}
+		mdss_spi_write(tx_buf1, data_size);
+		free(tx_buf1);
+	}
+
 
 	/* Enable clock */
 	if (pdata->clk_func)

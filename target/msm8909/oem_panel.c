@@ -380,7 +380,8 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 	case HW_PLATFORM_SURF:
 	case HW_PLATFORM_MTP:
 	case HW_PLATFORM_RCM:
-		panel_id = HX8394D_480P_VIDEO_PANEL;
+		//panel_id = HX8394D_480P_VIDEO_PANEL;
+		panel_id = HX8394D_720P_VIDEO_PANEL;
 		break;
 	case HW_PLATFORM_QRD:
 		switch (platform_subtype) {
@@ -408,6 +409,7 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 		return PANEL_TYPE_UNKNOWN;
 	}
 
+		panel_id = HX8394D_720P_VIDEO_PANEL;
 panel_init:
 	phy_db->regulator_mode = DSI_PHY_REGULATOR_LDO_MODE;
 	return init_panel_data(panelstruct, pinfo, phy_db);
