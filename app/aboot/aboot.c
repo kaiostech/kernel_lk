@@ -1701,6 +1701,17 @@ int boot_linux_from_flash(void)
 				return -1;
 			}
 
+			if(dt_entry.offset > (UINT_MAX - dt_entry.size)) {
+				dprintf(CRITICAL, "ERROR: Device tree contents are Invalid\n");
+				return -1;
+			}
+
+			/* Ensure we are not overshooting dt_size with the dt_entry selected */
+			if ((dt_entry.offset + dt_entry.size) > dt_size) {
+				dprintf(CRITICAL, "ERROR: Device tree contents are Invalid\n");
+				return -1;
+			}
+
 			best_match_dt_addr = (unsigned char *)table + dt_entry.offset;
 			dtb_size = dt_entry.size;
 			memmove((void *)hdr->tags_addr, (char *)best_match_dt_addr, dtb_size);
@@ -2422,6 +2433,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	// Initialize boot state before trying to verify boot.img
 #if VERIFIED_BOOT
 	boot_verifier_init();
+#endif
 	/* Handle overflow if the input image size is greater than
 	 * boot image buffer can hold
 	 */
@@ -2430,7 +2442,6 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 		fastboot_fail("booimage: size is greater than boot image buffer can hold");
 		goto boot_failed;
 	}
-#endif
 
 	/* Verify the boot image
 	 * device & page_size are initialized in aboot_init
