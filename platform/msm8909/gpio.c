@@ -128,3 +128,43 @@ void gpio_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id)
 		ASSERT(0);
 	}
 }
+
+void gpio_config_blsp_spi(uint8_t blsp_id, uint8_t qup_id)
+{
+	if(blsp_id == BLSP_ID_1) {
+		switch (qup_id) {
+
+			case QUP_ID_4:
+				/* configure SPI MOSI gpio */
+				gpio_tlmm_config(16, 1, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_16MA, GPIO_DISABLE);
+
+					/* configure SPI MISO gpio */
+				gpio_tlmm_config(17, 1, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_16MA, GPIO_DISABLE);
+
+				/* configure SPI CS_N gpio */
+				gpio_tlmm_config(18, 1, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_16MA, GPIO_DISABLE);
+
+				/* configure SPI CLK gpio */
+				gpio_tlmm_config(19, 1, GPIO_OUTPUT, GPIO_NO_PULL,
+					GPIO_16MA, GPIO_DISABLE);
+			break;
+			case QUP_ID_0:
+			case QUP_ID_1:
+
+			case QUP_ID_2:
+
+			case QUP_ID_3:
+
+			case QUP_ID_5:
+			default:
+				dprintf(CRITICAL, "Incorrect QUP id %d\n",qup_id);
+				ASSERT(0);
+		};
+	} else {
+		dprintf(CRITICAL, "Incorrect BLSP id %d\n",blsp_id);
+		ASSERT(0);
+	}
+}
