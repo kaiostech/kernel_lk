@@ -1216,7 +1216,7 @@ uint32_t is_secure_boot_enable()
 	*/
 	if(!ret) {
 
-		if((resp[0] & 0x1) || (resp[0] & 0x4))
+		if(!(resp[0] & 0x5))
 			ret = 1;
 	} else
 		dprintf(CRITICAL, "scm call is_secure_boot_enable failed\n");
