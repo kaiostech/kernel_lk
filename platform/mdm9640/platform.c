@@ -156,17 +156,17 @@ addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr)
 }
 
 
-bool platform_is_mdmcalifornium()
+bool platform_is_mdm9650()
 {
 	uint32_t platform_id = board_platform_id();
 	bool ret;
 
 	switch(platform_id)
 	{
-		case MDMCALIFORNIUM1:
-		case MDMCALIFORNIUM2:
-		case MDMCALIFORNIUM3:
-		case MDMCALIFORNIUM4:
+		case MDM9650:
+		case MDM9655:
+		case MDM9250:
+		case MDM9255:
 				ret = true;
 				break;
 		default:
@@ -198,7 +198,7 @@ uint32_t platform_boot_config()
 {
 	uint32_t boot_config;
 
-	if (platform_is_mdmcalifornium() || platform_is_sdxhedgehog())
+	if (platform_is_mdm9650() || platform_is_sdxhedgehog())
 		boot_config = BOOT_CONFIG_REG_V2;
 	/* Else the platform is 9x45 */
 	else if (board_soc_version() >= 0x20000)
