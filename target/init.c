@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015,2017, The Linux Foundation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -174,6 +174,11 @@ __WEAK uint8_t target_panel_auto_detect_enabled()
 }
 
 __WEAK uint8_t target_is_edp()
+{
+	return 0;
+}
+
+__WEAK uint8_t target_is_spi()
 {
 	return 0;
 }
