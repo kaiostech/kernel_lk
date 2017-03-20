@@ -1,8 +1,8 @@
 /*
+ * Copyright (c) 2009-2013, 2017, The Linux Foundation. All rights reserved.
+ *
  * Copyright (c) 2008, Google Inc.
  * All rights reserved.
- *
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,7 +11,7 @@
  *    notice, this list of conditions and the following disclaimer.
  *  * Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the 
+ *    the documentation and/or other materials provided with the
  *    distribution.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -21,7 +21,7 @@
  * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED 
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
  * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
@@ -225,11 +225,10 @@ void display_image_on_screen()
 		fbimg = &default_fbimg;
 		fbimg->header.width = SPLASH_IMAGE_HEIGHT;
 		fbimg->header.height = SPLASH_IMAGE_WIDTH;
-#if DISPLAY_TYPE_MIPI
-		fbimg->image = (unsigned char *)imageBuffer_rgb888;
-#else
-		fbimg->image = (unsigned char *)imageBuffer;
-#endif
+		if (config->bpp == 16)
+			fbimg->image = (unsigned char *)imageBuffer;
+		else
+			fbimg->image = (unsigned char *)imageBuffer_rgb888;
 	}
 
 	fbcon_putImage(fbimg, flag);
@@ -263,56 +262,39 @@ void fbcon_putImage(struct fbimage *fbimg, bool flag)
 	total_y = config->height;
 	bytes_per_bpp = ((config->bpp) / 8);
 
-#if DISPLAY_TYPE_MIPI
-	if (bytes_per_bpp == 3)
-	{
-		if(flag) {
-			if (header->width == config->width && header->height == config->height)
-				return;
-			else {
-				logo_base = (unsigned char *)config->base + LOGO_IMG_OFFSET;
-				if (header->width > config->width) {
-					width = config->width;
-					pitch = header->width;
-					logo_base += (header->width - config->width) / 2 * bytes_per_bpp;
-				} else {
-					width = pitch = header->width;
-				}
-
-				if (header->height > config->height) {
-					height = config->height;
-					logo_base += (header->height - config->height) / 2 * pitch * bytes_per_bpp;
-				} else {
-					height = header->height;
-				}
+	if(flag) {
+		if (header->width == config->width && header->height == config->height)
+			return;
+		else {
+			logo_base = (unsigned char *)config->base + LOGO_IMG_OFFSET;
+			if (header->width > config->width) {
+				width = config->width;
+				pitch = header->width;
+				logo_base += (header->width - config->width) / 2 * bytes_per_bpp;
+			} else {
+				width = pitch = header->width;
 			}
-		}
 
-		image_base = ((((total_y/2) - (height / 2) ) *
-				(config->width)) + (total_x/2 - (width / 2)));
-		for (i = 0; i < height; i++) {
-			memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
-				logo_base + (i * pitch * bytes_per_bpp), width * bytes_per_bpp);
+			if (header->height > config->height) {
+				height = config->height;
+				logo_base += (header->height - config->height) / 2 * pitch * bytes_per_bpp;
+			} else {
+				height = header->height;
+			}
 		}
 	}
 
-	fbcon_flush();
+	image_base = ((((total_y/2) - (height / 2) ) *
+			(config->width)) + (total_x/2 - (width / 2)));
+	for (i = 0; i < height; i++) {
+		memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
+			logo_base + (i * pitch * bytes_per_bpp), width * bytes_per_bpp);
+	}
 
 #if DISPLAY_MIPI_PANEL_NOVATEK_BLUE
 	if(is_cmd_mode_enabled())
         mipi_dsi_cmd_mode_trigger();
 #endif
 
-#else
-    if (bytes_per_bpp == 2)
-    {
-        for (i = 0; i < header->width; i++)
-        {
-            memcpy (config->base + ((image_base + (i * (config->width))) * bytes_per_bpp),
-		   fbimg->image + (i * header->height * bytes_per_bpp),
-		   header->height * bytes_per_bpp);
-        }
-    }
     fbcon_flush();
-#endif
 }
