@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, 2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,7 +45,8 @@ enum {
 	PANEL_TYPE_UNKNOWN,
 	PANEL_TYPE_DSI,
 	PANEL_TYPE_EDP,
-	PANEL_TYPE_HDMI
+	PANEL_TYPE_HDMI,
+	PANEL_TYPE_SPI
 };
 
 /*---------------------------------------------------------------------------*/
@@ -155,6 +156,12 @@ typedef struct panel_timing {
 	uint8_t dsi_dma_trigger;
 	uint8_t tclk_post;
 	uint8_t tclk_pre;
+};
+
+typedef struct spi_panel_config {
+	uint32_t dc_gpio;
+	uint32_t spi_blsp_id;
+	uint32_t spi_qup_id;
 };
 
 enum {
