@@ -50,6 +50,7 @@
 #define WRITEBACK_PANEL		10	/* Wifi display */
 #define LVDS_PANEL		11	/* LVDS */
 #define EDP_PANEL		12	/* EDP */
+#define SPI_PANEL		13	/* SPI */
 
 enum mdss_mdp_pipe_type {
 	MDSS_MDP_PIPE_TYPE_VIG,
@@ -83,6 +84,17 @@ struct lcd_panel_info {
 	uint32_t hw_vsync_mode;
 	uint32_t vsync_notifier_period;
 	uint32_t rev;
+};
+
+struct mdss_spi_cmd {
+	int size;
+	char *payload;
+	int wait;
+};
+
+struct spi_panel_info {
+	int num_of_panel_cmds;
+	struct mdss_spi_cmd *panel_cmds;
 };
 
 struct hdmi_panel_info {
@@ -249,6 +261,7 @@ struct msm_panel_info {
 	struct lvds_panel_info lvds;
 	struct hdmi_panel_info hdmi;
 	struct edp_panel_info edp;
+	struct spi_panel_info spi;
 
 	int (*on) (void);
 	int (*off) (void);

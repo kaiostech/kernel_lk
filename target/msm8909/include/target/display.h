@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014, 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -57,6 +57,10 @@ static struct gpio_pin enn_gpio = {
   "msmgpio", 10, 3, 1, 0, 1
 };
 
+static struct gpio_pin dc_gpio = {
+  "msmgpio", 110, 3, 1, 0, 1
+};
+
 static struct gpio_pin te_gpio = {
   0, 0, 0, 0, 0, 0
 };
@@ -107,5 +111,8 @@ static const uint32_t panel_physical_ctrl[] = {
 #define MIPI_VSYNC_PULSE_WIDTH       4
 #define MIPI_VSYNC_BACK_PORCH_LINES  3
 #define MIPI_VSYNC_FRONT_PORCH_LINES 9
+
+#define SPI_BLSP_ID                  1 /* BLSP_ID_1 */
+#define SPI_QUP_ID                   4 /* QUP_ID_4 */
 
 #endif

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -361,11 +361,14 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 	return ret;
 }
 
-int target_ldo_ctrl(uint8_t enable)
+int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 {
-	if (enable)
-		regulator_enable();     /* L2, L6, and L17 */
-
+	if (enable){
+		if (pinfo->type == SPI_PANEL)
+			spi_panel_regulator_enable();	 /* L6, and L17 */
+		else
+			regulator_enable();     /* L2, L6, and L17 */
+	}
 	return NO_ERROR;
 }
 
