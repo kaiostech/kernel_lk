@@ -512,12 +512,9 @@ int target_cont_splash_screen()
 		switch (board_hardware_id()) {
 		case HW_PLATFORM_SURF:
 		case HW_PLATFORM_MTP:
+		case HW_PLATFORM_QRD:
 		case HW_PLATFORM_RCM:
 			splash_screen = 1;
-			break;
-		case HW_PLATFORM_QRD:
-			if(MSM8905 != board_platform_id())
-				splash_screen = 1;
 			break;
 		default:
 			splash_screen = 0;
