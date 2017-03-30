@@ -6,6 +6,7 @@ OBJS += \
 	$(LOCAL_DIR)/tests.o \
 	$(LOCAL_DIR)/thread_tests.o \
 	$(LOCAL_DIR)/printf_tests.o \
-	$(LOCAL_DIR)/i2c_tests.o \
+	$(LOCAL_DIR)/i2c_test.o \
+	$(LOCAL_DIR)/spi_test.o \
 	$(LOCAL_DIR)/adc_tests.o \
 	$(LOCAL_DIR)/kauth_test.o

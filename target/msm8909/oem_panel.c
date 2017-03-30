@@ -47,6 +47,7 @@
 #include "include/panel_hx8379c_fwvga_video.h"
 #include "include/panel_hx8379c_hvga_video.h"
 #include "include/panel_ili9488_hvga_video.h"
+#include "include/panel_gc9305_qvga_spi_cmd.h"
 
 #define DISPLAY_MAX_PANEL_DETECTION 0
 #define ILI9806E_FWVGA_VIDEO_PANEL_POST_INIT_DELAY 68
@@ -73,6 +74,7 @@ enum {
 	HX8394D_QHD_VIDEO_PANEL,
 	HX8379C_FWVGA_VIDEO_PANEL,
 	HX8379C_HVGA_VIDEO_PANEL,
+	GC9305_QVGA_SPI_CMD_PANEL,
 	UNKNOWN_PANEL
 };
 
@@ -91,6 +93,7 @@ static struct panel_list supp_panels[] = {
 	{"hx8394d_qhd_video", HX8394D_QHD_VIDEO_PANEL},
 	{"hx8379c_fwvga_video",HX8379C_FWVGA_VIDEO_PANEL},
 	{"hx8379c_hvga_video", HX8379C_HVGA_VIDEO_PANEL},
+	{"gc9305_qvga_cmd", GC9305_QVGA_SPI_CMD_PANEL},
 };
 
 static uint32_t panel_id;
@@ -313,6 +316,19 @@ static int init_panel_data(struct panel_struct *panelstruct,
 					hx8379c_fwvga_video_timings, TIMING_SIZE);
 		pinfo->mipi.signature = HX8379C_FWVGA_VIDEO_SIGNATURE;
 		break;
+	case GC9305_QVGA_SPI_CMD_PANEL:
+		panelstruct->paneldata    = &gc9305_qvga_cmd_panel_data;
+		panelstruct->panelres     = &gc9305_qvga_cmd_panel_res;
+		panelstruct->color        = &gc9305_qvga_cmd_color;
+		panelstruct->panelresetseq
+					= &gc9305_qvga_cmd_reset_seq;
+		panelstruct->backlightinfo = &gc9305_qvga_cmd_backlight;
+		pinfo->spi.panel_cmds
+					= gc9305_qvga_cmd_on_command;
+		pinfo->spi.num_of_panel_cmds
+					= GC9305_QVGA_CMD_ON_COMMAND;
+		pan_type = PANEL_TYPE_SPI;
+		break;
 	case HX8379C_HVGA_VIDEO_PANEL:
 		panelstruct->paneldata    = &hx8379c_hvga_video_panel_data;
 		panelstruct->panelres     = &hx8379c_hvga_video_panel_res;
@@ -385,7 +401,10 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 	case HW_PLATFORM_QRD:
 		switch (platform_subtype) {
 			case QRD_SKUA:
-				panel_id = HX8379A_FWVGA_SKUA_VIDEO_PANEL;
+				if (MSM8905 == board_platform_id())
+					panel_id = GC9305_QVGA_SPI_CMD_PANEL;
+				else
+					panel_id = HX8379A_FWVGA_SKUA_VIDEO_PANEL;
 				break;
 			case HW_PLATFORM_SUBTYPE_QRD_RUGGED:
 				panel_id = ILI9488_HVGA_VIDEO_PANEL;
