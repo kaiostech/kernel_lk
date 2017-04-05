@@ -454,6 +454,7 @@ unsigned char *update_cmdline(const char * cmdline)
 			break;
 	}
 
+#if ENABLE_DISPLAY
 	if (cmdline) {
 		if ((strstr(cmdline, DISPLAY_DEFAULT_PREFIX) == NULL) &&
 			target_display_panel_node(display_panel_buf,
@@ -462,6 +463,7 @@ unsigned char *update_cmdline(const char * cmdline)
 			cmdline_len += strlen(display_panel_buf);
 		}
 	}
+#endif
 
 	if (target_warm_boot()) {
 		warm_boot = true;
