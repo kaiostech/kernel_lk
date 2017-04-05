@@ -232,6 +232,10 @@ int msm_display_on()
 		ret = mdss_spi_on(pinfo, &(panel->fb));
 		if (ret)
 			goto msm_display_on_out;
+		ret = mdss_spi_cmd_post_on(pinfo);
+		if (ret)
+			goto msm_display_on_out;
+
 		break;
 	default:
 		return ERR_INVALID_ARGS;
