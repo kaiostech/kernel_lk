@@ -2,7 +2,7 @@
  * Copyright (c) 2009, Google Inc.
  * All rights reserved.
  *
- * Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2016, 2017 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -432,11 +432,11 @@ enum {
 	FSM9916  = 276,
 	APQ8076  = 277,
 	MSM8976  = 278,
-	MDMCALIFORNIUM1  = 279,
-	MDMCALIFORNIUM2  = 283,
-	MDMCALIFORNIUM3  = 284,
-	MDMCALIFORNIUM4  = 285,
-	MDMCALIFORNIUM5  = 286,
+	MDM9650  = 279,
+	MDM9655  = 283,
+	MDM9250  = 284,
+	MDM9255  = 285,
+	MDM9350  = 286,
 	APQ8052  = 289,
 	MDM9607 = 290,
 	MDM8207  = 296,
