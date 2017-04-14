@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -495,6 +495,30 @@ uint8_t target_panel_auto_detect_enabled()
 	return ret;
 }
 
+uint8_t target_is_spi()
+{
+	uint32_t platform = board_platform_id();
+	uint32_t hw_id = board_hardware_id();
+	uint8_t is_spi_panel = 0;
+
+	switch(platform) {
+	case MSM8905:
+		switch (hw_id) {
+		case HW_PLATFORM_QRD:
+			is_spi_panel = 1;
+			break;
+		default:
+			is_spi_panel = 0;
+			break;
+		}
+		break;
+	default:
+		is_spi_panel = 0;
+		break;
+	}
+	return is_spi_panel;
+}
+
 static uint8_t splash_override;
 /* Returns 1 if target supports continuous splash screen. */
 int target_cont_splash_screen()
@@ -504,9 +528,12 @@ int target_cont_splash_screen()
 		switch (board_hardware_id()) {
 		case HW_PLATFORM_SURF:
 		case HW_PLATFORM_MTP:
-		case HW_PLATFORM_QRD:
 		case HW_PLATFORM_RCM:
 			splash_screen = 1;
+			break;
+		case HW_PLATFORM_QRD:
+			if(MSM8905 != board_platform_id())
+				splash_screen = 1;
 			break;
 		default:
 			splash_screen = 0;

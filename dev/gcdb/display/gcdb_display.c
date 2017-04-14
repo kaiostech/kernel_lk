@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, 2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -216,6 +216,8 @@ bool gcdb_display_cmdline_arg(char *panel_name, char *pbuf, uint16_t buf_size)
 		} else {
 			if (target_is_edp())
 				default_str = "0:edp:";
+			else if (target_is_spi())
+				default_str = "0:spi:0";
 			else
 				default_str = "0:dsi:0:";
 
