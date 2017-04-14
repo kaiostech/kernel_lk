@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, 2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,6 +51,7 @@
 #include "include/panel_auo_qvga_cmd.h"
 #include "include/panel_auo_cx_qvga_cmd.h"
 #include "include/panel_hx8394f_720p_video.h"
+#include "include/panel_gc9305_qvga_spi_cmd.h"
 
 #define DISPLAY_MAX_PANEL_DETECTION 0
 #define ILI9806E_FWVGA_VIDEO_PANEL_POST_INIT_DELAY 68
@@ -89,6 +90,7 @@ enum {
     HX8394D_WVGA_VIDEO_PANEL,
 	HX8394D_HVGA_VIDEO_PANEL,
 	HX8394F_720P_VIDEO_PANEL,
+	GC9305_QVGA_SPI_CMD_PANEL,
 	UNKNOWN_PANEL
 };
 
@@ -111,6 +113,7 @@ static struct panel_list supp_panels[] = {
     {"hx8394d_wvga_video", HX8394D_WVGA_VIDEO_PANEL},
 	{"hx8394d_hvga_video", HX8394D_HVGA_VIDEO_PANEL},
 	{"hx8394f_720p_video", HX8394F_720P_VIDEO_PANEL},
+	{"gc9305_qvga_cmd", GC9305_QVGA_SPI_CMD_PANEL},
 };
 
 static uint32_t panel_id;
@@ -438,6 +441,19 @@ static int init_panel_data(struct panel_struct *panelstruct,
 					hx8394f_720p_video_timings, TIMING_SIZE);
 		pinfo->mipi.signature = HX8394F_720P_VIDEO_SIGNATURE;
 		break;
+	case GC9305_QVGA_SPI_CMD_PANEL:
+		panelstruct->paneldata    = &gc9305_qvga_cmd_panel_data;
+		panelstruct->panelres     = &gc9305_qvga_cmd_panel_res;
+		panelstruct->color        = &gc9305_qvga_cmd_color;
+		panelstruct->panelresetseq
+					= &gc9305_qvga_cmd_reset_seq;
+		panelstruct->backlightinfo = &gc9305_qvga_cmd_backlight;
+		pinfo->spi.panel_cmds
+					= gc9305_qvga_cmd_on_command;
+		pinfo->spi.num_of_panel_cmds
+					= GC9305_QVGA_CMD_ON_COMMAND;
+		pan_type = PANEL_TYPE_SPI;
+		break;
 	case UNKNOWN_PANEL:
 	default:
 		memset(panelstruct, 0, sizeof(struct panel_struct));
@@ -507,10 +523,8 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 	case HW_PLATFORM_QRD:
 		switch (platform_subtype) {
 			case QRD_SKUA:
-				target_id = board_target_id();
-				plat_hw_ver_major = ((target_id >> 16) & 0xFF);
-				if (plat_hw_ver_major == 6)
-					panel_id = HX8394F_720P_VIDEO_PANEL;
+				if (MSM8905 == board_platform_id())
+					panel_id = GC9305_QVGA_SPI_CMD_PANEL;
 				else
 					panel_id = HX8379A_FWVGA_SKUA_VIDEO_PANEL;
 				break;
