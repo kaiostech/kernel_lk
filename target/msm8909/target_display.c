@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -272,9 +272,6 @@ int target_panel_clock(uint8_t enable, struct msm_panel_info *pinfo)
 				pll_data->pclk_n,
 				pll_data->pclk_d);
 	} else if(!target_cont_splash_screen()) {
-		dprintf(CRITICAL,
-			"%s: continue splash is disabled",
-			__func__);
 		gcc_dsi_clocks_disable();
 		mdp_clock_disable();
 		mdss_bus_clocks_disable();
@@ -313,7 +310,6 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 	uint32_t hw_subtype = board_hardware_subtype();
 	uint32_t target_id = 0, plat_hw_ver_major = 0;
 
-	dprintf(SPEW, "target_cont_splash_screen() = %d\n",target_cont_splash_screen());
 	if (enable) {
 		if ((hw_id == HW_PLATFORM_QRD) && (hw_subtype == 0)) {
 			target_id = board_target_id();
@@ -348,7 +344,6 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 			mdelay(resetseq->sleep[i]);
 		}
 	} else if(!target_cont_splash_screen()) {
-	dprintf(SPEW, "splash is disable\n");
 		gpio_set(reset_gpio.pin_id, 0);
 		if (pinfo->mipi.use_enable_gpio)
 			gpio_set(enable_gpio.pin_id, 0);
@@ -366,11 +361,14 @@ int target_panel_reset(uint8_t enable, struct panel_reset_sequence *resetseq,
 	return ret;
 }
 
-int target_ldo_ctrl(uint8_t enable)
+int target_ldo_ctrl(uint8_t enable, struct msm_panel_info *pinfo)
 {
-	if (enable)
-		regulator_enable();     /* L2, L6, and L17 */
-
+	if (enable){
+		if (pinfo->type == SPI_PANEL)
+			spi_panel_regulator_enable();	 /* L6, and L17 */
+		else
+			regulator_enable();     /* L2, L6, and L17 */
+	}
 	return NO_ERROR;
 }
 

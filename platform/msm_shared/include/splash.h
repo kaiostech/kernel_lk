@@ -1,4 +1,4 @@
-/* Copyright (c) 2010,2015 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010,2015, 2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,7 +33,6 @@
 #define SPLASH_IMAGE_WIDTH     113
 #define SPLASH_IMAGE_HEIGHT    124
 
-#if (!DISPLAY_TYPE_MIPI)
 /* This image is (SPLASH_IMAGE_WIDTH x SPLASH_IMAGE_WIDTH) raw image */
 static char imageBuffer[] = {
 
@@ -3543,7 +3542,6 @@ static char imageBuffer[] = {
 
 };
 
-#else
 /* This image is 228x113 raw Image resembling QuIC logo*/
 
 static char imageBuffer_rgb888[] = {
@@ -8803,6 +8801,5 @@ static char imageBuffer_rgb888[] = {
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
 };
-#endif
 
 #endif
