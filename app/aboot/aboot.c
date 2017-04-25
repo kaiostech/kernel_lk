@@ -65,6 +65,8 @@
 
 #include "scm.h"
 
+static inline uint64_t validate_partition_size();
+
 /* fastboot command function pointer */
 typedef void (*fastboot_cmd_fn) (const char *, void *, unsigned);
 
@@ -1849,6 +1851,12 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	struct ptentry *ptn;
 	struct ptable *ptable;
 	unsigned extra = 0;
+	uint64_t partition_size = 0;
+
+	if((uintptr_t)data > (UINT_MAX - sz)) {
+		fastboot_fail("Cannot flash: image header corrupt");
+                return;
+        }
 
 	ptable = flash_get_ptable();
 	if (ptable == NULL) {
@@ -1863,8 +1871,10 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	}
 
 	if (!strcmp(ptn->name, "boot") || !strcmp(ptn->name, "recovery")) {
-		if (memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
-			fastboot_fail("image is not a boot image");
+		if((sz > BOOT_MAGIC_SIZE) && (!memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE))) {
+			dprintf(INFO, "Verified the BOOT_MAGIC in image header  \n");
+		} else {
+			fastboot_fail("Image is not a boot image");
 			return;
 		}
 	}
@@ -1878,17 +1888,42 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 			extra = ((page_size >> 9) * 20);
 		else
 			extra = ((page_size >> 9) * 16);
-	} else
-		sz = ROUND_TO_PAGE(sz, page_mask);
+	}
+	else {
+		if (sz % page_size) {
+			fastboot_fail("Buffer size is not aligned to page_size");
+			return;
+		}
+	}
+
+	/*Checking partition_size for the possible integer overflow */
+	partition_size = validate_partition_size(ptn);
+
+	if (sz > partition_size) {
+		fastboot_fail("Image size too large");
+		return;
+	}
 
 	dprintf(INFO, "writing %d bytes to '%s'\n", sz, ptn->name);
 	if (flash_write(ptn, extra, data, sz)) {
-		fastboot_fail("flash write failure");
-		return;
+			fastboot_fail("flash write failure");
+			return;
 	}
 	dprintf(INFO, "partition '%s' updated\n", ptn->name);
 	fastboot_okay("");
 }
+
+
+static inline uint64_t validate_partition_size(struct ptentry *ptn)
+{
+	if (ptn->length && flash_num_pages_per_blk() && page_size) {
+		if ((ptn->length < ( UINT_MAX / flash_num_pages_per_blk())) && ((ptn->length * flash_num_pages_per_blk()) < ( UINT_MAX / page_size))) {
+			return ptn->length * flash_num_pages_per_blk() * page_size;
+		}
+        }
+	return 0;
+}
+
 
 void cmd_flash(const char *arg, void *data, unsigned sz)
 {
