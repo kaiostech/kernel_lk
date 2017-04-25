@@ -99,7 +99,10 @@ void write_device_info_mmc(device_info *dev);
 void write_device_info_flash(device_info *dev);
 static int aboot_save_boot_hash_mmc(uint32_t image_addr, uint32_t image_size);
 static int aboot_frp_unlock(char *pname, void *data, unsigned sz);
+static inline uint64_t validate_partition_size();
 bool pwr_key_is_pressed = false;
+unsigned bytes_to_round_page = 0;
+unsigned rounded_size = 0;
 
 /* fastboot command function pointer */
 typedef void (*fastboot_cmd_fn) (const char *, void *, unsigned);
@@ -3177,6 +3180,11 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	unsigned extra = 0;
 	uint64_t partition_size = 0;
 
+	if((uintptr_t)data > (UINT_MAX - sz)) {
+		fastboot_fail("Cannot flash: image header corrupt");
+                return;
+        }
+
 	ptable = flash_get_ptable();
 	if (ptable == NULL) {
 		fastboot_fail("partition table doesn't exist");
@@ -3192,8 +3200,10 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	}
 
 	if (!strcmp(ptn->name, "boot") || !strcmp(ptn->name, "recovery")) {
-		if (memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
-			fastboot_fail("image is not a boot image");
+		if((sz > BOOT_MAGIC_SIZE) && (!memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE))) {
+			dprintf(INFO, "Verified the BOOT_MAGIC in image header  \n");
+		} else {
+			fastboot_fail("Image is not a boot image");
 			return;
 		}
 	}
@@ -3204,14 +3214,29 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 		|| !strcmp(ptn->name, "recoveryfs")
 		|| !strcmp(ptn->name, "modem"))
 		extra = 1;
-	else
-		sz = ROUND_TO_PAGE(sz, page_mask);
+	else {
+		rounded_size = ROUNDUP(sz, page_size);
+		bytes_to_round_page = rounded_size - sz;
+		if (bytes_to_round_page) {
+			if (((uintptr_t)data + sz ) > (UINT_MAX - bytes_to_round_page)) {
+				fastboot_fail("Integer overflow detected");
+				return;
+			}
+			if (((uintptr_t)data + sz + bytes_to_round_page) >
+			((uintptr_t)target_get_scratch_address() + target_get_max_flash_size())) {
+				fastboot_fail("Buffer size is not aligned to page_size");
+				return;
+			}
+			else {
+				memset(data + sz, 0, bytes_to_round_page);
+				sz = rounded_size;
+			}
 
-	partition_size = (uint64_t)ptn->length * (uint64_t)flash_num_pages_per_blk() *  (uint64_t)flash_page_size();
-	if (partition_size > UINT_MAX) {
-		fastboot_fail("Invalid partition size");
-		return;
+		}
 	}
+
+	/*Checking partition_size for the possible integer overflow */
+	partition_size = validate_partition_size(ptn);
 
 	if (sz > partition_size) {
 		fastboot_fail("Image size too large");
@@ -3219,7 +3244,7 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	}
 
 	dprintf(INFO, "writing %d bytes to '%s'\n", sz, ptn->name);
-	if (!memcmp((void *)data, UBI_MAGIC, UBI_MAGIC_SIZE)) {
+	if ((sz > UBI_MAGIC_SIZE) && (!memcmp((void *)data, UBI_MAGIC, UBI_MAGIC_SIZE))) {
 		if (flash_ubi_img(ptn, data, sz)) {
 			fastboot_fail("flash write failure");
 			return;
@@ -3233,6 +3258,18 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	dprintf(INFO, "partition '%s' updated\n", ptn->name);
 	fastboot_okay("");
 }
+
+
+static inline uint64_t validate_partition_size(struct ptentry *ptn)
+{
+	if (ptn->length && flash_num_pages_per_blk() && page_size) {
+		if ((ptn->length < ( UINT_MAX / flash_num_pages_per_blk())) && ((ptn->length * flash_num_pages_per_blk()) < ( UINT_MAX / page_size))) {
+			return ptn->length * flash_num_pages_per_blk() * page_size;
+		}
+        }
+	return 0;
+}
+
 
 void cmd_flash(const char *arg, void *data, unsigned sz)
 {
