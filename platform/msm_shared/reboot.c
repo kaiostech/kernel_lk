@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015, 2017, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -37,6 +37,8 @@
 #include <stdlib.h>
 #include <reboot.h>
 #include <qtimer.h>
+
+extern int msm_display_backlight_off();
 
 #if USER_FORCE_RESET_SUPPORT
 /* Return 1 if it is a force resin triggered by user. */
@@ -138,6 +140,9 @@ void reboot_device(unsigned reboot_reason)
 		if (ret)
 			dprintf(CRITICAL , "Failed to halt pmic arbiter: %d\n", ret);
 	}
+
+
+	msm_display_backlight_off();
 
 	/* Drop PS_HOLD for MSM */
 	writel(0x00, MPM2_MPM_PS_HOLD);

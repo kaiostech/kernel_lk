@@ -33,9 +33,15 @@
 #include <mipi_dsi.h>
 #include <boot_stats.h>
 
+int msm_display_backlight_off();
 static struct msm_fb_panel_data *panel;
-
 extern int lvds_on(struct msm_fb_panel_data *pdata);
+
+int msm_display_backlight_off()
+{
+	if (panel->bl_func)
+		panel->bl_func(0);
+}
 
 static int msm_fb_alloc(struct fbcon_config *fb)
 {
