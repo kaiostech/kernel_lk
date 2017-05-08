@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -44,6 +44,7 @@
 #include <reboot.h>
 #include <../../../app/aboot/recovery.h>
 #include <../../../app/aboot/devinfo.h>
+#include <string.h>
 
 #define KEY_DETECT_FREQUENCY		50
 #define KEY_PRESS_TIMEOUT		5000
@@ -105,6 +106,7 @@ static void update_device_status(unsigned reason, int type)
 			/* wipe data */
 			struct recovery_message msg;
 
+			memset(&msg, 0, sizeof(msg));
 			snprintf(msg.recovery, sizeof(msg.recovery), "recovery\n--wipe_data");
 			write_misc(0, &msg, sizeof(msg));
 		}
