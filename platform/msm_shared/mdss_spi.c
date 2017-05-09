@@ -114,8 +114,12 @@ int mdss_spi_panel_init(struct msm_panel_info *pinfo)
 
 	while (cmd_count < pinfo->spi.num_of_panel_cmds) {
 
-		mdss_spi_write_cmd(pinfo->spi.panel_cmds[cmd_count].payload);
+		if(pinfo->spi.panel_cmds[cmd_count].cmds_post_tg){
+			cmd_count ++;
+			continue;
+		}
 
+		mdss_spi_write_cmd(pinfo->spi.panel_cmds[cmd_count].payload);
 		if (pinfo->spi.panel_cmds[cmd_count].size > 1)
 			mdss_spi_write_data(pinfo->spi.panel_cmds[cmd_count].payload + 1,
 					pinfo->spi.panel_cmds[cmd_count].size - 1);
@@ -140,4 +144,32 @@ int mdss_spi_on(struct msm_panel_info *pinfo, struct fbcon_config *fb)
 		dprintf(CRITICAL, "Send SPI frame data to panel failed\n");
 
 	return ret;
+}
+
+int mdss_spi_cmd_post_on(struct msm_panel_info *pinfo)
+{
+	int cmd_count = 0;
+
+	if (!dev) {
+		dprintf(CRITICAL, "SPI has not been initialized\n");
+		return -ENODEV;
+	}
+
+	while (cmd_count < pinfo->spi.num_of_panel_cmds) {
+
+		if(pinfo->spi.panel_cmds[cmd_count].cmds_post_tg){
+			mdss_spi_write_cmd(pinfo->spi.panel_cmds[cmd_count].payload);
+			if (pinfo->spi.panel_cmds[cmd_count].size > 1)
+				mdss_spi_write_data(
+						pinfo->spi.panel_cmds[cmd_count].payload + 1,
+						pinfo->spi.panel_cmds[cmd_count].size - 1);
+
+			if (pinfo->spi.panel_cmds[cmd_count].wait)
+				mdelay(pinfo->spi.panel_cmds[cmd_count].wait);
+		}
+
+		cmd_count ++;
+	}
+
+	return 0;
 }

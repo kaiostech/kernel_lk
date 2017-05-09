@@ -90,6 +90,7 @@ struct mdss_spi_cmd {
 	int size;
 	char *payload;
 	int wait;
+	uint8_t cmds_post_tg;
 };
 
 struct spi_panel_info {
