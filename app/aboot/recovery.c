@@ -416,6 +416,25 @@ out:
 	return 0;
 }
 
+/*
+ * set_recovery_cookie - Write cookie "boot-recovery" in misc partition
+ * upon image authentication failure.
+ **/
+
+int set_recovery_cookie()
+{
+	int ret=0;
+	struct recovery_message msg;
+
+	memset(&msg, 0, sizeof(msg));
+        strlcpy(msg.command, "boot-recovery", sizeof(msg.command));
+	if(target_is_emmc_boot())
+		ret=emmc_set_recovery_msg(&msg);
+	else
+		ret=set_recovery_message(&msg);
+	return ret;
+}
+
 static int read_misc(unsigned page_offset, void *buf, unsigned size)
 {
 	const char *ptn_name = "misc";

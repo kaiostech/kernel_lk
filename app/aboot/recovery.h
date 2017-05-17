@@ -79,6 +79,8 @@ int write_misc(unsigned page_offset, void *buf, unsigned size);
 int get_recovery_message(struct recovery_message *out);
 int set_recovery_message(const struct recovery_message *in);
 
+int set_recovery_cookie();
+
 int recovery_init (void);
 /* This function will look for the ffbm cookie in the misc partition.
  * Upon finding a valid cookie it will return 1 and place the cookie
