@@ -927,6 +927,18 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 	}
 #endif /* MDTP_SUPPORT */
 
+#if ENABLE_RECOVERY
+	if (!ret) {
+		if (!boot_into_recovery) {
+			/* Set the cookie in misc partition to boot into recovery kernel */
+			if(set_recovery_cookie())
+				dprintf(CRITICAL, "Failed to set the cookie in misc partition\n");
+			else
+				reboot_device (0);
+		}
+	}
+#endif
+
 #if USE_PCOM_SECBOOT
 	set_tamper_flag(device.is_tampered);
 #endif
@@ -935,17 +947,6 @@ static void verify_signed_bootimg(uint32_t bootimg_addr, uint32_t bootimg_size)
 	switch(boot_verify_get_state())
 	{
 		case RED:
-#if ENABLE_RECOVERY
-			if (!boot_into_recovery) {
-		 		dprintf(CRITICAL,
-					 "Device verification failed. Rebooting into recovery.\n");
-				if (set_recovery_cookie())
-					dprintf(CRITICAL,
-						"Failed to set the cookie in misc partition\n");
-				else
-					reboot_device(0);
-			}
-#endif
 
 #if FBCON_DISPLAY_MSG
 			display_bootverify_menu_thread(DISPLAY_MENU_RED);
