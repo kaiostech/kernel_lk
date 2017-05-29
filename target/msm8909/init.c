@@ -77,6 +77,7 @@
 #define CE_WRITE_PIPE_LOCK_GRP  0
 #define CE_ARRAY_SIZE           20
 
+extern int msm_display_backlight_off();
 extern void smem_ptable_init(void);
 extern void smem_add_modem_partitions(struct ptable *flash_ptable);
 void target_sdc_init();
@@ -405,6 +406,8 @@ void reboot_device(unsigned reboot_reason)
 		scm_dload_mode(NORMAL_MODE);
 
 	writel(reboot_reason, RESTART_REASON_ADDR);
+
+	msm_display_backlight_off();
 
 	/* For Reboot-bootloader and Dload cases do a warm reset
 	* For Reboot cases do a hard reset
