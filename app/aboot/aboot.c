@@ -2075,7 +2075,7 @@ static void set_device_unlock(int type, bool status)
 
 	/* wipe data */
 	struct recovery_message msg;
-
+	memset(&msg, 0, sizeof(msg));
 	snprintf(msg.recovery, sizeof(msg.recovery), "recovery\n--wipe_data");
 	write_misc(0, &msg, sizeof(msg));
 
@@ -2489,14 +2489,6 @@ void cmd_erase(const char *arg, void *data, unsigned sz)
 		cmd_erase_mmc(arg, data, sz);
 	else
 		cmd_erase_nand(arg, data, sz);
-}
-
-static uint32_t aboot_get_secret_key()
-{
-	/* 0 is invalid secret key, update this implementation to return
-	 * device specific unique secret key
-	 */
-	return 0;
 }
 
 void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
@@ -3195,7 +3187,7 @@ void cmd_oem_unlock_go(const char *arg, void *data, unsigned sz)
 
 		/* wipe data */
 		struct recovery_message msg;
-
+		memset(&msg, 0, sizeof(msg));
 		snprintf(msg.recovery, sizeof(msg.recovery), "recovery\n--wipe_data");
 		write_misc(0, &msg, sizeof(msg));
 
@@ -3207,20 +3199,24 @@ void cmd_oem_unlock_go(const char *arg, void *data, unsigned sz)
 
 static int aboot_frp_unlock(char *pname, void *data, unsigned sz)
 {
-	int ret = 1;
-	uint32_t secret_key;
-	char seckey_buffer[MAX_RSP_SIZE];
+	int ret=1;
+	bool authentication_success=false;
 
-	secret_key = aboot_get_secret_key();
-	if (secret_key)
+	/*
+		Authentication method not  implemented.
+
+		OEM to implement, authentication system which on successful validataion,
+		calls write_allow_oem_unlock() with is_allow_unlock.
+	*/
+#if 0
+	authentication_success = oem_specific_auth_mthd();
+#endif
+
+	if (authentication_success)
 	{
-		snprintf((char *) seckey_buffer, MAX_RSP_SIZE, "%x", secret_key);
-		if (!memcmp((void *)data, (void *)seckey_buffer, sz))
-		{
-			is_allow_unlock = true;
-			write_allow_oem_unlock(is_allow_unlock);
-			ret = 0;
-		}
+		is_allow_unlock = true;
+		write_allow_oem_unlock(is_allow_unlock);
+		ret = 0;
 	}
 	return ret;
 }
