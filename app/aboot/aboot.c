@@ -2363,6 +2363,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	uint32_t image_actual;
 	uint32_t dt_actual = 0;
 	uint32_t sig_actual = 0;
+	uint32_t sig_size = 0;
 	struct boot_img_hdr *hdr = NULL;
 	struct kernel64_hdr *kptr = NULL;
 	char *ptr = ((char*) data);
@@ -2417,17 +2418,23 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	image_actual = ADD_OF(image_actual, ramdisk_actual);
 	image_actual = ADD_OF(image_actual, dt_actual);
 
+	/* Checking to prevent oob access in read_der_message_length */
+	if (image_actual > sz) {
+		fastboot_fail("bootimage header fields are invalid");
+		goto boot_failed;
+	}
+	sig_size = sz - image_actual;
+
 	if (target_use_signed_kernel() && (!device.is_unlocked)) {
 		/* Calculate the signature length from boot image */
 		sig_actual = read_der_message_length(
-				(unsigned char*)(data + image_actual),sz);
+				(unsigned char*)(data + image_actual), sig_size);
 		image_actual = ADD_OF(image_actual, sig_actual);
-	}
 
-	/* sz should have atleast raw boot image */
-	if (image_actual > sz) {
-		fastboot_fail("bootimage: incomplete or not signed");
-		goto boot_failed;
+		if (image_actual > sz) {
+			fastboot_fail("bootimage header fields are invalid");
+			goto boot_failed;
+		}
 	}
 
 	// Initialize boot state before trying to verify boot.img
@@ -2710,14 +2717,6 @@ void cmd_erase(const char *arg, void *data, unsigned sz)
 		cmd_erase_mmc(arg, data, sz);
 	else
 		cmd_erase_nand(arg, data, sz);
-}
-
-static uint32_t aboot_get_secret_key()
-{
-	/* 0 is invalid secret key, update this implementation to return
-	 * device specific unique secret key
-	 */
-	return 0;
 }
 
 void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
@@ -3494,20 +3493,24 @@ void cmd_oem_unlock_go(const char *arg, void *data, unsigned sz)
 
 static int aboot_frp_unlock(char *pname, void *data, unsigned sz)
 {
-	int ret = 1;
-	uint32_t secret_key;
-	char seckey_buffer[MAX_RSP_SIZE];
+	int ret=1;
+	bool authentication_success=false;
 
-	secret_key = aboot_get_secret_key();
-	if (secret_key)
+	/*
+		Authentication method not  implemented.
+
+		OEM to implement, authentication system which on successful validataion,
+		calls write_allow_oem_unlock() with is_allow_unlock.
+	*/
+#if 0
+	authentication_success = oem_specific_auth_mthd();
+#endif
+
+	if (authentication_success)
 	{
-		snprintf((char *) seckey_buffer, MAX_RSP_SIZE, "%x", secret_key);
-		if (!memcmp((void *)data, (void *)seckey_buffer, sz))
-		{
-			is_allow_unlock = true;
-			write_allow_oem_unlock(is_allow_unlock);
-			ret = 0;
-		}
+		is_allow_unlock = true;
+		write_allow_oem_unlock(is_allow_unlock);
+		ret = 0;
 	}
 	return ret;
 }
@@ -3624,6 +3627,17 @@ int splash_screen_flash()
 		}
 
 		uint8_t *base = (uint8_t *) fb_display->base;
+		uint32_t fb_size = ROUNDUP(fb_display->width *
+					fb_display->height *
+					(fb_display->bpp / 8), 4096);
+		uint32_t splash_size = ((((header->width * header->height *
+					fb_display->bpp/8) + 511) >> 9) << 9);
+
+		if (splash_size > fb_size) {
+			dprintf(CRITICAL, "ERROR: Splash image size invalid\n");
+			return -1;
+		}
+
 		if (flash_read(ptn + LOGO_IMG_HEADER_SIZE, 0,
 			(uint32_t *)base,
 			((((header->width * header->height * fb_display->bpp/8) + 511) >> 9) << 9))) {
@@ -3696,6 +3710,15 @@ int splash_screen_mmc()
 			if ((header->width != fb_display->width)
 						|| (header->height != fb_display->height))
 				fbcon_clear();
+
+			uint32_t fb_size = ROUNDUP(fb_display->width *
+					fb_display->height *
+					(fb_display->bpp / 8), 4096);
+
+			if (readsize > fb_size) {
+				dprintf(CRITICAL, "ERROR: Splash image size invalid\n");
+				return -1;
+			}
 
 			if (mmc_read(ptn + blocksize, (uint32_t *)(base + blocksize), readsize)) {
 				dprintf(CRITICAL, "ERROR: Cannot read splash image from partition\n");
