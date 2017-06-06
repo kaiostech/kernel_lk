@@ -44,6 +44,7 @@
 #include <reboot.h>
 #include <../../../app/aboot/recovery.h>
 #include <../../../app/aboot/devinfo.h>
+#include <string.h>
 
 #define KEY_DETECT_FREQUENCY		50
 #define KEY_PRESS_TIMEOUT		5000
@@ -105,7 +106,7 @@ static void update_device_status(unsigned reason, int type)
 			type == DISPLAY_MENU_UNLOCK_CRITICAL) {
 			/* wipe data */
 			struct recovery_message msg;
-
+			memset(&msg, 0, sizeof(msg));
 			snprintf(msg.recovery, sizeof(msg.recovery), "recovery\n--wipe_data");
 			write_misc(0, &msg, sizeof(msg));
 		}
