@@ -48,6 +48,7 @@
 #include <target.h>
 #include <mmc.h>
 #include <partition_parser.h>
+#include <ab_partition_parser.h>
 #include <platform.h>
 #include <crypto_hash.h>
 #include <malloc.h>
@@ -105,10 +106,10 @@ void write_device_info_mmc(device_info *dev);
 void write_device_info_flash(device_info *dev);
 static int aboot_save_boot_hash_mmc(uint32_t image_addr, uint32_t image_size);
 static int aboot_frp_unlock(char *pname, void *data, unsigned sz);
+static inline uint64_t validate_partition_size();
 bool pwr_key_is_pressed = false;
-
 static bool is_systemd_present=false;
-
+static void publish_getvar_multislot_vars();
 /* fastboot command function pointer */
 typedef void (*fastboot_cmd_fn) (const char *, void *, unsigned);
 
@@ -182,6 +183,9 @@ static const char *baseband_dsda2   = " androidboot.baseband=dsda2";
 static const char *baseband_sglte2  = " androidboot.baseband=sglte2";
 static const char *warmboot_cmdline = " qpnp-power-on.warm_boot=1";
 static const char *baseband_apq_nowgr   = " androidboot.baseband=baseband_apq_nowgr";
+static const char *androidboot_slot_suffix = " androidboot.slot_suffix=";
+static const char *skip_ramfs = " skip_initramfs";
+static char *sys_path_cmdline = " rootwait ro init=/init root=/dev/mmcblk0p%d"; /*This will be updated*/
 
 #if VERIFIED_BOOT
 #if !VBOOT_MOTA
@@ -341,7 +345,8 @@ unsigned char *update_cmdline(const char * cmdline)
 	bool gpt_exists = partition_gpt_exists();
 	int have_target_boot_params = 0;
 	char *boot_dev_buf = NULL;
-    bool is_mdtp_activated = 0;
+    	bool is_mdtp_activated = 0;
+	int current_active_slot = INVALID;
 
 #if USE_LE_SYSTEMD
 	is_systemd_present=true;
@@ -482,6 +487,20 @@ unsigned char *update_cmdline(const char * cmdline)
 	if (target_warm_boot()) {
 		warm_boot = true;
 		cmdline_len += strlen(warmboot_cmdline);
+	}
+
+	if (partition_multislot_is_supported())
+	{
+		current_active_slot = partition_find_active_slot();
+		cmdline_len += (strlen(androidboot_slot_suffix)+
+					strlen(SUFFIX_SLOT(current_active_slot)));
+
+		sprintf(sys_path_cmdline, sys_path_cmdline,
+					(partition_get_index("system")+1));
+		cmdline_len += strlen(sys_path_cmdline);
+
+		if (!boot_into_recovery)
+			cmdline_len += strlen(skip_ramfs);
 	}
 
 #if TARGET_CMDLINE_SUPPORT
@@ -682,6 +701,27 @@ unsigned char *update_cmdline(const char * cmdline)
 			src = target_boot_params;
 			while ((*dst++ = *src++));
 			free(target_boot_params);
+		}
+
+		if (partition_multislot_is_supported() && have_cmdline)
+		{
+				src = androidboot_slot_suffix;
+				--dst;
+				while ((*dst++ = *src++));
+				--dst;
+				src = SUFFIX_SLOT(current_active_slot);
+				while ((*dst++ = *src++));
+
+				if (!boot_into_recovery)
+				{
+					src = skip_ramfs;
+					--dst;
+					while ((*dst++ = *src++));
+				}
+
+				src = sys_path_cmdline;
+				--dst;
+				while ((*dst++ = *src++));
 		}
 
 #if TARGET_CMDLINE_SUPPORT
@@ -1139,6 +1179,7 @@ int boot_linux_from_mmc(void)
 	unsigned char *best_match_dt_addr = NULL;
 #endif
 	struct kernel64_hdr *kptr = NULL;
+	int current_active_slot = INVALID;
 
 	if (check_format_bit())
 		boot_into_recovery = 1;
@@ -1186,7 +1227,7 @@ int boot_linux_from_mmc(void)
 
 	if (memcmp(hdr->magic, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
 		dprintf(CRITICAL, "ERROR: Invalid boot image header\n");
-                return -1;
+                return ERR_INVALID_BOOT_MAGIC;
 	}
 
 	if (hdr->page_size && (hdr->page_size != page_size)) {
@@ -1199,13 +1240,14 @@ int boot_linux_from_mmc(void)
 		page_mask = page_size - 1;
 	}
 
-	/* ensure commandline is terminated */
-	hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
-
 	kernel_actual  = ROUND_TO_PAGE(hdr->kernel_size,  page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
 
 	image_addr = (unsigned char *)target_get_scratch_address();
+	memcpy(image_addr, (void *)buf, page_size);
+
+	/* ensure commandline is terminated */
+        hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
 
 #if DEVICE_TREE
 #ifndef OSVERSION_IN_BOOTIMAGE
@@ -1244,9 +1286,17 @@ int boot_linux_from_mmc(void)
 	 *    platform accordingly.
 	 * 4. Sanity Check on kernel_addr and ramdisk_addr and copy data.
 	 */
-
-	dprintf(INFO, "Loading (%s) image (%d): start\n",
-			(!boot_into_recovery ? "boot" : "recovery"),imagesize_actual);
+	if (partition_multislot_is_supported())
+	{
+		current_active_slot = partition_find_active_slot();
+		dprintf(INFO, "Loading boot image (%d) active_slot(%s): start\n",
+				imagesize_actual, SUFFIX_SLOT(current_active_slot));
+	}
+	else
+	{
+		dprintf(INFO, "Loading (%s) image (%d): start\n",
+				(!boot_into_recovery ? "boot" : "recovery"),imagesize_actual);
+	}
 	bs_set_timestamp(BS_KERNEL_LOAD_START);
 
 	if ((target_get_max_flash_size() - page_size) < imagesize_actual)
@@ -1254,17 +1304,25 @@ int boot_linux_from_mmc(void)
 		dprintf(CRITICAL, "booimage  size is greater than DDR can hold\n");
 		return -1;
 	}
-
-	/* Read image without signature */
-	if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
+	offset = page_size;
+	/* Read image without signature and header*/
+	if (mmc_read(ptn + offset, (void *)(image_addr + offset), imagesize_actual - page_size))
 	{
 		dprintf(CRITICAL, "ERROR: Cannot read boot image\n");
 		return -1;
 	}
 
-	dprintf(INFO, "Loading (%s) image (%d): done\n",
+	if (partition_multislot_is_supported())
+	{
+		dprintf(INFO, "Loading boot image (%d) active_slot(%s): done\n",
+				imagesize_actual, SUFFIX_SLOT(current_active_slot));
+	}
+	else
+	{
+		dprintf(INFO, "Loading (%s) image (%d): done\n",
 			(!boot_into_recovery ? "boot" : "recovery"),imagesize_actual);
 
+	}
 	bs_set_timestamp(BS_KERNEL_LOAD_DONE);
 
 	/* Authenticate Kernel */
@@ -1596,8 +1654,8 @@ int boot_linux_from_flash(void)
 		return -1;
 	}
 
-	/* ensure commandline is terminated */
-	hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
+	image_addr = (unsigned char *)target_get_scratch_address();
+	memcpy(image_addr, (void *)buf, page_size);
 
 	/*
 	 * Update the kernel/ramdisk/tags address if the boot image header
@@ -1613,6 +1671,9 @@ int boot_linux_from_flash(void)
 
 	kernel_actual  = ROUND_TO_PAGE(hdr->kernel_size,  page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
+
+	/* ensure commandline is terminated */
+	hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
 
 	/* Check if the addresses in the header are valid. */
 	if (check_aboot_addr_range_overlap(hdr->kernel_addr, kernel_actual) ||
@@ -1638,8 +1699,6 @@ int boot_linux_from_flash(void)
 	/* Authenticate Kernel */
 	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
-		image_addr = (unsigned char *)target_get_scratch_address();
-		offset = 0;
 
 #if DEVICE_TREE
 		dt_actual = ROUND_TO_PAGE(dt_size, page_mask);
@@ -1679,8 +1738,9 @@ int boot_linux_from_flash(void)
 			dprintf(CRITICAL, "bootimage  size is greater than DDR can hold\n");
 			return -1;
 		}
-		/* Read image without signature */
-		if (flash_read(ptn, offset, (void *)image_addr, imagesize_actual))
+		offset = page_size;
+		/* Read image without signature and header*/
+		if (flash_read(ptn, offset, (void *)(image_addr + offset), imagesize_actual - page_size))
 		{
 			dprintf(CRITICAL, "ERROR: Cannot read boot image\n");
 				return -1;
@@ -2389,6 +2449,7 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	uint32_t image_actual;
 	uint32_t dt_actual = 0;
 	uint32_t sig_actual = 0;
+	uint32_t sig_size = 0;
 	struct boot_img_hdr *hdr = NULL;
 	struct kernel64_hdr *kptr = NULL;
 	char *ptr = ((char*) data);
@@ -2443,17 +2504,23 @@ void cmd_boot(const char *arg, void *data, unsigned sz)
 	image_actual = ADD_OF(image_actual, ramdisk_actual);
 	image_actual = ADD_OF(image_actual, dt_actual);
 
+	/* Checking to prevent oob access in read_der_message_length */
+	if (image_actual > sz) {
+		fastboot_fail("bootimage header fields are invalid");
+		goto boot_failed;
+	}
+	sig_size = sz - image_actual;
+
 	if (target_use_signed_kernel() && (!device.is_unlocked)) {
 		/* Calculate the signature length from boot image */
 		sig_actual = read_der_message_length(
-				(unsigned char*)(data + image_actual),sz);
+				(unsigned char*)(data + image_actual), sig_size);
 		image_actual = ADD_OF(image_actual, sig_actual);
-	}
 
-	/* sz should have atleast raw boot image */
-	if (image_actual > sz) {
-		fastboot_fail("bootimage: incomplete or not signed");
-		goto boot_failed;
+		if (image_actual > sz) {
+			fastboot_fail("bootimage header fields are invalid");
+			goto boot_failed;
+		}
 	}
 
 	// Initialize boot state before trying to verify boot.img
@@ -2738,14 +2805,6 @@ void cmd_erase(const char *arg, void *data, unsigned sz)
 		cmd_erase_nand(arg, data, sz);
 }
 
-static uint32_t aboot_get_secret_key()
-{
-	/* 0 is invalid secret key, update this implementation to return
-	 * device specific unique secret key
-	 */
-	return 0;
-}
-
 void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 {
 	unsigned long long ptn = 0;
@@ -2756,6 +2815,7 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 	char *sp;
 	uint8_t lun = 0;
 	bool lun_set = false;
+	int current_active_slot = INVALID;
 
 	token = strtok_r((char *)arg, ":", &sp);
 	pname = token;
@@ -2789,6 +2849,15 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 				fastboot_fail("failed to write partition");
 				return;
 			}
+
+			/* Rescan partition table to ensure we have multislot support*/
+			if (partition_scan_for_multislot())
+			{
+				current_active_slot = partition_find_active_slot();
+				dprintf(INFO, "Multislot supported: Slot %s active",
+					(SUFFIX_SLOT(current_active_slot)));
+			}
+			partition_mark_active_slot(current_active_slot);
 		}
 		else
 		{
@@ -2814,10 +2883,18 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 				return;
 			}
 
-			if (!strcmp(pname, "boot") || !strcmp(pname, "recovery")) {
+			if (!strncmp(pname, "boot", strlen("boot"))
+					|| !strcmp(pname, "recovery"))
+			{
 				if (memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
 					fastboot_fail("image is not a boot image");
 					return;
+				}
+
+				/* Reset multislot_partition attributes in case of flashing boot */
+				if (partition_multislot_is_supported())
+				{
+					partition_reset_attributes(index);
 				}
 			}
 
@@ -3339,6 +3416,13 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	struct ptable *ptable;
 	unsigned extra = 0;
 	uint64_t partition_size = 0;
+	unsigned bytes_to_round_page = 0;
+	unsigned rounded_size = 0;
+
+	if((uintptr_t)data > (UINT_MAX - sz)) {
+		fastboot_fail("Cannot flash: image header corrupt");
+                return;
+        }
 
 	ptable = flash_get_ptable();
 	if (ptable == NULL) {
@@ -3355,8 +3439,10 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	}
 
 	if (!strcmp(ptn->name, "boot") || !strcmp(ptn->name, "recovery")) {
-		if (memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
-			fastboot_fail("image is not a boot image");
+		if((sz > BOOT_MAGIC_SIZE) && (!memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE))) {
+			dprintf(INFO, "Verified the BOOT_MAGIC in image header  \n");
+		} else {
+			fastboot_fail("Image is not a boot image");
 			return;
 		}
 	}
@@ -3367,14 +3453,28 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 		|| !strcmp(ptn->name, "recoveryfs")
 		|| !strcmp(ptn->name, "modem"))
 		extra = 1;
-	else
-		sz = ROUND_TO_PAGE(sz, page_mask);
-
-	partition_size = (uint64_t)ptn->length * (uint64_t)flash_num_pages_per_blk() *  (uint64_t)flash_page_size();
-	if (partition_size > UINT_MAX) {
-		fastboot_fail("Invalid partition size");
-		return;
+	else {
+		rounded_size = ROUNDUP(sz, page_size);
+		bytes_to_round_page = rounded_size - sz;
+		if (bytes_to_round_page) {
+			if (((uintptr_t)data + sz ) > (UINT_MAX - bytes_to_round_page)) {
+				fastboot_fail("Integer overflow detected");
+				return;
+			}
+			if (((uintptr_t)data + sz + bytes_to_round_page) >
+				((uintptr_t)target_get_scratch_address() + target_get_max_flash_size())) {
+				fastboot_fail("Buffer size is not aligned to page_size");
+				return;
+			}
+			else {
+				memset(data + sz, 0, bytes_to_round_page);
+				sz = rounded_size;
+			}
+		}
 	}
+
+	/*Checking partition_size for the possible integer overflow */
+	partition_size = validate_partition_size(ptn);
 
 	if (sz > partition_size) {
 		fastboot_fail("Image size too large");
@@ -3382,7 +3482,7 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	}
 
 	dprintf(INFO, "writing %d bytes to '%s'\n", sz, ptn->name);
-	if (!memcmp((void *)data, UBI_MAGIC, UBI_MAGIC_SIZE)) {
+	if ((sz > UBI_MAGIC_SIZE) && (!memcmp((void *)data, UBI_MAGIC, UBI_MAGIC_SIZE))) {
 		if (flash_ubi_img(ptn, data, sz)) {
 			fastboot_fail("flash write failure");
 			return;
@@ -3396,6 +3496,18 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	dprintf(INFO, "partition '%s' updated\n", ptn->name);
 	fastboot_okay("");
 }
+
+
+static inline uint64_t validate_partition_size(struct ptentry *ptn)
+{
+	if (ptn->length && flash_num_pages_per_blk() && page_size) {
+		if ((ptn->length < ( UINT_MAX / flash_num_pages_per_blk())) && ((ptn->length * flash_num_pages_per_blk()) < ( UINT_MAX / page_size))) {
+			return ptn->length * flash_num_pages_per_blk() * page_size;
+		}
+        }
+	return 0;
+}
+
 
 void cmd_flash(const char *arg, void *data, unsigned sz)
 {
@@ -3429,6 +3541,52 @@ void cmd_reboot(const char *arg, void *data, unsigned sz)
 	dprintf(INFO, "rebooting the device\n");
 	fastboot_okay("");
 	reboot_device(0);
+}
+
+void cmd_set_active(const char *arg, void *data, unsigned sz)
+{
+	char *p = NULL;
+	unsigned i,current_active_slot;
+	const char *current_slot_suffix;
+
+	if (!partition_multislot_is_supported())
+	{
+		fastboot_fail("Command not supported");
+		return;
+	}
+
+	if (arg)
+	{
+		p = (char *)arg;
+		if (p)
+		{
+			current_active_slot = partition_find_active_slot();
+
+			/* Check if trying to make curent slot active */
+			current_slot_suffix = SUFFIX_SLOT(current_active_slot);
+			if (!strncmp(p, current_slot_suffix, sizeof(current_slot_suffix)))
+			{
+				fastboot_okay("Slot already set active");
+				return;
+			}
+			else
+			{
+				for (i = 0; i < AB_SUPPORTED_SLOTS; i++)
+				{
+					current_slot_suffix = SUFFIX_SLOT(i);
+					if (!strncmp(p, current_slot_suffix, sizeof(current_slot_suffix)))
+					{
+						partition_switch_slots(current_active_slot, i);
+						publish_getvar_multislot_vars();
+						fastboot_okay("");
+						return;
+					}
+				}
+			}
+		}
+	}
+	fastboot_fail("Invalid slot suffix.");
+	return;
 }
 
 void cmd_reboot_bootloader(const char *arg, void *data, unsigned sz)
@@ -3520,20 +3678,24 @@ void cmd_oem_unlock_go(const char *arg, void *data, unsigned sz)
 
 static int aboot_frp_unlock(char *pname, void *data, unsigned sz)
 {
-	int ret = 1;
-	uint32_t secret_key;
-	char seckey_buffer[MAX_RSP_SIZE];
+	int ret=1;
+	bool authentication_success=false;
 
-	secret_key = aboot_get_secret_key();
-	if (secret_key)
+	/*
+		Authentication method not  implemented.
+
+		OEM to implement, authentication system which on successful validataion,
+		calls write_allow_oem_unlock() with is_allow_unlock.
+	*/
+#if 0
+	authentication_success = oem_specific_auth_mthd();
+#endif
+
+	if (authentication_success)
 	{
-		snprintf((char *) seckey_buffer, MAX_RSP_SIZE, "%x", secret_key);
-		if (!memcmp((void *)data, (void *)seckey_buffer, sz))
-		{
-			is_allow_unlock = true;
-			write_allow_oem_unlock(is_allow_unlock);
-			ret = 0;
-		}
+		is_allow_unlock = true;
+		write_allow_oem_unlock(is_allow_unlock);
+		ret = 0;
 	}
 	return ret;
 }
@@ -3650,6 +3812,17 @@ int splash_screen_flash()
 		}
 
 		uint8_t *base = (uint8_t *) fb_display->base;
+		uint32_t fb_size = ROUNDUP(fb_display->width *
+					fb_display->height *
+					(fb_display->bpp / 8), 4096);
+		uint32_t splash_size = ((((header->width * header->height *
+					fb_display->bpp/8) + 511) >> 9) << 9);
+
+		if (splash_size > fb_size) {
+			dprintf(CRITICAL, "ERROR: Splash image size invalid\n");
+			return -1;
+		}
+
 		if (flash_read(ptn + LOGO_IMG_HEADER_SIZE, 0,
 			(uint32_t *)base,
 			((((header->width * header->height * fb_display->bpp/8) + 511) >> 9) << 9))) {
@@ -3722,6 +3895,15 @@ int splash_screen_mmc()
 			if ((header->width != fb_display->width)
 						|| (header->height != fb_display->height))
 				fbcon_clear();
+
+			uint32_t fb_size = ROUNDUP(fb_display->width *
+					fb_display->height *
+					(fb_display->bpp / 8), 4096);
+
+			if (readsize > fb_size) {
+				dprintf(CRITICAL, "ERROR: Splash image size invalid\n");
+				return -1;
+			}
 
 			if (mmc_read(ptn + blocksize, (uint32_t *)(base + blocksize), readsize)) {
 				dprintf(CRITICAL, "ERROR: Cannot read splash image from partition\n");
@@ -3827,6 +4009,60 @@ static void publish_getvar_partition_info(struct getvar_partition_info *info, ui
 	}
 }
 
+void publish_getvar_multislot_vars()
+{
+	int i,count;
+	static bool published = false;
+	static char slot_count[MAX_RSP_SIZE];
+	static struct ab_slot_info slot_info[AB_SUPPORTED_SLOTS];
+	static char active_slot_suffix[MAX_RSP_SIZE];
+	static char has_slot_pname[NUM_PARTITIONS][MAX_GET_VAR_NAME_SIZE];
+	static char has_slot_reply[NUM_PARTITIONS][MAX_RSP_SIZE];
+	const char *tmp;
+	char tmpbuff[MAX_GET_VAR_NAME_SIZE];
+
+	if (!published)
+	{
+		/* Update slot meta info */
+		count = partition_fill_partition_meta(has_slot_pname, has_slot_reply,
+							partition_get_partition_count());
+		for(i=0; i<count; i++)
+		{
+			memset(tmpbuff, 0, MAX_GET_VAR_NAME_SIZE);
+			sprintf(tmpbuff, "has-slot:%s", has_slot_pname[i]);
+			strcpy(has_slot_pname[i], tmpbuff);
+			fastboot_publish(has_slot_pname[i], has_slot_reply[i]);
+		}
+
+		for (i=0; i<AB_SUPPORTED_SLOTS; i++)
+		{
+			tmp = SUFFIX_SLOT(i);
+			sprintf(slot_info[i].slot_is_unbootable, "slot-unbootable:%s", tmp);
+			sprintf(slot_info[i].slot_is_active, "slot-active:%s", tmp);
+			sprintf(slot_info[i].slot_is_succesful, "slot-success:%s", tmp);
+			sprintf(slot_info[i].slot_retry_count, "slot-retry-count:%s", tmp);
+			fastboot_publish(slot_info[i].slot_is_unbootable,
+							slot_info[i].slot_is_unbootable_rsp);
+			fastboot_publish(slot_info[i].slot_is_active,
+							slot_info[i].slot_is_active_rsp);
+			fastboot_publish(slot_info[i].slot_is_succesful,
+							slot_info[i].slot_is_succesful_rsp);
+			fastboot_publish(slot_info[i].slot_retry_count,
+							slot_info[i].slot_retry_count_rsp);
+		}
+		fastboot_publish("current-slot", active_slot_suffix);
+		snprintf(slot_count, sizeof(slot_count),"%d", AB_SUPPORTED_SLOTS);
+		fastboot_publish("slot-count", slot_count);
+		published = true;
+	}
+
+	sprintf(active_slot_suffix, "%s",
+			SUFFIX_SLOT(partition_find_active_slot()));
+	/* Update partition meta information */
+	partition_fill_slot_meta(slot_info);
+	return;
+}
+
 void get_product_name(unsigned char *buf)
 {
 	snprintf((char*)buf, MAX_RSP_SIZE, "%s",  TARGET(BOARD));
@@ -3884,6 +4120,7 @@ void aboot_fastboot_register_commands(void)
 						{"oem disable-charger-screen", cmd_oem_disable_charger_screen},
 						{"oem off-mode-charge", cmd_oem_off_mode_charger},
 						{"oem select-display-panel", cmd_oem_select_display_panel},
+						{"oem set_active",cmd_set_active},
 #if UNITTEST_FW_SUPPORT
 						{"oem run-tests", cmd_oem_runtests},
 #endif
@@ -3907,6 +4144,9 @@ void aboot_fastboot_register_commands(void)
 	 */
 	if (target_is_emmc_boot())
 		publish_getvar_partition_info(part_info, ARRAY_SIZE(part_info));
+
+	if (partition_multislot_is_supported())
+		publish_getvar_multislot_vars();
 
 	/* Max download size supported */
 	snprintf(max_download_size, MAX_RSP_SIZE, "\t0x%x",
@@ -3939,6 +4179,8 @@ void aboot_fastboot_register_commands(void)
 void aboot_init(const struct app_descriptor *app)
 {
 	unsigned reboot_mode = 0;
+	int boot_err_type = 0;
+	int boot_slot = INVALID;
 
 	/* Initialise wdog to catch early lk crashes */
 #if WDOG_SUPPORT
@@ -3962,6 +4204,23 @@ void aboot_init(const struct app_descriptor *app)
 
 	read_device_info(&device);
 	read_allow_oem_unlock(&device);
+
+	/* Detect multi-slot support */
+	if (partition_multislot_is_supported())
+	{
+		boot_slot = partition_find_active_slot();
+		if (boot_slot == INVALID)
+		{
+			boot_into_fastboot = true;
+			dprintf(INFO, "Active Slot: (INVALID)\n");
+		}
+		else
+		{
+			/* Setting the state of system to boot active slot */
+			partition_mark_active_slot(boot_slot);
+			dprintf(INFO, "Active Slot: (%s)\n", SUFFIX_SLOT(boot_slot));
+		}
+	}
 
 	/* Display splash screen if enabled */
 #if DISPLAY_SPLASH_SCREEN
@@ -4085,7 +4344,31 @@ normal_boot:
 				}
 			}
 
-			boot_linux_from_mmc();
+retry_boot:
+			/* Trying to boot active partition */
+			if (partition_multislot_is_supported())
+			{
+				boot_slot = partition_find_boot_slot();
+				partition_mark_active_slot(boot_slot);
+				if (boot_slot == INVALID)
+					goto fastboot;
+			}
+
+			boot_err_type = boot_linux_from_mmc();
+			switch (boot_err_type)
+			{
+				case ERR_INVALID_PAGE_SIZE:
+				case ERR_DT_PARSE:
+				case ERR_ABOOT_ADDR_OVERLAP:
+					if(partition_multislot_is_supported())
+						goto retry_boot;
+					else
+						break;
+				case ERR_INVALID_BOOT_MAGIC:
+				default:
+					break;
+				/* going to fastboot menu */
+			}
 		}
 		else
 		{
@@ -4100,6 +4383,7 @@ normal_boot:
 			"to fastboot mode.\n");
 	}
 
+fastboot:
 	/* We are here means regular boot did not happen. Start fastboot. */
 
 	/* register aboot specific fastboot commands */
@@ -4145,6 +4429,7 @@ static int aboot_save_boot_hash_mmc(uint32_t image_addr, uint32_t image_size)
 
 	return 0;
 }
+
 
 APP_START(aboot)
 	.init = aboot_init,
