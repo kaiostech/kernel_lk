@@ -455,6 +455,7 @@ unsigned char *update_cmdline(const char * cmdline)
 			break;
 	}
 
+#if ENABLE_DISPLAY
 	if (cmdline) {
 		if ((strstr(cmdline, DISPLAY_DEFAULT_PREFIX) == NULL) &&
 			target_display_panel_node(display_panel_buf,
@@ -463,6 +464,7 @@ unsigned char *update_cmdline(const char * cmdline)
 			cmdline_len += strlen(display_panel_buf);
 		}
 	}
+#endif
 
 	if (target_warm_boot()) {
 		warm_boot = true;
@@ -1174,13 +1176,14 @@ int boot_linux_from_mmc(void)
 		page_mask = page_size - 1;
 	}
 
-	/* ensure commandline is terminated */
-	hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
-
 	kernel_actual  = ROUND_TO_PAGE(hdr->kernel_size,  page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
 
 	image_addr = (unsigned char *)target_get_scratch_address();
+	memcpy(image_addr, (void *)buf, page_size);
+
+	/* ensure commandline is terminated */
+        hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
 
 #if DEVICE_TREE
 #ifndef OSVERSION_IN_BOOTIMAGE
@@ -1229,9 +1232,9 @@ int boot_linux_from_mmc(void)
 		dprintf(CRITICAL, "booimage  size is greater than DDR can hold\n");
 		return -1;
 	}
-
-	/* Read image without signature */
-	if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
+	offset = page_size;
+	/* Read image without signature and header*/
+	if (mmc_read(ptn + offset, (void *)(image_addr + offset), imagesize_actual - page_size))
 	{
 		dprintf(CRITICAL, "ERROR: Cannot read boot image\n");
 		return -1;
@@ -1571,8 +1574,8 @@ int boot_linux_from_flash(void)
 		return -1;
 	}
 
-	/* ensure commandline is terminated */
-	hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
+	image_addr = (unsigned char *)target_get_scratch_address();
+	memcpy(image_addr, (void *)buf, page_size);
 
 	/*
 	 * Update the kernel/ramdisk/tags address if the boot image header
@@ -1588,6 +1591,9 @@ int boot_linux_from_flash(void)
 
 	kernel_actual  = ROUND_TO_PAGE(hdr->kernel_size,  page_mask);
 	ramdisk_actual = ROUND_TO_PAGE(hdr->ramdisk_size, page_mask);
+
+	/* ensure commandline is terminated */
+	hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
 
 	/* Check if the addresses in the header are valid. */
 	if (check_aboot_addr_range_overlap(hdr->kernel_addr, kernel_actual) ||
@@ -1613,8 +1619,6 @@ int boot_linux_from_flash(void)
 	/* Authenticate Kernel */
 	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
-		image_addr = (unsigned char *)target_get_scratch_address();
-		offset = 0;
 
 #if DEVICE_TREE
 		dt_actual = ROUND_TO_PAGE(dt_size, page_mask);
@@ -1654,8 +1658,9 @@ int boot_linux_from_flash(void)
 			dprintf(CRITICAL, "bootimage  size is greater than DDR can hold\n");
 			return -1;
 		}
-		/* Read image without signature */
-		if (flash_read(ptn, offset, (void *)image_addr, imagesize_actual))
+		offset = page_size;
+		/* Read image without signature and header*/
+		if (flash_read(ptn, offset, (void *)(image_addr + offset), imagesize_actual - page_size))
 		{
 			dprintf(CRITICAL, "ERROR: Cannot read boot image\n");
 				return -1;
