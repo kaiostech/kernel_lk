@@ -996,6 +996,7 @@ int boot_linux_from_mmc(void)
 		offset = 0;
 
 		image_addr = (unsigned char *)target_get_scratch_address();
+		memcpy(image_addr, (void *)buf, page_size);
 
 #if DEVICE_TREE
 		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
@@ -1019,9 +1020,9 @@ int boot_linux_from_mmc(void)
 			dprintf(CRITICAL, "Boot image buffer address overlaps with aboot addresses.\n");
 			return -1;
 		}
-
-		/* Read image without signature */
-		if (mmc_read(ptn + offset, (void *)image_addr, imagesize_actual))
+		offset = page_size;
+		/* Read image without signature and header*/
+		if (mmc_read(ptn + offset, (void *)(image_addr + offset), imagesize_actual - page_size))
 		{
 			dprintf(CRITICAL, "ERROR: Cannot read boot image\n");
 				return -1;
@@ -1278,6 +1279,9 @@ int boot_linux_from_flash(void)
 		return -1;
 	}
 
+	image_addr = (unsigned char *)target_get_scratch_address();
+	memcpy(image_addr, (void *)buf, page_size);
+
 	/*
 	 * Update the kernel/ramdisk/tags address if the boot image header
 	 * has default values, these default values come from mkbootimg when
@@ -1312,8 +1316,6 @@ int boot_linux_from_flash(void)
 	/* Authenticate Kernel */
 	if(target_use_signed_kernel() && (!device.is_unlocked))
 	{
-		image_addr = (unsigned char *)target_get_scratch_address();
-		offset = 0;
 
 #if DEVICE_TREE
 		dt_actual = ROUND_TO_PAGE(hdr->dt_size, page_mask);
@@ -1340,9 +1342,9 @@ int boot_linux_from_flash(void)
 
 		dprintf(INFO, "Loading boot image (%d): start\n", imagesize_actual);
 		bs_set_timestamp(BS_KERNEL_LOAD_START);
-
-		/* Read image without signature */
-		if (flash_read(ptn, offset, (void *)image_addr, imagesize_actual))
+		offset = page_size;
+		/* Read image without signature and header*/
+		if (flash_read(ptn, offset, (void *)(image_addr + offset), imagesize_actual - page_size))
 		{
 			dprintf(CRITICAL, "ERROR: Cannot read boot image\n");
 				return -1;
