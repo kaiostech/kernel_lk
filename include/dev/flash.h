@@ -64,5 +64,7 @@ static inline int flash_read(struct ptentry *ptn, unsigned offset, void *data,
 unsigned flash_page_size(void);
 int flash_ecc_bch_enabled(void);
 
+unsigned flash_num_pages_per_blk(void);
+
 
 #endif /* __DEV_FLASH_H */
