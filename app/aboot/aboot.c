@@ -35,6 +35,7 @@
 #include <arch/arm.h>
 #include <dev/udc.h>
 #include <string.h>
+#include <stdlib.h>
 #include <limits.h>
 #include <kernel/thread.h>
 #include <arch/ops.h>
@@ -1852,6 +1853,8 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	struct ptable *ptable;
 	unsigned extra = 0;
 	uint64_t partition_size = 0;
+	unsigned bytes_to_round_page = 0;
+	unsigned rounded_size = 0;
 
 	if((uintptr_t)data > (UINT_MAX - sz)) {
 		fastboot_fail("Cannot flash: image header corrupt");
@@ -1890,9 +1893,23 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 			extra = ((page_size >> 9) * 16);
 	}
 	else {
-		if (sz % page_size) {
-			fastboot_fail("Buffer size is not aligned to page_size");
-			return;
+		rounded_size = ROUNDUP(sz, page_size);
+		bytes_to_round_page = rounded_size - sz;
+		if (bytes_to_round_page) {
+			if (((uintptr_t)data + sz ) > (UINT_MAX - bytes_to_round_page)) {
+				fastboot_fail("Integer overflow detected");
+				return;
+			}
+			if (((uintptr_t)data + sz + bytes_to_round_page) >
+			((uintptr_t)target_get_scratch_address() + target_get_max_flash_size())) {
+				fastboot_fail("Buffer size is not aligned to page_size");
+				return;
+			}
+			else {
+				memset(data + sz, 0, bytes_to_round_page);
+				sz = rounded_size;
+			}
+
 		}
 	}
 
@@ -1905,6 +1922,7 @@ void cmd_flash_nand(const char *arg, void *data, unsigned sz)
 	}
 
 	dprintf(INFO, "writing %d bytes to '%s'\n", sz, ptn->name);
+
 	if (flash_write(ptn, extra, data, sz)) {
 			fastboot_fail("flash write failure");
 			return;
