@@ -57,6 +57,7 @@
 #include "include/panel_jdi_qhd_dualdsi_cmd.h"
 #include "include/panel_r69007_wqxga_cmd.h"
 #include "include/panel_jdi_4k_dualdsi_video_nofbc.h"
+#include "include/panel_adv7533_1024_600p60.h"
 #include "include/panel_adv7533_1080p60.h"
 #include "include/panel_adv7533_720p60.h"
 #include "include/panel_hx8379a_truly_fwvga_video.h"
@@ -74,6 +75,7 @@ enum {
 	JDI_QHD_DUALDSI_CMD_PANEL,
 	R69007_WQXGA_CMD_PANEL,
 	JDI_4K_DUALDSI_VIDEO_NOFBC_PANEL,
+	ADV7533_1024_600P_VIDEO_DSI0_PANEL,
 	ADV7533_1080P_VIDEO_PANEL,
 	ADV7533_1080P_VIDEO_DSI0_PANEL,
 	ADV7533_1080P_VIDEO_DSI1_PANEL,
@@ -83,6 +85,7 @@ enum {
 	TRULY_FWVGA_VIDEO_PANEL,
 	DUAL_720P_SINGLE_HDMI_PANELS,
 	SINGLE_720P_SINGLE_HDMI_PANELS,
+	DSI0_600P_DSI1_720P_HDMI_PANELS,
 	UNKNOWN_PANEL
 };
 
@@ -100,6 +103,7 @@ static struct panel_list supp_panels[] = {
 	{"jdi_qhd_dualdsi_cmd", JDI_QHD_DUALDSI_CMD_PANEL},
 	{"r69007_wqxga_cmd", R69007_WQXGA_CMD_PANEL},
 	{"jdi_4k_dualdsi_video_nofbc", JDI_4K_DUALDSI_VIDEO_NOFBC_PANEL},
+	{"adv7533_1024_600p_dsi0_video", ADV7533_1024_600P_VIDEO_DSI0_PANEL},
 	{"adv7533_1080p_video", ADV7533_1080P_VIDEO_PANEL},
 	{"adv7533_1080p_dsi0_video", ADV7533_1080P_VIDEO_DSI0_PANEL},
 	{"adv7533_1080p_dsi1_video", ADV7533_1080P_VIDEO_DSI1_PANEL},
@@ -108,7 +112,8 @@ static struct panel_list supp_panels[] = {
 	{"adv7533_720p_dsi1_video", ADV7533_720P_VIDEO_DSI1_PANEL},
 	{"truly_fwvga_video", TRULY_FWVGA_VIDEO_PANEL},
 	{"dual_720p_single_hdmi_video", DUAL_720P_SINGLE_HDMI_PANELS},
-	{"single_720p_single_hdmi_video", SINGLE_720P_SINGLE_HDMI_PANELS}
+	{"single_720p_single_hdmi_video", SINGLE_720P_SINGLE_HDMI_PANELS},
+	{"dsi0_600p_dsi1_720p_hdmi_video", DSI0_600P_DSI1_720P_HDMI_PANELS}
 };
 
 #define TARGET_ADV7533_MAIN_INST_0    (0x3D)
@@ -743,6 +748,29 @@ static bool init_panel_data(struct panel_struct *panelstruct,
 				adv7533_720p_thulium_video_timings,
 				MAX_TIMING_CONFIG * sizeof(uint32_t));
 		break;
+//	case DSI0_600P_DSI1_720P_HDMI_PANELS:
+	case ADV7533_1024_600P_VIDEO_DSI0_PANEL:
+		pan_type = PANEL_TYPE_DSI;
+		panelstruct->paneldata    = &adv7533_1024_600p_video_DSI0_panel_data;
+		panelstruct->panelres     = &adv7533_1024_600p_video_panel_res;
+		panelstruct->color        = &adv7533_1024_600p_video_color;
+		panelstruct->videopanel   = &adv7533_1024_600p_video_video_panel;
+		panelstruct->commandpanel = &adv7533_1024_600p_video_command_panel;
+		panelstruct->state        = &adv7533_1024_600p_video_state;
+		panelstruct->laneconfig   = &adv7533_1024_600p_video_lane_config;
+		panelstruct->paneltiminginfo
+					= &adv7533_1024_600p_video_timing_info;
+		pinfo->adv7533.dsi_tg_i2c_cmd = adv7533_1024_600p_tg_i2c_command;
+		pinfo->adv7533.num_of_tg_i2c_cmds = ADV7533_1024_600P_TG_COMMANDS;
+		pinfo->adv7533.dsi_setup_cfg_i2c_cmd = adv7533_1024_600p_common_cfg;
+		pinfo->adv7533.num_of_cfg_i2c_cmds = ADV7533_1024_600P_CONFIG_COMMANDS;
+		pinfo->pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
+		pinfo->pipe_id = 0;
+		pinfo->zorder = 2;
+		memcpy(phy_db->timing,
+				adv7533_1024_600p_thulium_video_timings,
+				MAX_TIMING_CONFIG * sizeof(uint32_t));
+		break;
 	default:
 	case UNKNOWN_PANEL:
 		pan_type = PANEL_TYPE_UNKNOWN;
@@ -817,6 +845,8 @@ int oem_panel_select(const char *panel_name, struct panel_struct *panelstruct,
 					panel_name);
 			switch(panel_id) {
 			case DUAL_720P_SINGLE_HDMI_PANELS:
+			case DSI0_600P_DSI1_720P_HDMI_PANELS:
+			case ADV7533_1024_600P_VIDEO_DSI0_PANEL:
 			case ADV7533_1080P_VIDEO_PANEL:
 			case ADV7533_1080P_VIDEO_DSI0_PANEL:
 			case ADV7533_1080P_VIDEO_DSI1_PANEL:

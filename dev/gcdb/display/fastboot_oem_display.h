@@ -55,6 +55,7 @@ struct sim_lookup_list {
 /*---------------------------------------------------------------------------*/
 
 struct panel_lookup_list lookup_skip_panels[] = {
+	{"adv7533_1024_600p_dsi0_video", "qcom,mdss_dsi_adv7533_1024_600p60_video", false},
 	{"adv7533_1080p_video", "qcom,mdss_dsi_adv7533_1080p60_video", false},
 	{"adv7533_1080p_dsi0_video", "qcom,mdss_dsi_adv7533_1080p60_video", false},
 	{"adv7533_1080p_dsi1_video", "qcom,mdss_dsi_adv7533_1080p60_video", false},

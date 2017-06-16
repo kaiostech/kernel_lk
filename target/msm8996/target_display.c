@@ -889,6 +889,15 @@ void target_display_init(const char *panel_name)
 				(void *)MIPI_FB_ADDR);
 		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
 		goto target_display_init_end;
+	} else if (!strcmp(oem.panel, "dsi0_600p_dsi1_720p_hdmi_video")) {
+		// Initialize DSI0 in 1024x600 resolution
+		gcdb_display_init("adv7533_1024_600p_dsi0_video", MDP_REV_50,
+				(void *)MIPI_FB_ADDR);
+		// Initialize DSI1 in 1280x720 resolution
+		gcdb_display_init("adv7533_720p_dsi1_video", MDP_REV_50,
+				(void *)MIPI_FB_ADDR + 0x1000000);
+		mdss_hdmi_display_init(MDP_REV_50, (void *) HDMI_FB_ADDR);
+		goto target_display_init_end;
 	}
 
 	if (gcdb_display_init(oem.panel, MDP_REV_50, (void *)MIPI_FB_ADDR)) {
