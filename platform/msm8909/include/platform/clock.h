@@ -75,5 +75,5 @@ void clock_config_ce(uint8_t instance);
 void mdp_clock_init(void);
 void mdp_gdsc_ctrl(uint8_t enable);
 void clock_config_blsp_i2c(uint8_t blsp_id, uint8_t qup_id);
-void clock_config_blsp_spi(uint8_t blsp_id, uint8_t qup_id);
+void clock_config_blsp_spi(uint8_t blsp_id, uint8_t qup_id, unsigned long rate);
 #endif
