@@ -1611,7 +1611,9 @@ void cmd_flash_mmc_img(const char *arg, void *data, unsigned sz)
 		}
 
 		if (!strcmp(arg, "boot") || !strcmp(arg, "recovery")) {
-			if (memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
+			if ((sz > BOOT_MAGIC_SIZE) &&  (!memcmp((void *)data, BOOT_MAGIC, BOOT_MAGIC_SIZE))) {
+				dprintf(INFO, "Verified the BOOT_MAGIC in image header  \n");
+			} else {
 				fastboot_fail("image is not a boot image");
 				return;
 			}
