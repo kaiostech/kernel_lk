@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, 2017 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,6 +53,7 @@
 /*---------------------------------------------------------------------------*/
 static struct msm_fb_panel_data panel;
 struct panel_struct panelstruct;
+struct panel_struct first_panelstruct;
 static uint8_t display_enable;
 static struct mdss_dsi_phy_ctrl dsi_video_mode_phy_db;
 
@@ -409,6 +410,11 @@ struct panel_struct mdss_dsi_get_panel_data(void)
 	return panelstruct;
 }
 
+struct panel_struct mdss_dsi_get_first_panel_data(void)
+{
+	return first_panelstruct;
+}
+
 static void mdss_dsi_check_swap_status(void)
 {
 	char *panel_dest, *dsi_controller;
@@ -512,10 +518,15 @@ int gcdb_display_init(const char *panel_name, uint32_t rev, void *base)
 {
 	int ret = NO_ERROR;
 	int pan_type;
+	static bool is_first_display=1;
 
 	dsi_video_mode_phy_db.pll_type = DSI_PLL_TYPE_28NM;
 	pan_type = oem_panel_select(panel_name, &panelstruct, &(panel.panel_info),
 				 &dsi_video_mode_phy_db);
+	if(is_first_display) {
+		first_panelstruct = panelstruct;
+		is_first_display = 0;
+	}
 
 	if (pan_type == PANEL_TYPE_DSI) {
 		if (update_dsi_display_config())
