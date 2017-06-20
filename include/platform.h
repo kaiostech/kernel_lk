@@ -30,6 +30,8 @@
 #define PA(x) platform_get_virt_to_phys_mapping(x)
 #define VA(x) platform_get_phys_to_virt_mapping(x)
 
+extern int use_backup;
+
 time_t current_time(void);
 bigtime_t current_time_hires(void);
 
@@ -45,6 +47,8 @@ void platform_init_mmu_mappings(void);
 addr_t platform_get_virt_to_phys_mapping(addr_t virt_addr);
 addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr);
 addr_t get_bs_info_addr(void);
+
+int set_recovery_cookie(void);
 
 void display_init(void);
 void display_shutdown(void);

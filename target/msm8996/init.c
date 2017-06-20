@@ -418,6 +418,13 @@ void target_init(void)
 	if (load_sec_app() < 0)
 	{
 		dprintf(CRITICAL, "Failed to load App for verified\n");
+#if ENABLE_RECOVERY
+		if (!use_backup) {
+			if (!set_recovery_cookie())
+				reboot_device(0);
+		}
+		dprintf(CRITICAL, "Failed to set the cookie in misc partition\n");
+#endif
 		ASSERT(0);
 	}
 }

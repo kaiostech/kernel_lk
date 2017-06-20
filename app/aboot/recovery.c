@@ -435,6 +435,30 @@ int set_recovery_cookie()
 	return ret;
 }
 
+/*
+ * booting_into_recovery - Check if we are going to boot into recovery kernel
+ *
+ * Although recovery_init() checks for same, we need that fact determined
+ * much earlier (in load_sec_app()) to decide on using backup images for key
+ * partitions like keymaster or cmnlib
+ */
+int booting_into_recovery(void)
+{
+	int ret;
+	struct recovery_message msg;
+
+	memset(&msg, 0, sizeof(msg));
+	if (target_is_emmc_boot())
+		ret = emmc_get_recovery_msg(&msg);
+	else
+		ret = get_recovery_message(&msg);
+
+	if (ret || strcmp("boot-recovery", msg.command))
+		return 0;
+
+	return 1;
+}
+
 static int read_misc(unsigned page_offset, void *buf, unsigned size)
 {
 	const char *ptn_name = "misc";

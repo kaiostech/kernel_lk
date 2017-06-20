@@ -34,11 +34,17 @@
 
 static bool lksec_app_loaded;
 static int app_handle;
+int use_backup;
 
 int load_sec_app()
 {
+	use_backup = booting_into_recovery();
+
 	/* start TZ app */
-	app_handle = qseecom_start_app("keymaster");
+	if (!use_backup)
+		app_handle = qseecom_start_app("keymaster");
+	else
+		app_handle = qseecom_start_app("keymasterbak");
 
 	if (app_handle <= 0)
 	{

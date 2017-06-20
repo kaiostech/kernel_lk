@@ -160,5 +160,6 @@ struct qseecom_send_svc_cmd_req {
 	unsigned int resp_len; /* in/out */
 };
 
+extern int use_backup;
 
 #endif /* _QSEECOM_LK_H_ */

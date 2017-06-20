@@ -954,7 +954,10 @@ int qseecom_start_app(char *app_name)
 	mutex_release(&qseecom.global_data_lock);
 	/* Load commonlib image*/
 	if (!qseecom.cmnlib_loaded) {
-		ret = qseecom_load_commonlib_image("cmnlib");
+		if (!use_backup)
+			ret = qseecom_load_commonlib_image("cmnlib");
+		else
+			ret = qseecom_load_commonlib_image("cmnlibbak");
 		if (ret) {
 			dprintf(CRITICAL, "%s qseecom_load_commonlib_image failed with status:%d\n",
 					__func__, ret);
@@ -962,7 +965,10 @@ int qseecom_start_app(char *app_name)
 		}
                 dprintf(DEBUG, "Loading cmnlib done\n");
 #if ENABLE_CMNLIB64_LOADING
-                ret = qseecom_load_commonlib_image("cmnlib64");
+		if (!use_backup)
+	                ret = qseecom_load_commonlib_image("cmnlib64");
+		else
+	                ret = qseecom_load_commonlib_image("cmnlib64bak");
                 if (ret) {
                         dprintf(CRITICAL, "%s qseecom_load_commonlib_image failed with status:%d\n",
                                         __func__, ret);
