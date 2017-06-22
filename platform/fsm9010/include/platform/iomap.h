@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,7 +35,7 @@
 #define SDRAM_START_ADDR            0x00000000
 #define SDRAM_SEC_BANK_START_ADDR   0x10000000
 
-#define MSM_SHARED_BASE             0x13600000
+#define MSM_SHARED_BASE             0x10000000
 
 #define RPM_MSG_RAM_BASE            0xFC42B000
 #define SYSTEM_IMEM_BASE            0xFE800000
