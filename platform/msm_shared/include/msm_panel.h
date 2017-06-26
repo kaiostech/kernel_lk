@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, 2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -96,6 +96,9 @@ struct mdss_spi_cmd {
 struct spi_panel_info {
 	int num_of_panel_cmds;
 	struct mdss_spi_cmd *panel_cmds;
+	uint8_t *signature_addr;
+	uint8_t *signature;
+	uint8_t signature_len;
 };
 
 struct hdmi_panel_info {

@@ -32,6 +32,9 @@
 #include <target/display.h>
 #include <platform/gpio.h>
 
+#define SUCCESS              0
+#define FAIL              1
+
 static struct qup_spi_dev *dev = NULL;
 
 int mdss_spi_write_cmd(const char *buf)
@@ -94,12 +97,59 @@ int mdss_spi_write_frame(const char *buf, size_t len)
 	return ret;
 }
 
-int mdss_spi_panel_init(struct msm_panel_info *pinfo)
+void spi_read_panel_data(unsigned char *buf,  int len)
 {
-	int cmd_count = 0;
 	int ret = 0;
 
-	if(!dev) {
+	if (!dev) {
+		 dprintf(CRITICAL, "SPI has not been initialized\n");
+		 return -ENODEV;
+	}
+	dev->bytes_per_word = 1;
+	dev->bit_shift_en = 1;
+
+	gpio_set(dc_gpio.pin_id, 0);
+	ret = spi_qup_read(dev, buf, len);
+	gpio_set(dc_gpio.pin_id, 2);
+
+	if (ret)
+		dprintf(CRITICAL, "Send SPI command to panel failed\n");
+
+	return;
+}
+
+int spi_check_panel_id(struct msm_panel_info *pinfo)
+{
+	int i = 0;
+	int len;
+	int ret = SUCCESS;
+	unsigned char *buf;
+
+	if (!pinfo->spi.signature || !pinfo->spi.signature_len)
+		return ret;
+
+	len = pinfo->spi.signature_len;
+	buf = (unsigned char*) malloc(len + 1);
+
+	mdss_spi_write_cmd(pinfo->spi.signature_addr);
+	spi_read_panel_data(buf, len + 1);
+
+	for (i = 0; i < len; i++) {
+		/* left shift a bit to match SPI panel timming */
+		if(pinfo->spi.signature[i] !=
+			 (((buf[i] << 1) | (buf[i + 1] >> 7)) & 0xFF)) {
+			ret = FAIL;
+			break;
+		}
+	}
+
+	free(buf);
+	return ret;
+}
+
+int mdss_spi_init(void)
+{
+	if (!dev) {
 		dev = qup_blsp_spi_init(SPI_BLSP_ID, SPI_QUP_ID);
 		if (!dev) {
 			dprintf(CRITICAL, "Failed initializing SPI\n");
@@ -110,11 +160,17 @@ int mdss_spi_panel_init(struct msm_panel_info *pinfo)
 	gpio_tlmm_config(dc_gpio.pin_id, 0,
 				dc_gpio.pin_direction, dc_gpio.pin_pull,
 				dc_gpio.pin_strength, dc_gpio.pin_state);
+	return SUCCESS;
 
+}
+
+int mdss_spi_panel_init(struct msm_panel_info *pinfo)
+{
+	int cmd_count = 0;
 
 	while (cmd_count < pinfo->spi.num_of_panel_cmds) {
 
-		if(pinfo->spi.panel_cmds[cmd_count].cmds_post_tg){
+		if (pinfo->spi.panel_cmds[cmd_count].cmds_post_tg){
 			cmd_count ++;
 			continue;
 		}
@@ -130,7 +186,7 @@ int mdss_spi_panel_init(struct msm_panel_info *pinfo)
 		cmd_count ++;
 	}
 
-	return 0;
+	return SUCCESS;
 }
 
 int mdss_spi_on(struct msm_panel_info *pinfo, struct fbcon_config *fb)
@@ -157,7 +213,7 @@ int mdss_spi_cmd_post_on(struct msm_panel_info *pinfo)
 
 	while (cmd_count < pinfo->spi.num_of_panel_cmds) {
 
-		if(pinfo->spi.panel_cmds[cmd_count].cmds_post_tg){
+		if (pinfo->spi.panel_cmds[cmd_count].cmds_post_tg){
 			mdss_spi_write_cmd(pinfo->spi.panel_cmds[cmd_count].payload);
 			if (pinfo->spi.panel_cmds[cmd_count].size > 1)
 				mdss_spi_write_data(
@@ -171,5 +227,5 @@ int mdss_spi_cmd_post_on(struct msm_panel_info *pinfo)
 		cmd_count ++;
 	}
 
-	return 0;
+	return SUCCESS;
 }

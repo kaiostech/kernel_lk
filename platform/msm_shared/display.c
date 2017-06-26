@@ -123,6 +123,14 @@ int msm_display_config()
 		break;
 	case SPI_PANEL:
 		dprintf(INFO, "Config SPI PANEL.\n");
+		ret = mdss_spi_init();
+		if (ret)
+			goto msm_display_config_out;
+		if (target_panel_auto_detect_enabled()) {
+			ret = spi_check_panel_id(pinfo);
+			if (ret)
+				goto msm_display_config_out;
+		}
 		ret = mdss_spi_panel_init(pinfo);
 		if (ret)
 			goto msm_display_config_out;
@@ -241,7 +249,6 @@ int msm_display_on()
 		ret = mdss_spi_cmd_post_on(pinfo);
 		if (ret)
 			goto msm_display_on_out;
-
 		break;
 	default:
 		return ERR_INVALID_ARGS;
