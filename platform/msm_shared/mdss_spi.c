@@ -47,7 +47,7 @@ int mdss_spi_write_cmd(const char *buf)
 	dev->bit_shift_en = 1;
 
 	gpio_set(dc_gpio.pin_id, 0);
-	ret = spi_qup_transfer(dev, buf, 1);
+	ret = spi_qup_write(dev, buf, 1);
 	gpio_set(dc_gpio.pin_id, 2);
 	if (ret)
 		dprintf(CRITICAL, "Send SPI command to panel failed\n");
@@ -68,7 +68,7 @@ int mdss_spi_write_data(const char *buf, size_t len)
 	dev->bit_shift_en = 1;
 
 	gpio_set(dc_gpio.pin_id, 2);
-	ret = spi_qup_transfer(dev, buf, len);
+	ret = spi_qup_write(dev, buf, len);
 	if (ret)
 		dprintf(CRITICAL, "Send SPI parameters to panel failed\n");
 
@@ -89,7 +89,7 @@ int mdss_spi_write_frame(const char *buf, size_t len)
 	dev->unpack_en = 0;
 
 	gpio_set(dc_gpio.pin_id, 2);
-	ret = spi_qup_transfer(dev, buf, len);
+	ret = spi_qup_write(dev, buf, len);
 
 	return ret;
 }
