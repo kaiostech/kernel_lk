@@ -57,6 +57,10 @@ ifeq ($(VERIFIED_BOOT),1)
 OBJS += \
 	$(LOCAL_DIR)/boot_verifier.o
 endif
+ifeq ($(ENABLE_SET_ROT_ONLY),1)
+OBJS += \
+        $(LOCAL_DIR)/set_rot_minimal.o
+endif
 
 ifeq ($(ENABLE_FBCON_DISPLAY_MSG),1)
 OBJS += \

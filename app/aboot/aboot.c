@@ -1296,6 +1296,10 @@ int boot_linux_from_mmc(void)
 	if(!send_rot_command((uint32_t)device.is_unlocked))
 		ASSERT(0);
 #endif
+#else
+#ifdef SET_ROT_ONLY
+	send_rot_command_minimal();
+#endif
 #endif
 	/*
 	 * Check if the kernel image is a gzip package. If yes, need to decompress it.

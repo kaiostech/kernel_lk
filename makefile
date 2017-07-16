@@ -104,6 +104,9 @@ DEFINES := LK=1
 # Anything added to SRCDEPS will become a dependency of every source file in the system.
 # Useful for header files that may be included by one or more source files.
 SRCDEPS := $(CONFIGHEADER)
+ifeq ($(SET_ROT_ONLY),1)
+  DEFINES += SET_ROT_ONLY=1
+endif
 
 ifeq ($(VERIFIED_BOOT),1)
   DEFINES += VERIFIED_BOOT=1
