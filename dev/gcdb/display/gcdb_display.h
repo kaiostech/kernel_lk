@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, 2017 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,6 +66,7 @@ void set_panel_cmd_string(const char *panel_name);
 struct oem_panel_data mdss_dsi_get_oem_data(void);
 struct oem_panel_data *mdss_dsi_get_oem_data_ptr(void);
 struct panel_struct mdss_dsi_get_panel_data(void);
+struct panel_struct mdss_dsi_get_first_panel_data(void);
 
 struct oem_panel_data  {
 	char panel[MAX_PANEL_ID_LEN];
