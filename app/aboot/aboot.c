@@ -185,7 +185,8 @@ static const char *warmboot_cmdline = " qpnp-power-on.warm_boot=1";
 static const char *baseband_apq_nowgr   = " androidboot.baseband=baseband_apq_nowgr";
 static const char *androidboot_slot_suffix = " androidboot.slot_suffix=";
 static const char *skip_ramfs = " skip_initramfs";
-static char *sys_path_cmdline = " rootwait ro init=/init root=/dev/mmcblk0p%d"; /*This will be updated*/
+static const char *sys_path_cmdline = " rootwait ro init=/init";
+static const char *sys_path = "  root=/dev/mmcblk0p";
 
 #if VERIFIED_BOOT
 #if !VBOOT_MOTA
@@ -347,6 +348,11 @@ unsigned char *update_cmdline(const char * cmdline)
 	char *boot_dev_buf = NULL;
     	bool is_mdtp_activated = 0;
 	int current_active_slot = INVALID;
+	int system_ptn_index = -1;
+	unsigned int lun = 0;
+	char lun_char_base = 'a';
+	int syspath_buflen = strlen(sys_path) + sizeof(int) + 1; /*allocate buflen for largest possible string*/
+	char syspath_buf[syspath_buflen];
 
 #if USE_LE_SYSTEMD
 	is_systemd_present=true;
@@ -495,10 +501,22 @@ unsigned char *update_cmdline(const char * cmdline)
 		cmdline_len += (strlen(androidboot_slot_suffix)+
 					strlen(SUFFIX_SLOT(current_active_slot)));
 
-		snprintf(sys_path_cmdline, sizeof(*sys_path_cmdline),
-				sys_path_cmdline, (partition_get_index("system")+1));
-		cmdline_len += strlen(sys_path_cmdline);
+		system_ptn_index = partition_get_index("system");
+		if (platform_boot_dev_isemmc())
+		{
+			snprintf(syspath_buf, syspath_buflen, " root=/dev/mmcblk0p%d",
+				system_ptn_index + 1);
+		}
+		else
+		{
+			lun = partition_get_lun(system_ptn_index);
+			snprintf(syspath_buf, syspath_buflen, " root=/dev/sd%c%d",
+					lun_char_base + lun,
+					partition_get_index_in_lun("system", lun));
+		}
 
+		cmdline_len += strlen(sys_path_cmdline);
+		cmdline_len += strlen(syspath_buf);
 		if (!boot_into_recovery)
 			cmdline_len += strlen(skip_ramfs);
 	}
@@ -720,6 +738,10 @@ unsigned char *update_cmdline(const char * cmdline)
 				}
 
 				src = sys_path_cmdline;
+				--dst;
+				while ((*dst++ = *src++));
+
+				src = syspath_buf;
 				--dst;
 				while ((*dst++ = *src++));
 		}
@@ -3546,7 +3568,7 @@ void cmd_reboot(const char *arg, void *data, unsigned sz)
 
 void cmd_set_active(const char *arg, void *data, unsigned sz)
 {
-	char *p = NULL;
+	char *p, *sp = NULL;
 	unsigned i,current_active_slot;
 	const char *current_slot_suffix;
 
@@ -3558,13 +3580,16 @@ void cmd_set_active(const char *arg, void *data, unsigned sz)
 
 	if (arg)
 	{
-		p = (char *)arg;
-		if (p)
+		p = strtok_r((char *)arg, ":", &sp);
+		if (*p)
 		{
 			current_active_slot = partition_find_active_slot();
 
 			/* Check if trying to make curent slot active */
 			current_slot_suffix = SUFFIX_SLOT(current_active_slot);
+			current_slot_suffix = strtok_r((char *)current_slot_suffix,
+							(char *)suffix_delimiter, &sp);
+
 			if (!strncmp(p, current_slot_suffix, sizeof(current_slot_suffix)))
 			{
 				fastboot_okay("Slot already set active");
@@ -3575,6 +3600,8 @@ void cmd_set_active(const char *arg, void *data, unsigned sz)
 				for (i = 0; i < AB_SUPPORTED_SLOTS; i++)
 				{
 					current_slot_suffix = SUFFIX_SLOT(i);
+					current_slot_suffix = strtok_r((char *)current_slot_suffix,
+									(char *)suffix_delimiter, &sp);
 					if (!strncmp(p, current_slot_suffix, sizeof(current_slot_suffix)))
 					{
 						partition_switch_slots(current_active_slot, i);
@@ -4132,7 +4159,7 @@ void aboot_fastboot_register_commands(void)
 						{"oem disable-charger-screen", cmd_oem_disable_charger_screen},
 						{"oem off-mode-charge", cmd_oem_off_mode_charger},
 						{"oem select-display-panel", cmd_oem_select_display_panel},
-						{"oem set_active",cmd_set_active},
+						{"set_active",cmd_set_active},
 #if UNITTEST_FW_SUPPORT
 						{"oem run-tests", cmd_oem_runtests},
 #endif
