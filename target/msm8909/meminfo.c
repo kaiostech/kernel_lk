@@ -84,5 +84,5 @@ unsigned target_get_max_flash_size(void)
 	if(target_is_emmc_boot()) {
 		return (250 * 1024 * 1024);
 	}
-	return (322 * 1024 * 1024);
+	return (SCRATCH_REGION1_SIZE + SCRATCH_REGION2_SIZE);
 }
