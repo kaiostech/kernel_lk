@@ -54,9 +54,16 @@
 /* SCM interface as per ARM spec present? */
 bool scm_arm_support;
 static uint32_t scm_io_write(addr_t address, uint32_t val);
+static bool scm_initialized;
 
 bool is_scm_armv8_support()
 {
+	if (!scm_initialized)
+	{
+		scm_init();
+		scm_initialized = true;
+	}
+
 	return scm_arm_support;
 }
 
@@ -94,10 +101,16 @@ void scm_init()
 {
 	int ret;
 
+	if (scm_initialized)
+		return;
+
 	ret = scm_arm_support_available(SCM_SVC_INFO, IS_CALL_AVAIL_CMD);
 
-	if (ret)
+	if (ret < 0)
 		dprintf(CRITICAL, "Failed to initialize SCM\n");
+
+	scm_initialized = true;
+
 }
 
 /**
@@ -192,7 +205,7 @@ static int scm_call_atomic(uint32_t svc, uint32_t cmd, uint32_t arg1)
 {
 	uint32_t context_id;
 	register uint32_t r0 __asm__("r0") = SCM_ATOMIC(svc, cmd, 1);
-	register uint32_t r1 __asm__("r1") = &context_id;
+	register uint32_t r1 __asm__("r1") = (uint32_t)&context_id;
 	register uint32_t r2 __asm__("r2") = arg1;
 
 	__asm__ volatile(
@@ -221,7 +234,7 @@ int scm_call_atomic2(uint32_t svc, uint32_t cmd, uint32_t arg1, uint32_t arg2)
 {
 	int context_id;
 	register uint32_t r0 __asm__("r0") = SCM_ATOMIC(svc, cmd, 2);
-	register uint32_t r1 __asm__("r1") = &context_id;
+	register uint32_t r1 __asm__("r1") = (uint32_t)&context_id;
 	register uint32_t r2 __asm__("r2") = arg1;
 	register uint32_t r3 __asm__("r3") = arg2;
 
@@ -306,7 +319,7 @@ int restore_secure_cfg(uint32_t id)
 	secure_cfg.spare = 0;
 	scmcall_arg scm_arg = {0};
 
-	if(!scm_arm_support)
+	if(!is_scm_armv8_support())
 	{
 		ret = scm_call(SVC_MEMORY_PROTECTION, IOMMU_SECURE_CFG, &secure_cfg, sizeof(secure_cfg),
 					   NULL, 0);
@@ -346,7 +359,7 @@ int encrypt_scm(uint32_t ** img_ptr, uint32_t * img_len_ptr)
 	 */
 	arch_clean_invalidate_cache_range((addr_t) *img_ptr, *img_len_ptr);
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		ret = scm_call(SCM_SVC_SSD, SSD_ENCRYPT_ID, &cmd, sizeof(cmd), NULL, 0);
 	}
@@ -378,7 +391,7 @@ int decrypt_scm(uint32_t ** img_ptr, uint32_t * img_len_ptr)
 	int ret;
 	img_req cmd;
 
-	if (scm_arm_support)
+	if (is_scm_armv8_support())
 	{
 		dprintf(INFO, "%s:SCM call is not supported\n",__func__);
 		return -1;
@@ -429,7 +442,7 @@ static int ssd_image_is_encrypted(uint32_t ** img_ptr, uint32_t * img_len_ptr, u
 
 	do
 	{
-		if (!scm_arm_support)
+		if (!is_scm_armv8_support())
 		{
 			ret = scm_call(SCM_SVC_SSD,
 					SSD_PARSE_MD_ID,
@@ -443,7 +456,7 @@ static int ssd_image_is_encrypted(uint32_t ** img_ptr, uint32_t * img_len_ptr, u
 			scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_SSD, SSD_PARSE_MD_ID);
 			scm_arg.x1 = MAKE_SCM_ARGS(0x2,SMC_PARAM_TYPE_VALUE,SMC_PARAM_TYPE_BUFFER_READWRITE);
 			scm_arg.x2 = parse_req.md_len;
-			scm_arg.x3 = parse_req.md;
+			scm_arg.x3 = (uint32_t) parse_req.md;
 			scm_arg.atomic = true;
 
 			ret = scm_call2(&scm_arg, &scm_ret);
@@ -513,7 +526,7 @@ int decrypt_scm_v2(uint32_t ** img_ptr, uint32_t * img_len_ptr)
 			decrypt_req.frag_len  = *img_len_ptr;
 			decrypt_req.frag      = *img_ptr;
 
-			if (!scm_arm_support)
+			if (!is_scm_armv8_support())
 			{
 				ret = scm_call(SCM_SVC_SSD,
 						SSD_DECRYPT_IMG_FRAG_ID,
@@ -529,7 +542,7 @@ int decrypt_scm_v2(uint32_t ** img_ptr, uint32_t * img_len_ptr)
 				scm_arg.x2 = decrypt_req.md_ctx_id;
 				scm_arg.x3 = decrypt_req.last_frag;
 				scm_arg.x4 = decrypt_req.frag_len;
-				scm_arg.x5[0] = decrypt_req.frag;
+				scm_arg.x5[0] = (uint32_t) decrypt_req.frag;
 
 				ret = scm_call2(&scm_arg, &scm_ret);
 				decrypt_rsp.status = scm_ret.x1;
@@ -579,7 +592,7 @@ int scm_svc_version(uint32 * major, uint32 * minor)
 
 	feature_req.feature_id = TZBSP_FVER_SSD;
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		ret = scm_call(TZBSP_SVC_INFO,
 					   TZ_INFO_GET_FEATURE_ID,
@@ -614,7 +627,7 @@ int scm_svc_get_secure_state(uint32_t *state_low, uint32_t *state_high)
 	scmcall_arg scm_arg = {0};
 	scmcall_ret scm_ret = {0};
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		req.status_ptr = (uint32_t*)&rsp;
 		req.status_len = sizeof(rsp);
@@ -659,7 +672,7 @@ int scm_protect_keystore(uint32_t * img_ptr, uint32_t  img_len)
 
 	arch_clean_invalidate_cache_range((addr_t) img_ptr, img_len);
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		ret = scm_call(SCM_SVC_SSD,
 				SSD_PROTECT_KEYSTORE_ID,
@@ -672,7 +685,7 @@ int scm_protect_keystore(uint32_t * img_ptr, uint32_t  img_len)
 	{
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_SSD, SSD_PROTECT_KEYSTORE_ID);
 		scm_arg.x1 = MAKE_SCM_ARGS(0x2,SMC_PARAM_TYPE_BUFFER_READWRITE,SMC_PARAM_TYPE_VALUE);
-		scm_arg.x2 = protect_req.keystore_ptr;
+		scm_arg.x2 = (uint32_t) protect_req.keystore_ptr;
 		scm_arg.x3 = protect_req.keystore_len;
 
 		ret = scm_call2(&scm_arg, &scm_ret);
@@ -708,7 +721,7 @@ void set_tamper_fuse_cmd()
 	cmd_buf = (void *)&fuse_id;
 	cmd_len = sizeof(fuse_id);
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		/*no response */
 		resp_buf = NULL;
@@ -723,7 +736,7 @@ void set_tamper_fuse_cmd()
 	{
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_FUSE, SCM_BLOW_SW_FUSE_ID);
 		scm_arg.x1 = MAKE_SCM_ARGS(0x2,SMC_PARAM_TYPE_BUFFER_READWRITE,SMC_PARAM_TYPE_VALUE);
-		scm_arg.x2  = cmd_buf;
+		scm_arg.x2  = (uint32_t) cmd_buf;
 		scm_arg.x3 = cmd_len;
 
 		scm_call2(&scm_arg, NULL);
@@ -748,7 +761,7 @@ uint8_t get_tamper_fuse_cmd()
 	cmd_buf = (void *)&fuse_id;
 	cmd_len = sizeof(fuse_id);
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		/*response */
 		resp_len = sizeof(resp_buf);
@@ -763,7 +776,7 @@ uint8_t get_tamper_fuse_cmd()
 	{
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_FUSE, SCM_IS_SW_FUSE_BLOWN_ID);
 		scm_arg.x1 = MAKE_SCM_ARGS(0x2,SMC_PARAM_TYPE_BUFFER_READWRITE,SMC_PARAM_TYPE_VALUE);
-		scm_arg.x2  = cmd_buf;
+		scm_arg.x2  = (uint32_t) cmd_buf;
 		scm_arg.x3 = cmd_len;
 
 		scm_call2(&scm_arg, &scm_ret);
@@ -801,7 +814,7 @@ void save_kernel_hash_cmd(void *digest)
 	req.partition_id = 0; /* kernel */
 	memcpy(req.digest, digest, sizeof(req.digest));
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		svc_id = SCM_SVC_ES;
 		cmd_id = SCM_SAVE_PARTITION_HASH_ID;
@@ -815,7 +828,7 @@ void save_kernel_hash_cmd(void *digest)
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_ES, SCM_SAVE_PARTITION_HASH_ID);
 		scm_arg.x1 = MAKE_SCM_ARGS(0x3, 0, SMC_PARAM_TYPE_BUFFER_READWRITE);
 		scm_arg.x2 = req.partition_id;
-		scm_arg.x3 = (uint8_t *)&req.digest;
+		scm_arg.x3 = (uint32_t) &req.digest;
 		scm_arg.x4 = sizeof(req.digest);
 
 		if (scm_call2(&scm_arg, NULL))
@@ -845,7 +858,7 @@ int mdtp_cipher_dip_cmd(uint8_t *in_buf, uint32_t in_buf_size, uint8_t *out_buf,
 	req.out_buf_size = out_buf_size;
 	req.direction = direction;
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		svc_id = SCM_SVC_MDTP;
 		cmd_id = SCM_MDTP_CIPHER_DIP;
@@ -901,7 +914,7 @@ int qfprom_read_row_cmd(uint32_t row_address,
 	req.row_data = row_data;
 	req.qfprom_api_status = qfprom_api_status;
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		svc_id = SCM_SVC_FUSE;
 		cmd_id = SCM_QFPROM_READ_ROW_ID;
@@ -956,7 +969,7 @@ uint8_t switch_ce_chn_cmd(enum ap_ce_channel_type channel)
 		uint32_t chn_id;
 		}__PACKED switch_ce_chn_buf;
 
-	if (scm_arm_support)
+	if (is_scm_armv8_support())
 	{
 		dprintf(INFO, "%s:SCM call is not supported\n",__func__);
 		return 0;
@@ -982,7 +995,7 @@ int scm_halt_pmic_arbiter()
 	int ret = 0;
 	scmcall_arg scm_arg = {0};
 
-	if (scm_arm_support) {
+	if (is_scm_armv8_support()) {
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER);
 		scm_arg.x1 = MAKE_SCM_ARGS(0x1);
 		scm_arg.x2 = 0;
@@ -994,7 +1007,7 @@ int scm_halt_pmic_arbiter()
 
 	/* Retry with the SCM_IO_DISABLE_PMIC_ARBITER1 func ID if the above Func ID fails*/
 	if(ret) {
-		if (scm_arm_support) {
+		if (is_scm_armv8_support()) {
 			scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER1);
 			scm_arg.x1 = MAKE_SCM_ARGS(0x1);
 			scm_arg.x2 = 0;
@@ -1025,7 +1038,7 @@ void scm_elexec_call(paddr_t kernel_entry, paddr_t dtb_offset)
 	uint32_t cmd_id = SCM_SVC_MILESTONE_CMD_ID;
 	void *cmd_buf;
 	size_t cmd_len;
-	static el1_system_param param;
+	static el1_system_param param __attribute__((aligned(0x1000)));
 	scmcall_arg scm_arg = {0};
 
 	param.el1_x0 = dtb_offset;
@@ -1034,7 +1047,7 @@ void scm_elexec_call(paddr_t kernel_entry, paddr_t dtb_offset)
 	/* Response Buffer = Null as no response expected */
 	dprintf(INFO, "Jumping to kernel via monitor\n");
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		/* Command Buffer */
 		cmd_buf = (void *)&param;
@@ -1046,7 +1059,7 @@ void scm_elexec_call(paddr_t kernel_entry, paddr_t dtb_offset)
 	{
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_MILESTONE_32_64_ID, SCM_SVC_MILESTONE_CMD_ID);
 		scm_arg.x1 = MAKE_SCM_ARGS(0x2, SMC_PARAM_TYPE_BUFFER_READ);
-		scm_arg.x2 = (void *)&param;
+		scm_arg.x2 = (uint32_t ) &param;
 		scm_arg.x3 = sizeof(el1_system_param);
 
 		scm_call2(&scm_arg, NULL);
@@ -1063,36 +1076,49 @@ int scm_random(uint32_t * rbuf, uint32_t  r_len)
 	int ret;
 	struct tz_prng_data data;
 	scmcall_arg scm_arg = {0};
+	// Memory passed to TZ should be algined to cache line
+	BUF_DMA_ALIGN(rand_buf, sizeof(uintptr_t));
 
-	if (!scm_arm_support)
+	// r_len must be less than or equal to sizeof(rand_buf) to avoid memory corruption.
+	if (r_len > sizeof(rand_buf))
 	{
-		data.out_buf     = (uint8_t*) rbuf;
+		dprintf(CRITICAL, "r_len is larger than sizeof(rand_buf).");
+		return -1;
+	}
+
+	if (!is_scm_armv8_support())
+	{
+		data.out_buf     = (uint8_t*) rand_buf;
 		data.out_buf_size = r_len;
 
 		/*
 		 * random buffer must be flushed/invalidated before and after TZ call.
 		 */
-		arch_clean_invalidate_cache_range((addr_t) rbuf, r_len);
+		arch_clean_invalidate_cache_range((addr_t) rand_buf, r_len);
 
 		ret = scm_call(TZ_SVC_CRYPTO, PRNG_CMD_ID, &data, sizeof(data), NULL, 0);
 
 		/* Invalidate the updated random buffer */
-		arch_clean_invalidate_cache_range((addr_t) rbuf, r_len);
+		arch_clean_invalidate_cache_range((addr_t) rand_buf, r_len);
 	}
 	else
 	{
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(TZ_SVC_CRYPTO, PRNG_CMD_ID);
 		scm_arg.x1 = MAKE_SCM_ARGS(0x2,SMC_PARAM_TYPE_BUFFER_READWRITE);
-		scm_arg.x2 = (uint8_t *) rbuf;
+		scm_arg.x2 = (uint32_t) rand_buf;
 		scm_arg.x3 = r_len;
+
+		arch_clean_invalidate_cache_range((addr_t) rand_buf, r_len);
 
 		ret = scm_call2(&scm_arg, NULL);
 		if (!ret)
-			arch_clean_invalidate_cache_range((addr_t) rbuf, r_len);
+			arch_clean_invalidate_cache_range((addr_t) rand_buf, r_len);
 		else
 			dprintf(CRITICAL, "Secure canary SCM failed: %x\n", ret);
 	}
 
+	//Copy back into the return buffer
+	memscpy(rbuf, r_len, rand_buf, sizeof(rand_buf));
 	return ret;
 }
 
@@ -1104,7 +1130,7 @@ void * get_canary()
 		/*
 		* fall back to use lib rand API if scm call failed.
 		*/
-		canary =  (void *)rand();
+		canary =  rand();
 	}
 
 	return canary;
@@ -1118,7 +1144,7 @@ int scm_xpu_err_fatal_init()
 	scmcall_arg scm_arg = {0};
 	scmcall_ret scm_ret = {0};
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		cmd.config = ERR_FATAL_ENABLE;
 		cmd.spare = 0;
@@ -1152,6 +1178,7 @@ static uint32_t scm_call_a32(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
 	register uint32_t r3 __asm__("r3") = x3;
 	register uint32_t r4 __asm__("r4") = x4;
 	register uint32_t r5 __asm__("r5") = x5;
+	register uint32_t r6 __asm__("r6") = 0;
 
 	do {
 		__asm__ volatile(
@@ -1165,9 +1192,10 @@ static uint32_t scm_call_a32(uint32_t x0, uint32_t x1, uint32_t x2, uint32_t x3,
 			__asmeq("%7", "r3")
 			__asmeq("%8", "r4")
 			__asmeq("%9", "r5")
+			__asmeq("%10", "r6")
 			"smc    #0  @ switch to secure world\n"
 			: "=r" (r0), "=r" (r1), "=r" (r2), "=r" (r3)
-			: "r" (r0), "r" (r1), "r" (r2), "r" (r3), "r" (r4), "r" (r5));
+			: "r" (r0), "r" (r1), "r" (r2), "r" (r3), "r" (r4), "r" (r5), "r" (r6));
 	} while(r0 == 1);
 
 	if (ret)
@@ -1192,7 +1220,7 @@ uint32_t scm_call2(scmcall_arg *arg, scmcall_ret *ret)
 
 	if ((arg->x1 & 0xF) > SCM_MAX_ARG_LEN - 1)
 	{
-		indir_arg = memalign(CACHE_LINE, (SCM_INDIR_MAX_LEN * sizeof(uint32_t)));
+		indir_arg = memalign(CACHE_LINE, ROUNDUP((SCM_INDIR_MAX_LEN * sizeof(uint32_t)), CACHE_LINE));
 		ASSERT(indir_arg);
 
 		for (i = 0 ; i < SCM_INDIR_MAX_LEN; i++)
@@ -1226,8 +1254,9 @@ uint32_t is_secure_boot_enable()
 
 	resp =  memalign(CACHE_LINE,(2 *sizeof(uint32_t)));
 	ASSERT(resp);
-	if (!scm_arm_support) {
-		ret = scm_call_atomic2(TZBSP_SVC_INFO, IS_SECURE_BOOT_ENABLED, resp, (2 * sizeof(uint32_t)));
+	if (!is_scm_armv8_support()) {
+		ret = scm_call_atomic2(TZBSP_SVC_INFO, IS_SECURE_BOOT_ENABLED, (uint32_t)resp, 2 * sizeof(uint32_t));
+		arch_clean_invalidate_cache_range((addr_t)resp, ROUNDUP((2*sizeof(uint32_t)), CACHE_LINE));
 	} else {
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(TZBSP_SVC_INFO, IS_SECURE_BOOT_ENABLED);
 		ret = scm_call2(&scm_arg, &scm_ret);
@@ -1257,7 +1286,7 @@ static uint32_t scm_io_read(addr_t address)
 	scmcall_arg scm_arg = {0};
 	scmcall_ret scm_ret = {0};
 
-	if (!scm_arm_support) {
+	if (!is_scm_armv8_support()) {
 		ret = scm_call_atomic(SCM_SVC_IO, SCM_IO_READ, address);
 	} else {
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_IO, SCM_IO_READ);
@@ -1275,7 +1304,7 @@ static uint32_t scm_io_write(addr_t address, uint32_t val)
 	scmcall_arg scm_arg = {0};
 	scmcall_ret scm_ret = {0};
 
-	if (!scm_arm_support) {
+	if (!is_scm_armv8_support()) {
 		ret = scm_call_atomic2(SCM_SVC_IO, SCM_IO_WRITE, address, val);
 	} else {
 		scm_arg.x0 = MAKE_SIP_SCM_CMD(SCM_SVC_IO, SCM_IO_WRITE);
@@ -1294,7 +1323,7 @@ static int scm_call2_atomic(uint32_t svc, uint32_t cmd, uint32_t arg1, uint32_t 
 	scmcall_arg scm_arg = {0};
 	scmcall_ret scm_ret = {0};
 
-	if (!scm_arm_support)
+	if (!is_scm_armv8_support())
 	{
 		ret = scm_call_atomic2(svc, cmd, arg1, arg2);
 	} else {
