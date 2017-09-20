@@ -77,9 +77,11 @@ uint32_t board_pmic_target(uint8_t num_ent);
 
 #define MB             (1024 * 1024)
 #define DDR_512MB      (512 * MB)
+#define DDR_256MB      (256 * MB)
 
 enum subtype_ddr {
        SUBTYPE_512MB = 1,
+       SUBTYPE_256MB = 2,
 };
 
 uint32_t board_foundry_id(void);

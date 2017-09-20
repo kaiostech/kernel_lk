@@ -229,33 +229,16 @@ uint32_t board_soc_version()
 
 uint32_t board_get_ddr_subtype(void)
 {
-	ram_partition ptn_entry;
-	unsigned int index;
+	unsigned ddr_size = smem_get_ddr_size();
 	uint32_t ret = 0;
-	uint32_t len = 0;
-	unsigned ddr_size = 0;
-
-	/* Make sure RAM partition table is initialized */
-	ASSERT(smem_ram_ptable_init_v1());
-
-	len = smem_get_ram_ptable_len();
-
-	/* Calculating the size of the mem_info_ptr */
-	for (index = 0 ; index < len; index++)
-	{
-		smem_get_ram_ptable_entry(&ptn_entry, index);
-
-		if((ptn_entry.category == SDRAM) &&
-			(ptn_entry.type == SYS_MEMORY))
-		{
-			ddr_size += ptn_entry.size;
-		}
-	}
 
 	switch(ddr_size)
 	{
 	case DDR_512MB:
 		ret = SUBTYPE_512MB;
+	break;
+	case DDR_256MB:
+		ret = SUBTYPE_256MB;
 	break;
 	default:
 		ret = 0;
