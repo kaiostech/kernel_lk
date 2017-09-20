@@ -61,6 +61,10 @@
 #define SCRATCH_MEMORY                        (MMU_MEMORY_TYPE_NORMAL | \
 			                      MMU_MEMORY_AP_READ_WRITE | MMU_MEMORY_XN)
 
+static uint64_t ddr_size;
+static void ddr_based_mmu_mappings(mmu_section_t *table, uint32_t table_size);
+static struct smem_ram_ptable ram_ptable;
+
 static mmu_section_t mmu_section_table[] = {
 /*           Physical addr,     Virtual addr,     Size (in MB),     Flags */
 	{     MEMBASE,           MEMBASE,          (MEMSIZE / MB),   LK_MEMORY},
@@ -69,10 +73,35 @@ static mmu_section_t mmu_section_table[] = {
 	{    SYSTEM_IMEM_BASE,  SYSTEM_IMEM_BASE, 1,                IMEM_MEMORY},
 	{    MIPI_FB_ADDR,      MIPI_FB_ADDR,     10,              COMMON_MEMORY},
         {    RPMB_SND_RCV_BUF,      RPMB_SND_RCV_BUF,        RPMB_SND_RCV_BUF_SZ,    IOMAP_MEMORY},
-	{    SCRATCH_REGION2,   SCRATCH_REGION2_VIRT_START, SCRATCH_REGION2_SIZE / MB, LK_MEMORY},
 };
 
-static struct smem_ram_ptable ram_ptable;
+static mmu_section_t mmu_section_table_512[] = {
+/*           Physical addr,     Virtual addr,     Size (in MB),     Flags */
+	{    SCRATCH_REGION2,   SCRATCH_REGION2_VIRT_START, SCRATCH_REGION2_SIZE / MB, SCRATCH_MEMORY},
+};
+
+#define SCRATCH_REGION_1_256_VIRT_START (SCRATCH_REGION_256)
+#define SCRATCH_REGION_2_256_VIRT_START (SCRATCH_REGION_1_256_VIRT_START + SCRATCH_REGION_1_256_SIZE)
+#define SCRATCH_REGION_3_256_VIRT_START (SCRATCH_REGION_2_256_VIRT_START + SCRATCH_REGION_2_256_SIZE)
+#define SCRATCH_REGION_4_256_VIRT_START (SCRATCH_REGION_3_256_VIRT_START + SCRATCH_REGION_3_256_SIZE)
+
+static mmu_section_t mmu_section_table_256[] = {
+/*           Physical addr,     Virtual addr,     Size (in MB),     Flags */
+	{    SCRATCH_REGION_1_256,  SCRATCH_REGION_1_256_VIRT_START, SCRATCH_REGION_1_256_SIZE / MB, SCRATCH_MEMORY},
+	{    SCRATCH_REGION_2_256,  SCRATCH_REGION_2_256_VIRT_START, SCRATCH_REGION_2_256_SIZE / MB, SCRATCH_MEMORY},
+	{    SCRATCH_REGION_3_256,  SCRATCH_REGION_3_256_VIRT_START, SCRATCH_REGION_3_256_SIZE / MB, SCRATCH_MEMORY},
+	{    SCRATCH_REGION_4_256,  SCRATCH_REGION_4_256_VIRT_START, SCRATCH_REGION_4_256_SIZE / MB, SCRATCH_MEMORY},
+};
+
+static void board_ddr_map()
+{
+	ddr_size = smem_get_ddr_size();
+
+	if (ddr_size == DDR_256MB)
+		ddr_based_mmu_mappings(mmu_section_table_256, ARRAY_SIZE(mmu_section_table_256));
+	else
+		ddr_based_mmu_mappings(mmu_section_table_512, ARRAY_SIZE(mmu_section_table_512));
+}
 
 void platform_early_init(void)
 {
@@ -80,6 +109,7 @@ void platform_early_init(void)
 	platform_clock_init();
 	qgic_init();
 	qtimer_init();
+	board_ddr_map();
 }
 
 void platform_init(void)
@@ -184,6 +214,39 @@ addr_t platform_get_virt_to_phys_mapping(addr_t virt_addr)
 				return paddr;
 		}
 	}
+
+	if (ddr_size == DDR_256MB)
+	{
+		table_size = ARRAY_SIZE(mmu_section_table_256);
+		for (uint32_t i = 0; i < table_size; i++)
+		{
+			limit = (mmu_section_table_256[i].num_of_sections * MB) - 0x1;
+
+			if (virt_addr >= mmu_section_table_256[i].vaddress &&
+				virt_addr <= (mmu_section_table_256[i].vaddress + limit))
+			{
+				paddr = mmu_section_table_256[i].paddress + (virt_addr - mmu_section_table_256[i].vaddress);
+				return paddr;
+			}
+		}
+	}
+	else
+	/* For RAM >512MB */
+	{
+		table_size = ARRAY_SIZE(mmu_section_table_512);
+		for (uint32_t i = 0; i < table_size; i++)
+		{
+			limit = (mmu_section_table_512[i].num_of_sections * MB) - 0x1;
+
+			if (virt_addr >= mmu_section_table_512[i].vaddress &&
+				virt_addr <= (mmu_section_table_512[i].vaddress + limit))
+			{
+				paddr = mmu_section_table_512[i].paddress + (virt_addr - mmu_section_table_512[i].vaddress);
+				return paddr;
+			}
+		}
+	}
+
 	/* No special mapping found.
 	* Assume 1-1 mapping.
 	*/
@@ -207,6 +270,38 @@ addr_t platform_get_phys_to_virt_mapping(addr_t phys_addr)
 		{
 			vaddr = mmu_section_table[i].vaddress + (phys_addr - mmu_section_table[i].paddress);
 			return vaddr;
+		}
+	}
+
+	if (ddr_size == DDR_256MB)
+	{
+		table_size = ARRAY_SIZE(mmu_section_table_256);
+		for (uint32_t i = 0; i < table_size; i++)
+		{
+			limit = (mmu_section_table_256[i].num_of_sections * MB) - 0x1;
+
+			if (phys_addr >= mmu_section_table_256[i].paddress &&
+				phys_addr <= (mmu_section_table_256[i].paddress + limit))
+			{
+				vaddr = mmu_section_table_256[i].vaddress + (phys_addr - mmu_section_table_256[i].paddress);
+				return vaddr;
+			}
+		}
+	}
+	else
+	/* For RAM >512MB */
+	{
+		table_size = ARRAY_SIZE(mmu_section_table_512);
+		for (uint32_t i = 0; i < table_size; i++)
+		{
+			limit = (mmu_section_table_512[i].num_of_sections * MB) - 0x1;
+
+			if (phys_addr >= mmu_section_table_512[i].paddress &&
+				phys_addr <= (mmu_section_table_512[i].paddress + limit))
+			{
+				vaddr = mmu_section_table_512[i].vaddress + (phys_addr - mmu_section_table_512[i].paddress);
+				return vaddr;
+			}
 		}
 	}
 
@@ -281,3 +376,28 @@ uint32_t platform_detect_panel()
 
 	return panel;
 }
+
+/* Setup memory for this platform */
+static void ddr_based_mmu_mappings(mmu_section_t *table,uint32_t table_size)
+{
+	uint32_t i;
+	uint32_t sections;
+
+	for (i = 0; i < table_size; i++)
+	{
+		sections = table->num_of_sections;
+
+		while (sections--)
+		{
+			arm_mmu_map_section(table->paddress +
+						sections * MB,
+						table->vaddress +
+						sections * MB,
+						table->flags);
+		}
+		table++;
+	}
+}
+
+
+

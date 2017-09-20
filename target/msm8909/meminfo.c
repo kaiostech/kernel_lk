@@ -34,6 +34,7 @@
 #include <libfdt.h>
 #include <platform/iomap.h>
 #include <dev_tree.h>
+#include <board.h>
 
 uint32_t target_dev_tree_mem(void *fdt, uint32_t memory_node_offset)
 {
@@ -76,7 +77,10 @@ target_dev_tree_mem_err:
 
 void *target_get_scratch_address(void)
 {
-	return ((void *)SCRATCH_ADDR);
+	if (smem_get_ddr_size() == DDR_256MB)
+		return ((void *)SCRATCH_REGION_256);
+	else
+		return ((void *)SCRATCH_ADDR);
 }
 
 unsigned target_get_max_flash_size(void)
@@ -84,5 +88,12 @@ unsigned target_get_max_flash_size(void)
 	if(target_is_emmc_boot()) {
 		return (250 * 1024 * 1024);
 	}
-	return (SCRATCH_REGION1_SIZE + SCRATCH_REGION2_SIZE);
+
+	if (smem_get_ddr_size() == DDR_256MB)
+		return (SCRATCH_REGION_1_256_SIZE +
+			SCRATCH_REGION_2_256_SIZE +
+			SCRATCH_REGION_3_256_SIZE +
+			SCRATCH_REGION_4_256_SIZE );
+	else
+		return (SCRATCH_REGION1_SIZE + SCRATCH_REGION2_SIZE);
 }
