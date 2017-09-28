@@ -1929,6 +1929,13 @@ void read_device_info_flash(device_info *dev)
 #else
 		info->is_unlocked = 0;
 #endif
+
+#if USER_BUILD_VARIANT
+		info->charger_screen_enabled = 1;
+#else
+		info->charger_screen_enabled = 0;
+#endif
+
 		info->is_tampered = 0;
 		write_device_info_flash(info);
 	}
